@@ -25,9 +25,9 @@
    "gain": 0.5
   },
   {
-   "name": "Rim",
+   "name": "Steppers",
    "file": "05.wav",
-   "gain": 0.8
+   "gain": 1.0
   },
   {
    "name": "Snare ressort",
@@ -40,9 +40,9 @@
    "gain": 0.5
   },
   {
-   "name": "Steppers",
+   "name": "Rim",
    "file": "08.wav",
-   "gain": 1.0
+   "gain": 0.8
   },
   {
    "name": "Tom bas",

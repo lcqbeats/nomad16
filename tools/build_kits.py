@@ -325,7 +325,11 @@ def main():
     for kid, name, style, desc, fn in KITS:
         d = os.path.join(OUT, kid); os.makedirs(d)
         pads = []
-        for i, (pname, x, gain) in enumerate(fn()):
+        items = fn()
+        # Disposition habituelle : 2e kick en pad 5, snare/rim en 2 et 6
+        if kid != "percus":
+            items[4], items[7] = items[7], items[4]
+        for i, (pname, x, gain) in enumerate(items):
             x = norm(trim(np.asarray(x, dtype=np.float64), maxlen=2.5), 0.89)
             path = f"{i + 1:02d}.wav"
             sf.write(os.path.join(d, path), (x * 32767).astype(np.int16), SR, subtype="PCM_16")
