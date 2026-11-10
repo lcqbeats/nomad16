@@ -85,6 +85,9 @@ button { font-family: var(--font-body); }
 }
 .dial::after { content: ""; width: 29px; height: 29px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #4a4641, #1f1d1b); box-shadow: 0 2px 4px #000; }
 .knob.off { opacity: .3; }
+.dial { position: relative; }
+.dial.pickup { outline: 2px dashed var(--muted); outline-offset: 2px; }
+.dial.pickup::before { content: ""; position: absolute; left: 50%; top: 50%; width: 2px; height: 22px; margin-left: -1px; background: var(--text); opacity: .8; transform-origin: 50% 0; transform: rotate(calc(-135deg + var(--p, 0) * 270deg + 180deg)); z-index: 1; }
 .knob label { font-size: 9px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; text-align: center; }
 .view[hidden] { display: none; }
 .pads { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
@@ -2930,7 +2933,22 @@ registerProcessor('nomad-fx',Fx);`;
     if (cc >= 20 && cc <= 35) { if (v > 0) padCommand(cc); return; }
     const k = knobIndex(cc);
     if (k < 0) return;
-    knobInput(k, v);
+    if (pickup(k, v)) { knobInput(k, v); knobOwner[k] = { tab, val: knobVals[tab][k] }; }
+  }
+  // Reprise douce : un potard physique n'agit qu'une fois arrivé à la valeur affichée
+  // (après un changement de pad, d'onglet, de preset, un réglage tactile, un annuler...)
+  const knobOwner = Array(8).fill(null), knobPhys = Array(8).fill(null);
+  function pickup(k, v) {
+    const val = v / 127, prev = knobPhys[k]; knobPhys[k] = val;
+    if ((tab === "sample" && k === 0) || (tab === "loops" && k === 7) || !knobVals[tab]) return true;
+    const cur = knobVals[tab][k], o = knobOwner[k];
+    const dial = $("dial" + k), lab = KNOB_LABELS[tab][k];
+    if (o && o.tab === tab && Math.abs(o.val - cur) < 1e-6) return true;
+    const near = Math.abs(val - cur) <= 3 / 127, crossed = prev !== null && (prev - cur) * (val - cur) <= 0;
+    if (near || crossed) { if (dial) dial.classList.remove("pickup"); return true; }
+    if (dial) { dial.classList.add("pickup"); dial.style.setProperty("--p", val); clearTimeout(dial._pt); dial._pt = setTimeout(() => dial.classList.remove("pickup"), 1500); }
+    lcd("lcdPad", "RATTRAPER", `${lab} ${val < cur ? "▲" : "▼"} ${Math.round(cur * 100)} %`);
+    return false;
   }
   function knobInput(k, v) {
     const val = v / 127;
