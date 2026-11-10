@@ -1,7 +1,0 @@
-{
-  "name": "nomad16-ios9-build",
-  "private": true,
-  "type": "module",
-  "description": "Construit ios9.html (NOMAD-16 pour iOS 9) : node build.mjs ../..",
-  "dependencies": { "@babel/core": "^7", "@babel/preset-env": "^7", "core-js-bundle": "^3", "regenerator-runtime": "^0.14", "whatwg-fetch": "^3", "pepjs": "^0.5" }
-}

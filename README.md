@@ -14,8 +14,8 @@ Instruments de l'onglet SONS : échantillons libres (VCSL CC0, Splendid Grand Pi
 - Bank 1 (CC 20–27) : play/stop du looper, undo, mute des pistes 1 à 6.
 - Bank 2 (CC 28–35) : kit précédent, kit suivant, lecture/arrêt du morceau (SONG), séquence précédente, note repeat, séquence suivante, onglet suivant, entrée guitare.
 
-## Version iOS 9 (vieux iPad)
+## Version LITE pour vieux iPad (iOS 9)
 
-`ios9.html` est générée automatiquement à partir de `index.html` (JavaScript converti, grilles en flexbox, cales Web Audio) :
-`cd tools/ios9 && npm install && node build.mjs ../..`. À ouvrir dans Web MIDI Browser : https://lcqbeats.github.io/nomad16/ios9.html
+`ios9.html` : version très légère écrite à part (pads, kits, filtre, écho, pitch, full level), sans looper ni animations.
+Elle ne suit pas index.html et n'est mise à jour que sur demande. À ouvrir dans Web MIDI Browser : https://lcqbeats.github.io/nomad16/ios9.html
 Sous iOS 9, installer d'abord le certificat racine Let's Encrypt depuis Safari : http://x1.i.lencr.org/
