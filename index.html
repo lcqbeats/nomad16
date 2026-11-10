@@ -102,6 +102,7 @@ button { font-family: var(--font-body); }
 .pad.sel { outline: 2px solid var(--text); outline-offset: 2px; }
 .pad.hit { background: radial-gradient(circle, #ff5a4e, var(--red) 70%); transform: scale(.97); transition: none; }
 .pad.bank2.hit { background: radial-gradient(circle, #5df08f, var(--green) 70%); }
+:root:not([data-help]) .help { display: none !important; }
 .legend { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; color: var(--muted); font-size: 10px; letter-spacing: .06em; }
 .legend b { color: var(--text); font-weight: 600; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
@@ -377,7 +378,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
         <button class="btn" id="edCrop" type="button">TRONQUER</button>
         <button class="btn" id="edReset" type="button">RÉINITIAL.</button>
       </div>
-      <p class="note">Glissez les bords rouges pour le début et la fin. MAINTENU : le son s'arrête au relâchement du pad. MUTE : les pads d'un même groupe se coupent entre eux. TEMPO : cale le son sur 1, 2, 4 ou 8 temps (change la vitesse). Glissez un pad sur un autre pour copier, échanger ou fusionner.</p>
+      <p class="note help">Glissez les bords rouges pour le début et la fin. MAINTENU : le son s'arrête au relâchement du pad. MUTE : les pads d'un même groupe se coupent entre eux. TEMPO : cale le son sur 1, 2, 4 ou 8 temps (change la vitesse). Glissez un pad sur un autre pour copier, échanger ou fusionner.</p>
     </div>
     <div class="pads" id="pads"></div>
   </section>
@@ -416,7 +417,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       <div class="pedals" id="pedals"></div>
     </div>
     <div class="presets" id="presets" style="margin-top:10px"></div>
-    <p class="note" style="margin-top:8px">Branchez l'iRig puis touchez ENTRÉE. Larsen : montez le seuil de bruit, baissez le niveau d'entrée et le volume de l'iPhone, et évitez le haut-parleur. L'accordeur coupe le son pendant l'accordage. Les 8 potards de l'Akai règlent l'ampli dans cet onglet.</p>
+    <p class="note help" style="margin-top:8px">Branchez l'iRig puis touchez ENTRÉE. Larsen : montez le seuil de bruit, baissez le niveau d'entrée et le volume de l'iPhone, et évitez le haut-parleur. L'accordeur coupe le son pendant l'accordage. Les 8 potards de l'Akai règlent l'ampli dans cet onglet.</p>
   </section>
 
   <section class="view stack" id="view-seq" hidden>
@@ -434,7 +435,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       <button class="btn" id="sqDup" type="button">DOUBLER</button>
       <button class="btn" id="sqClear" type="button">EFFACER</button>
     </div>
-    <p class="note">8 patterns (A à H) : touchez-en un pour le choisir, pendant la lecture il démarre à la fin de la mesure. ● REC enregistre vos frappes de pads, quantifiées, par-dessus ce qui existe (décompte d'une mesure si la lecture est à l'arrêt). Touchez une case de la grille pour ajouter ou enlever une note ; appui long sur un nom de pad pour vider sa ligne. NOTE REPEAT : tenez un pad, il se répète à la vitesse choisie (potard 3). Le tempo suit la boucle du looper quand il y en a une. Potards : swing, tempo, vitesse du repeat, quantification, pattern, mesures, page, métronome.</p>
+    <p class="note help">8 patterns (A à H) : touchez-en un pour le choisir, pendant la lecture il démarre à la fin de la mesure. ● REC enregistre vos frappes de pads, quantifiées, par-dessus ce qui existe (décompte d'une mesure si la lecture est à l'arrêt). Touchez une case de la grille pour ajouter ou enlever une note ; appui long sur un nom de pad pour vider sa ligne. NOTE REPEAT : tenez un pad, il se répète à la vitesse choisie (potard 3). Le tempo suit la boucle du looper quand il y en a une. Potards : swing, tempo, vitesse du repeat, quantification, pattern, mesures, page, métronome.</p>
   </section>
 
   <section class="view" id="view-fx" hidden>
@@ -454,7 +455,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       <button class="btn" id="fxBpmDown" type="button" aria-label="Tempo moins">−</button>
       <button class="btn" id="fxBpmUp" type="button" aria-label="Tempo plus">+</button>
     </div>
-    <p class="note" style="margin-top:8px">Cible : TOUT le morceau, le jeu en direct (LIVE) ou une seule piste du looper. MOTIFS FLEX rejoue la mesure qui vient de passer selon un motif (roulements, coupes, scratch, demi-vitesse…) ; CLASSIQUES = effets simples. Déclenchement : MAINTIEN (tant que le pad est tenu), 1 MESURE (joue le motif une fois), VERROU (un appui lance, un autre arrête). Bank 2 de l'Akai = les 8 effets. Potards : filtre (gauche passe-bas, droite passe-haut), envoi d'écho dub, ressort, bitcrush. Le tempo suit la boucle quand il y en a une.</p>
+    <p class="note help" style="margin-top:8px">Cible : TOUT le morceau, le jeu en direct (LIVE) ou une seule piste du looper. MOTIFS FLEX rejoue la mesure qui vient de passer selon un motif (roulements, coupes, scratch, demi-vitesse…) ; CLASSIQUES = effets simples. Déclenchement : MAINTIEN (tant que le pad est tenu), 1 MESURE (joue le motif une fois), VERROU (un appui lance, un autre arrête). Bank 2 de l'Akai = les 8 effets. Potards : filtre (gauche passe-bas, droite passe-haut), envoi d'écho dub, ressort, bitcrush. Le tempo suit la boucle quand il y en a une.</p>
   </section>
 
   <section class="view stack" id="view-sample" hidden>
@@ -488,7 +489,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       <button class="btn" id="micBtn" type="button">● MICRO</button>
     </div>
     <input type="file" id="fileIn" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff" hidden>
-    <p class="note">Feuilletez le bac (glissez, flèches, ou potard 1 de l'Akai), posez un disque sur la platine, choisissez un extrait. Touchez la forme d'onde pour écouter une découpe ; en MANUEL, touchez pour ajouter une coupe, appui long pour l'enlever. → PADS envoie les découpes dans le kit « MES CHOPS ». Sons : Bibliothèque du Congrès, Citizen DJ, libres d'utilisation.</p>
+    <p class="note help">Feuilletez le bac (glissez, flèches, ou potard 1 de l'Akai), posez un disque sur la platine, choisissez un extrait. Touchez la forme d'onde pour écouter une découpe ; en MANUEL, touchez pour ajouter une coupe, appui long pour l'enlever. → PADS envoie les découpes dans le kit « MES CHOPS ». Sons : Bibliothèque du Congrès, Citizen DJ, libres d'utilisation.</p>
   </section>
 
   <section class="view stack" id="view-sons" hidden>
@@ -512,12 +513,12 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       </div>
       <div class="styles" id="styles"></div>
       <div class="chords" id="chords"></div>
-      <p class="note">Pads de l'Akai : Bank 1, pads 1 à 7 = accords 1 à 7, pad 8 = accord 1 à l'octave ; Bank 2 = les mêmes une octave plus haut. Clavier : l'octave basse du clavier de l'Akai joue la progression : touches blanches DO, RÉ, MI, FA, SOL, LA, SI = accords 1 à 7 (touches noires = même accord, renversé plus haut). L'octave haute joue des notes simples, dans la tonalité. + BASSE ajoute la fondamentale une octave en dessous.</p>
+      <p class="note help">Pads de l'Akai : Bank 1, pads 1 à 7 = accords 1 à 7, pad 8 = accord 1 à l'octave ; Bank 2 = les mêmes une octave plus haut. Clavier : l'octave basse du clavier de l'Akai joue la progression : touches blanches DO, RÉ, MI, FA, SOL, LA, SI = accords 1 à 7 (touches noires = même accord, renversé plus haut). L'octave haute joue des notes simples, dans la tonalité. + BASSE ajoute la fondamentale une octave en dessous.</p>
     </div>
     <p class="note" id="instCredit"></p>
   </section>
 
-  <div class="legend" id="legend">
+  <div class="legend help" id="legend">
     <span><i class="dot" style="background:var(--red)"></i><b>Bank 1</b> batterie</span>
     <span><i class="dot" style="background:var(--green)"></i><b>Bank 2</b> pads 9–16</span>
     <span><b>Clavier</b> pad choisi</span>
@@ -549,16 +550,18 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       <button class="skin" type="button" data-skin="clair" style="background:#e6e4df;color:#1e1e1e;box-shadow:inset 0 -4px 0 #1d9c74">CLAIR</button>
       <button class="skin" type="button" data-skin="dub" style="background:#13160f;color:#f2b705;box-shadow:inset 0 -4px 0 #d42a1f">DUB</button>
     </div>
+    <h3>TEXTES D'AIDE</h3>
+    <div class="row"><button class="btn" id="helpBtn" type="button" aria-pressed="false" style="flex:1">MASQUÉS</button></div>
     <h3>PROJETS</h3>
-    <p>Un projet garde le kit, les boucles, l'ampli, les effets et les potards. Il est enregistré dans cet appareil.</p>
+    <p class="help">Un projet garde le kit, les boucles, l'ampli, les effets et les potards. Il est enregistré dans cet appareil.</p>
     <div class="saverow"><input id="projName" type="text" maxlength="40" placeholder="nom du projet" aria-label="Nom du projet"><button class="btn rec" id="projSave" type="button">ENREGISTRER</button></div>
     <div id="projList"></div>
     <h3>COMPENSATION CASQUE</h3>
-    <p>Recale les couches du looper quand le son arrive en retard (casque Bluetooth). Revient à 0 ms à chaque lancement, pour ne jamais rester actif par erreur en filaire ou sur le haut-parleur.</p>
+    <p class="help">Recale les couches du looper quand le son arrive en retard (casque Bluetooth). Revient à 0 ms à chaque lancement, pour ne jamais rester actif par erreur en filaire ou sur le haut-parleur.</p>
     <div class="row"><input type="range" id="latRange" min="0" max="400" step="1" value="0" aria-label="Compensation en millisecondes"><span id="latVal">0 ms</span></div>
     <p id="latInfo">Latence annoncée par l'appareil : —</p>
     <div class="row"><button class="btn" id="calBtn" type="button">CALIBRER</button><span id="calMsg"></span></div>
-    <p>Calibrage : 12 clics. À partir du 3e, frappez un pad pile sur chaque clic.</p>
+    <p class="help">Calibrage : 12 clics. À partir du 3e, frappez un pad pile sur chaque clic.</p>
   </div>
 </div>
 
@@ -2692,6 +2695,15 @@ registerProcessor('nomad-fx',Fx);`;
     $("expSess").textContent = "■ FIN SESSION"; $("expSess").classList.add("on");
     lcd("lcdPad", "SESSION", "enregistrement de tout ce qui sort (10 min max)");
   });
+
+  // ---------- Textes d'aide (masqués par défaut) ----------
+  function setHelp(on) {
+    if (on) document.documentElement.dataset.help = "1"; else delete document.documentElement.dataset.help;
+    $("helpBtn").textContent = on ? "AFFICHÉS" : "MASQUÉS"; $("helpBtn").setAttribute("aria-pressed", on); $("helpBtn").classList.toggle("on", on);
+    store.set("help", on);
+  }
+  setHelp(store.get("help", false) === true);
+  $("helpBtn").addEventListener("click", () => setHelp(!document.documentElement.dataset.help));
 
   // ---------- Historique global (annuler / rétablir) ----------
   const HIST = { stack: [], i: 0 };
