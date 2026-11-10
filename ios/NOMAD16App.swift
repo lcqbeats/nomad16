@@ -107,7 +107,7 @@ final class NomadCoordinator: NSObject, WKScriptMessageHandler, WKUIDelegate, WK
         if navigationAction.shouldPerformDownload { return .download }
         if let url = navigationAction.request.url, url.scheme == "blob" || url.scheme == "data" { return .download }
         if let url = navigationAction.request.url, navigationAction.targetFrame == nil {
-            UIApplication.shared.open(url) // liens externes (fiches de la Bibliothèque du Congrès)
+            await UIApplication.shared.open(url) // liens externes (fiches de la Bibliothèque du Congrès)
             return .cancel
         }
         return .allow
