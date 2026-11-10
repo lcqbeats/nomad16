@@ -77,7 +77,7 @@ button { font-family: var(--font-body); }
 .kitline { display: flex; align-items: center; gap: 6px; grid-column: 1 / -1; border-bottom: 1px dashed rgba(125,255,166,.25); padding-bottom: 3px; margin-bottom: 2px; }
 .kitline button { font-family: var(--font-lcd); font-size: 22px; line-height: 1; color: var(--lcd-ink); background: rgba(125,255,166,.08); border: 1px solid rgba(125,255,166,.3); border-radius: 4px; padding: 0 8px; cursor: pointer; text-shadow: inherit; }
 .kitline .kname { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tabs { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.tabs { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; }
 .tab {
   font-weight: 600; font-size: 8.5px; letter-spacing: .02em;
   background: #262421; color: var(--muted); border: 0; border-radius: 6px; padding: 9px 2px;
@@ -278,6 +278,24 @@ button { font-family: var(--font-body); }
 #seqCanvas { width: 100%; aspect-ratio: 1 / 1.02; display: block; background: #121110; border-radius: 8px; box-shadow: inset 0 0 0 1px #050505; touch-action: none; }
 .seqsel { grid-template-columns: repeat(8, 1fr) 1.6fr; margin-bottom: 8px; }
 .pat.metro { font-size: 10px; letter-spacing: .04em; }
+.sphead { margin: 2px 0 0; font-size: 10px; letter-spacing: .14em; color: var(--muted); display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.sphead::before, .sphead::after { content: ""; height: 1px; flex: 1; background: currentColor; opacity: .4; }
+.sphead::before { flex: 0 0 10px; }
+.dpad.target { box-shadow: inset 0 0 0 2px var(--text); color: var(--text); }
+.sppresets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.sppresets .btn { padding: 10px 2px; font-size: 10px; }
+.mixer { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 10px 0; }
+.mch { display: flex; flex-direction: column; align-items: center; gap: 6px; background: #151412; border-radius: 6px; padding: 8px 4px; }
+.mch b { font-size: 10px; letter-spacing: .06em; }
+.mch .fader { position: relative; width: 34px; height: 170px; touch-action: none; cursor: ns-resize; }
+.mch .fader::before { content: ""; position: absolute; left: 15px; top: 0; bottom: 0; width: 4px; border-radius: 2px; background: #050505; }
+.mch .cap { position: absolute; left: 2px; width: 30px; height: 18px; border-radius: 3px; background: linear-gradient(#5a554f, #2b2825); box-shadow: 0 2px 3px #000, inset 0 1px 0 #77716a; }
+.mch .cap::after { content: ""; position: absolute; left: 3px; right: 3px; top: 8px; height: 2px; background: var(--text); }
+.mch .meter { position: absolute; right: -6px; bottom: 0; width: 4px; height: 0; background: var(--green); border-radius: 2px; }
+.mch .val { font-size: 10px; color: var(--muted); }
+.mch .mb { display: flex; gap: 3px; }
+.mch .mb button { border: 0; border-radius: 3px; padding: 5px 6px; font-size: 10px; font-weight: 700; background: #34302c; color: var(--text); cursor: pointer; }
+.mch .mb button.m.on { background: var(--red); color: #fff; } .mch .mb button.s.on { background: #f2b705; color: #111; }
 .songhead { display: grid; grid-template-columns: 1.2fr 1.2fr 1fr; gap: 6px; }
 .songhead .btn { padding: 11px 2px; font-size: 11px; }
 .songhead .btn.on { background: var(--text); color: var(--ink); }
@@ -387,7 +405,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   <div class="top">
     <div class="brand"><b class="bw">NOMAD</b><span><i>-</i>16</span><small class="btag">POCKET SAMPLER · LOOPER</small></div>
     <span style="display:flex;gap:6px"><button class="histbtn" id="undoBtn" type="button" aria-label="Annuler" disabled>↶</button><button class="histbtn" id="redoBtn" type="button" aria-label="Rétablir" disabled>↷</button>
-    <button class="gear" id="gearBtn" type="button">RÉGLAGES</button></span>
+    <button class="gear" id="mixBtn" type="button">MIX</button><button class="gear" id="gearBtn" type="button">RÉGLAGES</button></span>
   </div>
 
   <div class="lcd" aria-live="polite">
@@ -413,6 +431,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     <button class="tab" role="tab" id="tab-play" aria-selected="true" type="button">PADS</button>
     <button class="tab" role="tab" id="tab-loops" aria-selected="false" type="button">LOOPER</button>
     <button class="tab" role="tab" id="tab-song" aria-selected="false" type="button">SONG</button>
+    <button class="tab" role="tab" id="tab-sp" aria-selected="false" type="button">SP</button>
     <button class="tab" role="tab" id="tab-guitar" aria-selected="false" type="button">GUITARE</button>
     <button class="tab" role="tab" id="tab-fx" aria-selected="false" type="button">FX</button>
     <button class="tab" role="tab" id="tab-sample" aria-selected="false" type="button">DIGGING</button>
@@ -459,6 +478,9 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       <button class="btn" id="expSess" type="button">● SESSION</button>
     </div>
     <div class="transport" style="grid-template-columns:1fr">
+      <button class="btn" id="loopKit" type="button">→ KIT DE PADS (pistes, mix, séquences)</button>
+    </div>
+    <div class="transport" style="grid-template-columns:1fr">
       <button class="btn" id="expMpc" type="button">EXPORT MULTIPISTE + MPC</button>
     </div>
     <div class="transport">
@@ -490,6 +512,20 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     </div>
     <div class="presets" id="presets" style="margin-top:10px"></div>
     <p class="note help" style="margin-top:8px">Branchez l'iRig puis touchez ENTRÉE. Larsen : montez le seuil de bruit, baissez le niveau d'entrée et le volume de l'iPhone, et évitez le haut-parleur. L'accordeur coupe le son pendant l'accordage. Les 8 potards de l'Akai règlent l'ampli dans cet onglet.</p>
+  </section>
+
+  <section class="view stack" id="view-sp" hidden>
+    <h4 class="sphead"><span>RÉÉCHANTILLONNAGE</span></h4>
+    <div class="dpads" id="spPads" aria-label="Pad de destination"></div>
+    <div class="songhead">
+      <button class="btn rec" id="spRec" type="button">● RÉÉCH.</button>
+      <button class="btn" id="spSync" type="button">CALÉ : BOUCLE</button>
+      <button class="btn" id="spBypass" type="button">EFFETS SP : OUI</button>
+    </div>
+    <p class="songinfo" id="spInfo">Destination : pad 1</p>
+    <h4 class="sphead"><span>EFFETS SP</span></h4>
+    <div class="sppresets" id="spPresets"></div>
+    <p class="note help">RÉÉCH. enregistre tout ce qui sort de NOMAD (pads, boucles, sons, guitare, effets FX et SP) dans le pad choisi. CALÉ : BOUCLE attend le début de la séquence en cours et enregistre exactement un cycle ; LIBRE enregistre jusqu'au second appui. Le pad suivant est choisi tout seul. Le kit modifié est enregistré automatiquement sous le nom « … · RÉÉCH ». Les effets SP s'appliquent à toute la sortie : potards vinyle, cassette, lo-fi, isolateur 3 bandes (graves, médiums, aigus) et volume de sortie.</p>
   </section>
 
   <section class="view stack" id="view-song" hidden>
@@ -603,6 +639,14 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   </div>
 </div>
 
+<div class="sheet" id="mixSheet" hidden>
+  <div class="sheet-in">
+    <h2>TABLE DE MIXAGE <button type="button" id="mixClose">FERMER</button></h2>
+    <div class="mixer" id="mixer"></div>
+    <p class="help">PADS comprend la platine DIGGING. Les voies PADS, SONS et GUITARE sont réglées avant le looper : ce qui est enregistré suit leurs niveaux. MASTER règle tout ce qui sort.</p>
+  </div>
+</div>
+
 <div class="sheet" id="kitSheet" hidden>
   <div class="sheet-in">
     <h2>KITS <button type="button" id="kitClose">FERMER</button></h2>
@@ -630,6 +674,8 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     <h3>PROJETS</h3>
     <p class="help">Un projet garde le kit, les boucles, l'ampli, les effets et les potards. Il est enregistré dans cet appareil.</p>
     <div class="saverow"><input id="projName" type="text" maxlength="40" placeholder="nom du projet" aria-label="Nom du projet"><button class="btn rec" id="projSave" type="button">ENREGISTRER</button></div>
+    <div class="saverow"><button class="btn" id="projImport" type="button" style="flex:1">IMPORTER UN PROJET (.nomad)</button><input type="file" id="projFile" accept=".nomad,.zip,application/zip,application/octet-stream" hidden></div>
+    <p class="help">FICHIER enregistre un projet complet (sons, séquences, morceau, réglages) dans un fichier .nomad, à garder dans l'app Fichiers ou à passer sur un autre appareil.</p>
     <div id="projList"></div>
     <h3>COMPENSATION CASQUE</h3>
     <p class="help">Recale les couches du looper quand le son arrive en retard (casque Bluetooth). Revient à 0 ms à chaque lancement, pour ne jamais rester actif par erreur en filaire ou sur le haut-parleur.</p>
@@ -655,6 +701,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   const SYNTH_NAMES = ["Kick","Snare","Hat","Open hat","Clap","Rim","Shaker","Snap","Tom bas","Tom haut","Conga","Cloche","Ride","Basse 808","Stab","Blip"];
   const KNOB_LABELS = {
     play: ["Filtre", "Écho", "Saleté", "Attaque", "Tune", "Decay", "Pan", "Niveau"],
+    sp: ["Vinyle", "Cassette", "Lo-fi", "Graves", "Médiums", "Aigus", "Sortie SP", "—"],
     song: ["Piste 1", "Piste 2", "Piste 3", "Piste 4", "Piste 5", "Piste 6", "Boucles", "Métronome"],
     loops: ["Piste 1", "Piste 2", "Piste 3", "Piste 4", "Piste 5", "Piste 6", "Boucles", "Undo ↻"],
     guitar: ["Gain", "Basses", "Médiums", "Aigus", "Présence", "Réverbe", "Master", "Écho"],
@@ -662,10 +709,10 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     sample: ["Bac ↻", "Pitch", "Sensib.", "Découpes", "—", "—", "—", "Volume"],
     sons: ["Volume", "Relâche", "Filtre", "Réverbe", "Octave", "Tonalité", "Style", "Accord ↻"]
   };
-  const knobVals = { play: [0.5, 0, 0, 0, 0.5, 1, 0.5, 0.8], loops: [1, 1, 1, 1, 1, 1, 0.9, 0], guitar: [0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.6, 0.3], fx: [0.5, 0.2, 0, 0.5, 0.55, 0, 0, 0.85], sample: [0.5, 0.5, 0.5, 0.5, 0, 0, 0, 0.9], sons: [0.8, 0.35, 1, 0.25, 0.5, 0, 0, 0], song: [1, 1, 1, 1, 1, 1, 0.9, 0.6] };
+  const knobVals = { play: [0.5, 0, 0, 0, 0.5, 1, 0.5, 0.8], loops: [1, 1, 1, 1, 1, 1, 0.9, 0], guitar: [0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.6, 0.3], fx: [0.5, 0.2, 0, 0.5, 0.55, 0, 0, 0.85], sample: [0.5, 0.5, 0.5, 0.5, 0, 0, 0, 0.9], sons: [0.8, 0.35, 1, 0.25, 0.5, 0, 0, 0], song: [1, 1, 1, 1, 1, 1, 0.9, 0.6], sp: [0, 0, 0, 0.5, 0.5, 0.5, 0.8, 0] };
   let tab = "play";
 
-  let ctx, sr, echoIn, liveIn, filter, drive, delay, delayFb, delayWet, padOut, liveBus, loopBus, master, fxOut;
+  let chPads, chSons, chGtr, chMaster, spIn, mixOut, ctx, sr, echoIn, liveIn, filter, drive, delay, delayFb, delayWet, padOut, liveBus, loopBus, master, fxOut;
   const store = {
     get(k, d) { try { const v = localStorage.getItem("nomad16." + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem("nomad16." + k, JSON.stringify(v)); } catch (e) {} }
@@ -782,7 +829,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   drawKnobs();
 
   // ---------- Onglets ----------
-  const TABS = ["play", "loops", "song", "guitar", "fx", "sample", "sons"];
+  const TABS = ["play", "loops", "song", "sp", "guitar", "fx", "sample", "sons"];
   function setTab(t) {
     tab = t;
     TABS.forEach(x => { $("tab-" + x).setAttribute("aria-selected", x === t); $("view-" + x).hidden = x !== t; });
@@ -791,6 +838,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     if (t === "loops") resizeCanvas();
     if (t === "sample") enterDig();
     if (t === "sons") enterSons();
+    if (t === "sp") drawSpPads();
     if (t === "song") { for (let k = 0; k < 7; k++) knobVals.song[k] = knobVals.loops[k]; drawKnobs(); drawSong(true); }
   }
   TABS.forEach(x => $("tab-" + x).addEventListener("click", () => setTab(x)));
@@ -1064,10 +1112,15 @@ registerProcessor('nomad-fx',Fx);`;
     delayFb.gain.value = 0.42; delayWet.gain.value = 0.7;
     delay.connect(delayFb); delayFb.connect(delay); delay.connect(delayWet); delayWet.connect(padOut);
     padOut.gain.value = 0.85;
-    padOut.connect(liveBus);
+    // voies de la table de mixage : PADS, SONS, GUITARE (avant le looper), LOOPER, MASTER (après la chaîne SP)
+    chPads = ctx.createGain(); chSons = ctx.createGain(); chGtr = ctx.createGain(); chMaster = ctx.createGain();
+    padOut.connect(chPads); chPads.connect(liveBus); chSons.connect(liveBus); chGtr.connect(liveBus);
     liveBus.connect(master); loopBus.connect(master);
     fxOut = comp;
-    comp.connect(ctx.destination);
+    spIn = ctx.createGain(); comp.connect(spIn);
+    buildSp(spIn, chMaster);
+    mixOut = chMaster; chMaster.connect(ctx.destination);
+    applyMix();
     synthBuffers = render(sr).map(data => { const b = ctx.createBuffer(1, data.length, sr); b.copyToChannel(data, 0); return b; });
     buffers = synthBuffers.slice();
     loopBus.gain.value = knobVals.loops[6];
@@ -1444,6 +1497,7 @@ registerProcessor('nomad-fx',Fx);`;
     if (tab === "fx") drawFxBar();
     if (tab === "sample") drawDig();
     if (tab === "song") drawSong();
+    drawMixMeters();
     if (tab === "guitar") { drawMeter(); drawTuner(); }
     if (tab !== "loops") return;
     if (!cv.width) resizeCanvas();
@@ -1888,7 +1942,7 @@ registerProcessor('nomad-fx',Fx);`;
     gn.chorus.out.connect(gn.master); gn.dlyWet.connect(gn.master); gn.revWet.connect(gn.master);
     // Limiteur : empêche un larsen de s'emballer
     gn.lim = ctx.createDynamicsCompressor(); gn.lim.threshold.value = -6; gn.lim.knee.value = 0; gn.lim.ratio.value = 20; gn.lim.attack.value = 0.001; gn.lim.release.value = 0.08;
-    gn.master.connect(gn.lim); gn.lim.connect(liveBus);
+    gn.master.connect(gn.lim); gn.lim.connect(chGtr);
     setGate(store.get("gate", -55)); setTrim(store.get("trim", 1));
     const saved = store.get("gpreset", 0);
     loadPreset(saved >= 0 && saved < PRESETS.length ? saved : 0);
@@ -2505,7 +2559,7 @@ registerProcessor('nomad-fx',Fx);`;
       instBus = ctx.createGain(); instBus.gain.value = knobVals.sons[0];
       instFilt = ctx.createBiquadFilter(); instFilt.type = "lowpass"; instFilt.frequency.value = 20000;
       instRev = ctx.createConvolver(); instRev.buffer = impulse(2.4, 2.5, 0.3); instRevSend = ctx.createGain(); instRevSend.gain.value = knobVals.sons[3] * 0.6;
-      instBus.connect(instFilt); instFilt.connect(liveBus); instFilt.connect(instRevSend); instRevSend.connect(instRev); instRev.connect(liveBus);
+      instBus.connect(instFilt); instFilt.connect(chSons); instFilt.connect(instRevSend); instRevSend.connect(instRev); instRev.connect(chSons);
     }
     const cur = allInsts().find(i => i.id === instCur);
     if (cur) instCat = cur.cat;
@@ -2855,7 +2909,7 @@ registerProcessor('nomad-fx',Fx);`;
   $("expSess").addEventListener("click", () => {
     if (!ctx) return;
     if (sess) {
-      const { node, chunks } = sess; sess = null; node.disconnect();
+      const { node, chunks } = sess; sess = null; try { mixOut.disconnect(node); } catch (e) {} node.disconnect();
       $("expSess").textContent = "● SESSION"; $("expSess").classList.remove("on");
       const n = chunks.reduce((s2, c) => s2 + c[0].length, 0), L = new Float32Array(n), R = new Float32Array(n); let o = 0;
       chunks.forEach(c => { L.set(c[0], o); R.set(c[1], o); o += c[0].length; });
@@ -2867,7 +2921,7 @@ registerProcessor('nomad-fx',Fx);`;
     const chunks = [], max = sr * 600;
     node.port.onmessage = e => { if (chunks.length * 1024 < max) chunks.push([e.data.l, e.data.r]); };
     const silent = ctx.createGain(); silent.gain.value = 0; node.connect(silent); silent.connect(ctx.destination);
-    fxOut.connect(node);
+    mixOut.connect(node);
     sess = { node, chunks };
     $("expSess").textContent = "■ FIN SESSION"; $("expSess").classList.add("on");
     lcd("lcdPad", "SESSION", "enregistrement de tout ce qui sort (10 min max)");
@@ -3170,6 +3224,226 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     btn.disabled = false; btn.textContent = "EXPORT MULTIPISTE + MPC";
   }
   $("expMpc").addEventListener("click", exportMpc);
+  $("loopKit").addEventListener("click", loopToKit);
+  $("projImport").addEventListener("click", () => $("projFile").click());
+  $("projFile").addEventListener("change", e => { const f = e.target.files[0]; if (f) importProjectFile(f); e.target.value = ""; });
+
+  // ---------- Table de mixage ----------
+  const MIX = { ch: [
+    { id: "pads", name: "PADS", vol: 0.894, mute: false, solo: false },
+    { id: "sons", name: "SONS", vol: 0.894, mute: false, solo: false },
+    { id: "gtr", name: "GUITARE", vol: 0.894, mute: false, solo: false },
+    { id: "loop", name: "LOOPER", vol: 0.9, mute: false, solo: false },
+    { id: "master", name: "MASTER", vol: 1, mute: false, solo: false }] };
+  (store.get("mix", null) || []).forEach((v, i) => { if (MIX.ch[i]) Object.assign(MIX.ch[i], { vol: v.vol, mute: false, solo: false }); });
+  const mixNode = id => ({ pads: chPads, sons: chSons, gtr: chGtr, master: chMaster })[id];
+  const mixAn = {};
+  function applyMix() {
+    if (!ctx || !chPads) return;
+    const anySolo = MIX.ch.some(c => c.solo && c.id !== "master"), t = ctx.currentTime;
+    MIX.ch.forEach(c => {
+      const on = c.id === "master" ? !c.mute : !c.mute && (!anySolo || c.solo), g = on ? Math.pow(c.vol, 2) * 1.25 : 0;
+      if (c.id === "loop") { knobVals.loops[6] = c.vol; loopBus.gain.setTargetAtTime(on ? c.vol : 0, t, 0.02); if (fxSolo) fxSolo.gain.setTargetAtTime(on ? c.vol : 0, t, 0.02); }
+      else mixNode(c.id).gain.setTargetAtTime(c.id === "master" ? (on ? c.vol : 0) : g, t, 0.02);
+    });
+    store.set("mix", MIX.ch.map(c => ({ vol: c.vol })));
+  }
+  function buildMixer() {
+    const el = $("mixer"); el.innerHTML = "";
+    MIX.ch.forEach(c => {
+      const d = document.createElement("div"); d.className = "mch";
+      d.innerHTML = `<b>${c.name}</b><div class="fader"><i class="meter"></i><div class="cap"></div></div><span class="val"></span><div class="mb"><button type="button" class="m">M</button>${c.id === "master" ? "" : '<button type="button" class="s">S</button>'}</div>`;
+      const fd = d.querySelector(".fader"), cap = d.querySelector(".cap"), val = d.querySelector(".val");
+      const draw = () => { cap.style.top = ((1 - c.vol) * 152) + "px"; val.textContent = c.vol <= 0.001 ? "-∞" : (20 * Math.log10(c.id === "loop" || c.id === "master" ? c.vol : Math.pow(c.vol, 2) * 1.25)).toFixed(1) + " dB"; d.querySelector(".m").classList.toggle("on", c.mute); const sb = d.querySelector(".s"); if (sb) sb.classList.toggle("on", c.solo); };
+      let y0 = 0, v0 = 0;
+      fd.addEventListener("pointerdown", e => { fd.setPointerCapture(e.pointerId); y0 = e.clientY; v0 = c.vol; });
+      fd.addEventListener("pointermove", e => { if (!fd.hasPointerCapture(e.pointerId)) return; c.vol = Math.min(1, Math.max(0, v0 + (y0 - e.clientY) / 152)); applyMix(); draw(); });
+      fd.addEventListener("dblclick", () => { c.vol = c.id === "loop" ? 0.9 : 0.894; applyMix(); draw(); });
+      d.querySelector(".m").addEventListener("click", () => { c.mute = !c.mute; applyMix(); draw(); });
+      const sb = d.querySelector(".s"); if (sb) sb.addEventListener("click", () => { c.solo = !c.solo; applyMix(); MIX.redraw(); });
+      c.draw = draw; c.meter = d.querySelector(".meter"); draw(); el.appendChild(d);
+    });
+    MIX.redraw = () => MIX.ch.forEach(c => c.draw());
+  }
+  function drawMixMeters() {
+    if ($("mixSheet").hidden || !ctx) return;
+    MIX.ch.forEach(c => {
+      const node = c.id === "loop" ? loopBus : mixNode(c.id); if (!node) return;
+      if (!mixAn[c.id]) { mixAn[c.id] = ctx.createAnalyser(); mixAn[c.id].fftSize = 256; node.connect(mixAn[c.id]); }
+      const v = level(mixAn[c.id]); c.meter.style.height = Math.min(170, Math.sqrt(v) * 170) + "px"; c.meter.style.background = v > 0.9 ? "var(--red)" : "var(--green)";
+    });
+  }
+  $("mixBtn").addEventListener("click", () => { buildMixer(); $("mixSheet").hidden = false; });
+  $("mixClose").addEventListener("click", () => { $("mixSheet").hidden = true; });
+
+  // ---------- SP : effets de sortie façon sampler de poche (vinyle, cassette, lo-fi, isolateur) ----------
+  const SPX = { on: true };
+  let sp = null;
+  function buildSp(input, output) {
+    sp = {};
+    const iso = [["lowshelf", 250], ["peaking", 1200], ["highshelf", 4200]].map(([type, f]) => { const b = ctx.createBiquadFilter(); b.type = type; b.frequency.value = f; if (type === "peaking") b.Q.value = 0.7; return b; });
+    sp.iso = iso;
+    // cassette : petit délai modulé (pleurage), saturation douce, aigus coupés ; en parallèle d'un chemin direct
+    sp.dry = ctx.createGain(); sp.wet = ctx.createGain(); sp.wet.gain.value = 0;
+    sp.tape = ctx.createDelay(0.05); sp.tape.delayTime.value = 0.012;
+    sp.lfo = ctx.createOscillator(); sp.lfo.frequency.value = 0.9; sp.lfoG = ctx.createGain(); sp.lfoG.gain.value = 0; sp.lfo.connect(sp.lfoG); sp.lfoG.connect(sp.tape.delayTime); sp.lfo.start();
+    sp.flut = ctx.createOscillator(); sp.flut.frequency.value = 9; sp.flutG = ctx.createGain(); sp.flutG.gain.value = 0; sp.flut.connect(sp.flutG); sp.flutG.connect(sp.tape.delayTime); sp.flut.start();
+    sp.sat = ctx.createWaveShaper(); sp.sat.curve = makeDriveCurve(0.15);
+    sp.hc = ctx.createBiquadFilter(); sp.hc.type = "lowpass"; sp.hc.frequency.value = 20000;
+    sp.crush = ctx.createWaveShaper();
+    sp.out = ctx.createGain();
+    // vinyle : craquements et souffle en boucle
+    const n = ctx.sampleRate * 4, nb = ctx.createBuffer(2, n, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = nb.getChannelData(c); let lp = 0; for (let i = 0; i < n; i++) { lp = lp * 0.97 + (Math.random() * 2 - 1) * 0.03; d[i] = lp * 0.35; if (Math.random() < 0.00018) { const a = (Math.random() * 0.9 + 0.1) * (Math.random() < 0.5 ? -1 : 1); for (let k = 0; k < 40 && i + k < n; k++) d[i + k] += a * Math.exp(-k / 6); } } }
+    sp.noise = ctx.createBufferSource(); sp.noise.buffer = nb; sp.noise.loop = true; sp.noiseG = ctx.createGain(); sp.noiseG.gain.value = 0;
+    const nhp = ctx.createBiquadFilter(); nhp.type = "highpass"; nhp.frequency.value = 300;
+    sp.noise.connect(nhp); nhp.connect(sp.noiseG); sp.noiseG.connect(sp.out); sp.noise.start();
+    input.connect(iso[0]); iso[0].connect(iso[1]); iso[1].connect(iso[2]);
+    iso[2].connect(sp.dry); iso[2].connect(sp.tape); sp.tape.connect(sp.sat); sp.sat.connect(sp.wet);
+    sp.dry.connect(sp.hc); sp.wet.connect(sp.hc); sp.hc.connect(sp.crush); sp.crush.connect(sp.out); sp.out.connect(output);
+    for (let k = 0; k < 8; k++) applySp(k);
+  }
+  function crushCurve(a) { if (a < 0.02) return null; const bits = 16 - a * 13, q = Math.pow(2, bits) / 2, n = 4096, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; c[i] = Math.round(x * q) / q; } return c; }
+  function applySp(k) {
+    if (!sp) return;
+    const v = SPX.on ? knobVals.sp : [0, 0, 0, 0.5, 0.5, 0.5, knobVals.sp[6], 0], t = ctx.currentTime, x = v[k];
+    const isoDb = y => y < 0.5 ? -40 * Math.pow((0.5 - y) * 2, 1.5) : (y - 0.5) * 12;
+    const hc = () => 20000 * Math.pow(1 - 0.85 * Math.max(v[0], v[1]), 2) + 400 * Math.max(v[0], v[1]);
+    if (k === 0) { sp.noiseG.gain.setTargetAtTime(x * 0.12, t, 0.03); sp.hc.frequency.setTargetAtTime(hc(), t, 0.03); }
+    if (k === 1) { sp.wet.gain.setTargetAtTime(x > 0.01 ? 1 : 0, t, 0.02); sp.dry.gain.setTargetAtTime(x > 0.01 ? 0 : 1, t, 0.02); sp.lfoG.gain.setTargetAtTime(x * 0.0035, t, 0.05); sp.flutG.gain.setTargetAtTime(x * 0.0004, t, 0.05); sp.sat.curve = makeDriveCurve(0.1 + x * 0.5); sp.hc.frequency.setTargetAtTime(hc(), t, 0.03); }
+    if (k === 2) sp.crush.curve = crushCurve(x);
+    if (k >= 3 && k <= 5) sp.iso[k - 3].gain.setTargetAtTime(isoDb(x), t, 0.02);
+    if (k === 6) sp.out.gain.setTargetAtTime(x * 1.25, t, 0.02);
+    const names = ["vinyle", "cassette", "lo-fi", "graves", "médiums", "aigus", "sortie"];
+    if (tab === "sp" && k < 7) lcd("lcdPad", "SP", k >= 3 && k <= 5 ? `${names[k]} ${isoDb(knobVals.sp[k]) > 0 ? "+" : ""}${isoDb(knobVals.sp[k]).toFixed(0)} dB` : `${names[k]} ${Math.round(knobVals.sp[k] * 100)} %`);
+  }
+  const SP_PRESETS = [["NEUTRE", [0, 0, 0, 0.5, 0.5, 0.5]], ["VINYLE 45T", [0.55, 0, 0.15, 0.55, 0.5, 0.42]], ["CASSETTE", [0.1, 0.6, 0, 0.55, 0.5, 0.4]], ["LO-FI 12 BITS", [0.2, 0.15, 0.55, 0.55, 0.5, 0.45]],
+    ["RADIO", [0, 0, 0.3, 0.05, 0.6, 0.15]], ["SANS BASSES", [0, 0, 0, 0.08, 0.5, 0.5]], ["SANS AIGUS", [0, 0, 0, 0.5, 0.5, 0.06]], ["POUSSIÈRE", [0.85, 0.35, 0.25, 0.5, 0.45, 0.35]]];
+  SP_PRESETS.forEach(([name, vals]) => {
+    const b = document.createElement("button"); b.className = "btn"; b.type = "button"; b.textContent = name;
+    b.addEventListener("click", () => { vals.forEach((x, k) => { knobVals.sp[k] = x; applySp(k); }); if (tab === "sp") drawKnobs(); lcd("lcdPad", "SP", name); });
+    $("spPresets").appendChild(b);
+  });
+  $("spBypass").addEventListener("click", () => { SPX.on = !SPX.on; for (let k = 0; k < 7; k++) applySp(k); $("spBypass").textContent = "EFFETS SP : " + (SPX.on ? "OUI" : "NON"); $("spBypass").classList.toggle("on", !SPX.on); });
+
+  // Rééchantillonnage : la sortie complète vers un pad du kit (enregistré en kit perso « … · RÉÉCH »)
+  const RS = { target: 0, sync: true, rec: null };
+  const spPadEls = [];
+  for (let r = 1; r >= 0; r--) for (let c = 0; c < 8; c++) {
+    const i = r * 8 + c, b = document.createElement("button"); b.type = "button"; b.className = "dpad"; b.textContent = i + 1;
+    b.addEventListener("pointerdown", e => { e.preventDefault(); RS.target = i; drawSpPads(); playPad(i, 0.9); });
+    $("spPads").appendChild(b); spPadEls[i] = b;
+  }
+  function drawSpPads() {
+    spPadEls.forEach((b, i) => { b.classList.toggle("target", i === RS.target); b.classList.toggle("has", !!buffers[i]); });
+    if (!RS.rec) $("spInfo").textContent = `Destination : pad ${RS.target + 1}` + (names[RS.target] ? ` (remplace « ${names[RS.target]} »)` : "");
+  }
+  $("spSync").addEventListener("click", () => { RS.sync = !RS.sync; $("spSync").textContent = "CALÉ : " + (RS.sync ? "BOUCLE" : "LIBRE"); });
+  $("spRec").addEventListener("click", () => { if (RS.rec) rsStop(); else rsStart(); });
+  function rsStart() {
+    if (!ctx || !hasWorklet) { lcd("lcdPad", "RÉÉCH.", "non disponible ici"); return; }
+    const sync = RS.sync && LP.t0F !== null && LP.playing && LP.layers.length;
+    const node = new AudioWorkletNode(ctx, "nomad-cap", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: "explicit" });
+    const silent = ctx.createGain(); silent.gain.value = 0; node.connect(silent); silent.connect(ctx.destination);
+    mixOut.connect(node);
+    const rec = { node, silent, chunks: [], startF: null, endF: null };
+    if (sync) { const C = cycF(LP.layers), nowF = ctx.currentTime * sr; rec.startF = LP.t0F + Math.ceil((nowF + 0.05 * sr - LP.t0F) / C) * C; rec.endF = rec.startF + C; }
+    node.port.onmessage = e => { rec.chunks.push([e.data.f, e.data.l, e.data.r]); if (rec.endF && e.data.f + e.data.l.length >= rec.endF) rsStop(); else if (rec.chunks.length * 1024 > sr * 60) rsStop(); };
+    RS.rec = rec;
+    $("spRec").textContent = "■ STOP"; $("spRec").classList.add("on");
+    $("spInfo").textContent = sync ? `En attente du début de la séquence ${SEQ_N[SQ.cur]}… (un cycle)` : "Enregistrement… appuyez pour arrêter (60 s max)";
+    lcd("lcdPad", "RÉÉCH.", sync ? "calé sur la boucle" : "enregistrement");
+  }
+  async function rsStop() {
+    const rec = RS.rec; if (!rec) return; RS.rec = null;
+    try { mixOut.disconnect(rec.node); } catch (e) {} rec.node.disconnect(); rec.node.port.onmessage = null;
+    $("spRec").textContent = "● RÉÉCH."; $("spRec").classList.remove("on");
+    if (!rec.chunks.length) { drawSpPads(); return; }
+    let a = rec.startF ?? rec.chunks[0][0], b = rec.endF ?? (rec.chunks[rec.chunks.length - 1][0] + 1024);
+    const f0 = rec.chunks[0][0], n = b - a; if (n < sr * 0.05) { drawSpPads(); return; }
+    const L = new Float32Array(n), R = new Float32Array(n);
+    rec.chunks.forEach(([f, l, r]) => { for (let j = 0; j < l.length; j++) { const p = f + j - a; if (p >= 0 && p < n) { L[p] = l[j]; R[p] = r[j]; } } });
+    let s0 = 0, e0 = n;
+    if (!rec.endF) { const th = 0.004; while (s0 < n && Math.abs(L[s0]) < th && Math.abs(R[s0]) < th) s0++; while (e0 > s0 && Math.abs(L[e0 - 1]) < th && Math.abs(R[e0 - 1]) < th) e0--; s0 = Math.max(0, s0 - 64); }
+    if (e0 - s0 < sr * 0.03) { lcd("lcdPad", "RÉÉCH.", "rien entendu"); drawSpPads(); return; }
+    const buf = ctx.createBuffer(2, e0 - s0, sr); buf.getChannelData(0).set(L.subarray(s0, e0)); buf.getChannelData(1).set(R.subarray(s0, e0));
+    const i = RS.target;
+    kitEdit(`rééchantillonnage pad ${i + 1}`, () => { buffers[i] = buf; names[i] = "Rééch " + (i + 1); gains[i] = 1; padParams[i] = { ...PDEF }; });
+    await persistResampleKit();
+    lcd("lcdPad", "RÉÉCH.", `pad ${i + 1} ← ${(buf.duration).toFixed(2)} s`);
+    RS.target = (i + 1) % 16; drawSpPads();
+  }
+  async function persistResampleKit() {
+    const meta = kitIndex.find(k => k.id === kitCur) || {};
+    const isRs = meta.user && / · RÉÉCH$/.test(meta.name);
+    const id = isRs ? meta.id : "user-" + Date.now().toString(36), name = isRs ? meta.name : ((meta.name || "KIT").replace(/ · RÉÉCH$/, "").slice(0, 22) + " · RÉÉCH");
+    await DB.put("kits", { id, name, names: names.slice(), gains: gains.slice(), params: padParams.map(p => ({ ...p })), chokeAll: kitChoke, bufs: buffers.map(packBuf), created: isRs ? (meta.created || Date.now()) : Date.now() });
+    if (!isRs) { await refreshUserKits(); kitCur = id; store.set("kit", id); $("kitName").textContent = name; }
+  }
+
+  // ---------- LOOPER → KIT : chaque piste de la séquence sur un pad, le mix, et le mix de chaque séquence ----------
+  async function loopToKit() {
+    if (!ctx || !LP.layers.length) { lcd("lcdPad", "→ KIT", "séquence vide"); return; }
+    const mk = chs => { const b = ctx.createBuffer(2, chs[0].length, sr); b.getChannelData(0).set(chs[0]); b.getChannelData(1).set(chs[1]); return b; };
+    const st = loopStems(LP.layers), nb = new Array(16).fill(null), nn = new Array(16).fill("—");
+    st.stems.forEach((c, i) => { nb[i] = mk(c); nn[i] = `Piste ${i + 1} ${SEQ_N[SQ.cur]}`; });
+    nb[7] = mk(st.mix); nn[7] = `Mix ${SEQ_N[SQ.cur]}`;
+    SQ.list.forEach((x, q) => { if (x.length) { nb[8 + q] = mk(loopStems(x).mix); nn[8 + q] = `Séquence ${SEQ_N[q]}`; } });
+    const d = new Date(), hh = String(d.getHours()).padStart(2, "0") + "h" + String(d.getMinutes()).padStart(2, "0");
+    const name = `LOOPER ${SEQ_N[SQ.cur]} · ${Math.round(curBpm())} BPM · ${hh}`, id = "user-" + Date.now().toString(36);
+    const params = newParams(); params.forEach(p => { p.oneshot = true; });
+    await DB.put("kits", { id, name, names: nn, gains: new Array(16).fill(1), params, chokeAll: false, bufs: nb.map(packBuf), created: Date.now() });
+    await refreshUserKits(); await loadKit(id);
+    lcd("lcdPad", "→ KIT", `kit « ${name} » créé`);
+  }
+
+  // ---------- Projets dans un fichier (.nomad) : à garder dans l'app Fichiers, à réimporter ----------
+  function packAudio(obj, files) {
+    if (obj && typeof obj === "object") {
+      if (obj.ch && Array.isArray(obj.ch) && obj.ch[0] instanceof Float32Array) {
+        const id = "audio/a" + String(files.length).padStart(4, "0") + ".f32", n = obj.ch[0].length, data = new Uint8Array(n * 4 * obj.ch.length);
+        obj.ch.forEach((c, k) => data.set(new Uint8Array(c.buffer, c.byteOffset, n * 4), k * n * 4));
+        files.push({ name: id, data }); return { __audio: id, sr: obj.sr, nch: obj.ch.length, n };
+      }
+      if (Array.isArray(obj)) return obj.map(x => packAudio(x, files));
+      const o = {}; Object.keys(obj).forEach(k => { o[k] = packAudio(obj[k], files); }); return o;
+    }
+    return obj;
+  }
+  function unpackAudio(obj, files) {
+    if (obj && typeof obj === "object") {
+      if (obj.__audio) { const raw = files[obj.__audio], f = new Float32Array(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength)); return { sr: obj.sr, ch: Array.from({ length: obj.nch }, (_, k) => f.slice(k * obj.n, (k + 1) * obj.n)) }; }
+      if (Array.isArray(obj)) return obj.map(x => unpackAudio(x, files));
+      const o = {}; Object.keys(obj).forEach(k => { o[k] = unpackAudio(obj[k], files); }); return o;
+    }
+    return obj;
+  }
+  function readZip(u8) {
+    const v = new DataView(u8.buffer, u8.byteOffset, u8.byteLength), out = {}; let p = 0;
+    while (p + 30 <= u8.length && v.getUint32(p, true) === 0x04034b50) {
+      const size = v.getUint32(p + 18, true), nl = v.getUint16(p + 26, true), xl = v.getUint16(p + 28, true);
+      const name = new TextDecoder().decode(u8.subarray(p + 30, p + 30 + nl)), d0 = p + 30 + nl + xl;
+      out[name] = u8.subarray(d0, d0 + size); p = d0 + size;
+    }
+    return out;
+  }
+  async function exportProjectFile(id) {
+    const p = await DB.get("projects", id); if (!p) return;
+    const files = [], meta = packAudio(p, files);
+    files.unshift({ name: "projet.json", data: JSON.stringify({ format: "nomad16", version: 1, project: meta }) });
+    const name = ascii(p.name, 30) + ".nomad";
+    await deliver(makeZip(files), name, "application/zip");
+  }
+  async function importProjectFile(file) {
+    try {
+      const files = readZip(new Uint8Array(await file.arrayBuffer())), j = JSON.parse(new TextDecoder().decode(files["projet.json"]));
+      if (j.format !== "nomad16") throw new Error("format");
+      const p = unpackAudio(j.project, files); p.id = "proj-" + Date.now().toString(36);
+      await DB.put("projects", p); await renderProjects(); await loadProject(p.id);
+      $("setSheet").hidden = true;
+      lcd("lcdPad", "PROJET", `« ${p.name} » importé`);
+    } catch (e) { lcd("lcdPad", "PROJET", "fichier illisible (" + e.message + ")"); }
+  }
 
   // ---------- Historique global (annuler / rétablir) ----------
   const HIST = { stack: [], i: 0 };
@@ -3458,7 +3732,9 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       b.addEventListener("click", async () => { $("setSheet").hidden = true; await loadProject(p.id); });
       const del = document.createElement("button"); del.type = "button"; del.className = "mini"; del.textContent = "SUPPR.";
       del.addEventListener("click", async () => { if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "SÛR ?"; return; } await DB.del("projects", p.id); renderProjects(); });
-      row.appendChild(b); row.appendChild(del); $("projList").appendChild(row);
+      const fb = document.createElement("button"); fb.type = "button"; fb.className = "mini"; fb.textContent = "FICHIER";
+      fb.addEventListener("click", () => exportProjectFile(p.id));
+      row.appendChild(b); row.appendChild(fb); row.appendChild(del); $("projList").appendChild(row);
     });
   }
   $("projSave").addEventListener("click", async () => {
@@ -3520,6 +3796,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (tab === "fx") { knobVals.fx[k] = val; applyFxKnob(k); $("dial" + k).style.setProperty("--v", val); return; }
     if (tab === "sample") { sampleKnob(k, v); $("dial" + k).style.setProperty("--v", val); return; }
     if (tab === "guitar") return;
+    if (tab === "sp") { knobVals.sp[k] = val; $("dial" + k).style.setProperty("--v", val); applySp(k); return; }
     if (tab === "song") {
       knobVals.song[k] = val; $("dial" + k).style.setProperty("--v", val);
       if (k === 7) { lcd("lcdPad", "MÉTRONOME", "volume " + Math.round(val * 100) + " %"); return; }
