@@ -473,6 +473,12 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   <section class="view" id="view-loops" hidden>
     <div class="pats seqsel" id="seqSel"></div>
     <canvas id="loopCanvas" aria-label="Pistes de boucles"></canvas>
+    <div class="transport">
+      <button class="btn rec" id="btnRec" type="button">REC / DUB</button>
+      <button class="btn" id="btnUndo" type="button">UNDO</button>
+      <button class="btn" id="btnPlay" type="button">STOP</button>
+      <button class="btn" id="btnClear" type="button">EFFACER</button>
+    </div>
     <div class="transport" style="grid-template-columns:1fr 1fr">
       <button class="btn" id="expLoop" type="button">SÉQUENCE WAV</button>
       <button class="btn" id="expSess" type="button">● SESSION</button>
@@ -482,12 +488,6 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     </div>
     <div class="transport" style="grid-template-columns:1fr">
       <button class="btn" id="expMpc" type="button">EXPORT MULTIPISTE + MPC</button>
-    </div>
-    <div class="transport">
-      <button class="btn rec" id="btnRec" type="button">REC / DUB</button>
-      <button class="btn" id="btnUndo" type="button">UNDO</button>
-      <button class="btn" id="btnPlay" type="button">STOP</button>
-      <button class="btn" id="btnClear" type="button">EFFACER</button>
     </div>
   </section>
 
@@ -536,6 +536,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     </div>
     <p class="songinfo" id="songInfo"></p>
     <div id="songList"></div>
+    <div class="transport" style="grid-template-columns:1fr"><button class="btn" id="songWav" type="button">EXPORTER LE MORCEAU (WAV)</button></div>
     <p class="note help">Chaque partie joue une séquence du LOOPER (A à H) un certain nombre de fois. Les séquences se remplissent dans le LOOPER : choisissez une lettre puis enregistrez avec REC / Sustain. Le tempo est celui de la toute première boucle. ▶ sur une ligne lance le morceau depuis cette partie. Potards : volumes des pistes de la séquence en cours, volume des boucles, volume du métronome.</p>
   </section>
 
@@ -807,7 +808,8 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     // Glisser vers le haut ou vers le bas sur le potard de l'écran, comme sur une appli de MPC
     const dial = d.querySelector(".dial");
     let y0 = 0, v0 = 0;
-    dial.addEventListener("pointerdown", e => { e.preventDefault(); dial.setPointerCapture(e.pointerId); y0 = e.clientY; v0 = knobVals[tab][k]; });
+    dial.addEventListener("pointerdown", e => { e.preventDefault(); dial.setPointerCapture(e.pointerId); y0 = e.clientY; v0 = knobVals[tab][k]; if (tab === "fx") fxGlideStop(k); });
+    ["pointerup", "pointercancel"].forEach(ev => dial.addEventListener(ev, () => { if (tab === "fx" && FX_SPRING.includes(k)) fxSpringBack(k); }));
     dial.addEventListener("pointermove", e => {
       if (!dial.hasPointerCapture(e.pointerId) || KNOB_LABELS[tab][k] === "—") return;
       const nv = Math.min(1, Math.max(0, v0 + (y0 - e.clientY) / 160));
@@ -1030,9 +1032,16 @@ else if(this.mode==='reverse'){ri=this.anchor-1-t;if(t>N-4800)g=0;}
 else if(this.mode==='tapestop'){const r=Math.max(0,1-t/this.dur);this.pos+=r*r;ri=this.anchor+this.pos;g=Math.min(1,r*8);}
 else if(this.mode==='half'){ri=this.anchor+t*0.5;}
 else if(this.mode==='gate'){const k=t%(this.seg*2);g=k<this.seg?Math.min(1,k/48,(this.seg-k)/48):0;live=true;}
-else if(this.mode==='pattern'){const sl0=this.stepLen,bl=sl0*16;if(this.one&&t>=bl)this.rel=true;const T=t%bl,j=Math.min(15,Math.floor(T/sl0)),p=T-j*sl0,st=this.steps[j],sl=sl0/(st.d||1),q=p%sl,r0=(st.r0===undefined?1:st.r0),r1=(st.r1===undefined?r0:st.r1);
-let pos=r0*q+(r1-r0)*q*q/(2*sl);if(st.v)pos=sl*Math.abs(r0)-pos;g=(st.g===undefined?1:st.g)*Math.min(1,q/48,(sl-q)/48);if(st.s<0)live=true;else ri=this.anchor-bl+st.s*sl0+pos;}}
-for(let c=0;c<2;c++){const dry=this.b[c][w];const wet=this.mode?(live?dry*g:this.rd(c,ri)*g):dry;out[c][s]=dry*(1-this.mix)+wet*this.mix;}}
+else if(this.mode==='pattern'){const sl0=this.stepLen,bl=sl0*16,ns=this.steps.length,pl=sl0*ns;if(this.one&&t>=pl)this.rel=true;const T=t%pl,j=Math.min(ns-1,Math.floor(T/sl0)),p=T-j*sl0,st=this.steps[j],sl=sl0/(st.d||1),q=p%sl,r0=(st.r0===undefined?1:st.r0),r1=(st.r1===undefined?r0:st.r1);
+let pos=r0*q+(r1-r0)*q*q/(2*sl);if(st.v)pos=sl*Math.abs(r0)-pos;g=(st.g===undefined?1:st.g)*Math.min(1,q/48,(sl-q)/48);if(st.s<0)live=true;else ri=this.anchor-bl+st.s*sl0+pos;
+const f0=st.f||0,f1=(st.f1===undefined?f0:st.f1),fv=f0+(f1-f0)*(p/sl0);this.flt=fv;this.cr=st.x||0;}}
+if(!this.mode||this.mode!=='pattern'){this.flt=0;this.cr=0;}
+const fv=this.flt||0,ca=fv<0?1-Math.exp(-6.283*Math.min(18000,20000*Math.pow(2,fv*9))/sampleRate):1-Math.exp(-6.283*Math.min(8000,25*Math.pow(2,fv*8.5))/sampleRate);
+if(!this.lp)this.lp=[0,0];
+for(let c=0;c<2;c++){const dry=this.b[c][w];let wet=this.mode?(live?dry*g:this.rd(c,ri)*g):dry;
+if(this.mode&&fv!==0){this.lp[c]+=ca*(wet-this.lp[c]);wet=fv<0?this.lp[c]:wet-this.lp[c];}else this.lp[c]=wet;
+if(this.mode&&this.cr>0){const qq=Math.pow(2,15-this.cr*12);wet=Math.round(wet*qq)/qq;}
+out[c][s]=dry*(1-this.mix)+wet*this.mix;}}
 return true;}}
 registerProcessor('nomad-fx',Fx);`;
   let hasWorklet = false;
@@ -1374,8 +1383,20 @@ registerProcessor('nomad-fx',Fx);`;
     };
     finish();
   }
+  // attaques de guitare : lancent l'enregistrement armé et servent de repères pour fermer la boucle, comme les pads
+  let gOnset = { above: false, last: 0 };
+  function guitarOnsetTick() {
+    if (!gn || !G.on || !gn.onAn) return;
+    const lv = level(gn.onAn), th = Math.pow(10, (store.get("gate", -55) + 18) / 20), now = ctx.currentTime;
+    if (!gOnset.above && lv > th && now - gOnset.last > 0.12) {
+      gOnset.above = true; gOnset.last = now;
+      const t = now - 0.01; notesAny.push(t); hits.push(t); if (hits.length > 32) hits.shift();
+      onFirstNote(t);
+    } else if (gOnset.above && lv < th * 0.4) gOnset.above = false;
+  }
   function looperTick() {
     seqTick();
+    guitarOnsetTick();
     const p = LP.pending;
     if (!p || p.type !== "layer") return;
     const eF = p.sF + p.k * LP.Lf + p.comp;
@@ -1649,49 +1670,55 @@ registerProcessor('nomad-fx',Fx);`;
   // Motifs d'une mesure (16 doubles croches) rejoués à partir de la mesure qui vient de passer.
   // s : double croche source, d : subdivision (roll), r0→r1 : vitesse, v : à l'envers, g : niveau, s = -1 : son direct.
   const R16 = f => Array.from({ length: 16 }, (_, j) => f(j));
-  const FXS_FLEX = [
-    { name: "ROLL MONTANT", sub: "roulement qui accélère", steps: R16(j => j < 4 ? { s: j } : j < 8 ? { s: 4 } : j < 12 ? { s: 8, d: 2, r0: 1.03 } : { s: 12, d: 4, r0: 1.06 + (j - 12) * 0.05 }) },
-    { name: "CHOP BOOM", sub: "coups doublés", steps: R16(j => ({ s: [0, 0, 2, 3, 4, 4, 6, 6, 8, 9, 8, 9, 12, 12, 14, 15][j] })) },
-    { name: "REVERSE ÉCHO", sub: "chaque temps à l'envers", steps: R16(j => j % 2 ? { s: j - 1, v: 1, g: 0.8 } : { s: j }) },
-    { name: "SCRATCH", sub: "va-et-vient de platine", steps: R16(j => j % 2 ? { s: (j >> 2) * 4, v: 1, r0: 1.6, r1: 0.3 } : { s: (j >> 2) * 4, r0: 2, r1: 0.4 }) },
-    { name: "HALF-TIME", sub: "moitié de vitesse", steps: R16(j => ({ s: j * 0.5, r0: 0.5 })) },
-    { name: "STOP & GO", sub: "arrêt puis redémarrage", steps: R16(j => j < 6 ? { s: j } : j === 6 ? { s: 6, r0: 1, r1: 0.6 } : j === 7 ? { s: 7, r0: 0.6, r1: 0.3 } : j === 8 ? { s: 8, r0: 0.3, r1: 0.05 } : j < 11 ? { s: 0, g: 0 } : j === 11 ? { s: 11, r0: 0.2, r1: 0.8 } : { s: j }) },
-    { name: "GLITCH", sub: "découpe en désordre", steps: R16(j => ({ s: [0, 3, 3, 1, 8, 8, 8, 8, 5, 2, 14, 14, 12, 12, 12, 12][j], d: [1, 1, 2, 1, 4, 4, 2, 2, 1, 1, 2, 4, 8, 8, 8, 8][j], v: j === 9 || j === 10 ? 1 : 0 })) },
-    { name: "GATE SWING", sub: "hachage chaloupé", steps: R16(j => ({ s: -1, g: [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0][j] })) }
-  ];
-  const FXS_CLASSIC = [
-    { name: "REPEAT 1/4", sub: "répète le temps", mode: "repeat", div: 1 },
-    { name: "REPEAT 1/8", sub: "croche", mode: "repeat", div: 2 },
-    { name: "REPEAT 1/16", sub: "double croche", mode: "repeat", div: 4 },
-    { name: "STUTTER", sub: "1/32", mode: "repeat", div: 8 },
+  const R32 = f => Array.from({ length: 32 }, (_, j) => f(j));
+  // pas : s = double croche source (dans la mesure qui précède), d = roulement, r0→r1 = vitesse, v = à l'envers,
+  // g = niveau, f→f1 = filtre (−1 grave … 0 ouvert … +1 aigu), x = bitcrush, s = −1 : son direct. 16 pas = 1 mesure, 32 = 2 mesures.
+  const FX_PATTERNS = [
+    // BANK 1 : réarrangements rythmiques
+    { name: "BUILD-UP", sub: "2 mesures qui montent", steps: R32(j => j < 16 ? { s: j, f: j / 40, f1: (j + 1) / 40 } : { s: 12 + ((j - 16) >> 2) % 4, d: [1, 2, 4, 8][(j - 16) >> 2 & 3], r0: 1 + (j - 16) * 0.012, f: 0.4 + (j - 16) * 0.025 }) },
+    { name: "BOOM CHOP", sub: "kicks doublés, fin à l'envers", steps: R16(j => j >= 14 ? { s: 15 - (j - 14), v: 1 } : { s: [0, 0, 2, 3, 4, 4, 6, 7, 8, 8, 10, 11, 12, 13][j] }) },
+    { name: "HALF & BACK", sub: "demi-vitesse puis retour", steps: R32(j => j < 16 ? { s: j * 0.5, r0: 0.5, f: -0.15 } : { s: j - 16 }) },
+    { name: "DROP", sub: "coupure filtrée et relance", steps: R16(j => j < 8 ? { s: j } : j < 12 ? { s: j, f: -0.55, f1: -0.8, g: 0.9 } : j < 14 ? { s: 0, g: 0 } : { s: 12, d: 4, r0: 1.1 }) },
+    { name: "REVERSE TAIL", sub: "chaque fin de mesure à l'envers", steps: R32(j => (j & 15) >= 12 ? { s: 15 - ((j & 15) - 12), v: 1, f: 0.15 } : { s: j & 15 }) },
+    { name: "TRAP ROLLS", sub: "roulements en triolets", steps: R16(j => ({ s: j, d: [1, 1, 2, 1, 1, 1, 3, 1, 1, 1, 2, 1, 3, 3, 4, 6][j], r0: j >= 12 ? 1 + (j - 12) * 0.04 : 1 })) },
+    { name: "SCRATCH CUT", sub: "platine et coupures", steps: R16(j => j % 4 === 3 ? { s: 0, g: 0 } : j % 2 ? { s: (j >> 2) * 4, v: 1, r0: 1.7, r1: 0.4 } : { s: (j >> 2) * 4, r0: 2.1, r1: 0.5 }) },
+    { name: "STOP & GO", sub: "la bande cale et repart", steps: R16(j => j < 6 ? { s: j } : j === 6 ? { s: 6, r0: 1, r1: 0.6 } : j === 7 ? { s: 7, r0: 0.6, r1: 0.3, f: -0.3 } : j === 8 ? { s: 8, r0: 0.3, r1: 0.05, f: -0.6 } : j < 11 ? { s: 0, g: 0 } : j === 11 ? { s: 11, r0: 0.2, r1: 0.9 } : { s: j }) },
+    // BANK 2 : textures et classiques
+    { name: "STUTTER 1/16", sub: "répète la double croche", mode: "repeat", div: 4 },
+    { name: "STUTTER 1/32", sub: "mitraillette", mode: "repeat", div: 8 },
     { name: "TAPE STOP", sub: "la bande ralentit", mode: "tapestop", div: 1 },
-    { name: "REVERSE", sub: "à l'envers", mode: "reverse", div: 1 },
-    { name: "GATE", sub: "hachage 1/16", mode: "gate", div: 4 },
-    { name: "DEMI-VITESSE", sub: "une octave plus bas", mode: "half", div: 1 }
+    { name: "REVERSE", sub: "tout à l'envers", mode: "reverse", div: 1 },
+    { name: "GATE TRANCE", sub: "hachage filtré", steps: R16(j => ({ s: -1, g: [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0][j], f: [-0.2, 0, -0.35, -0.1, 0, -0.45, 0, -0.15, -0.25, 0, -0.4, -0.1, 0, -0.5, -0.2, 0][j] })) },
+    { name: "PITCH DOWN", sub: "le morceau s'effondre", steps: R16(j => ({ s: j * (1 - j / 40), r0: 1 - j / 34, f: -j / 40 })) },
+    { name: "LO-FI CRUSH", sub: "de plus en plus sale", steps: R32(j => ({ s: j & 15, x: Math.min(0.85, j / 30), f: -j / 70 })) },
+    { name: "FILTRE WOBBLE", sub: "filtre qui ondule", steps: R16(j => ({ s: -1, f: j % 4 < 2 ? -0.75 : 0.1, f1: j % 4 < 2 ? 0.1 : -0.75 })) }
   ];
+  let fxBank = store.get("fxBank", 0);
   let fxNode = null, fxFilt, fxCrush, fxPost, echoSend, echoDly, echoFb, springSend, fxMaster;
-  let fxActive = -1, fxQuant = true, manualBpm = 90, fxSet = store.get("fxSet", "flex"), fxTrig = store.get("fxTrig", "hold"), fxTarget = "all", fxOneT = null;
-  let FXS = fxSet === "flex" ? FXS_FLEX : FXS_CLASSIC;
+  let fxActive = -1, fxQuant = true, manualBpm = 90, fxTrig = store.get("fxTrig", "hold"), fxTarget = "all", fxOneT = null;
+  const FXS = FX_PATTERNS;
   const fxEls = [];
   // Rangée du bas = pads 1 à 4 de la Bank 2, comme sur l'Akai.
+  // 8 pads à l'écran (pad 1 en bas à gauche, comme sur l'Akai) pour la banque choisie ; les 16 pads de l'Akai jouent les 16 motifs
   [4, 5, 6, 7, 0, 1, 2, 3].forEach(i => {
     const b = document.createElement("button");
     b.type = "button"; b.className = "fxpad"; b.id = "fx" + i;
-    b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture(e.pointerId); fxStart(i); });
-    ["pointerup", "pointercancel"].forEach(ev => b.addEventListener(ev, () => fxStop(i)));
+    b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture(e.pointerId); fxStart(fxBank * 8 + i); });
+    ["pointerup", "pointercancel"].forEach(ev => b.addEventListener(ev, () => fxStop(fxBank * 8 + i)));
     $("fxgrid").appendChild(b); fxEls[i] = b;
   });
+  const fxEl = i => (i >> 3) === fxBank ? fxEls[i & 7] : null;
+  function setFxBank(b) { if (b === fxBank) return; fxBank = b; store.set("fxBank", b); drawFxPads(); }
   function drawFxPads() {
-    FXS = fxSet === "flex" ? FXS_FLEX : FXS_CLASSIC;
-    FXS.forEach((f, i) => { fxEls[i].innerHTML = `<span>B2 · PAD ${i + 1}</span><b>${f.name}</b><span>${f.sub}</span>`; });
-    $("fxSet").textContent = fxSet === "flex" ? "MOTIFS FLEX" : "CLASSIQUES";
+    for (let i = 0; i < 8; i++) { const f = FXS[fxBank * 8 + i]; fxEls[i].innerHTML = `<span>BANK ${fxBank + 1} · PAD ${fxBank * 8 + i + 1}</span><b>${f.name}</b><span>${f.sub}</span>`; fxEls[i].classList.toggle("on", fxActive === fxBank * 8 + i); }
+    $("fxSet").textContent = "BANK " + (fxBank + 1) + (fxBank ? " · TEXTURES" : " · RYTHMES");
     $("fxTrig").textContent = { hold: "MAINTIEN", one: "1 MESURE", latch: "VERROU" }[fxTrig];
     document.querySelectorAll(".fxt").forEach(b => b.classList.toggle("on", b.dataset.t === fxTarget));
   }
   function curBpm() { return LP.t0F !== null && LP.Lf ? 60 * LP.beats / loopLen() : manualBpm; }
   function drawFxBar() { $("fxBpm").textContent = curBpm().toFixed(1).replace(/\.0$/, "") + " BPM"; $("fxQuant").textContent = fxQuant ? "CALÉ 1/16" : "LIBRE"; $("fxQuant").classList.toggle("on", fxQuant); }
   $("fxQuant").addEventListener("click", () => { fxQuant = !fxQuant; drawFxBar(); });
-  $("fxSet").addEventListener("click", () => { if (fxActive >= 0) fxEnd(fxActive); fxSet = fxSet === "flex" ? "classic" : "flex"; store.set("fxSet", fxSet); drawFxPads(); });
+  $("fxSet").addEventListener("click", () => setFxBank(1 - fxBank));
   $("fxTrig").addEventListener("click", () => { if (fxActive >= 0) fxEnd(fxActive); fxTrig = { hold: "one", one: "latch", latch: "hold" }[fxTrig]; store.set("fxTrig", fxTrig); drawFxPads(); });
   document.querySelectorAll(".fxt").forEach(b => b.addEventListener("click", () => setFxTarget(b.dataset.t)));
   // Cible des effets : tout le morceau, le jeu en direct, ou une seule piste du looper
@@ -1720,16 +1747,17 @@ registerProcessor('nomad-fx',Fx);`;
     if (f.steps) fxNode.port.postMessage({ type: "start", mode: "pattern", steps: f.steps, stepLen: beatF / 4, one, at: Math.round(at) });
     else fxNode.port.postMessage({ type: "start", mode: f.mode, seg: beatF / f.div, dur: beatF, at: Math.round(at) });
     clearTimeout(fxOneT);
-    if (one) fxOneT = setTimeout(() => fxEnd(i), ((at - nowF) / sr + 4 * beatF / sr) * 1000);
-    if (fxActive >= 0) fxEls[fxActive].classList.remove("on");
-    fxActive = i; fxEls[i].classList.add("on");
+    if (one) fxOneT = setTimeout(() => fxEnd(i), ((at - nowF) / sr + (f.steps ? f.steps.length / 4 : 4) * beatF / sr) * 1000);
+    if (fxActive >= 0 && fxEl(fxActive)) fxEl(fxActive).classList.remove("on");
+    setFxBank(i >> 3);
+    fxActive = i; fxEl(i).classList.add("on");
     lcd("lcdPad", "FX", f.name + " · " + f.sub);
   }
   function fxStop(i) { if (fxTrig === "hold") fxEnd(i); }
   function fxEnd(i) {
     if (fxActive !== i || !fxNode) return;
     fxNode.port.postMessage({ type: "stop" });
-    fxEls[i].classList.remove("on"); fxActive = -1;
+    if (fxEl(i)) fxEl(i).classList.remove("on"); fxActive = -1;
   }
   function crushCurve(bits) { const n = 4096, c = new Float32Array(n), st = Math.pow(2, bits - 1); for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; c[i] = Math.round(x * st) / st; } return c; }
   function springIR() {
@@ -1763,7 +1791,9 @@ registerProcessor('nomad-fx',Fx);`;
     const eh = ctx.createBiquadFilter(); eh.type = "highpass"; eh.frequency.value = 180;
     const el = ctx.createBiquadFilter(); el.type = "lowpass"; el.frequency.value = 2600;
     const es = ctx.createWaveShaper(); es.curve = makeDriveCurve(0.05);
-    fxPost.connect(echoSend); echoSend.connect(echoDly); echoDly.connect(eh); eh.connect(el); el.connect(es); es.connect(echoFb); echoFb.connect(echoDly);
+    // limiteur dans la boucle de retour : l'écho ne peut plus s'emballer
+    const eLim = ctx.createDynamicsCompressor(); eLim.threshold.value = -14; eLim.knee.value = 6; eLim.ratio.value = 20; eLim.attack.value = 0.002; eLim.release.value = 0.12;
+    fxPost.connect(echoSend); echoSend.connect(echoDly); echoDly.connect(eh); eh.connect(el); el.connect(es); es.connect(eLim); eLim.connect(echoFb); echoFb.connect(echoDly);
     const echoRet = ctx.createGain(); echoRet.gain.value = 0.8; es.connect(echoRet); echoRet.connect(fxMaster);
     // Réverbe à ressort
     springSend = ctx.createGain(); springSend.gain.value = 0;
@@ -1775,6 +1805,29 @@ registerProcessor('nomad-fx',Fx);`;
   }
   const ECHO_DIVS = [0.5, 0.75, 1, 1.5, 2];
   const ECHO_NAMES = ["1/8", "1/8 pointée", "1/4", "3/8", "1/2"];
+  // Potards FX = modulation : ils reviennent à leur position de départ dès qu'on les lâche (sauf Temps et Master)
+  const FX_SPRING = [0, 1, 2, 4, 5, 6], FX_HOME = knobVals.fx.slice(), fxGlide = [], fxGest = [], fxPhys = [], fxIdle = [];
+  function fxGlideStop(k) { cancelAnimationFrame(fxGlide[k]); fxGlide[k] = 0; }
+  function fxSpringBack(k) {
+    fxGlideStop(k);
+    const from = knobVals.fx[k], to = FX_HOME[k], t0 = performance.now();
+    if (Math.abs(from - to) < 0.002) return;
+    const step = () => {
+      const a = Math.min(1, (performance.now() - t0) / 220), v = from + (to - from) * (1 - Math.pow(1 - a, 3));
+      knobVals.fx[k] = v; applyFxKnob(k); if (tab === "fx") $("dial" + k).style.setProperty("--v", v);
+      if (a < 1) fxGlide[k] = requestAnimationFrame(step);
+    };
+    fxGlide[k] = requestAnimationFrame(step);
+  }
+  // potard de l'Akai dans FX : chaque geste part de la position de départ (déplacement relatif), retour au repos
+  function fxModKnob(k, v) {
+    const val = v / 127;
+    if (!fxGest[k]) { fxGlideStop(k); fxGest[k] = { ref: fxPhys[k] ?? val }; }
+    fxPhys[k] = val;
+    const nv = Math.min(1, Math.max(0, FX_HOME[k] + (val - fxGest[k].ref)));
+    knobVals.fx[k] = nv; applyFxKnob(k); if (tab === "fx") $("dial" + k).style.setProperty("--v", nv);
+    clearTimeout(fxIdle[k]); fxIdle[k] = setTimeout(() => { fxGest[k] = null; fxSpringBack(k); }, 380);
+  }
   function applyFxKnob(k) {
     if (!fxFilt) return;
     const v = knobVals.fx[k], t = ctx.currentTime;
@@ -1786,7 +1839,7 @@ registerProcessor('nomad-fx',Fx);`;
     if (k === 1) fxFilt.Q.setTargetAtTime(0.7 + v * v * 16, t, 0.02);
     if (k === 2) echoSend.gain.setTargetAtTime(v * v, t, 0.015);
     if (k === 3) { const i = Math.min(4, Math.floor(v * 5)); echoDly.delayTime.setTargetAtTime(Math.min(2.9, 60 / curBpm() * ECHO_DIVS[i]), t, 0.05); if (tab === "fx") lcd("lcdPad", "FX", "écho " + ECHO_NAMES[i]); }
-    if (k === 4) echoFb.gain.setTargetAtTime(Math.min(1.05, v * 1.1), t, 0.02);
+    if (k === 4) echoFb.gain.setTargetAtTime(Math.min(0.82, v * 0.9), t, 0.02);
     if (k === 5) springSend.gain.setTargetAtTime(v * v * 1.2, t, 0.02);
     if (k === 6) fxCrush.curve = v < 0.03 ? null : crushCurve(Math.round(14 - v * 11));
     if (k === 7) fxMaster.gain.setTargetAtTime(v * 1.2, t, 0.02);
@@ -1897,6 +1950,7 @@ registerProcessor('nomad-fx',Fx);`;
     gn.input = gain(1);
     gn.analyser = ctx.createAnalyser(); gn.analyser.fftSize = 2048;
     gn.input.connect(gn.analyser);
+    gn.onAn = ctx.createAnalyser(); gn.onAn.fftSize = 256; gn.input.connect(gn.onAn);
     let head = gn.input;
     if (hasWorklet) {
       gn.gate = new AudioWorkletNode(ctx, "nomad-gate", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
@@ -1942,7 +1996,12 @@ registerProcessor('nomad-fx',Fx);`;
     gn.chorus.out.connect(gn.master); gn.dlyWet.connect(gn.master); gn.revWet.connect(gn.master);
     // Limiteur : empêche un larsen de s'emballer
     gn.lim = ctx.createDynamicsCompressor(); gn.lim.threshold.value = -6; gn.lim.knee.value = 0; gn.lim.ratio.value = 20; gn.lim.attack.value = 0.001; gn.lim.release.value = 0.08;
-    gn.master.connect(gn.lim); gn.lim.connect(chGtr);
+    // anti-larsen : repère une fréquence qui sonne seule et longtemps, la creuse ; si ça continue, baisse puis coupe la guitare
+    gn.notch = [0, 1, 2, 3].map(() => { const b = ctx.createBiquadFilter(); b.type = "peaking"; b.frequency.value = 1000; b.Q.value = 14; b.gain.value = 0; return b; });
+    gn.duck = gain(1);
+    gn.master.connect(gn.notch[0]); gn.notch[0].connect(gn.notch[1]); gn.notch[1].connect(gn.notch[2]); gn.notch[2].connect(gn.notch[3]); gn.notch[3].connect(gn.duck); gn.duck.connect(gn.lim);
+    gn.fbAn = ctx.createAnalyser(); gn.fbAn.fftSize = 4096; gn.fbAn.smoothingTimeConstant = 0.5; gn.duck.connect(gn.fbAn);
+    gn.lim.connect(chGtr);
     setGate(store.get("gate", -55)); setTrim(store.get("trim", 1));
     const saved = store.get("gpreset", 0);
     loadPreset(saved >= 0 && saved < PRESETS.length ? saved : 0);
@@ -2010,6 +2069,27 @@ registerProcessor('nomad-fx',Fx);`;
     G.on = false; applyGuitar();
   }
   $("inBtn").addEventListener("click", () => { if (G.on) stopInput(); else startInput(); });
+  const FB = { bin: -1, n: 0, slot: 0, hot: 0, spec: null };
+  setInterval(() => {
+    if (!gn || !gn.fbAn || !G.on) return;
+    if (!FB.spec) FB.spec = new Float32Array(gn.fbAn.frequencyBinCount);
+    gn.fbAn.getFloatFrequencyData(FB.spec);
+    const sp = FB.spec, binHz = ctx.sampleRate / gn.fbAn.fftSize; let pk = -1, pv = -200;
+    for (let b = Math.floor(80 / binHz); b < Math.floor(9000 / binHz); b++) if (sp[b] > pv) { pv = sp[b]; pk = b; }
+    let sum = 0, cnt = 0; for (let b = Math.max(1, pk - 60); b < Math.min(sp.length, pk + 60); b++) if (Math.abs(b - pk) > 4) { sum += sp[b]; cnt++; }
+    // larsen : une fréquence qui domine, qui ne faiblit pas (une note jouée, elle, retombe) et sans nouvelle attaque depuis 0,8 s
+    const ringing = pv > -26 && pv - sum / Math.max(1, cnt) > 24;
+    if (ringing && Math.abs(pk - FB.bin) <= 2) FB.n++; else { FB.n = ringing ? 1 : 0; FB.bin = ringing ? pk : -1; FB.lv0 = pv; }
+    const t = ctx.currentTime;
+    if (FB.n >= 16 && pv >= FB.lv0 - 2 && t - gOnset.last > 0.8) {
+      const f = pk * binHz, already = gn.notch.find(n => n.gain.value < -1 && Math.abs(n.frequency.value - f) < f * 0.04);
+      if (already) { FB.hot++; gn.duck.gain.setTargetAtTime(Math.max(0.15, 0.5 / FB.hot), t, 0.02); lcd("lcdPad", "ANTI-LARSEN", "volume guitare réduit"); }
+      else { const n = gn.notch[FB.slot++ % 4]; n.frequency.setValueAtTime(f, t); n.gain.setTargetAtTime(-26, t, 0.01); lcd("lcdPad", "ANTI-LARSEN", `${Math.round(f)} Hz creusé`); }
+      if (FB.hot >= 3) { stopInput(); lcd("lcdPad", "ANTI-LARSEN", "guitare coupée · baissez le drive ou éloignez-vous du haut-parleur"); FB.hot = 0; gn.duck.gain.setTargetAtTime(1, t + 0.5, 0.2); }
+      FB.n = 0; FB.lv0 = pv;
+    }
+    if (!ringing && FB.hot && Math.random() < 0.02) { FB.hot = Math.max(0, FB.hot - 1); if (!FB.hot) gn.duck.gain.setTargetAtTime(1, t, 0.5); }
+  }, 50);
   function setGate(db) { $("gateSl").value = db; $("gateVal").textContent = db + " dB"; store.set("gate", db); if (gn && gn.gate) gn.gate.port.postMessage(db); }
   function setTrim(v) { $("trimSl").value = v; $("trimVal").textContent = Math.round(v * 100) + " %"; store.set("trim", v); if (gn) gn.input.gain.setTargetAtTime(v, ctx.currentTime, 0.02); }
   $("gateSl").addEventListener("input", e => setGate(+e.target.value));
@@ -3224,6 +3304,11 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     btn.disabled = false; btn.textContent = "EXPORT MULTIPISTE + MPC";
   }
   $("expMpc").addEventListener("click", exportMpc);
+  $("songWav").addEventListener("click", () => {
+    const m = songMix();
+    if (!m) { lcd("lcdPad", "SONG", LP.Lf ? "morceau vide ou trop long (12 min max)" : "enregistrez d'abord une boucle"); return; }
+    deliver(wavBlob(m, sr), `nomad16-morceau-${Math.round(curBpm())}bpm-${stamp()}.wav`);
+  });
   $("loopKit").addEventListener("click", loopToKit);
   $("projImport").addEventListener("click", () => $("projFile").click());
   $("projFile").addEventListener("change", e => { const f = e.target.files[0]; if (f) importProjectFile(f); e.target.value = ""; });
@@ -3770,6 +3855,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (cc >= 20 && cc <= 35) { if (v > 0) padCommand(cc); return; }
     const k = knobIndex(cc);
     if (k < 0) return;
+    if (tab === "fx" && FX_SPRING.includes(k)) { fxModKnob(k, v); return; }
     if (pickup(k, v)) { knobInput(k, v); knobOwner[k] = { tab, val: knobVals[tab][k] }; }
   }
   // Reprise douce : un potard physique n'agit qu'une fois arrivé à la valeur affichée
@@ -3821,12 +3907,12 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       const isPad = ch === 10 || (!padsOnCh10 && idx >= 0 && idx < 16);
       if (isPad && idx >= 0 && idx < 16 && tab === "sons" && chordMode) { const j = idx % 8; chordOn("p" + idx, j < 7 ? j : 0, d2 / 127, 0, (idx >= 8 ? 1 : 0) + (j === 7 ? 1 : 0)); flash(idx); }
       else if (isPad && idx >= 0 && idx < 16 && tab === "sample" && LC.on && ttSrc && liveChopHit(idx)) { flash(idx); drawDigPads(); }
-      else if (isPad && idx >= 8 && idx < 16 && tab === "fx") fxStart(idx - 8);
+      else if (isPad && idx >= 0 && idx < 16 && tab === "fx") fxStart(idx);
       else if (isPad && idx >= 0 && idx < 16) playPad(idx, d2 / 127);
       else if (!isPad) playKey(d1, d2 / 127);
     } else if (type === 0x80 || (type === 0x90 && d2 === 0)) {
       const idx = d1 - BASE_NOTE;
-      if (idx >= 8 && idx < 16 && (ch === 10 || !padsOnCh10)) fxStop(idx - 8);
+      if (idx >= 0 && idx < 16 && (ch === 10 || !padsOnCh10) && fxActive === idx) fxStop(idx);
       const isPadOff = ch === 10 || (!padsOnCh10 && idx >= 0 && idx < 16);
       if (!isPadOff) keyOff(d1); else if (idx >= 0 && idx < 16) { releaseKey("p" + idx); padRelease(idx); padUp(idx); }
     } else if (type === 0xb0) {
