@@ -14,6 +14,12 @@ Instruments de l'onglet SONS : échantillons libres (VCSL CC0, Splendid Grand Pi
 - Bank 1 (CC 20–27) : play/stop du looper, undo, mute des pistes 1 à 6.
 - Bank 2 (CC 28–35) : kit précédent, kit suivant, lecture/arrêt du morceau (SONG), séquence précédente, note repeat, séquence suivante, onglet suivant, entrée guitare.
 
+## Onglet SCRATCH
+
+Platine tactile : le doigt posé sur le disque l'arrête et le fait tourner, en avant comme en arrière ; le son tourne en sillon fermé. Fader de coupure (zone rouge = coupé, HAMSTER inverse), boutons OUVRE / COUPE à maintenir, six phrases calées sur le tempo (baby, chirp, transform, flare, tear, stab). Sources : banque intégrée (voyelles et sons synthétisés, voix de la Bibliothèque du Congrès), bac VOIX, pads, chops de DIGGING, pistes du looper, et vos propres fichiers (gardés dans l'appareil). Tout passe dans le looper.
+
+Akai dans SCRATCH : pad 1 ouvre, pad 2 coupe, 3 start/stop, 4 retour au repère, 5 à 10 phrases, 11/12 son précédent/suivant, 13 hamster, 14 33/45, 15 pitch à zéro, 16 note d'origine. Le clavier transpose le disque. Potards : volume, pitch, filtre, démarrage, freinage, coupure, —, fader.
+
 ## Version LITE pour vieux iPad (iOS 9)
 
 `ios9.html` : version très légère écrite à part (pads, kits, filtre, écho, pitch, full level), sans looper ni animations.
