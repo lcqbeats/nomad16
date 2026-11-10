@@ -1,0 +1,88 @@
+{
+ "id": "electro",
+ "name": "ÉLECTRO 808",
+ "style": "Hip-hop électro",
+ "desc": "Boîte à rythmes analogique synthétisée",
+ "pads": [
+  {
+   "name": "Kick 808",
+   "file": "01.wav",
+   "gain": 1.0
+  },
+  {
+   "name": "Snare",
+   "file": "02.wav",
+   "gain": 0.85
+  },
+  {
+   "name": "Hat",
+   "file": "03.wav",
+   "gain": 0.55
+  },
+  {
+   "name": "Open hat",
+   "file": "04.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Clap",
+   "file": "05.wav",
+   "gain": 0.85
+  },
+  {
+   "name": "Rim",
+   "file": "06.wav",
+   "gain": 0.7
+  },
+  {
+   "name": "Clave",
+   "file": "07.wav",
+   "gain": 0.55
+  },
+  {
+   "name": "Kick court",
+   "file": "08.wav",
+   "gain": 1.0
+  },
+  {
+   "name": "Tom bas",
+   "file": "09.wav",
+   "gain": 0.85
+  },
+  {
+   "name": "Tom haut",
+   "file": "10.wav",
+   "gain": 0.85
+  },
+  {
+   "name": "Cloche",
+   "file": "11.wav",
+   "gain": 0.55
+  },
+  {
+   "name": "Cymbale",
+   "file": "12.wav",
+   "gain": 0.4
+  },
+  {
+   "name": "Conga",
+   "file": "13.wav",
+   "gain": 0.7
+  },
+  {
+   "name": "Sub",
+   "file": "14.wav",
+   "gain": 0.95
+  },
+  {
+   "name": "Zap",
+   "file": "15.wav",
+   "gain": 0.6
+  },
+  {
+   "name": "Hit",
+   "file": "16.wav",
+   "gain": 0.55
+  }
+ ]
+}

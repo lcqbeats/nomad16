@@ -1,0 +1,88 @@
+{
+ "id": "dub",
+ "name": "DUB STATION",
+ "style": "Reggae dub",
+ "desc": "Rimshots secs, réverbe à ressort, écho, sirène",
+ "pads": [
+  {
+   "name": "Kick",
+   "file": "01.wav",
+   "gain": 1.0
+  },
+  {
+   "name": "Snare",
+   "file": "02.wav",
+   "gain": 0.9
+  },
+  {
+   "name": "Hat",
+   "file": "03.wav",
+   "gain": 0.55
+  },
+  {
+   "name": "Open hat",
+   "file": "04.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Rim",
+   "file": "05.wav",
+   "gain": 0.8
+  },
+  {
+   "name": "Snare ressort",
+   "file": "06.wav",
+   "gain": 0.85
+  },
+  {
+   "name": "Guiro",
+   "file": "07.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Steppers",
+   "file": "08.wav",
+   "gain": 1.0
+  },
+  {
+   "name": "Tom bas",
+   "file": "09.wav",
+   "gain": 0.8
+  },
+  {
+   "name": "Tom haut",
+   "file": "10.wav",
+   "gain": 0.8
+  },
+  {
+   "name": "Ride",
+   "file": "11.wav",
+   "gain": 0.45
+  },
+  {
+   "name": "Écho",
+   "file": "12.wav",
+   "gain": 0.75
+  },
+  {
+   "name": "Syndrum",
+   "file": "13.wav",
+   "gain": 0.6
+  },
+  {
+   "name": "Sirène",
+   "file": "14.wav",
+   "gain": 0.45
+  },
+  {
+   "name": "Claves",
+   "file": "15.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Cloche",
+   "file": "16.wav",
+   "gain": 0.5
+  }
+ ]
+}

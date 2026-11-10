@@ -1,0 +1,88 @@
+{
+ "id": "neosoul",
+ "name": "NÉO SOUL",
+ "style": "Néo soul",
+ "desc": "Kit serré et chaud, claquements de doigts, percussions",
+ "pads": [
+  {
+   "name": "Kick",
+   "file": "01.wav",
+   "gain": 1.0
+  },
+  {
+   "name": "Snare",
+   "file": "02.wav",
+   "gain": 0.85
+  },
+  {
+   "name": "Hat",
+   "file": "03.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Open hat",
+   "file": "04.wav",
+   "gain": 0.45
+  },
+  {
+   "name": "Rim",
+   "file": "05.wav",
+   "gain": 0.8
+  },
+  {
+   "name": "Snare mat",
+   "file": "06.wav",
+   "gain": 0.8
+  },
+  {
+   "name": "Snap",
+   "file": "07.wav",
+   "gain": 0.6
+  },
+  {
+   "name": "Kick 2",
+   "file": "08.wav",
+   "gain": 1.0
+  },
+  {
+   "name": "Clap",
+   "file": "09.wav",
+   "gain": 0.7
+  },
+  {
+   "name": "Shaker",
+   "file": "10.wav",
+   "gain": 0.45
+  },
+  {
+   "name": "Tamb",
+   "file": "11.wav",
+   "gain": 0.45
+  },
+  {
+   "name": "Ride",
+   "file": "12.wav",
+   "gain": 0.45
+  },
+  {
+   "name": "Conga",
+   "file": "13.wav",
+   "gain": 0.65
+  },
+  {
+   "name": "Bongo",
+   "file": "14.wav",
+   "gain": 0.65
+  },
+  {
+   "name": "Triangle",
+   "file": "15.wav",
+   "gain": 0.35
+  },
+  {
+   "name": "Tom",
+   "file": "16.wav",
+   "gain": 0.75
+  }
+ ]
+}

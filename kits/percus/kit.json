@@ -1,0 +1,88 @@
+{
+ "id": "percus",
+ "name": "PERCUS",
+ "style": "Percussions",
+ "desc": "Congas, bongos, cloches, shakers",
+ "pads": [
+  {
+   "name": "Kick",
+   "file": "01.wav",
+   "gain": 1.0
+  },
+  {
+   "name": "Conga",
+   "file": "02.wav",
+   "gain": 0.8
+  },
+  {
+   "name": "Conga claq",
+   "file": "03.wav",
+   "gain": 0.75
+  },
+  {
+   "name": "Tumba",
+   "file": "04.wav",
+   "gain": 0.8
+  },
+  {
+   "name": "Bongo haut",
+   "file": "05.wav",
+   "gain": 0.75
+  },
+  {
+   "name": "Bongo bas",
+   "file": "06.wav",
+   "gain": 0.75
+  },
+  {
+   "name": "Claves",
+   "file": "07.wav",
+   "gain": 0.55
+  },
+  {
+   "name": "Shaker",
+   "file": "08.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Cloche",
+   "file": "09.wav",
+   "gain": 0.55
+  },
+  {
+   "name": "Agogo haut",
+   "file": "10.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Agogo bas",
+   "file": "11.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Guiro",
+   "file": "12.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Cabasa",
+   "file": "13.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Tamb",
+   "file": "14.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Triangle",
+   "file": "15.wav",
+   "gain": 0.35
+  },
+  {
+   "name": "Vibraslap",
+   "file": "16.wav",
+   "gain": 0.5
+  }
+ ]
+}

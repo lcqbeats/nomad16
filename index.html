@@ -8,10 +8,10 @@
 <title>NOMAD-16</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;600&family=VT323&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
 <style>
 :root {
-  /* Une machine noire mate, une bande tricolore rouge/noir/vert, un écran LCD, des pads en caoutchouc et des boucles en cercles. */
+  /* Une machine noire mate, une bande tricolore rouge/noir/vert, un écran LCD, des pads en caoutchouc, des boucles en cercles, une tête d'ampli. */
   --body: #1b1a18;
   --ink: #0c0b0a;
   --text: #ece3d3;
@@ -25,6 +25,7 @@
   --font-display: "Archivo Black", "Arial Black", Impact, sans-serif;
   --font-body: "IBM Plex Mono", ui-monospace, Menlo, monospace;
   --font-lcd: "VT323", "IBM Plex Mono", monospace;
+  --font-script: "Playfair Display", Georgia, serif;
   color-scheme: dark;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -36,16 +37,17 @@ body {
   padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
   -webkit-user-select: none; user-select: none; touch-action: manipulation;
 }
+button { font-family: var(--font-body); }
 .machine {
   width: 100%; max-width: 460px; background: var(--body); border-radius: 14px;
   box-shadow: 0 0 0 1px #000, inset 0 1px 0 #3a3733, 0 20px 40px rgba(0,0,0,.6);
   display: flex; flex-direction: column; gap: 12px; padding: 14px; align-self: flex-start;
 }
 .stripe { height: 8px; border-radius: 3px; background: linear-gradient(90deg, var(--red) 0 33.3%, #050505 33.3% 66.6%, var(--green) 66.6%); }
-.top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .brand { font-family: var(--font-display); font-size: 26px; letter-spacing: .02em; line-height: 1; }
 .brand span { color: var(--red); }
-.sub { color: var(--muted); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; }
+.gear { background: #262421; color: var(--muted); border: 0; border-radius: 6px; padding: 7px 10px; font-size: 11px; letter-spacing: .1em; cursor: pointer; }
 .lcd {
   background: var(--lcd-bg); border: 3px solid #050505; border-radius: 6px;
   box-shadow: inset 0 0 18px rgba(0,0,0,.8); padding: 8px 10px;
@@ -56,16 +58,20 @@ body {
 .lcd .k { opacity: .6; }
 .lcd .wide { grid-column: 1 / -1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lcd .rec { color: #ff6b61; text-shadow: 0 0 6px rgba(255,90,80,.6); }
-.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.kitline { display: flex; align-items: center; gap: 6px; grid-column: 1 / -1; border-bottom: 1px dashed rgba(125,255,166,.25); padding-bottom: 3px; margin-bottom: 2px; }
+.kitline button { font-family: var(--font-lcd); font-size: 22px; line-height: 1; color: var(--lcd-ink); background: rgba(125,255,166,.08); border: 1px solid rgba(125,255,166,.3); border-radius: 4px; padding: 0 8px; cursor: pointer; text-shadow: inherit; }
+.kitline .kname { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
 .tab {
-  font-family: var(--font-body); font-weight: 600; font-size: 11px; letter-spacing: .08em;
-  background: #262421; color: var(--muted); border: 0; border-radius: 6px; padding: 9px 4px;
+  font-weight: 600; font-size: 10px; letter-spacing: .06em;
+  background: #262421; color: var(--muted); border: 0; border-radius: 6px; padding: 9px 2px;
   box-shadow: inset 0 -2px 0 rgba(0,0,0,.4); cursor: pointer;
 }
 .tab[aria-selected="true"] { background: var(--text); color: var(--ink); }
-.tab:disabled { opacity: .35; cursor: default; }
-.tab:focus-visible, .btn:focus-visible { outline: 2px solid var(--lcd-ink); outline-offset: 2px; }
+.tab:disabled { opacity: .3; cursor: default; }
+.tab:focus-visible, .btn:focus-visible, .kitline button:focus-visible { outline: 2px solid var(--lcd-ink); outline-offset: 2px; }
 .knobs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 6px; }
+.knobs[hidden] { display: none; }
 .knob { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .dial {
   width: 40px; height: 40px; border-radius: 50%;
@@ -80,9 +86,9 @@ body {
 .pad {
   aspect-ratio: 1; border: 0; border-radius: 7px;
   background: linear-gradient(160deg, #46423e, var(--pad) 60%);
-  color: var(--text); font-family: var(--font-body);
+  color: var(--text);
   display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;
-  padding: 6px 7px; cursor: pointer; transition: background .12s, transform .05s;
+  padding: 6px 7px; cursor: pointer; transition: background .12s, transform .05s; text-align: left;
 }
 .pad .n { font-size: 10px; color: var(--muted); }
 .pad .name { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
@@ -97,17 +103,78 @@ body {
 #loopCanvas { width: 100%; aspect-ratio: 3 / 2; display: block; background: #151412; border-radius: 8px; box-shadow: inset 0 0 0 1px #050505; touch-action: none; }
 .transport { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
 .btn {
-  font-family: var(--font-body); font-weight: 600; font-size: 12px; letter-spacing: .06em;
+  font-weight: 600; font-size: 12px; letter-spacing: .06em;
   border: 0; border-radius: 7px; padding: 12px 4px; cursor: pointer;
   background: #33302c; color: var(--text); box-shadow: 0 0 0 2px var(--pad-edge), inset 0 -3px 0 rgba(0,0,0,.35);
 }
 .btn.rec { background: var(--red); color: #fff; }
 .btn.rec.armed { animation: blink .5s steps(2) infinite; }
-.btn.holding { background: var(--text); color: var(--ink); }
+.btn.holding, .btn.on { background: var(--text); color: var(--ink); }
 @keyframes blink { 50% { background: #5a1414; } }
+
+/* ---------- Tête d'ampli ---------- */
+.amp {
+  --tolex: #141414; --tolex2: #1d1d1d; --panel: linear-gradient(180deg, #d9b968, #b8954a 55%, #9c7a37); --panel-ink: #241a08;
+  --piping: #d8cfb8; --knob: #f0e6cc; --knob-ink: #1a1a1a; --plate: var(--font-script);
+  border-radius: 10px; padding: 12px;
+  background: repeating-linear-gradient(45deg, var(--tolex) 0 3px, var(--tolex2) 3px 6px);
+  box-shadow: inset 0 0 0 3px var(--piping), inset 0 0 0 6px #000, 0 10px 20px rgba(0,0,0,.6);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.amp.agrume { --tolex: #d9631c; --tolex2: #e06e26; --panel: linear-gradient(180deg, #f4efe4, #e2d9c5); --panel-ink: #2a2118; --piping: #f4efe4; --knob: #1f1f1f; --knob-ink: #f4efe4; }
+.amp.cristal { --tolex: #121418; --tolex2: #1a1d22; --panel: linear-gradient(180deg, #c9ccd1, #9ea3aa); --panel-ink: #111; --piping: #c9ccd1; --knob: #111; --knob-ink: #e8e8e8; }
+.amp.bois { --tolex: #6b4424; --tolex2: #77502c; --panel: linear-gradient(180deg, #efe2c6, #d9c7a2); --panel-ink: #3a2412; --piping: #efe2c6; --knob: #3a2412; --knob-ink: #efe2c6; }
+.amp-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px; }
+.amp-name { font-family: var(--font-script); font-style: italic; font-size: 26px; color: var(--piping); text-shadow: 0 2px 0 #000; }
+.amp-model { font-family: var(--font-display); font-size: 12px; letter-spacing: .2em; color: var(--piping); opacity: .85; }
+.amp-panel { background: var(--panel); border-radius: 6px; padding: 10px 8px 8px; box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 0 rgba(0,0,0,.25); }
+.amp-knobs { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.gk { display: flex; flex-direction: column; align-items: center; gap: 4px; touch-action: none; cursor: ns-resize; }
+.gk .cap {
+  width: 36px; height: 36px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--knob) 80%, #fff), var(--knob) 70%);
+  box-shadow: 0 2px 3px rgba(0,0,0,.6), inset 0 -2px 2px rgba(0,0,0,.25); position: relative;
+  transform: rotate(calc(-135deg + var(--v, .5) * 270deg));
+}
+.gk .cap::after { content: ""; position: absolute; left: 50%; top: 3px; width: 3px; height: 12px; margin-left: -1.5px; border-radius: 2px; background: var(--knob-ink); }
+.gk label { font-family: var(--font-display); font-size: 8px; letter-spacing: .08em; color: var(--panel-ink); text-align: center; }
+.gk .val { font-size: 9px; color: var(--panel-ink); opacity: .7; font-variant-numeric: tabular-nums; }
+.amp-io { display: flex; align-items: center; gap: 8px; }
+.amp-io .btn { padding: 9px 10px; font-size: 11px; }
+.meter { flex: 1; height: 10px; border-radius: 5px; background: #0a0a0a; box-shadow: inset 0 0 0 1px #000; overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--green) 0 70%, #e0b02a 70% 88%, var(--red) 88%); }
+.pedals { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.pedal {
+  border: 0; border-radius: 6px; padding: 8px 2px 6px; cursor: pointer; color: #fff;
+  font-weight: 600; font-size: 9px; letter-spacing: .06em; display: flex; flex-direction: column; align-items: center; gap: 5px;
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,.35), 0 0 0 2px #000;
+}
+.pedal i { width: 8px; height: 8px; border-radius: 50%; background: #3a1010; box-shadow: inset 0 0 2px #000; }
+.pedal.on i { background: #ff3b30; box-shadow: 0 0 8px #ff3b30; }
+.presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.preset { border: 0; border-radius: 6px; padding: 8px 4px; cursor: pointer; background: #262421; color: var(--text); text-align: left; box-shadow: 0 0 0 2px #000; }
+.preset b { display: block; font-size: 10px; letter-spacing: .05em; }
+.preset span { display: block; font-size: 9px; color: var(--muted); margin-top: 2px; }
+.preset.on { background: var(--text); color: var(--ink); }
+.preset.on span { color: #4a443c; }
+.note { font-size: 10px; color: var(--muted); line-height: 1.5; margin: 0; }
+select.dev { background: #262421; color: var(--text); border: 0; border-radius: 6px; padding: 8px; font-family: var(--font-body); font-size: 11px; max-width: 150px; }
+
+/* ---------- Fenêtres ---------- */
+.sheet { position: fixed; inset: 0; background: rgba(5,5,5,.82); display: flex; align-items: flex-start; justify-content: center; padding: 40px 14px; z-index: 20; overflow-y: auto; }
+.sheet[hidden] { display: none; }
+.sheet-in { width: 100%; max-width: 430px; background: var(--lcd-bg); border: 3px solid #050505; border-radius: 8px; padding: 12px; font-family: var(--font-lcd); color: var(--lcd-ink); font-size: 20px; text-shadow: 0 0 6px rgba(125,255,166,.45); }
+.sheet-in h2 { font-family: var(--font-lcd); font-weight: 400; font-size: 24px; margin: 0 0 8px; display: flex; justify-content: space-between; }
+.sheet-in h2 button { font-family: var(--font-lcd); font-size: 20px; background: none; border: 1px solid rgba(125,255,166,.4); color: var(--lcd-ink); border-radius: 4px; cursor: pointer; }
+.kititem { display: block; width: 100%; text-align: left; background: rgba(125,255,166,.06); border: 1px solid rgba(125,255,166,.2); border-radius: 4px; color: var(--lcd-ink); font-family: var(--font-lcd); font-size: 21px; padding: 6px 8px; margin-bottom: 6px; cursor: pointer; text-shadow: inherit; }
+.kititem small { display: block; font-size: 16px; opacity: .65; }
+.kititem.cur { background: rgba(125,255,166,.22); }
+.row { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
+.row input[type=range] { flex: 1; accent-color: var(--lcd-ink); }
+.sheet-in .btn { font-family: var(--font-body); }
+.sheet-in p { font-size: 17px; opacity: .8; margin: 6px 0; line-height: 1.15; }
 .power {
   position: fixed; inset: 0; background: rgba(5,5,5,.92);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; text-align: center; z-index: 10;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; text-align: center; z-index: 30;
 }
 .power[hidden] { display: none; }
 .power button {
@@ -124,10 +191,16 @@ body {
   <div class="stripe" aria-hidden="true"></div>
   <div class="top">
     <div class="brand">NOMAD<span>-16</span></div>
-    <div class="sub">v0.2 · Looper</div>
+    <button class="gear" id="gearBtn" type="button">RÉGLAGES</button>
   </div>
 
   <div class="lcd" aria-live="polite">
+    <div class="kitline">
+      <span class="k">KIT</span>
+      <button type="button" id="kitPrev" aria-label="Kit précédent">◀</button>
+      <button type="button" id="kitName" class="kname">NOMAD SYNTH</button>
+      <button type="button" id="kitNext" aria-label="Kit suivant">▶</button>
+    </div>
     <div class="wide" id="lcdDev"><span class="k">MIDI&nbsp;</span>en attente…</div>
     <div id="lcdLast"><span class="k">DERNIER&nbsp;</span>—</div>
     <div id="lcdVel"><span class="k">VEL&nbsp;</span>—</div>
@@ -136,19 +209,20 @@ body {
   </div>
 
   <div class="tabs" role="tablist">
-    <button class="tab" role="tab" id="tabPlay" aria-selected="true" type="button">JOUER</button>
-    <button class="tab" role="tab" id="tabLoops" aria-selected="false" type="button">BOUCLES</button>
-    <button class="tab" role="tab" type="button" disabled title="Étape 3">FX LIVE</button>
-    <button class="tab" role="tab" type="button" disabled title="Étape 4">SONS</button>
+    <button class="tab" role="tab" id="tab-play" aria-selected="true" type="button">JOUER</button>
+    <button class="tab" role="tab" id="tab-loops" aria-selected="false" type="button">BOUCLES</button>
+    <button class="tab" role="tab" id="tab-guitar" aria-selected="false" type="button">GUITARE</button>
+    <button class="tab" role="tab" type="button" disabled title="Étape suivante">FX LIVE</button>
+    <button class="tab" role="tab" type="button" disabled title="Étape suivante">SONS</button>
   </div>
 
   <div class="knobs" id="knobs"></div>
 
-  <section class="view" id="viewPlay">
+  <section class="view" id="view-play">
     <div class="pads" id="pads"></div>
   </section>
 
-  <section class="view" id="viewLoops" hidden>
+  <section class="view" id="view-loops" hidden>
     <canvas id="loopCanvas" aria-label="Pistes de boucles"></canvas>
     <div class="transport">
       <button class="btn rec" id="btnRec" type="button">REC / DUB</button>
@@ -158,11 +232,45 @@ body {
     </div>
   </section>
 
+  <section class="view" id="view-guitar" hidden>
+    <div class="amp" id="amp">
+      <div class="amp-head"><span class="amp-name">Nomad</span><span class="amp-model" id="ampModel">BRIT 59</span></div>
+      <div class="amp-panel"><div class="amp-knobs" id="ampKnobs"></div></div>
+      <div class="amp-io">
+        <button class="btn" id="inBtn" type="button">ENTRÉE OFF</button>
+        <div class="meter" aria-label="Niveau d'entrée"><i id="meter"></i></div>
+        <select class="dev" id="devSel" aria-label="Entrée audio" hidden></select>
+      </div>
+      <div class="pedals" id="pedals"></div>
+    </div>
+    <div class="presets" id="presets" style="margin-top:10px"></div>
+    <p class="note" style="margin-top:8px">Branchez l'iRig puis touchez ENTRÉE. Au casque filaire de préférence : en Bluetooth, le retard rend le jeu en direct difficile. Les 8 potards de l'Akai règlent l'ampli dans cet onglet.</p>
+  </section>
+
   <div class="legend" id="legend">
     <span><i class="dot" style="background:var(--red)"></i><b>Bank 1</b> batterie</span>
     <span><i class="dot" style="background:var(--green)"></i><b>Bank 2</b> pads 9–16</span>
     <span><b>Clavier</b> pad choisi</span>
     <span><b>Sustain</b> REC / DUB</span>
+  </div>
+</div>
+
+<div class="sheet" id="kitSheet" hidden>
+  <div class="sheet-in">
+    <h2>KITS <button type="button" id="kitClose">FERMER</button></h2>
+    <div id="kitList"></div>
+  </div>
+</div>
+
+<div class="sheet" id="setSheet" hidden>
+  <div class="sheet-in">
+    <h2>RÉGLAGES <button type="button" id="setClose">FERMER</button></h2>
+    <p>COMPENSATION CASQUE</p>
+    <p>Recale les couches du looper quand le son arrive en retard (casque Bluetooth). 0 ms avec un casque filaire.</p>
+    <div class="row"><input type="range" id="latRange" min="0" max="400" step="1" value="0" aria-label="Compensation en millisecondes"><span id="latVal">0 ms</span></div>
+    <p id="latInfo">Latence annoncée par l'appareil : —</p>
+    <div class="row"><button class="btn" id="calBtn" type="button">CALIBRER</button><span id="calMsg"></span></div>
+    <p>Calibrage : 12 clics. À partir du 3e, frappez un pad pile sur chaque clic.</p>
   </div>
 </div>
 
@@ -175,26 +283,37 @@ body {
 <script>
 (() => {
   "use strict";
-  const NAMES = ["Kick","Snare","Hat","Open hat","Clap","Rim","Shaker","Snap","Tom bas","Tom haut","Conga","Cloche","Ride","Basse 808","Stab","Blip"];
   const BASE_NOTE = 36;
   const MAX_LAYERS = 6;
   const COLORS = ["#d92b2f", "#22a35a", "#ece3d3", "#d92b2f", "#22a35a", "#ece3d3"];
+  const SYNTH_NAMES = ["Kick","Snare","Hat","Open hat","Clap","Rim","Shaker","Snap","Tom bas","Tom haut","Conga","Cloche","Ride","Basse 808","Stab","Blip"];
   const KNOB_LABELS = {
     play: ["Filtre", "Écho", "Saleté", "Volume", "—", "—", "—", "—"],
-    loops: ["Piste 1", "Piste 2", "Piste 3", "Piste 4", "Piste 5", "Piste 6", "Boucles", "Undo ↻"]
+    loops: ["Piste 1", "Piste 2", "Piste 3", "Piste 4", "Piste 5", "Piste 6", "Boucles", "Undo ↻"],
+    guitar: ["Gain", "Basses", "Médiums", "Aigus", "Présence", "Réverbe", "Master", "Écho"]
   };
-  const knobVals = { play: [1, 0, 0, 0.85, 0, 0, 0, 0], loops: [1, 1, 1, 1, 1, 1, 0.9, 0] };
+  const knobVals = { play: [1, 0, 0, 0.85, 0, 0, 0, 0], loops: [1, 1, 1, 1, 1, 1, 0.9, 0], guitar: [0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.6, 0.3] };
   let tab = "play";
 
-  let ctx, sr, liveIn, filter, drive, delay, delayFb, delayWet, liveOut, loopBus, master;
-  const buffers = [];
-  let selected = 0, openHatSrc = null;
-  const hits = [];       // derniers coups de pad (temps audio)
-  const notesAny = [];   // dernières notes, pads ou clavier
-  let padsOnCh10 = false;
-
+  let ctx, sr, liveIn, filter, drive, delay, delayFb, delayWet, padOut, liveBus, loopBus, master;
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("nomad16." + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem("nomad16." + k, JSON.stringify(v)); } catch (e) {} }
+  };
   const $ = id => document.getElementById(id);
   function lcd(id, label, value, cls) { $(id).innerHTML = `<span class="k">${label}&nbsp;</span><span class="${cls || ""}">${value}</span>`; }
+
+  // ---------- Kit courant ----------
+  let names = SYNTH_NAMES.slice();
+  let buffers = [];
+  let gains = new Array(16).fill(1);
+  let synthBuffers = null;
+  let kitIndex = [{ id: "synth", name: "NOMAD SYNTH", style: "Synthèse", desc: "Les sons de départ, synthétisés" }];
+  let kitCur = "synth";
+  let selected = 0, openHatSrc = null;
+  const hits = [], notesAny = [];
+  let padsOnCh10 = false;
+  let calib = null;
 
   // ---------- Pads ----------
   const padEls = [];
@@ -204,17 +323,18 @@ body {
       const b = document.createElement("button");
       b.type = "button"; b.id = "pad" + (i + 1);
       b.className = "pad " + (i < 8 ? "bank1" : "bank2");
-      b.innerHTML = `<span class="n">${String(i + 1).padStart(2, "0")} · ${BASE_NOTE + i}</span><span class="name">${NAMES[i]}</span>`;
       b.addEventListener("pointerdown", e => { e.preventDefault(); select(i); playPad(i, 0.9); });
       $("pads").appendChild(b);
       padEls[i] = b;
     }
   }
+  function drawPads() { padEls.forEach((b, i) => { b.innerHTML = `<span class="n">${String(i + 1).padStart(2, "0")} · ${BASE_NOTE + i}</span><span class="name">${names[i] || "—"}</span>`; }); }
+  drawPads();
   function select(i) { padEls[selected].classList.remove("sel"); selected = i; padEls[i].classList.add("sel"); }
   select(0);
   function flash(i) { const el = padEls[i]; el.classList.add("hit"); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("hit"), 110); }
 
-  // ---------- Potards ----------
+  // ---------- Potards (rangée commune) ----------
   const knobEls = [];
   for (let k = 0; k < 8; k++) {
     const d = document.createElement("div");
@@ -230,25 +350,23 @@ body {
       knobEls[k].classList.toggle("off", label === "—");
       const dial = $("dial" + k);
       dial.style.setProperty("--v", knobVals[tab][k]);
-      dial.style.setProperty("--kc", tab === "loops" && k < 6 ? COLORS[k] : "var(--red)");
+      dial.style.setProperty("--kc", tab === "loops" && k < 6 ? COLORS[k] : tab === "guitar" ? "#d9b968" : "var(--red)");
     }
   }
   drawKnobs();
 
   // ---------- Onglets ----------
+  const TABS = ["play", "loops", "guitar"];
   function setTab(t) {
     tab = t;
-    $("tabPlay").setAttribute("aria-selected", t === "play");
-    $("tabLoops").setAttribute("aria-selected", t === "loops");
-    $("viewPlay").hidden = t !== "play";
-    $("viewLoops").hidden = t !== "loops";
+    TABS.forEach(x => { $("tab-" + x).setAttribute("aria-selected", x === t); $("view-" + x).hidden = x !== t; });
+    $("knobs").hidden = t === "guitar";
     drawKnobs();
     if (t === "loops") resizeCanvas();
   }
-  $("tabPlay").addEventListener("click", () => setTab("play"));
-  $("tabLoops").addEventListener("click", () => setTab("loops"));
+  TABS.forEach(x => $("tab-" + x).addEventListener("click", () => setTab(x)));
 
-  // ---------- Sons synthétisés ----------
+  // ---------- Sons synthétisés (kit de départ) ----------
   function render(sr) {
     const mk = sec => new Float32Array(Math.floor(sr * sec));
     const noise = () => Math.random() * 2 - 1;
@@ -277,6 +395,61 @@ body {
     const blip = sine(990, 880, 0.01, 0.25, 0.05, 0.5);
     return [kick, snare, hat, ohat, clap, rim, shaker, snap, tomL, tomH, conga, bell, ride, bass, stab, blip];
   }
+
+  // ---------- Kits en ligne ----------
+  async function loadKitIndex() {
+    try {
+      const r = await fetch("kits/index.json", { cache: "no-cache" });
+      if (!r.ok) throw new Error(r.status);
+      const j = await r.json();
+      kitIndex = kitIndex.slice(0, 1).concat(j.kits);
+    } catch (e) { /* hors ligne ou aperçu : seul le kit synthétisé est disponible */ }
+  }
+  let kitLoading = 0;
+  async function loadKit(id) {
+    if (!ctx) return;
+    const ticket = ++kitLoading;
+    const meta = kitIndex.find(k => k.id === id) || kitIndex[0];
+    $("kitName").textContent = meta.name + (meta.id === "synth" ? "" : " …");
+    if (meta.id === "synth") {
+      buffers = synthBuffers.slice(); names = SYNTH_NAMES.slice(); gains = new Array(16).fill(1);
+    } else {
+      try {
+        const kit = await (await fetch(`kits/${id}/kit.json`)).json();
+        const bufs = await Promise.all(kit.pads.map(async p => {
+          const ab = await (await fetch(`kits/${id}/${p.file}`)).arrayBuffer();
+          return await new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej));
+        }));
+        if (ticket !== kitLoading) return;
+        buffers = bufs; names = kit.pads.map(p => p.name); gains = kit.pads.map(p => p.gain ?? 1);
+      } catch (e) {
+        if (ticket !== kitLoading) return;
+        lcd("lcdPad", "PAD", "kit introuvable · " + meta.name);
+        $("kitName").textContent = kitIndex.find(k => k.id === kitCur).name;
+        return;
+      }
+    }
+    if (ticket !== kitLoading) return;
+    kitCur = meta.id; store.set("kit", kitCur);
+    $("kitName").textContent = meta.name;
+    drawPads();
+    lcd("lcdPad", "PAD", meta.style.toUpperCase() + " · " + meta.desc);
+  }
+  function stepKit(d) { const i = kitIndex.findIndex(k => k.id === kitCur); loadKit(kitIndex[(i + d + kitIndex.length) % kitIndex.length].id); }
+  $("kitPrev").addEventListener("click", () => stepKit(-1));
+  $("kitNext").addEventListener("click", () => stepKit(1));
+  $("kitName").addEventListener("click", () => {
+    $("kitList").innerHTML = "";
+    kitIndex.forEach(k => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "kititem" + (k.id === kitCur ? " cur" : "");
+      b.innerHTML = `${k.name}<small>${k.style} · ${k.desc}</small>`;
+      b.addEventListener("click", () => { $("kitSheet").hidden = true; loadKit(k.id); });
+      $("kitList").appendChild(b);
+    });
+    $("kitSheet").hidden = false;
+  });
+  $("kitClose").addEventListener("click", () => { $("kitSheet").hidden = true; });
 
   // ---------- Capture du son joué en direct (pour le looper) ----------
   const CAP_SECONDS = 60;
@@ -309,7 +482,14 @@ body {
 process(inputs){const inp=inputs[0];const L=inp&&inp[0];const R=inp&&(inp[1]||inp[0]);const n=L?L.length:128;if(this.i===0)this.f=currentFrame;
 if(L){this.l.set(L,this.i);this.r.set(R,this.i);}else{this.l.fill(0,this.i,this.i+n);this.r.fill(0,this.i,this.i+n);}
 this.i+=n;if(this.i>=this.B){this.port.postMessage({f:this.f,l:this.l,r:this.r},[this.l.buffer,this.r.buffer]);this.l=new Float32Array(this.B);this.r=new Float32Array(this.B);this.i=0;}return true;}}
-registerProcessor('nomad-cap',Cap);`;
+registerProcessor('nomad-cap',Cap);
+class Gate extends AudioWorkletProcessor{constructor(){super();this.env=0;this.g=0;this.open=false;this.th=Math.pow(10,-52/20);this.port.onmessage=e=>{this.th=Math.pow(10,e.data/20);};}
+process(inputs,outputs){const i=inputs[0],o=outputs[0];if(!i||!i[0]){return true;}const n=i[0].length;
+for(let s=0;s<n;s++){let v=0;for(let c=0;c<i.length;c++)v=Math.max(v,Math.abs(i[c][s]));this.env=Math.max(v,this.env*0.9995);
+if(!this.open&&this.env>this.th)this.open=true;else if(this.open&&this.env<this.th*0.5)this.open=false;
+this.g+=((this.open?1:0)-this.g)*(this.open?0.02:0.0008);for(let c=0;c<o.length;c++)o[c][s]=(i[c]||i[0])[s]*this.g;}return true;}}
+registerProcessor('nomad-gate',Gate);`;
+  let hasWorklet = false;
   async function setupCapture() {
     ringN = Math.floor(sr * CAP_SECONDS);
     capRing = [new Float32Array(ringN), new Float32Array(ringN)];
@@ -318,13 +498,14 @@ registerProcessor('nomad-cap',Cap);`;
       if (!ctx.audioWorklet) throw new Error("no worklet");
       const url = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
       await ctx.audioWorklet.addModule(url);
+      hasWorklet = true;
       const node = new AudioWorkletNode(ctx, "nomad-cap", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: "explicit" });
       node.port.onmessage = e => onCapture(e.data.f, e.data.l, e.data.r);
-      liveOut.connect(node); node.connect(silent);
+      liveBus.connect(node); node.connect(silent);
     } catch (err) {
       const sp = ctx.createScriptProcessor(1024, 2, 2);
       sp.onaudioprocess = e => onCapture(Math.round(e.playbackTime * sr), e.inputBuffer.getChannelData(0).slice(), e.inputBuffer.getChannelData(1).slice());
-      liveOut.connect(sp); sp.connect(silent);
+      liveBus.connect(sp); sp.connect(silent);
     }
   }
 
@@ -336,7 +517,7 @@ registerProcessor('nomad-cap',Cap);`;
     if (k === 0) filter.frequency.setTargetAtTime(80 * Math.pow(18000 / 80, v), t, 0.02);
     if (k === 1) { delayWet.gain.setTargetAtTime(v * 0.6, t, 0.02); delayFb.gain.setTargetAtTime(v * 0.55, t, 0.02); }
     if (k === 2) drive.curve = makeDriveCurve(v);
-    if (k === 3) liveOut.gain.setTargetAtTime(v, t, 0.02);
+    if (k === 3) padOut.gain.setTargetAtTime(v, t, 0.02);
   }
   async function powerOn() {
     try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
@@ -349,59 +530,101 @@ registerProcessor('nomad-cap',Cap);`;
     drive = ctx.createWaveShaper(); drive.oversample = "2x";
     delay = ctx.createDelay(1); delay.delayTime.value = 60 / 92 * 0.75;
     delayFb = ctx.createGain(); delayWet = ctx.createGain();
-    liveOut = ctx.createGain();
+    padOut = ctx.createGain();
+    liveBus = ctx.createGain();
     loopBus = ctx.createGain();
     master = ctx.createGain();
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -10; comp.ratio.value = 4;
-    liveIn.connect(filter); filter.connect(drive); drive.connect(liveOut);
-    drive.connect(delay); delay.connect(delayFb); delayFb.connect(delay); delay.connect(delayWet); delayWet.connect(liveOut);
-    liveOut.connect(master); loopBus.connect(master); master.connect(comp); comp.connect(ctx.destination);
-    render(sr).forEach((data, i) => { const b = ctx.createBuffer(1, data.length, sr); b.copyToChannel(data, 0); buffers[i] = b; });
+    liveIn.connect(filter); filter.connect(drive); drive.connect(padOut);
+    drive.connect(delay); delay.connect(delayFb); delayFb.connect(delay); delay.connect(delayWet); delayWet.connect(padOut);
+    padOut.connect(liveBus);
+    liveBus.connect(master); loopBus.connect(master); master.connect(comp); comp.connect(ctx.destination);
+    synthBuffers = render(sr).map(data => { const b = ctx.createBuffer(1, data.length, sr); b.copyToChannel(data, 0); return b; });
+    buffers = synthBuffers.slice();
     for (let k = 0; k < 4; k++) applyPlayKnob(k);
     loopBus.gain.value = knobVals.loops[6];
     await setupCapture();
+    buildGuitar();
     $("power").hidden = true;
     setInterval(looperTick, 15);
     requestAnimationFrame(draw);
+    updateLatInfo();
+    await loadKitIndex();
+    const saved = store.get("kit", "boombap");
+    loadKit(kitIndex.some(k => k.id === saved) ? saved : "synth");
   }
   $("powerBtn").addEventListener("click", () => powerOn().catch(e => { $("power").querySelector("p").textContent = "Le son n'a pas pu démarrer : " + e.message; }));
 
   function voice(i, vel, rate) {
     const t = ctx.currentTime;
+    notesAny.push(t); if (notesAny.length > 32) notesAny.shift();
+    if (calib) { calib.taps.push(t); return t; }
+    if (!buffers[i]) return t;
     const src = ctx.createBufferSource();
     src.buffer = buffers[i]; src.playbackRate.value = rate;
-    const g = ctx.createGain(); g.gain.value = 0.15 + 0.85 * vel;
+    const g = ctx.createGain(); g.gain.value = (0.15 + 0.85 * vel) * (gains[i] ?? 1);
     src.connect(g); g.connect(liveIn);
     if (i === 2 && openHatSrc) { try { openHatSrc.stop(); } catch (e) {} openHatSrc = null; }
     if (i === 3) openHatSrc = src;
     src.start();
-    notesAny.push(t); if (notesAny.length > 32) notesAny.shift();
     onFirstNote(t);
     return t;
   }
   function playPad(i, vel) {
     flash(i);
-    lcd("lcdPad", "PAD", String(i + 1).padStart(2, "0") + " " + NAMES[i].toUpperCase());
+    if (tab !== "guitar") lcd("lcdPad", "PAD", String(i + 1).padStart(2, "0") + " " + (names[i] || "").toUpperCase());
     if (!ctx) return;
     const t = voice(i, vel, 1);
     hits.push(t); if (hits.length > 32) hits.shift();
   }
   function playKey(note, vel) {
-    lcd("lcdPad", "PAD", String(selected + 1).padStart(2, "0") + " " + NAMES[selected].toUpperCase() + " ♪" + note);
+    lcd("lcdPad", "PAD", String(selected + 1).padStart(2, "0") + " " + (names[selected] || "").toUpperCase() + " ♪" + note);
     flash(selected);
     if (!ctx) return;
     voice(selected, vel, Math.pow(2, (note - 60) / 12));
   }
 
+  // ---------- Compensation de latence ----------
+  let latMs = store.get("latMs", 0);
+  $("latRange").value = latMs; $("latVal").textContent = latMs + " ms";
+  $("latRange").addEventListener("input", e => { latMs = +e.target.value; $("latVal").textContent = latMs + " ms"; store.set("latMs", latMs); });
+  function updateLatInfo() {
+    if (!ctx) return;
+    const out = ((ctx.outputLatency || 0) + (ctx.baseLatency || 0)) * 1000;
+    $("latInfo").textContent = "Latence annoncée par l'appareil : " + (out ? Math.round(out) + " ms" : "inconnue");
+  }
+  $("gearBtn").addEventListener("click", () => { updateLatInfo(); $("setSheet").hidden = false; });
+  $("setClose").addEventListener("click", () => { $("setSheet").hidden = true; });
+  $("calBtn").addEventListener("click", () => {
+    if (!ctx || calib) return;
+    const T0 = ctx.currentTime + 0.6, clicks = [];
+    for (let j = 0; j < 12; j++) {
+      const t = T0 + j * 0.5; clicks.push(t);
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = j % 4 === 0 ? 1500 : 1000;
+      g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+      o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.06);
+    }
+    calib = { clicks, taps: [] };
+    $("calMsg").textContent = "écoutez… frappez dès le 3e clic";
+    setTimeout(() => {
+      const d = [];
+      calib.taps.forEach(t => { let best = null; clicks.slice(2).forEach(c => { const x = t - c; if (x > -0.12 && x < 0.45 && (best === null || Math.abs(x) < Math.abs(best))) best = x; }); if (best !== null) d.push(best); });
+      calib = null;
+      if (d.length < 4) { $("calMsg").textContent = "pas assez de frappes, recommencez"; return; }
+      d.sort((a, b) => a - b);
+      const med = Math.max(0, Math.round(d[Math.floor(d.length / 2)] * 1000));
+      latMs = Math.min(400, med); $("latRange").value = latMs; $("latVal").textContent = latMs + " ms"; store.set("latMs", latMs);
+      $("calMsg").textContent = "mesuré : " + latMs + " ms";
+    }, (12 * 0.5 + 1.2) * 1000);
+  });
+
   // ---------- Looper ----------
-  // Tout se compte en échantillons (frames) pour éviter toute dérive.
   const LP = { t0F: null, Lf: 0, beats: 4, layers: [], pending: null, playing: true };
   const loopLen = () => LP.Lf / sr;
-
-  function onFirstNote(t) {
-    const p = LP.pending;
-    if (p && p.type === "first" && p.phase === "armed") { p.phase = "rec"; p.sT = t; }
-  }
+  const compF = () => Math.round(latMs / 1000 * sr);
+  function onFirstNote(t) { const p = LP.pending; if (p && p.type === "first" && p.phase === "armed") { p.phase = "rec"; p.sT = t; } }
+  let lcdFull = 0;
   function recPress() {
     if (!ctx) return;
     const now = ctx.currentTime;
@@ -423,18 +646,17 @@ registerProcessor('nomad-cap',Cap);`;
     if (p && p.type === "layer") { p.k = Math.min(8, p.k + 1); return; }
     if (p) return;
     if (LP.layers.length >= MAX_LAYERS) { lcdFull = performance.now(); return; }
-    const nowF = now * sr;
-    const rel = nowF - LP.t0F;
+    // Avec un casque à retard, on raisonne sur ce que l'oreille entend.
+    const heardF = now * sr - compF();
+    const rel = heardF - LP.t0F;
     const cyc = Math.floor(rel / LP.Lf);
     const pos = rel - cyc * LP.Lf;
-    const m = pos < 0.15 * LP.Lf ? cyc : cyc + 1; // appui un peu en retard : on reprend le début du cycle
-    LP.pending = { type: "layer", m, sF: LP.t0F + m * LP.Lf, k: 1 };
+    const m = pos < 0.15 * LP.Lf ? cyc : cyc + 1;
+    LP.pending = { type: "layer", m, sF: LP.t0F + m * LP.Lf, k: 1, comp: compF() };
   }
-  let lcdFull = 0;
   function closeFirst() {
     const p = LP.pending;
     if (!p || p.phase !== "closing") return;
-    // Calage sur le coup de pad le plus proche de l'appui (le kick du premier temps).
     let endT = p.pressT, best = 0.09;
     hits.forEach(t => { const d = Math.abs(t - p.pressT); if (t > p.sT + 0.3 && d < best) { best = d; endT = t; } });
     const sF = Math.round(p.sT * sr), eF = Math.round(endT * sr);
@@ -455,9 +677,9 @@ registerProcessor('nomad-cap',Cap);`;
   function looperTick() {
     const p = LP.pending;
     if (!p || p.type !== "layer") return;
-    const eF = p.sF + p.k * LP.Lf;
+    const eF = p.sF + p.k * LP.Lf + p.comp;
     if (capLatest >= eF) {
-      const buf = extract(p.sF, p.k * LP.Lf);
+      const buf = extract(p.sF + p.comp, p.k * LP.Lf);
       LP.pending = null;
       if (buf) addLayer(buf, p.k, p.m);
     }
@@ -490,6 +712,7 @@ registerProcessor('nomad-cap',Cap);`;
     LP.layers.forEach(l => { stopLayer(l); startLayer(l, T); });
     LP.playing = true;
   }
+  function togglePlay() { if (LP.playing) stopAll(); else playAll(); }
   function removeLayer(i) {
     const l = LP.layers[i]; if (!l) return;
     stopLayer(l); l.gain.disconnect();
@@ -507,7 +730,7 @@ registerProcessor('nomad-cap',Cap);`;
 
   $("btnRec").addEventListener("pointerdown", e => { e.preventDefault(); recPress(); });
   $("btnUndo").addEventListener("click", undo);
-  $("btnPlay").addEventListener("click", () => { if (LP.playing) stopAll(); else playAll(); });
+  $("btnPlay").addEventListener("click", togglePlay);
   let clearTimer = null;
   $("btnClear").addEventListener("pointerdown", e => { e.currentTarget.classList.add("holding"); clearTimer = setTimeout(() => { resetLooper(); $("btnClear").classList.remove("holding"); }, 700); });
   ["pointerup", "pointerleave", "pointercancel"].forEach(ev => $("btnClear").addEventListener(ev, () => { clearTimeout(clearTimer); $("btnClear").classList.remove("holding"); }));
@@ -516,11 +739,7 @@ registerProcessor('nomad-cap',Cap);`;
   const cv = $("loopCanvas"), g2 = cv.getContext("2d");
   function resizeCanvas() { const r = cv.getBoundingClientRect(); const d = window.devicePixelRatio || 1; cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); }
   window.addEventListener("resize", () => { if (tab === "loops") resizeCanvas(); });
-  function cellGeom(i) {
-    const W = cv.width, H = cv.height, col = i % 3, row = Math.floor(i / 3);
-    const w = W / 3, h = H / 2;
-    return { x: col * w + w / 2, y: row * h + h / 2, r: Math.min(w, h) * 0.36 };
-  }
+  function cellGeom(i) { const W = cv.width, H = cv.height, col = i % 3, row = Math.floor(i / 3); const w = W / 3, h = H / 2; return { x: col * w + w / 2, y: row * h + h / 2, r: Math.min(w, h) * 0.36 }; }
   function ring(x, y, r, a0, a1, color, width) { g2.beginPath(); g2.arc(x, y, r, a0, a1); g2.strokeStyle = color; g2.lineWidth = width; g2.stroke(); }
   function ticks(x, y, r, n, lit, color, size) {
     const nn = Math.min(n, 32);
@@ -533,8 +752,10 @@ registerProcessor('nomad-cap',Cap);`;
   function text(s, x, y, size, color, font) { g2.font = `${size}px ${font || "Archivo Black, Arial Black, sans-serif"}`; g2.fillStyle = color; g2.textAlign = "center"; g2.textBaseline = "middle"; g2.fillText(s, x, y); }
   function draw() {
     requestAnimationFrame(draw);
-    if (ctx) updateLoopLcd();
-    if (tab !== "loops" || !ctx) return;
+    if (!ctx) return;
+    updateLoopLcd();
+    if (tab === "guitar") drawMeter();
+    if (tab !== "loops") return;
     if (!cv.width) resizeCanvas();
     const d = window.devicePixelRatio || 1;
     g2.clearRect(0, 0, cv.width, cv.height);
@@ -557,7 +778,8 @@ registerProcessor('nomad-cap',Cap);`;
         text(String(i + 1), x, y - 4 * d, 26 * d, l.muted ? "#5d574f" : "#ece3d3");
         text(l.muted ? "MUET" : (l.k > 1 ? "×" + l.k : Math.round(l.vol * 100) + "%"), x, y + 18 * d, 15 * d, "#8f877a", "VT323, monospace");
       } else if (p && i === LP.layers.length) {
-        const recording = p.type === "first" ? p.phase !== "armed" : nowF >= p.sF;
+        const heard = nowF - (p.comp || 0);
+        const recording = p.type === "first" ? p.phase !== "armed" : heard >= p.sF;
         g2.beginPath(); g2.arc(x, y, r - lw, 0, Math.PI * 2);
         g2.fillStyle = recording ? `rgba(217,43,47,${0.25 + 0.35 * pulse})` : "#1e1c1a"; g2.fill();
         if (p.type === "first") {
@@ -574,13 +796,13 @@ registerProcessor('nomad-cap',Cap);`;
         } else {
           const Lk = p.k * LP.Lf, beatF = LP.Lf / LP.beats;
           if (!recording) {
-            const left = Math.ceil((p.sF - nowF) / beatF);
+            const left = Math.ceil((p.sF - heard) / beatF);
             ring(x, y, r, 0, Math.PI * 2, `rgba(217,43,47,${0.3 + 0.7 * pulse})`, lw);
             ticks(x, y, r + 11 * d, LP.beats, LP.beats - left, "#d92b2f", 1.6 * d);
             text(String(left), x, y - 4 * d, 30 * d, "#ece3d3");
             text("DANS", x, y + 20 * d, 15 * d, "#8f877a", "VT323, monospace");
           } else {
-            const prog = (nowF - p.sF) / Lk;
+            const prog = (heard - p.sF) / Lk;
             ring(x, y, r, 0, Math.PI * 2, "#34302c", lw);
             ring(x, y, r, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2, "#d92b2f", lw);
             text("REC", x, y - 6 * d, 20 * d, "#fff");
@@ -605,15 +827,14 @@ registerProcessor('nomad-cap',Cap);`;
     else {
       const bpm = (60 * LP.beats / loopLen()).toFixed(1);
       s = `${bpm} BPM · ${LP.layers.length}/${MAX_LAYERS}`;
-      if (p) { s += ctx.currentTime * sr < p.sF ? " · ARMÉE" : " · REC ×" + p.k; cls = "rec"; }
+      if (p) { s += ctx.currentTime * sr - (p.comp || 0) < p.sF ? " · ARMÉE" : " · REC ×" + p.k; cls = "rec"; }
       else if (!LP.playing) s += " · STOP";
     }
     const key = s + cls;
     if (key !== lastLcd) { lastLcd = key; lcd("lcdLoop", "BOUCLE", s, cls); }
-    $("btnRec").classList.toggle("armed", !!(p && ((p.type === "first" && p.phase === "armed") || (p.type === "layer" && ctx.currentTime * sr < p.sF))));
+    $("btnRec").classList.toggle("armed", !!(p && ((p.type === "first" && p.phase === "armed") || (p.type === "layer" && ctx.currentTime * sr - (p.comp || 0) < p.sF))));
     $("btnPlay").textContent = LP.playing ? "STOP" : "PLAY";
   }
-  // Toucher un cercle : muet. Appui long : effacer la piste.
   let pressT = null, pressCell = -1;
   function cellAt(e) {
     const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
@@ -621,33 +842,262 @@ registerProcessor('nomad-cap',Cap);`;
     for (let i = 0; i < MAX_LAYERS; i++) { const c = cellGeom(i); if (Math.hypot(px - c.x, py - c.y) < c.r * 1.25) return i; }
     return -1;
   }
-  cv.addEventListener("pointerdown", e => {
-    pressCell = cellAt(e);
-    if (pressCell < 0 || !LP.layers[pressCell]) return;
-    pressT = setTimeout(() => { removeLayer(pressCell); pressCell = -1; }, 650);
-  });
+  cv.addEventListener("pointerdown", e => { pressCell = cellAt(e); if (pressCell < 0 || !LP.layers[pressCell]) return; pressT = setTimeout(() => { removeLayer(pressCell); pressCell = -1; }, 650); });
   cv.addEventListener("pointerup", () => { if (pressT) clearTimeout(pressT); if (pressCell >= 0 && LP.layers[pressCell]) toggleMute(pressCell); pressCell = -1; pressT = null; });
   cv.addEventListener("pointercancel", () => { if (pressT) clearTimeout(pressT); pressCell = -1; });
 
+  // ---------- Ampli guitare ----------
+  const AMPS = {
+    cristal: { label: "CRISTAL 22", skin: "cristal", maxDrive: 6, asym: 0.05, midF: 500, midQ: 0.7, midBase: -3, cab: 6500, low: 1 },
+    brit: { label: "BRIT 59", skin: "", maxDrive: 40, asym: 0.15, midF: 800, midQ: 0.8, midBase: 2, cab: 5200, low: 0 },
+    agrume: { label: "AGRUME 30", skin: "agrume", maxDrive: 70, asym: 0.2, midF: 600, midQ: 0.7, midBase: 4, cab: 4800, low: 2 },
+    bois: { label: "BOIS · ACOUSTIQUE", skin: "bois" }
+  };
+  const PEDALS = [
+    { id: "comp", label: "COMP", color: "#2f6fb5" }, { id: "drive", label: "DRIVE", color: "#1f8a4c" }, { id: "fuzz", label: "FUZZ", color: "#b8432f" },
+    { id: "vibe", label: "VIBE", color: "#7a4aa0" }, { id: "chorus", label: "CHORUS", color: "#2a9aa0" }, { id: "delay", label: "ÉCHO", color: "#3a3a3a" }
+  ];
+  // Valeurs : gain, basses, médiums, aigus, présence, réverbe, master, écho (0 à 1)
+  const PRESETS = [
+    { name: "CLEAN CHAUD", sub: "esprit Mayer", amp: "cristal", k: [0.35, 0.55, 0.5, 0.6, 0.55, 0.35, 0.6, 0.15], fx: ["comp"] },
+    { name: "TEXAS BLUES", sub: "esprit SRV", amp: "cristal", k: [0.55, 0.55, 0.6, 0.6, 0.6, 0.3, 0.6, 0.0], fx: ["drive"] },
+    { name: "FUZZ 69", sub: "esprit Hendrix", amp: "brit", k: [0.45, 0.6, 0.55, 0.55, 0.5, 0.25, 0.55, 0.0], fx: ["fuzz"] },
+    { name: "VIBE", sub: "Hendrix, ballade", amp: "brit", k: [0.3, 0.55, 0.5, 0.55, 0.5, 0.35, 0.6, 0.1], fx: ["vibe"] },
+    { name: "FUNK CLAIR", sub: "esprit Frusciante", amp: "cristal", k: [0.3, 0.45, 0.45, 0.7, 0.65, 0.2, 0.6, 0.0], fx: ["comp"] },
+    { name: "CRUNCH", sub: "rythmique Brit", amp: "brit", k: [0.6, 0.55, 0.6, 0.55, 0.55, 0.2, 0.55, 0.0], fx: [] },
+    { name: "LEAD CHAUD", sub: "solo, sustain", amp: "agrume", k: [0.6, 0.55, 0.6, 0.5, 0.45, 0.3, 0.5, 0.35], fx: ["drive", "delay"] },
+    { name: "ACOUSTIQUE", sub: "chaude et ronde", amp: "bois", k: [0.3, 0.55, 0.45, 0.55, 0.55, 0.3, 0.65, 0.0], fx: ["comp"] }
+  ];
+  const AMP_LABELS = ["GAIN", "BASS", "MIDDLE", "TREBLE", "PRESENCE", "REVERB", "MASTER"];
+  const G = { amp: "brit", fx: new Set(), preset: -1, on: false };
+  let gn = null; // nœuds audio de la guitare
+
+  // Interface de la tête
+  const gkEls = [];
+  AMP_LABELS.forEach((lab, k) => {
+    const d = document.createElement("div");
+    d.className = "gk"; d.id = "gk" + k;
+    d.innerHTML = `<div class="cap"></div><label>${lab}</label><span class="val"></span>`;
+    let startY = 0, startV = 0;
+    d.addEventListener("pointerdown", e => { d.setPointerCapture(e.pointerId); startY = e.clientY; startV = knobVals.guitar[k]; });
+    d.addEventListener("pointermove", e => { if (!d.hasPointerCapture(e.pointerId)) return; setGuitarKnob(k, Math.min(1, Math.max(0, startV + (startY - e.clientY) / 150))); });
+    $("ampKnobs").appendChild(d); gkEls.push(d);
+  });
+  PEDALS.forEach(p => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "pedal"; b.id = "pd-" + p.id; b.style.background = p.color;
+    b.innerHTML = `<i></i>${p.label}`;
+    b.addEventListener("click", () => { if (G.fx.has(p.id)) G.fx.delete(p.id); else G.fx.add(p.id); applyGuitar(); });
+    $("pedals").appendChild(b);
+  });
+  PRESETS.forEach((p, i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "preset"; b.id = "pr" + i;
+    b.innerHTML = `<b>${p.name}</b><span>${p.sub}</span>`;
+    b.addEventListener("click", () => loadPreset(i));
+    $("presets").appendChild(b);
+  });
+  function drawGuitar() {
+    const a = AMPS[G.amp];
+    $("amp").className = "amp " + (a.skin || "");
+    $("ampModel").textContent = a.label;
+    gkEls.forEach((el, k) => { el.style.setProperty("--v", knobVals.guitar[k]); el.querySelector(".val").textContent = Math.round(knobVals.guitar[k] * 10 * 10) / 10; });
+    PEDALS.forEach(p => $("pd-" + p.id).classList.toggle("on", G.fx.has(p.id)));
+    PRESETS.forEach((p, i) => $("pr" + i).classList.toggle("on", i === G.preset));
+    $("inBtn").textContent = G.on ? "ENTRÉE ON" : "ENTRÉE OFF";
+    $("inBtn").classList.toggle("on", G.on);
+  }
+  function setGuitarKnob(k, v) { knobVals.guitar[k] = v; applyGuitar(); }
+  function loadPreset(i) {
+    const p = PRESETS[i];
+    G.preset = i; G.amp = p.amp; G.fx = new Set(p.fx);
+    knobVals.guitar = p.k.slice();
+    applyGuitar();
+    if (tab === "guitar") lcd("lcdPad", "GUITARE", p.name + " · " + p.sub);
+    store.set("gpreset", i);
+  }
+
+  function curve(drive, asym) {
+    const n = 2048, c = new Float32Array(n), k = drive, b = asym;
+    const norm = Math.tanh(k * (1 + b)) - Math.tanh(k * b);
+    for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; c[i] = (Math.tanh(k * (x + b)) - Math.tanh(k * b)) / norm; }
+    return c;
+  }
+  function fuzzCurve() {
+    const n = 2048, c = new Float32Array(n);
+    for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; const y = x > 0 ? 1 - Math.exp(-x * 9) : -(1 - Math.exp(x * 5)) * 0.85; c[i] = y; }
+    return c;
+  }
+  function impulse(sec, decay, damp) {
+    const n = Math.floor(sec * sr), b = ctx.createBuffer(2, n, sr);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = b.getChannelData(ch); let lpv = 0;
+      for (let i = 0; i < n; i++) { const w = (Math.random() * 2 - 1) * Math.pow(1 - i / n, decay); lpv += damp * (w - lpv); d[i] = lpv; }
+    }
+    return b;
+  }
+  const bq = (type, f, q, g) => { const n = ctx.createBiquadFilter(); n.type = type; n.frequency.value = f; if (q !== undefined) n.Q.value = q; if (g !== undefined) n.gain.value = g; return n; };
+  const gain = v => { const g = ctx.createGain(); g.gain.value = v; return g; };
+  // Insert commutable : entrée -> (sec | effet) -> sortie
+  function insert(build) {
+    const inp = gain(1), out = gain(1), dry = gain(1), wet = gain(0);
+    const fx = build(inp);
+    inp.connect(dry); dry.connect(out); fx.connect(wet); wet.connect(out);
+    return { inp, out, set(on) { const t = ctx.currentTime; dry.gain.setTargetAtTime(on ? 0 : 1, t, 0.01); wet.gain.setTargetAtTime(on ? 1 : 0, t, 0.01); } };
+  }
+  function buildGuitar() {
+    gn = {};
+    gn.input = gain(1);
+    gn.analyser = ctx.createAnalyser(); gn.analyser.fftSize = 512;
+    gn.input.connect(gn.analyser);
+    let head = gn.input;
+    if (hasWorklet) {
+      gn.gate = new AudioWorkletNode(ctx, "nomad-gate", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+      gn.input.connect(gn.gate); head = gn.gate;
+    }
+    const hpIn = bq("highpass", 70, 0.7); head.connect(hpIn);
+    // Pédales
+    gn.comp = insert(i => { const c = ctx.createDynamicsCompressor(); c.threshold.value = -32; c.ratio.value = 5; c.attack.value = 0.008; c.release.value = 0.15; const mk = gain(2.2); i.connect(c); c.connect(mk); return mk; });
+    gn.drive = insert(i => { const h = bq("highpass", 720, 0.5), s = ctx.createWaveShaper(); s.curve = curve(6, 0.05); s.oversample = "4x"; const pre = gain(3), l = bq("lowpass", 4200, 0.6), dryMix = gain(0.35), o = gain(0.9); i.connect(h); h.connect(pre); pre.connect(s); s.connect(l); l.connect(o); i.connect(dryMix); dryMix.connect(o); return o; });
+    gn.fuzz = insert(i => { const pre = gain(14), s = ctx.createWaveShaper(); s.curve = fuzzCurve(); s.oversample = "4x"; const l = bq("lowpass", 3200, 0.6), o = gain(0.45); i.connect(pre); pre.connect(s); s.connect(l); l.connect(o); return o; });
+    gn.vibe = insert(i => {
+      const o = gain(0.7), lfo = ctx.createOscillator(); lfo.frequency.value = 5.2; lfo.start();
+      let prev = i; [260, 560, 1150, 2400].forEach(f => { const a = bq("allpass", f, 0.6); const dep = gain(f * 0.55); lfo.connect(dep); dep.connect(a.frequency); prev.connect(a); prev = a; });
+      prev.connect(o); i.connect(o); return o;
+    });
+    // Ampli
+    gn.pre = gain(1);
+    gn.bass = bq("lowshelf", 120, undefined, 0); gn.mid = bq("peaking", 800, 0.8, 0); gn.treble = bq("highshelf", 2800, undefined, 0);
+    gn.shaper = ctx.createWaveShaper(); gn.shaper.oversample = "4x";
+    gn.post = gain(1);
+    gn.presence = bq("highshelf", 4500, undefined, 0);
+    gn.cab1 = bq("highpass", 80, 0.7); gn.cab2 = bq("peaking", 120, 1.0, 3); gn.cab3 = bq("peaking", 2600, 1.0, -4); gn.cab4 = bq("lowpass", 5200, 0.7); gn.cab5 = bq("lowpass", 5200, 0.7);
+    gn.ampIn = gain(1); gn.ampOut = gain(1);
+    gn.ampIn.connect(gn.pre); gn.pre.connect(gn.bass); gn.bass.connect(gn.mid); gn.mid.connect(gn.treble); gn.treble.connect(gn.shaper); gn.shaper.connect(gn.post);
+    gn.post.connect(gn.presence); gn.presence.connect(gn.cab1); gn.cab1.connect(gn.cab2); gn.cab2.connect(gn.cab3); gn.cab3.connect(gn.cab4); gn.cab4.connect(gn.cab5); gn.cab5.connect(gn.ampOut);
+    // Voie acoustique
+    gn.acIn = gain(0); gn.acOut = gain(1);
+    const a1 = bq("highpass", 80, 0.7), a2 = bq("peaking", 200, 1.2, 0), a3 = bq("peaking", 2500, 1.0, -2), a4 = bq("highshelf", 6000, undefined, 0);
+    gn.acBass = a2; gn.acMid = a3; gn.acTreb = a4;
+    gn.acIn.connect(a1); a1.connect(a2); a2.connect(a3); a3.connect(a4); a4.connect(gn.acOut);
+    gn.ampSel = gain(1);
+    // Chaîne : entrée -> comp -> drive -> fuzz -> vibe -> (ampli | acoustique) -> chorus -> écho -> réverbe -> master
+    hpIn.connect(gn.comp.inp); gn.comp.out.connect(gn.drive.inp); gn.drive.out.connect(gn.fuzz.inp); gn.fuzz.out.connect(gn.vibe.inp);
+    gn.vibe.out.connect(gn.ampSel); gn.ampSel.connect(gn.ampIn); gn.vibe.out.connect(gn.acIn);
+    gn.sum = gain(1); gn.ampOut.connect(gn.sum); gn.acOut.connect(gn.sum);
+    gn.chorus = insert(i => { const d = ctx.createDelay(0.05); d.delayTime.value = 0.014; const lfo = ctx.createOscillator(); lfo.frequency.value = 0.8; const dep = gain(0.0035); lfo.connect(dep); dep.connect(d.delayTime); lfo.start(); const o = gain(1), w = gain(0.55); i.connect(o); i.connect(d); d.connect(w); w.connect(o); return o; });
+    gn.sum.connect(gn.chorus.inp);
+    gn.dly = ctx.createDelay(1.5); gn.dly.delayTime.value = 0.38; gn.dlyFb = gain(0.35); gn.dlyWet = gain(0); const dlyLp = bq("lowpass", 2600, 0.7);
+    gn.chorus.out.connect(gn.dly); gn.dly.connect(dlyLp); dlyLp.connect(gn.dlyFb); gn.dlyFb.connect(gn.dly); dlyLp.connect(gn.dlyWet);
+    gn.rev = ctx.createConvolver(); gn.rev.buffer = impulse(2.2, 3, 0.35); gn.revWet = gain(0);
+    gn.chorus.out.connect(gn.rev); gn.rev.connect(gn.revWet);
+    gn.master = gain(0);
+    gn.chorus.out.connect(gn.master); gn.dlyWet.connect(gn.master); gn.revWet.connect(gn.master);
+    gn.master.connect(liveBus);
+    const saved = store.get("gpreset", 0);
+    loadPreset(saved >= 0 && saved < PRESETS.length ? saved : 0);
+  }
+  function applyGuitar() {
+    drawGuitar();
+    if (!gn) return;
+    const t = ctx.currentTime, k = knobVals.guitar, a = AMPS[G.amp];
+    const acoustic = G.amp === "bois";
+    gn.ampSel.gain.setTargetAtTime(acoustic ? 0 : 1, t, 0.02);
+    gn.acIn.gain.setTargetAtTime(acoustic ? 1 : 0, t, 0.02);
+    gn.comp.set(G.fx.has("comp")); gn.drive.set(G.fx.has("drive")); gn.fuzz.set(G.fx.has("fuzz")); gn.vibe.set(G.fx.has("vibe")); gn.chorus.set(G.fx.has("chorus"));
+    const db = v => (v - 0.5) * 24;
+    if (!acoustic) {
+      const drv = 1 + Math.pow(k[0], 2) * a.maxDrive;
+      gn.pre.gain.setTargetAtTime(drv, t, 0.02);
+      gn.shaper.curve = curve(1.2, a.asym);
+      gn.post.gain.setTargetAtTime(1 / Math.sqrt(drv) * 1.4, t, 0.02);
+      gn.bass.gain.setTargetAtTime(db(k[1]) + a.low, t, 0.02);
+      gn.mid.frequency.value = a.midF; gn.mid.Q.value = a.midQ;
+      gn.mid.gain.setTargetAtTime(db(k[2]) + a.midBase, t, 0.02);
+      gn.treble.gain.setTargetAtTime(db(k[3]), t, 0.02);
+      gn.presence.gain.setTargetAtTime(db(k[4]) * 0.7, t, 0.02);
+      gn.cab4.frequency.value = a.cab; gn.cab5.frequency.value = a.cab;
+    } else {
+      gn.acBass.gain.setTargetAtTime(db(k[1]) * 0.6 + 2, t, 0.02);
+      gn.acMid.gain.setTargetAtTime(db(k[2]) * 0.6 - 2, t, 0.02);
+      gn.acTreb.gain.setTargetAtTime(db(k[3]) * 0.6 + 3, t, 0.02);
+    }
+    gn.revWet.gain.setTargetAtTime(Math.pow(k[5], 1.5) * 0.9, t, 0.02);
+    gn.master.gain.setTargetAtTime(G.on ? Math.pow(k[6], 1.5) * 1.6 : 0, t, 0.02);
+    const dl = G.fx.has("delay") ? Math.max(k[7], 0.25) : k[7];
+    gn.dlyWet.gain.setTargetAtTime(dl * 0.7, t, 0.02);
+    gn.dlyFb.gain.setTargetAtTime(0.2 + dl * 0.35, t, 0.02);
+  }
+  drawGuitar();
+
+  let micStream = null, micSrc = null;
+  async function startInput(deviceId) {
+    if (!ctx) return;
+    try {
+      if (micSrc) { micSrc.disconnect(); micSrc = null; }
+      if (micStream) micStream.getTracks().forEach(tr => tr.stop());
+      try { if (navigator.audioSession) navigator.audioSession.type = "play-and-record"; } catch (e) {}
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: deviceId ? { exact: deviceId } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false, latency: 0 } });
+      micSrc = ctx.createMediaStreamSource(micStream);
+      micSrc.connect(gn.input);
+      G.on = true; applyGuitar();
+      lcd("lcdPad", "GUITARE", "entrée active · " + (micStream.getAudioTracks()[0].label || "micro"));
+      const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "audioinput");
+      if (devs.length > 1) {
+        const sel = $("devSel"); sel.innerHTML = ""; sel.hidden = false;
+        devs.forEach(d => { const o = document.createElement("option"); o.value = d.deviceId; o.textContent = d.label || "Entrée " + (sel.length + 1); if (d.deviceId === micStream.getAudioTracks()[0].getSettings().deviceId) o.selected = true; sel.appendChild(o); });
+      }
+    } catch (e) {
+      G.on = false; applyGuitar();
+      lcd("lcdPad", "GUITARE", "entrée refusée ou absente (" + e.name + ")");
+    }
+  }
+  function stopInput() {
+    if (micSrc) { micSrc.disconnect(); micSrc = null; }
+    if (micStream) { micStream.getTracks().forEach(tr => tr.stop()); micStream = null; }
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
+    G.on = false; applyGuitar();
+  }
+  $("inBtn").addEventListener("click", () => { if (G.on) stopInput(); else startInput(); });
+  $("devSel").addEventListener("change", e => startInput(e.target.value));
+  const meterBuf = new Float32Array(512);
+  function drawMeter() {
+    if (!gn || !G.on) { $("meter").style.width = "0"; return; }
+    gn.analyser.getFloatTimeDomainData(meterBuf);
+    let pk = 0; for (let i = 0; i < meterBuf.length; i++) pk = Math.max(pk, Math.abs(meterBuf[i]));
+    const db = 20 * Math.log10(pk + 1e-6);
+    $("meter").style.width = Math.max(0, Math.min(100, (db + 60) / 60 * 100)) + "%";
+  }
+
   // ---------- MIDI ----------
-  const learned = (() => { try { return JSON.parse(localStorage.getItem("nomad16.cc") || "[]"); } catch (e) { return []; } })();
+  const learned = store.get("cc", []);
   function knobIndex(cc) {
-    if (cc >= 70 && cc <= 77) return cc - 70; // preset 3 de l'Akai
+    if (cc >= 70 && cc <= 77) return cc - 70;
+    if (cc >= 20 && cc <= 35) return -1;
     let k = learned.indexOf(cc);
-    if (k < 0 && learned.length < 8) { learned.push(cc); k = learned.length - 1; try { localStorage.setItem("nomad16.cc", JSON.stringify(learned)); } catch (e) {} }
+    if (k < 0 && learned.length < 8) { learned.push(cc); k = learned.length - 1; store.set("cc", learned); }
     return k;
   }
   let sustainDown = false, undoArmed = true;
+  // Pads en mode CC (preset 3) : commandes. Bank 1 = looper, Bank 2 = navigation.
+  function padCommand(n) {
+    const map = {
+      20: togglePlay, 21: undo, 22: () => toggleMute(0), 23: () => toggleMute(1), 24: () => toggleMute(2), 25: () => toggleMute(3), 26: () => toggleMute(4), 27: () => toggleMute(5),
+      28: () => stepKit(-1), 29: () => stepKit(1), 30: () => loadPreset((Math.max(0, G.preset) + PRESETS.length - 1) % PRESETS.length), 31: () => loadPreset((G.preset + 1) % PRESETS.length),
+      32: () => setTab("play"), 33: () => setTab("loops"), 34: () => setTab("guitar"), 35: () => { if (G.on) stopInput(); else startInput(); }
+    };
+    if (map[n]) map[n]();
+  }
   function onCC(cc, v) {
-    if (cc === 64) {
-      const down = v >= 64;
-      if (down && !sustainDown) recPress();
-      sustainDown = down;
-      return;
-    }
+    if (cc === 64) { const down = v >= 64; if (down && !sustainDown) recPress(); sustainDown = down; return; }
+    if (cc >= 20 && cc <= 35) { if (v > 0) padCommand(cc); return; }
     const k = knobIndex(cc);
     if (k < 0) return;
     const val = v / 127;
+    if (tab === "guitar") {
+      if (k < 7) setGuitarKnob(k, val); else { knobVals.guitar[7] = val; applyGuitar(); }
+      return;
+    }
     knobVals[tab][k] = val;
     if (tab === "play") applyPlayKnob(k);
     else if (ctx) {
@@ -671,6 +1121,9 @@ registerProcessor('nomad-cap',Cap);`;
     } else if (type === 0xb0) {
       lcd("lcdLast", "DERNIER", `CC ${d1}=${d2} CH${ch}`);
       onCC(d1, d2);
+    } else if (type === 0xc0) {
+      lcd("lcdLast", "DERNIER", `PROG ${d1 + 1} CH${ch}`);
+      if (d1 < kitIndex.length) loadKit(kitIndex[d1].id);
     }
   }
   async function initMidi() {
@@ -687,14 +1140,12 @@ registerProcessor('nomad-cap',Cap);`;
     } catch (err) { lcd("lcdDev", "MIDI", "refusé (" + err.name + ")"); }
   }
   initMidi();
-  // Pour les tests sans Akai : simule des messages MIDI.
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
-  window.nomadState = () => ({ t0F: LP.t0F, Lf: LP.Lf, sec: LP.Lf / sr, beats: LP.beats, layers: LP.layers.map(l => ({ k: l.k, m: l.m, len: l.buf.length, peak: Math.max(...l.buf.getChannelData(0).filter((_, i) => i % 64 === 0).map(Math.abs)) })), pending: LP.pending && { ...LP.pending }, playing: LP.playing, cap: capLatest, now: ctx && ctx.currentTime });
+  window.nomadState = () => ({ kit: kitCur, kits: kitIndex.length, bufs: buffers.filter(Boolean).length, names: names.slice(0, 4), t0F: LP.t0F, Lf: LP.Lf, layers: LP.layers.map(l => ({ k: l.k, m: l.m })), pending: LP.pending && { ...LP.pending }, latMs, guitar: { amp: G.amp, preset: G.preset, fx: [...G.fx], on: G.on }, cap: capLatest, now: ctx && ctx.currentTime });
 
-  // Clavier d'ordinateur : pads sur Z X C V / A S D F / Q W E R / 1 2 3 4, espace = REC, retour arrière = UNDO.
   const KEYS = ["z","x","c","v","a","s","d","f","q","w","e","r","1","2","3","4"];
   window.addEventListener("keydown", e => {
-    if (e.repeat) return;
+    if (e.repeat || e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
     if (e.key === " ") { e.preventDefault(); recPress(); return; }
     if (e.key === "Backspace") { e.preventDefault(); undo(); return; }
     const i = KEYS.indexOf(e.key.toLowerCase());

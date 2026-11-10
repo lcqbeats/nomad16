@@ -1,0 +1,88 @@
+{
+ "id": "acoustic",
+ "name": "ACOUSTIQUE",
+ "style": "Acoustique",
+ "desc": "Batterie jazz naturelle, micros d'ensemble et de pièce",
+ "pads": [
+  {
+   "name": "Kick",
+   "file": "01.wav",
+   "gain": 1.0
+  },
+  {
+   "name": "Snare",
+   "file": "02.wav",
+   "gain": 0.9
+  },
+  {
+   "name": "Hat",
+   "file": "03.wav",
+   "gain": 0.55
+  },
+  {
+   "name": "Open hat",
+   "file": "04.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Rim",
+   "file": "05.wav",
+   "gain": 0.75
+  },
+  {
+   "name": "Rimshot",
+   "file": "06.wav",
+   "gain": 0.85
+  },
+  {
+   "name": "Pédale HH",
+   "file": "07.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Kick 2",
+   "file": "08.wav",
+   "gain": 1.0
+  },
+  {
+   "name": "Tom bas",
+   "file": "09.wav",
+   "gain": 0.8
+  },
+  {
+   "name": "Tom haut",
+   "file": "10.wav",
+   "gain": 0.8
+  },
+  {
+   "name": "Ride",
+   "file": "11.wav",
+   "gain": 0.45
+  },
+  {
+   "name": "Cloche ride",
+   "file": "12.wav",
+   "gain": 0.45
+  },
+  {
+   "name": "Crash",
+   "file": "13.wav",
+   "gain": 0.45
+  },
+  {
+   "name": "Tamb",
+   "file": "14.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Shaker",
+   "file": "15.wav",
+   "gain": 0.45
+  },
+  {
+   "name": "Roulement",
+   "file": "16.wav",
+   "gain": 0.75
+  }
+ ]
+}

@@ -1,0 +1,46 @@
+{
+ "kits": [
+  {
+   "id": "boombap",
+   "name": "BOOM BAP 93",
+   "style": "Boom bap",
+   "desc": "Batterie acoustique passée au 12 bits, façon sampler années 90"
+  },
+  {
+   "id": "lofi",
+   "name": "LO-FI CASSETTE",
+   "style": "Lo-fi",
+   "desc": "Prise lo-fi, cassette, poussière de vinyle"
+  },
+  {
+   "id": "electro",
+   "name": "ÉLECTRO 808",
+   "style": "Hip-hop électro",
+   "desc": "Boîte à rythmes analogique synthétisée"
+  },
+  {
+   "id": "dub",
+   "name": "DUB STATION",
+   "style": "Reggae dub",
+   "desc": "Rimshots secs, réverbe à ressort, écho, sirène"
+  },
+  {
+   "id": "acoustic",
+   "name": "ACOUSTIQUE",
+   "style": "Acoustique",
+   "desc": "Batterie jazz naturelle, micros d'ensemble et de pièce"
+  },
+  {
+   "id": "neosoul",
+   "name": "NÉO SOUL",
+   "style": "Néo soul",
+   "desc": "Kit serré et chaud, claquements de doigts, percussions"
+  },
+  {
+   "id": "percus",
+   "name": "PERCUS",
+   "style": "Percussions",
+   "desc": "Congas, bongos, cloches, shakers"
+  }
+ ]
+}
