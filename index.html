@@ -56,6 +56,15 @@ button { font-family: var(--font-body); }
   display: grid; grid-template-columns: 1fr auto; gap: 2px 10px;
 }
 .lcd .k { opacity: .6; }
+.lcdtr { display: flex; gap: 6px; padding: 2px 0 3px; }
+.lcdtr button { font-family: var(--font-lcd); font-size: 18px; line-height: 1; color: var(--lcd-ink); background: rgba(125,255,166,.08); border: 1px solid rgba(125,255,166,.3); border-radius: 4px; padding: 3px 6px 2px; cursor: pointer; text-shadow: inherit; touch-action: manipulation; white-space: nowrap; flex: 1 1 auto; min-width: 0; }
+.lcdtr button:active { background: rgba(125,255,166,.3); }
+.lcdtr button.on { background: var(--lcd-ink); color: var(--lcd-bg); text-shadow: none; }
+.lcdtr .trrec.armed { color: #ff6b61; border-color: #ff6b61; animation: blink .8s steps(2) infinite; }
+.lcdtr .trrec.rec { background: #ff6b61; color: #1a0606; border-color: #ff6b61; text-shadow: none; }
+.lcdtr .trmidi { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; padding: 3px 7px; }
+.lcdtr .trmidi i { width: 8px; height: 8px; border-radius: 50%; background: #ff6b61; }
+.lcdtr .trmidi.ok i { background: var(--lcd-ink); box-shadow: 0 0 6px currentColor; }
 .lcd .wide { grid-column: 1 / -1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lcdstrip { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-top: 3px; }
 #lcdScope { width: 100%; height: 34px; display: block; }
@@ -365,9 +374,13 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       <button type="button" id="kitName" class="kname">NOMAD SYNTH</button>
       <button type="button" id="kitNext" aria-label="Kit suivant">▶</button>
     </div>
-    <div class="wide" id="lcdDev"><span class="k">MIDI&nbsp;</span>en attente…</div>
-    <div id="lcdLast"><span class="k">DERNIER&nbsp;</span>—</div>
-    <div id="lcdVel"><span class="k">VEL&nbsp;</span>—</div>
+    <div class="wide lcdtr" id="lcdTrans">
+      <button type="button" id="trRec" class="trrec">● REC</button>
+      <button type="button" id="trPlay">▶ PLAY</button>
+      <button type="button" id="trUndo">UNDO</button>
+      <button type="button" id="trMetro">MÉTRO</button>
+      <button type="button" id="trMidi" class="trmidi" aria-label="État MIDI"><i></i></button>
+    </div>
     <div class="wide" id="lcdPad"><span class="k">PAD&nbsp;</span>—</div>
     <div class="wide" id="lcdLoop"><span class="k">BOUCLE&nbsp;</span>vide · Sustain pour armer</div>
     <div class="lcdstrip"><canvas id="lcdScope" aria-hidden="true"></canvas><div class="trow"><i class="beatled" id="beatLed"></i><span id="lcdTr">■ 1.1.1</span></div></div>
@@ -626,7 +639,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     set(k, v) { try { localStorage.setItem("nomad16." + k, JSON.stringify(v)); } catch (e) {} }
   };
   const $ = id => document.getElementById(id);
-  function lcd(id, label, value, cls) { $(id).innerHTML = `<span class="k">${label}&nbsp;</span><span class="${cls || ""}">${value}</span>`; }
+  function lcd(id, label, value, cls) { if (!$(id)) return; $(id).innerHTML = `<span class="k">${label}&nbsp;</span><span class="${cls || ""}">${value}</span>`; }
 
   // ---------- Stockage dans l'appareil (IndexedDB) ----------
   const DB = {
@@ -1212,7 +1225,7 @@ registerProcessor('nomad-fx',Fx);`;
       b.classList.toggle("on", i === SQ.cur); b.classList.toggle("has", SQ.list[i].length > 0);
       b.classList.toggle("next", i === SQ.next || (SQ.sw && SQ.sw.i === i));
     }
-    $("metroBtn").classList.toggle("on", SQ.metro);
+    $("metroBtn").classList.toggle("on", SQ.metro); $("trMetro").classList.toggle("on", SQ.metro);
   }
   function copySeq(a, b) {
     if (a === b || !SQ.list[a].length) return;
@@ -1489,6 +1502,9 @@ registerProcessor('nomad-fx',Fx);`;
     if (key !== lastLcd) { lastLcd = key; lcd("lcdLoop", "BOUCLE", s, cls); }
     $("btnRec").classList.toggle("armed", !!(p && ((p.type === "first" && p.phase === "armed") || (p.type === "layer" && ctx.currentTime * sr - (p.comp || 0) < p.sF))));
     $("btnPlay").textContent = LP.playing ? "STOP" : "PLAY";
+    const armed = !!(p && ((p.type === "first" && p.phase === "armed") || (p.type === "layer" && ctx.currentTime * sr - (p.comp || 0) < p.sF)));
+    $("trRec").classList.toggle("armed", armed); $("trRec").classList.toggle("rec", !!p && !armed);
+    const pl = LP.playing && LP.t0F !== null, pt = pl ? "■ STOP" : "▶ PLAY"; if ($("trPlay").textContent !== pt) $("trPlay").textContent = pt;
   }
   let pressT = null, pressCell = -1;
   function cellAt(e) {
@@ -3459,8 +3475,6 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     const [st, d1, d2] = e.data;
     const type = st & 0xf0, ch = (st & 0x0f) + 1;
     if (type === 0x90 && d2 > 0) {
-      lcd("lcdLast", "DERNIER", `NOTE ${d1} CH${ch}`);
-      lcd("lcdVel", "VEL", d2);
       if (ch === 10) padsOnCh10 = true;
       const idx = d1 - BASE_NOTE;
       const isPad = ch === 10 || (!padsOnCh10 && idx >= 0 && idx < 16);
@@ -3475,26 +3489,32 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       const isPadOff = ch === 10 || (!padsOnCh10 && idx >= 0 && idx < 16);
       if (!isPadOff) keyOff(d1); else if (idx >= 0 && idx < 16) { releaseKey("p" + idx); padRelease(idx); padUp(idx); }
     } else if (type === 0xb0) {
-      lcd("lcdLast", "DERNIER", `CC ${d1}=${d2} CH${ch}`);
       onCC(d1, d2);
     } else if (type === 0xc0) {
-      lcd("lcdLast", "DERNIER", `PROG ${d1 + 1} CH${ch}`);
       if (d1 < kitIndex.length) loadKit(kitIndex[d1].id);
     }
   }
   async function initMidi() {
-    if (!navigator.requestMIDIAccess) { lcd("lcdDev", "MIDI", "non disponible ici"); return; }
+    if (!navigator.requestMIDIAccess) { setMidiStatus("non disponible ici", false); return; }
     try {
       const access = await navigator.requestMIDIAccess();
       const refresh = () => {
         const ins = [...access.inputs.values()];
         ins.forEach(inp => inp.onmidimessage = onMidi);
-        lcd("lcdDev", "MIDI", ins.length ? ins.map(i => i.name).join(", ") : "aucun appareil");
+        setMidiStatus(ins.length ? ins.map(i => i.name).join(", ") : "aucun appareil", ins.length > 0);
       };
       access.onstatechange = refresh;
       refresh();
-    } catch (err) { lcd("lcdDev", "MIDI", "refusé (" + err.name + ")"); }
+    } catch (err) { setMidiStatus("refusé (" + err.name + ")", false); }
   }
+  let midiStatus = "en attente…";
+  function setMidiStatus(txt, ok) { midiStatus = txt; $("trMidi").classList.toggle("ok", ok); lcd("lcdPad", "MIDI", txt); }
+  $("trMidi").addEventListener("click", () => lcd("lcdPad", "MIDI", midiStatus));
+  // Commandes du looper dans l'écran, disponibles depuis tous les onglets
+  $("trRec").addEventListener("pointerdown", e => { e.preventDefault(); recPress(); });
+  $("trPlay").addEventListener("click", () => { if (SONG.playing) { songStop(); stopAll(); } else togglePlay(); });
+  $("trUndo").addEventListener("click", undo);
+  $("trMetro").addEventListener("click", () => { SQ.metro = !SQ.metro; SQ.metroF = 0; drawSeqSel(); lcd("lcdPad", "MÉTRONOME", SQ.metro ? "activé" : "désactivé"); });
   initMidi();
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
   window.nomadDbg = { stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
