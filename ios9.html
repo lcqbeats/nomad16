@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>NOMAD-16 LITE</title>
-<!-- Version très légère pour vieux iPad (iOS 9) : pads, kits, filtre, écho. JavaScript ES5 écrit à la main, sans bibliothèque.
+<!-- Version très légère pour vieux iPad (iOS 9) : pads, kits, filtre, écho, looper de frappes, séquences A–D, note repeat. JavaScript ES5 écrit à la main, sans bibliothèque.
      Mise à jour uniquement à la demande (elle ne suit pas index.html). -->
 <style>
 html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #ece3d3; font-family: Menlo, Courier, monospace; overflow: hidden; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: rgba(0,0,0,0); }
@@ -15,12 +15,15 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
 #logo b { color: #d92b2f; }
 #lcd { position: absolute; left: 182px; right: 0; top: 0; height: 54px; background: #102018; border: 2px solid #050505; border-radius: 5px; color: #7dffa6; box-sizing: border-box; padding: 4px 8px; font-size: 15px; line-height: 22px; overflow: hidden; white-space: nowrap; }
 #lcd span { opacity: .6; }
-#ctl { position: absolute; left: 10px; right: 10px; top: 72px; height: 146px; }
+#ctl { position: absolute; left: 10px; right: 10px; top: 72px; height: 200px; }
 #prog { position: absolute; left: 182px; right: 0; top: 56px; height: 3px; }
 #prog i { display: block; height: 3px; width: 0; background: #d92b2f; }
 .btn { position: absolute; background: #2b2825; color: #ece3d3; border-radius: 6px; text-align: center; font: bold 13px Helvetica, Arial, sans-serif; letter-spacing: 1px; line-height: 40px; height: 40px; }
 .btn.on { background: #ece3d3; color: #0c0b0a; }
-.sl { position: absolute; height: 44px; top: 100px; }
+.sl { position: absolute; height: 44px; }
+.sl.pad2 .fill { background: #1d9c74; }
+.btn.next { background: #5d574f; color: #fff; }
+.btn.has { color: #7dffa6; }
 .btn.rec { background: #d92b2f; color: #fff; }
 .btn.armed { background: #ff6b61; color: #fff; }
 .btn.hold { background: #5d574f; }
@@ -52,8 +55,15 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
   var $ = function (id) { return document.getElementById(id); };
   var ctx = null, master, filt, echoIn, echoFb, delay;
   var status = "", buffers = [], names = [], gains = [], voices = [], kits = [], kitI = 0, kitTicket = 0, lastPad = 0, full = false, midiName = "en attente…";
-  var knob = { vol: 0.8, filt: 1, echo: 0, tune: 0.5 };
-  var padEls = [], sliders = {};
+  var knob = { vol: 0.8, filt: 1, echo: 0, tune: 0.5, ptune: 0.5, pdecay: 1, plevel: 0.8 };
+  var padEls = [], sliders = {}, btns = {};
+  var PP = {}; // réglages par pad, par kit : { kitId: [ {tune, decay, level} x16 ] }
+  var NR_DIV = [4, 8, 16, 32, 12, 24], NR_NAME = ["1/4", "1/8", "1/16", "1/32", "1/8T", "1/16T"];
+  var NR = { on: false, idx: 2, held: {} }, metro = false, quant = false;
+
+  function store(k, v) { try { localStorage.setItem("nomadlite." + k, JSON.stringify(v)); } catch (e) {} }
+  function load(k, d) { try { var v = localStorage.getItem("nomadlite." + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function pp(i) { var id = kits[kitI] ? kits[kitI].id : "x"; if (!PP[id]) { PP[id] = []; for (var j = 0; j < 16; j++) PP[id][j] = { tune: 0, decay: 1, level: 1 }; } return PP[id][i]; }
 
   function lcd() {
     var k = kits[kitI];
@@ -66,7 +76,6 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) { $("start").querySelector("p").innerHTML = "Web Audio n'est pas disponible ici."; return; }
     ctx = new AC();
-    // déverrouillage iOS : un son muet joué pendant le toucher
     var b = ctx.createBuffer(1, 1, 22050), s = ctx.createBufferSource(); s.buffer = b; s.connect(ctx.destination); s.start(0);
     master = ctx.createGain(); master.gain.value = knob.vol;
     filt = ctx.createBiquadFilter(); filt.type = "lowpass"; filt.frequency.value = 20000; filt.Q.value = 1;
@@ -77,6 +86,8 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
     filt.connect(master); master.connect(ctx.destination);
     filt.connect(echoIn); echoIn.connect(delay); delay.connect(eLp); eLp.connect(echoFb); echoFb.connect(delay); eLp.connect(master);
     $("start").style.display = "none";
+    for (var k in knob) if (k.charAt(0) !== "p") setKnob(k, knob[k]);
+    if (LP.L) delay.delayTime.value = Math.min(1.9, beat() * 0.75);
     loadIndex();
     initMidi();
   }
@@ -92,11 +103,11 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
   function loadIndex() {
     get("kits/index.json?" + Date.now(), "text", function (t) {
       try { kits = JSON.parse(t).kits || []; } catch (e) { kits = []; }
-      var saved = 0; try { saved = +localStorage.getItem("nomadlite.kit") || 0; } catch (e) {}
+      var saved = load("kit", 0);
       loadKit(saved < kits.length ? saved : 0);
     }, function () { midiName = "kits introuvables (réseau ?)"; lcd(); });
   }
-  // Kits : téléchargement en parallèle, décodage un par un, gardés en mémoire ; les autres kits se préchargent ensuite en arrière-plan
+  // Kits : téléchargement en parallèle, décodage un par un, gardés en mémoire ; les autres kits se préchargent ensuite
   var cache = {}, loading = {};
   function fetchKit(k, onDone, onProgress) {
     if (cache[k.id]) { onDone(cache[k.id]); return; }
@@ -105,7 +116,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
     var base = "kits/" + k.id + "/";
     get(base + "kit.json", "text", function (t) {
       var j; try { j = JSON.parse(t); } catch (e) { return; }
-      var pads = j.pads.slice(0, 16), kit = { bufs: [], names: [], gains: [] }, raw = [], got = 0, decoded = 0, decoding = false, next = 0;
+      var pads = j.pads.slice(0, 16), kit = { bufs: [], names: [], gains: [] }, raw = [], decoded = 0, decoding = false, next = 0;
       pads.forEach(function (p, idx) { kit.names[idx] = p.name; kit.gains[idx] = p.gain || 1; });
       function finish() { cache[k.id] = kit; var cbs = loading[k.id]; delete loading[k.id]; cbs.forEach(function (cb) { cb(kit); }); }
       function decodeNext() {
@@ -124,17 +135,17 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
         get(base + pads[idx].file, "arraybuffer", function (ab) { raw[idx] = ab; fetchNext(); decodeNext(); }, function () { raw[idx] = "x"; fetchNext(); decodeNext(); });
       }
       for (var c = 0; c < 6; c++) fetchNext();
-    }, function () { var cbs = loading[k.id]; delete loading[k.id]; });
+    }, function () { delete loading[k.id]; });
   }
   function loadKit(i) {
     if (!kits.length) return;
     kitI = (i + kits.length) % kits.length;
-    try { localStorage.setItem("nomadlite.kit", kitI); } catch (e) {}
+    store("kit", kitI);
     var k = kits[kitI], ticket = ++kitTicket;
     status = cache[k.id] ? "" : "chargement…"; lcd();
     fetchKit(k, function (kit) {
       if (ticket !== kitTicket) return;
-      buffers = kit.bufs; names = kit.names; gains = kit.gains; status = ""; drawPads(); lcd();
+      buffers = kit.bufs; names = kit.names; gains = kit.gains; status = ""; drawPads(); syncPadSliders(); lcd();
       preloadSoon();
     }, function (n, tot) { if (ticket === kitTicket) { status = "chargement " + n + "/" + tot; lcd(); } });
   }
@@ -153,159 +164,246 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
   function play(i, vel, semis, when) {
     var now = ctx ? ctx.currentTime : 0, t = when && when > now ? when : now;
     if (when) setTimeout(function () { flash(i); }, Math.max(0, (t - now) * 1000));
-    else { lastPad = i; flash(i); }
+    else { if (lastPad !== i) { lastPad = i; syncPadSliders(); } flash(i); }
     if (!ctx || !buffers[i]) { if (!when) lcd(); return; }
+    var p = pp(i);
     stopVoice(i, t);
-    if (i === 2) stopVoice(3, t); // le hat ferme l'open hat
-    var s = ctx.createBufferSource(), g = ctx.createGain();
+    if (i === 2) stopVoice(3, t);
+    var s = ctx.createBufferSource(), g = ctx.createGain(), lvl = (full ? 1 : 0.2 + 0.8 * vel) * (gains[i] || 1) * p.level;
     s.buffer = buffers[i];
-    s.playbackRate.value = Math.pow(2, ((semis || 0) + (knob.tune - 0.5) * 24) / 12);
-    g.gain.value = (full ? 1 : 0.2 + 0.8 * vel) * (gains[i] || 1);
+    var rate = Math.pow(2, ((semis || 0) + p.tune + (knob.tune - 0.5) * 24) / 12);
+    s.playbackRate.value = rate;
+    g.gain.setValueAtTime(lvl, t);
+    if (p.decay < 0.99) { var end = 0.03 + p.decay * p.decay * buffers[i].duration / rate; g.gain.setValueAtTime(lvl, t + end * 0.6); g.gain.linearRampToValueAtTime(0, t + end); }
     s.connect(g); g.connect(filt);
     s.start(t);
     voices[i] = { s: s, g: g };
     s.onended = function () { if (voices[i] && voices[i].s === s) voices[i] = null; };
     if (!when) { lcd(); recHit(i, vel, semis || 0, t); }
   }
+  function click(t, accent) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = accent ? 1600 : 1050;
+    g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.05);
+  }
   function setKnob(k, v) {
     knob[k] = v;
     if (sliders[k]) sliders[k].style.width = Math.round(v * 100) + "%";
+    if (k === "ptune" || k === "pdecay" || k === "plevel") {
+      var p = pp(lastPad);
+      if (k === "ptune") p.tune = Math.round(v * 48 - 24);
+      if (k === "pdecay") p.decay = v;
+      if (k === "plevel") p.level = v * 1.25;
+      saveSoon();
+      return;
+    }
     if (!ctx) return;
     var t = ctx.currentTime;
     if (k === "vol") master.gain.setTargetAtTime(v, t, 0.02);
     if (k === "filt") filt.frequency.setTargetAtTime(60 * Math.pow(20000 / 60, v), t, 0.02);
     if (k === "echo") echoIn.gain.setTargetAtTime(v * 0.8, t, 0.02);
   }
+  function syncPadSliders() {
+    var p = pp(lastPad);
+    knob.ptune = (p.tune + 24) / 48; knob.pdecay = p.decay; knob.plevel = p.level / 1.25;
+    ["ptune", "pdecay", "plevel"].forEach(function (k) { if (sliders[k]) sliders[k].style.width = Math.round(knob[k] * 100) + "%"; });
+    if ($("padlab")) $("padlab").innerHTML = "PAD " + (lastPad + 1) + " · " + (names[lastPad] || "");
+  }
 
   // ---------- Looper (enregistre les frappes, pas l'audio : très léger) ----------
-  // REC : armé, la 1re frappe lance l'enregistrement ; REC à nouveau ferme la boucle (calée sur une frappe proche).
-  // Ensuite REC = ajouter une couche (jusqu'au prochain REC). Les couches rejouent le kit en cours.
-  var LP = { state: "empty", t0: 0, L: 0, layers: [], cur: null, playing: false, sched: 0, beats: 4, pendFirst: null, muted: [] };
+  // 4 séquences A–D au même tempo. REC : armé, la 1re frappe lance ; REC à nouveau ferme la boucle.
+  // Ensuite REC = ajouter une couche à la séquence en cours. Les couches rejouent le kit en cours.
+  var LP = { state: "empty", t0: 0, L: 0, beats: 4, seqs: [], cur: 0, next: -1, rec: null, playing: false, sched: 0, lastHits: [] };
+  for (var q = 0; q < 4; q++) LP.seqs.push({ layers: [], muted: [] });
+  var SEQ = function () { return LP.seqs[LP.cur]; };
+  var SN = "ABCD";
+  function beat() { return LP.L ? LP.L / LP.beats : 60 / 90; }
   function loopText() {
     if (LP.state === "empty") return "<span>BOUCLE</span> vide · REC pour armer <span>· MIDI</span> " + midiName;
     if (LP.state === "armed") return "<span>BOUCLE</span> ARMÉE · jouez pour lancer";
     if (LP.state === "first") return "<span>BOUCLE</span> REC · REC pour fermer";
-    var bpm = (60 * LP.beats / LP.L).toFixed(1);
-    return "<span>BOUCLE</span> " + bpm + " BPM · " + LP.layers.length + " couche(s)" + (LP.cur ? " · DUB" : "") + (LP.playing ? "" : " · STOP");
+    var bpm = (60 / beat()).toFixed(1);
+    return "<span>SÉQ</span> " + SN[LP.cur] + (LP.next >= 0 ? "→" + SN[LP.next] : "") + " · " + bpm + " BPM · " + SEQ().layers.length + " couche(s)" + (LP.rec ? " · DUB" : "") + (LP.playing ? "" : " · STOP");
   }
+  function grid() { return beat() / 4; }
   function recHit(i, vel, semis, t) {
-    if (LP.state === "armed") { LP.state = "first"; LP.t0 = t; LP.cur = []; LP.lastHits = []; drawLoopBtns(); lcd(); }
-    if (LP.state === "first") { LP.cur.push({ t: t - LP.t0, p: i, v: vel, s: semis }); LP.lastHits.push(t); return; }
-    if (LP.state === "loop" && LP.cur && LP.playing) {
-      var pos = ((t - LP.t0) % LP.L + LP.L) % LP.L;
-      LP.cur.push({ t: pos, p: i, v: vel, s: semis });
+    if (LP.state === "armed") { LP.state = "first"; LP.t0 = t; LP.rec = []; LP.lastHits = []; drawBtns(); lcd(); }
+    if (LP.state === "first") { LP.rec.push({ t: t - LP.t0, p: i, v: vel, s: semis }); LP.lastHits.push(t); return; }
+    if (LP.state === "loop" && LP.rec && LP.playing) {
+      var rel = t - LP.t0, cyc = Math.floor(rel / LP.L), pos = rel - cyc * LP.L, e = { t: pos, p: i, v: vel, s: semis, skip: -1 };
+      if (quant) { var g = grid(), qp = Math.round(pos / g) * g; if (qp >= LP.L - 1e-4) { qp = 0; } else if (qp > pos) e.skip = cyc; e.t = qp; if (qp === 0 && pos > LP.L / 2) e.skip = cyc + 1; }
+      LP.rec.push(e);
     }
   }
+  function commitRec() { if (LP.rec && LP.rec.length) { SEQ().layers.push(LP.rec); SEQ().muted.push(false); saveSoon(); } LP.rec = null; }
   function recPress() {
     if (!ctx) return;
     var now = ctx.currentTime;
-    if (LP.state === "empty") { LP.state = "armed"; }
-    else if (LP.state === "armed") { LP.state = "empty"; }
+    if (LP.state === "empty") LP.state = "armed";
+    else if (LP.state === "armed") LP.state = "empty";
     else if (LP.state === "first") {
       var end = now, best = 0.09;
       LP.lastHits.forEach(function (h) { var d = Math.abs(h - now); if (h > LP.t0 + 0.3 && d < best) { best = d; end = h; } });
       if (end - LP.t0 < 0.3) return;
       LP.L = end - LP.t0;
       LP.beats = 1; while (60 * LP.beats / LP.L < 70) LP.beats *= 2;
-      LP.layers = [LP.cur.filter(function (e) { return e.t < LP.L - 0.005; })]; LP.muted = [false]; LP.cur = null;
-      LP.state = "loop"; LP.playing = true; LP.sched = end - 0.001;
+      var evs = LP.rec.filter(function (e) { return e.t < LP.L - 0.005; });
+      if (quant) evs.forEach(function (e) { e.t = Math.round(e.t / grid()) * grid(); if (e.t >= LP.L - 1e-4) e.t = 0; });
+      SEQ().layers = [evs]; SEQ().muted = [false]; LP.rec = null;
+      LP.state = "loop"; LP.playing = true; LP.t0 = end; LP.sched = end + 0.002;
+      delay.delayTime.setValueAtTime(Math.min(1.9, beat() * 0.75), ctx.currentTime);
+      saveSoon();
     } else if (LP.state === "loop") {
-      if (!LP.playing) { playLoop(); }
-      if (LP.cur) { if (LP.cur.length) { LP.layers.push(LP.cur); LP.muted.push(false); } LP.cur = null; }
-      else LP.cur = [];
+      if (!LP.playing) playLoop();
+      if (LP.rec) commitRec(); else LP.rec = [];
     }
-    drawLoopBtns(); lcd();
+    drawBtns(); lcd();
   }
-  function playLoop() { if (LP.state !== "loop" || !ctx) return; LP.t0 = ctx.currentTime + 0.05; LP.sched = LP.t0 - 0.001; LP.playing = true; drawLoopBtns(); lcd(); }
-  function stopLoop() { if (LP.cur && LP.cur.length) { LP.layers.push(LP.cur); LP.muted.push(false); } LP.cur = null; LP.playing = false; for (var i = 0; i < 16; i++) stopVoice(i, ctx.currentTime); drawLoopBtns(); lcd(); }
+  function playLoop() { if (LP.state !== "loop" || !ctx) return; LP.t0 = ctx.currentTime + 0.05; LP.sched = LP.t0; LP.playing = true; drawBtns(); lcd(); }
+  function stopLoop() { commitRec(); LP.playing = false; LP.next = -1; if (ctx) for (var i = 0; i < 16; i++) stopVoice(i, ctx.currentTime); drawBtns(); lcd(); }
   function undoLoop() {
-    if (LP.state === "armed" || LP.state === "first") { LP.state = "empty"; LP.cur = null; }
-    else if (LP.cur) LP.cur = null;
-    else if (LP.layers.length > 1) { LP.layers.pop(); LP.muted.pop(); }
-    else clearLoop();
-    drawLoopBtns(); lcd();
+    if (LP.state === "armed" || LP.state === "first") { LP.state = "empty"; LP.rec = null; }
+    else if (LP.rec) LP.rec = null;
+    else if (SEQ().layers.length) { SEQ().layers.pop(); SEQ().muted.pop(); emptyCheck(); saveSoon(); }
+    drawBtns(); lcd();
   }
-  function clearLoop() { LP.state = "empty"; LP.layers = []; LP.muted = []; LP.cur = null; LP.playing = false; drawLoopBtns(); lcd(); }
-  function toggleMute(n) { if (LP.layers[n]) { LP.muted[n] = !LP.muted[n]; lcd(); } }
-  // planificateur : 25 ms, 120 ms d'avance
-  setInterval(function () {
-    if (!ctx || LP.state !== "loop" || !LP.playing) return;
-    var a = LP.sched, b = ctx.currentTime + 0.12;
-    if (b <= a) return;
-    var c0 = Math.floor((a - LP.t0) / LP.L), c1 = Math.floor((b - LP.t0) / LP.L);
+  function clearSeq() { LP.rec = null; SEQ().layers = []; SEQ().muted = []; emptyCheck(); saveSoon(); drawBtns(); lcd(); }
+  function emptyCheck() { if (LP.seqs.every(function (x) { return !x.layers.length; })) { LP.state = "empty"; LP.playing = false; LP.L = 0; LP.next = -1; } }
+  function toggleMute(n) { if (SEQ().layers[n]) { SEQ().muted[n] = !SEQ().muted[n]; lcd(); } }
+  function selectSeq(n) {
+    if (n === LP.cur) { LP.next = -1; drawBtns(); return; }
+    if (LP.state === "loop" && LP.playing) { commitRec(); LP.next = n; }
+    else { commitRec(); LP.cur = n; LP.next = -1; }
+    drawBtns(); lcd();
+  }
+  // planificateur : toutes les 25 ms, 120 ms d'avance ; frappes, note repeat, métronome, changement de séquence en fin de cycle
+  function schedRange(a, b) {
+    var c0 = Math.floor((a - LP.t0) / LP.L), c1 = Math.floor((b - LP.t0) / LP.L), sq = SEQ();
     for (var c = c0; c <= c1; c++) {
       var base = LP.t0 + c * LP.L;
-      LP.layers.forEach(function (ly, n) {
-        if (LP.muted[n]) return;
-        for (var k = 0; k < ly.length; k++) { var e = ly[k], t = base + e.t; if (t > a && t <= b) play(e.p, e.v, e.s, t); }
-      });
+      for (var n = 0; n < sq.layers.length; n++) {
+        if (sq.muted[n]) continue;
+        var ly = sq.layers[n];
+        for (var k = 0; k < ly.length; k++) { var e = ly[k], t = base + e.t; if (t >= a && t < b && e.skip !== c) play(e.p, e.v, e.s, t); }
+      }
     }
-    LP.sched = b;
+    if (metro) { var bt = beat(), j = Math.ceil((a - LP.t0) / bt - 1e-6); for (var tt = LP.t0 + j * bt; tt < b; j++, tt = LP.t0 + j * bt) click(tt, ((j % 4) + 4) % 4 === 0); }
+  }
+  setInterval(function () {
+    if (!ctx) return;
+    var now = ctx.currentTime, b = now + 0.12;
+    if (LP.state === "loop" && LP.playing) {
+      var a = Math.max(LP.sched, now - 0.05);
+      if (b > a) {
+        var bound = LP.t0 + Math.ceil((a - LP.t0) / LP.L - 1e-9) * LP.L;
+        if (LP.next >= 0 && bound < b) {
+          schedRange(a, bound); commitRec(); LP.cur = LP.next; LP.next = -1; LP.t0 = bound;
+          setTimeout(function () { drawBtns(); lcd(); }, Math.max(0, (bound - now) * 1000));
+          schedRange(bound, b);
+        } else schedRange(a, b);
+        LP.sched = b;
+      }
+    }
+    // note repeat sur les pads tenus
+    if (NR.on) {
+      var step = beat() * 4 / NR_DIV[NR.idx];
+      for (var key in NR.held) {
+        var h = NR.held[key], anchor = LP.state === "loop" && LP.playing ? LP.t0 : h.t, nx = anchor + Math.ceil((h.last + step * 0.5 - anchor) / step) * step;
+        while (nx < b) { play(h.p, h.v, h.s, nx); recHit(h.p, h.v, h.s, nx); h.last = nx; nx += step; }
+      }
+    }
   }, 25);
   setInterval(function () {
     var w = 0;
     if (ctx && LP.state === "loop" && LP.playing) w = (((ctx.currentTime - LP.t0) % LP.L + LP.L) % LP.L) / LP.L * 100;
-    else if (LP.state === "first" && ctx) w = 100;
+    else if (LP.state === "first") w = 100;
     $("progBar").style.width = w + "%";
   }, 100);
-  var loopBtns = {};
-  function drawLoopBtns() {
-    if (!loopBtns.rec) return;
-    var st = LP.state;
-    loopBtns.rec.className = "btn " + (st === "armed" ? "armed" : "rec");
-    loopBtns.rec.innerHTML = st === "first" ? "FERMER" : st === "loop" ? (LP.cur ? "FIN DUB" : "REC / DUB") : st === "armed" ? "ARMÉ" : "REC";
-    loopBtns.play.innerHTML = LP.playing ? "STOP" : "PLAY";
-  }
+  function padDown(i, vel, semis) { play(i, vel, semis); if (NR.on && ctx) NR.held[i + ":" + (semis || 0)] = { p: i, v: vel, s: semis || 0, t: ctx.currentTime, last: ctx.currentTime }; }
+  function padUp(i, semis) { delete NR.held[i + ":" + (semis || 0)]; }
+
+  // sauvegarde légère dans l'iPad : boucles (frappes) et réglages des pads
+  var saveT = null;
+  function saveSoon() { clearTimeout(saveT); saveT = setTimeout(function () { store("loop", { L: LP.L, beats: LP.beats, seqs: LP.seqs, cur: LP.cur }); store("pp", PP); }, 600); }
+  (function restore() {
+    PP = load("pp", {}) || {};
+    var l = load("loop", null);
+    if (l && l.L && l.seqs) { LP.L = l.L; LP.beats = l.beats; LP.seqs = l.seqs; LP.cur = l.cur || 0; if (LP.seqs.some(function (x) { return x.layers.length; })) { LP.state = "loop"; LP.playing = false; } }
+  })();
 
   // ---------- Interface ----------
   function flash(i) { var el = padEls[i]; if (!el) return; el.className = el.className.replace(" hit", "") + " hit"; clearTimeout(el._t); el._t = setTimeout(function () { el.className = el.className.replace(" hit", ""); }, 100); }
-  function drawPads() {
-    for (var i = 0; i < 16; i++) if (padEls[i]) padEls[i].innerHTML = "<small>" + (i + 1 < 10 ? "0" : "") + (i + 1) + "</small>" + (names[i] || "");
-  }
-  function button(label, x, w, fn) {
-    var b = document.createElement("div"); b.className = "btn"; b.innerHTML = label; b.style.left = x; b.style.width = w; b.style.top = "0";
+  function drawPads() { for (var i = 0; i < 16; i++) if (padEls[i]) padEls[i].innerHTML = "<small>" + (i + 1 < 10 ? "0" : "") + (i + 1) + "</small>" + (names[i] || ""); }
+  function button(id, label, x, w, top, fn) {
+    var b = document.createElement("div"); b.className = "btn"; b.innerHTML = label; b.style.left = x; b.style.width = w; b.style.top = top + "px";
     b.addEventListener("touchstart", function (e) { e.preventDefault(); fn(b); });
     b.addEventListener("mousedown", function () { fn(b); });
-    $("ctl").appendChild(b); return b;
+    $("ctl").appendChild(b); btns[id] = b; return b;
   }
-  function slider(key, label, x, w) {
-    var d = document.createElement("div"); d.className = "sl"; d.style.left = x; d.style.width = w;
-    d.innerHTML = '<div class="lab">' + label + '</div><div class="bar"><div class="fill"></div></div>';
+  function slider(key, label, x, w, top, cls) {
+    var d = document.createElement("div"); d.className = "sl" + (cls ? " " + cls : ""); d.style.left = x; d.style.width = w; d.style.top = top + "px";
+    d.innerHTML = '<div class="lab"' + (key === "ptune" ? ' id="padlab0"' : "") + ">" + label + '</div><div class="bar"><div class="fill"></div></div>';
     $("ctl").appendChild(d);
     var bar = d.querySelector(".bar"); sliders[key] = d.querySelector(".fill");
     function at(e) { var r = bar.getBoundingClientRect(), tt = e.touches ? e.touches[0] : e; setKnob(key, Math.max(0, Math.min(1, (tt.clientX - r.left) / r.width))); }
     d.addEventListener("touchstart", function (e) { e.preventDefault(); at(e); });
     d.addEventListener("touchmove", function (e) { e.preventDefault(); at(e); });
     d.addEventListener("mousedown", at);
-    setKnob(key, knob[key]);
+    sliders[key].style.width = Math.round(knob[key] * 100) + "%";
+  }
+  function drawBtns() {
+    if (!btns.rec) return;
+    var st = LP.state;
+    btns.rec.className = "btn " + (st === "armed" ? "armed" : "rec");
+    btns.rec.innerHTML = st === "first" ? "FERMER" : st === "loop" ? (LP.rec ? "FIN DUB" : "REC / DUB") : st === "armed" ? "ARMÉ" : "REC";
+    btns.play.innerHTML = LP.playing ? "STOP" : "PLAY";
+    btns.full.className = full ? "btn on" : "btn";
+    btns.nr.className = NR.on ? "btn on" : "btn"; btns.rate.innerHTML = NR_NAME[NR.idx];
+    btns.metro.className = metro ? "btn on" : "btn"; btns.quant.innerHTML = quant ? "QUANT 1/16" : "QUANT OFF"; btns.quant.className = quant ? "btn on" : "btn";
+    for (var n = 0; n < 4; n++) btns["s" + n].className = "btn" + (n === LP.cur ? " on" : n === LP.next ? " next" : LP.seqs[n].layers.length ? " has" : "");
   }
   function build() {
-    button("◀ KIT", "0", "15%", function () { loadKit(kitI - 1); });
-    button("KIT ▶", "16%", "15%", function () { loadKit(kitI + 1); });
-    var fb = button("FULL LEVEL", "32%", "20%", function (b) { full = !full; b.className = full ? "btn on" : "btn"; });
-    loopBtns.rec = button("REC", "0", "30%", recPress); loopBtns.rec.style.top = "50px";
-    loopBtns.play = button("PLAY", "31.5%", "22%", function () { if (LP.playing) stopLoop(); else playLoop(); }); loopBtns.play.style.top = "50px";
-    var ub = button("UNDO", "55%", "21%", undoLoop); ub.style.top = "50px";
-    var cb = button("EFFACER", "77.5%", "22.5%", function (b) { b.className = "btn hold"; clearTimeout(b._t); b._t = setTimeout(function () { clearLoop(); b.className = "btn"; }, 700); }); cb.style.top = "50px";
+    // ligne 1 : kits, full level, note repeat, métronome, quantification
+    button("kp", "◀ KIT", "0", "11%", 0, function () { loadKit(kitI - 1); });
+    button("kn", "KIT ▶", "12%", "11%", 0, function () { loadKit(kitI + 1); });
+    button("full", "FULL", "24%", "11%", 0, function () { full = !full; drawBtns(); });
+    button("nr", "REPEAT", "36%", "13%", 0, function () { NR.on = !NR.on; NR.held = {}; drawBtns(); });
+    button("rate", "1/16", "50%", "9%", 0, function () { NR.idx = (NR.idx + 1) % NR_DIV.length; drawBtns(); });
+    button("metro", "MÉTRO", "60%", "12%", 0, function () { metro = !metro; drawBtns(); });
+    button("quant", "QUANT OFF", "73%", "27%", 0, function () { quant = !quant; drawBtns(); });
+    // ligne 2 : looper + séquences
+    button("rec", "REC", "0", "22%", 50, recPress);
+    button("play", "PLAY", "23%", "13%", 50, function () { if (LP.playing) stopLoop(); else playLoop(); });
+    button("undo", "UNDO", "37%", "12%", 50, undoLoop);
+    var cb = button("clr", "EFFACER", "50%", "14%", 50, function (b) { b.className = "btn hold"; clearTimeout(b._t); b._t = setTimeout(function () { clearSeq(); b.className = "btn"; }, 700); });
     cb.addEventListener("touchend", function () { clearTimeout(cb._t); cb.className = "btn"; }); cb.addEventListener("mouseup", function () { clearTimeout(cb._t); cb.className = "btn"; });
-    drawLoopBtns();
-    slider("vol", "VOLUME", "0", "23.5%");
-    slider("filt", "FILTRE", "25.5%", "23.5%");
-    slider("echo", "ÉCHO", "51%", "23.5%");
-    slider("tune", "PITCH", "76.5%", "23.5%");
+    for (var n = 0; n < 4; n++) (function (n) { button("s" + n, SN[n], (65 + n * 8.9) + "%", "8%", 50, function () { selectSeq(n); }); })(n);
+    // lignes 3 et 4 : son global, puis réglages du dernier pad joué
+    slider("vol", "VOLUME", "0", "23.5%", 98);
+    slider("filt", "FILTRE", "25.5%", "23.5%", 98);
+    slider("echo", "ÉCHO", "51%", "23.5%", 98);
+    slider("tune", "PITCH GLOBAL", "76.5%", "23.5%", 98);
+    slider("ptune", "TUNE PAD", "0", "32%", 148, "pad2");
+    slider("pdecay", "DECAY PAD", "34%", "32%", 148, "pad2");
+    slider("plevel", "NIVEAU PAD", "68%", "32%", 148, "pad2");
+    var pl = document.createElement("div"); pl.id = "padlab"; pl.style.cssText = "position:absolute;right:0;top:148px;font-size:10px;letter-spacing:1px;color:#7dffa6"; $("ctl").appendChild(pl);
     for (var i = 0; i < 16; i++) (function (i) {
       var el = document.createElement("div"); el.className = "pad" + (i >= 8 ? " g" : "");
-      el.addEventListener("touchstart", function (e) { e.preventDefault(); play(i, 0.85); });
-      el.addEventListener("mousedown", function () { play(i, 0.85); });
+      el.addEventListener("touchstart", function (e) { e.preventDefault(); padDown(i, 0.85); });
+      el.addEventListener("touchend", function (e) { e.preventDefault(); padUp(i); });
+      el.addEventListener("touchcancel", function () { padUp(i); });
+      el.addEventListener("mousedown", function () { padDown(i, 0.85); });
+      el.addEventListener("mouseup", function () { padUp(i); });
       $("pads").appendChild(el); padEls[i] = el;
     })(i);
-    drawPads(); layout();
+    drawPads(); drawBtns(); syncPadSliders(); layout();
   }
   // pads : grille 4×4 qui remplit l'écran, pad 1 en bas à gauche comme sur l'Akai
   function layout() {
-    var W = window.innerWidth - 20, top = 228, H = window.innerHeight - top - 10, gap = 10;
+    var W = window.innerWidth - 20, top = 278, H = window.innerHeight - top - 10, gap = 10;
     var size = Math.min((W - 3 * gap) / 4, (H - 3 * gap) / 4), w = (W - 3 * gap) / 4;
-    var ph = $("pads").style; ph.top = top + "px";
+    $("pads").style.top = top + "px";
     for (var i = 0; i < 16; i++) {
       var col = i % 4, row = 3 - Math.floor(i / 4), s = padEls[i].style;
       s.left = (col * (w + gap)) + "px"; s.top = (row * (size + gap)) + "px"; s.width = w + "px"; s.height = size + "px";
@@ -316,19 +414,29 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
   document.addEventListener("touchmove", function (e) { e.preventDefault(); });
 
   // ---------- MIDI ----------
-  var learned = [], sustain = false;
+  var sustain = false;
   function onMidi(e) {
     var d = e.data, st = d[0] & 0xf0, ch = (d[0] & 0x0f) + 1, n = d[1], v = d[2];
+    var idx = n - 36, isPad = (ch === 10 || ch !== 1 && idx >= 0 && idx < 16) && idx >= 0 && idx < 16;
     if (st === 0x90 && v > 0) {
-      var idx = n - 36;
-      if ((ch === 10 || idx >= 0 && idx < 16 && ch !== 1) && idx >= 0 && idx < 16) play(idx, v / 127);
-      else play(lastPad, v / 127, n - 60); // clavier : le dernier pad, joué chromatiquement (do central = hauteur d'origine)
+      if (isPad) padDown(idx, v / 127);
+      else padDown(lastPad, v / 127, n - 60); // clavier : le dernier pad, joué chromatiquement (do central = hauteur d'origine)
+    } else if (st === 0x80 || (st === 0x90 && v === 0)) {
+      if (isPad) padUp(idx); else padUp(lastPad, n - 60);
     } else if (st === 0xb0) {
-      var k = n >= 70 && n <= 73 ? n - 70 : -1;
       if (n === 64) { var down = v >= 64; if (down && !sustain) recPress(); sustain = down; return; }
-      if (v > 0) { if (n === 20) { if (LP.playing) stopLoop(); else playLoop(); } if (n === 21) undoLoop(); if (n >= 22 && n <= 27) toggleMute(n - 22); }
-      if (n === 28) loadKit(kitI - 1); else if (n === 29) loadKit(kitI + 1);
-      if (k >= 0) setKnob(["vol", "filt", "echo", "tune"][k], v / 127);
+      if (v > 0) {
+        if (n === 20) { if (LP.playing) stopLoop(); else playLoop(); }
+        if (n === 21) undoLoop();
+        if (n >= 22 && n <= 27) toggleMute(n - 22);
+        if (n === 28) loadKit(kitI - 1); if (n === 29) loadKit(kitI + 1);
+        if (n === 30) { NR.on = !NR.on; NR.held = {}; drawBtns(); }
+        if (n >= 31 && n <= 34) selectSeq(n - 31);
+        if (n === 35) { metro = !metro; drawBtns(); }
+      }
+      var k = n >= 70 && n <= 77 ? n - 70 : -1;
+      if (k >= 0 && k < 7) setKnob(["vol", "filt", "echo", "tune", "ptune", "pdecay", "plevel"][k], v / 127);
+      if (k === 7) { NR.idx = Math.min(5, Math.floor(v / 128 * 6)); drawBtns(); }
     } else if (st === 0xc0) loadKit(n);
   }
   function initMidi() {
@@ -344,7 +452,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
     }, function () { midiName = "refusé"; lcd(); });
   }
   build(); lcd();
-  window.liteDbg = { LP: LP, cache: cache, play: function (i) { play(i, 0.9); }, rec: function () { recPress(); }, kit: function (i) { loadKit(i); } };
+  window.liteDbg = { LP: LP, cache: cache, play: function (i) { padDown(i, 0.9); }, up: function (i) { padUp(i); }, rec: function () { recPress(); }, kit: function (i) { loadKit(i); }, seq: selectSeq, set: function (k, v) { if (k === "quant") quant = v; if (k === "nr") NR.on = v; if (k === "metro") metro = v; drawBtns(); } };
 })();
 </script>
 </body>
