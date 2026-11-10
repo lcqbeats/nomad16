@@ -74,14 +74,18 @@ final class NomadCoordinator: NSObject, WKScriptMessageHandler, WKUIDelegate, WK
             Task { @MainActor [weak self] in self?.deliver(id: id, bytes: bytes) }
         }
         midi.onDevices = { @Sendable json in
-            Task { @MainActor [weak self] in self?.webView?.evaluateJavaScript("window.__nomadMidiDevices && window.__nomadMidiDevices(\(json))") }
+            Task { @MainActor [weak self] in self?.runJS("window.__nomadMidiDevices && window.__nomadMidiDevices(\(json))") }
         }
         midi.start()
     }
 
     private func deliver(id: String, bytes: [UInt8]) {
         let list = bytes.map(String.init).joined(separator: ",")
-        webView?.evaluateJavaScript("window.__nomadMidiIn && window.__nomadMidiIn('\(id)',[\(list)])")
+        runJS("window.__nomadMidiIn && window.__nomadMidiIn('\(id)',[\(list)])")
+    }
+
+    private func runJS(_ js: String) {
+        webView?.evaluateJavaScript(js, completionHandler: nil)
     }
 
     // messages de la page : demande d'accès MIDI, envoi vers l'Akai
