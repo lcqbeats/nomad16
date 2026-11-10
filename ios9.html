@@ -15,10 +15,15 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
 #logo b { color: #d92b2f; }
 #lcd { position: absolute; left: 182px; right: 0; top: 0; height: 54px; background: #102018; border: 2px solid #050505; border-radius: 5px; color: #7dffa6; box-sizing: border-box; padding: 4px 8px; font-size: 15px; line-height: 22px; overflow: hidden; white-space: nowrap; }
 #lcd span { opacity: .6; }
-#ctl { position: absolute; left: 10px; right: 10px; top: 72px; height: 96px; }
+#ctl { position: absolute; left: 10px; right: 10px; top: 72px; height: 146px; }
+#prog { position: absolute; left: 182px; right: 0; top: 56px; height: 3px; }
+#prog i { display: block; height: 3px; width: 0; background: #d92b2f; }
 .btn { position: absolute; background: #2b2825; color: #ece3d3; border-radius: 6px; text-align: center; font: bold 13px Helvetica, Arial, sans-serif; letter-spacing: 1px; line-height: 40px; height: 40px; }
 .btn.on { background: #ece3d3; color: #0c0b0a; }
-.sl { position: absolute; height: 44px; top: 50px; }
+.sl { position: absolute; height: 44px; top: 100px; }
+.btn.rec { background: #d92b2f; color: #fff; }
+.btn.armed { background: #ff6b61; color: #fff; }
+.btn.hold { background: #5d574f; }
 .sl .lab { position: absolute; left: 0; top: 0; font-size: 10px; letter-spacing: 1px; color: #8f877a; }
 .sl .bar { position: absolute; left: 0; right: 0; top: 18px; height: 22px; background: #2b2825; border-radius: 4px; overflow: hidden; }
 .sl .fill { position: absolute; left: 0; top: 0; bottom: 0; background: #d92b2f; }
@@ -36,7 +41,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
 </head>
 <body>
 <div id="app">
-  <div id="top"><div id="logo">NOMAD<b>-16</b> <small style="font-size:11px;color:#8f877a">LITE</small></div><div id="lcd"><span>KIT</span> — <br><span>MIDI</span> en attente…</div></div>
+  <div id="top"><div id="logo">NOMAD<b>-16</b> <small style="font-size:11px;color:#8f877a">LITE</small></div><div id="lcd"><span>KIT</span> — <br><span>MIDI</span> en attente…</div><div id="prog"><i id="progBar"></i></div></div>
   <div id="ctl"></div>
   <div id="pads"></div>
 </div>
@@ -46,13 +51,13 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var ctx = null, master, filt, echoIn, echoFb, delay;
-  var buffers = [], names = [], gains = [], voices = [], kits = [], kitI = 0, kitTicket = 0, lastPad = 0, full = false, midiName = "en attente…";
+  var status = "", buffers = [], names = [], gains = [], voices = [], kits = [], kitI = 0, kitTicket = 0, lastPad = 0, full = false, midiName = "en attente…";
   var knob = { vol: 0.8, filt: 1, echo: 0, tune: 0.5 };
   var padEls = [], sliders = {};
 
   function lcd() {
     var k = kits[kitI];
-    $("lcd").innerHTML = "<span>KIT</span> " + (k ? k.name : "—") + " <span>· PAD</span> " + (lastPad + 1) + " " + (names[lastPad] || "") + "<br><span>MIDI</span> " + midiName;
+    $("lcd").innerHTML = "<span>KIT</span> " + (k ? k.name : "—") + (status ? " <span>· " + status + "</span>" : " <span>· PAD</span> " + (lastPad + 1) + " " + (names[lastPad] || "")) + "<br>" + loopText();
   }
 
   // ---------- Audio ----------
@@ -91,36 +96,65 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
       loadKit(saved < kits.length ? saved : 0);
     }, function () { midiName = "kits introuvables (réseau ?)"; lcd(); });
   }
+  // Kits : téléchargement en parallèle, décodage un par un, gardés en mémoire ; les autres kits se préchargent ensuite en arrière-plan
+  var cache = {}, loading = {};
+  function fetchKit(k, onDone, onProgress) {
+    if (cache[k.id]) { onDone(cache[k.id]); return; }
+    if (loading[k.id]) { loading[k.id].push(onDone); return; }
+    loading[k.id] = [onDone];
+    var base = "kits/" + k.id + "/";
+    get(base + "kit.json", "text", function (t) {
+      var j; try { j = JSON.parse(t); } catch (e) { return; }
+      var pads = j.pads.slice(0, 16), kit = { bufs: [], names: [], gains: [] }, raw = [], got = 0, decoded = 0, decoding = false, next = 0;
+      pads.forEach(function (p, idx) { kit.names[idx] = p.name; kit.gains[idx] = p.gain || 1; });
+      function finish() { cache[k.id] = kit; var cbs = loading[k.id]; delete loading[k.id]; cbs.forEach(function (cb) { cb(kit); }); }
+      function decodeNext() {
+        if (decoding) return;
+        if (decoded >= pads.length) { finish(); return; }
+        if (!raw[decoded]) return;
+        decoding = true;
+        var idx = decoded, ab = raw[idx]; raw[idx] = null;
+        if (ab === "x") { decoded++; decoding = false; decodeNext(); return; }
+        ctx.decodeAudioData(ab, function (buf) { kit.bufs[idx] = buf; done(); }, done);
+        function done() { decoded++; decoding = false; if (onProgress) onProgress(decoded, pads.length); decodeNext(); }
+      }
+      function fetchNext() {
+        if (next >= pads.length) return;
+        var idx = next++;
+        get(base + pads[idx].file, "arraybuffer", function (ab) { raw[idx] = ab; fetchNext(); decodeNext(); }, function () { raw[idx] = "x"; fetchNext(); decodeNext(); });
+      }
+      for (var c = 0; c < 6; c++) fetchNext();
+    }, function () { var cbs = loading[k.id]; delete loading[k.id]; });
+  }
   function loadKit(i) {
     if (!kits.length) return;
     kitI = (i + kits.length) % kits.length;
     try { localStorage.setItem("nomadlite.kit", kitI); } catch (e) {}
-    var k = kits[kitI], ticket = ++kitTicket, base = "kits/" + k.id + "/";
-    lcd();
-    get(base + "kit.json", "text", function (t) {
-      var j; try { j = JSON.parse(t); } catch (e) { return; }
-      var n = 0, nb = [], nn = [], ng = [];
-      // un fichier à la fois : moins de mémoire d'un coup sur les vieux iPad
-      (function next() {
-        if (ticket !== kitTicket) return;
-        if (n >= 16 || n >= j.pads.length) { buffers = nb; names = nn; gains = ng; drawPads(); lcd(); return; }
-        var p = j.pads[n], idx = n;
-        nn[idx] = p.name; ng[idx] = p.gain || 1;
-        get(base + p.file, "arraybuffer", function (ab) {
-          ctx.decodeAudioData(ab, function (buf) { nb[idx] = buf; n++; next(); }, function () { n++; next(); });
-        }, function () { n++; next(); });
-      })();
-    });
+    var k = kits[kitI], ticket = ++kitTicket;
+    status = cache[k.id] ? "" : "chargement…"; lcd();
+    fetchKit(k, function (kit) {
+      if (ticket !== kitTicket) return;
+      buffers = kit.bufs; names = kit.names; gains = kit.gains; status = ""; drawPads(); lcd();
+      preloadSoon();
+    }, function (n, tot) { if (ticket === kitTicket) { status = "chargement " + n + "/" + tot; lcd(); } });
+  }
+  var preT = null;
+  function preloadSoon() {
+    clearTimeout(preT);
+    preT = setTimeout(function () {
+      for (var d = 1; d < kits.length; d++) { var k = kits[(kitI + d) % kits.length]; if (!cache[k.id]) { if (!loading[k.id]) fetchKit(k, preloadSoon); return; } }
+    }, 800);
   }
   function stopVoice(i, t) {
     var v = voices[i]; if (!v) return;
     try { v.g.gain.cancelScheduledValues(t); v.g.gain.setValueAtTime(v.g.gain.value, t); v.g.gain.setTargetAtTime(0, t, 0.005); v.s.stop(t + 0.05); } catch (e) {}
     voices[i] = null;
   }
-  function play(i, vel, semis) {
-    lastPad = i; flash(i);
-    if (!ctx || !buffers[i]) { lcd(); return; }
-    var t = ctx.currentTime;
+  function play(i, vel, semis, when) {
+    var now = ctx ? ctx.currentTime : 0, t = when && when > now ? when : now;
+    if (when) setTimeout(function () { flash(i); }, Math.max(0, (t - now) * 1000));
+    else { lastPad = i; flash(i); }
+    if (!ctx || !buffers[i]) { if (!when) lcd(); return; }
     stopVoice(i, t);
     if (i === 2) stopVoice(3, t); // le hat ferme l'open hat
     var s = ctx.createBufferSource(), g = ctx.createGain();
@@ -131,7 +165,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
     s.start(t);
     voices[i] = { s: s, g: g };
     s.onended = function () { if (voices[i] && voices[i].s === s) voices[i] = null; };
-    lcd();
+    if (!when) { lcd(); recHit(i, vel, semis || 0, t); }
   }
   function setKnob(k, v) {
     knob[k] = v;
@@ -141,6 +175,86 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
     if (k === "vol") master.gain.setTargetAtTime(v, t, 0.02);
     if (k === "filt") filt.frequency.setTargetAtTime(60 * Math.pow(20000 / 60, v), t, 0.02);
     if (k === "echo") echoIn.gain.setTargetAtTime(v * 0.8, t, 0.02);
+  }
+
+  // ---------- Looper (enregistre les frappes, pas l'audio : très léger) ----------
+  // REC : armé, la 1re frappe lance l'enregistrement ; REC à nouveau ferme la boucle (calée sur une frappe proche).
+  // Ensuite REC = ajouter une couche (jusqu'au prochain REC). Les couches rejouent le kit en cours.
+  var LP = { state: "empty", t0: 0, L: 0, layers: [], cur: null, playing: false, sched: 0, beats: 4, pendFirst: null, muted: [] };
+  function loopText() {
+    if (LP.state === "empty") return "<span>BOUCLE</span> vide · REC pour armer <span>· MIDI</span> " + midiName;
+    if (LP.state === "armed") return "<span>BOUCLE</span> ARMÉE · jouez pour lancer";
+    if (LP.state === "first") return "<span>BOUCLE</span> REC · REC pour fermer";
+    var bpm = (60 * LP.beats / LP.L).toFixed(1);
+    return "<span>BOUCLE</span> " + bpm + " BPM · " + LP.layers.length + " couche(s)" + (LP.cur ? " · DUB" : "") + (LP.playing ? "" : " · STOP");
+  }
+  function recHit(i, vel, semis, t) {
+    if (LP.state === "armed") { LP.state = "first"; LP.t0 = t; LP.cur = []; LP.lastHits = []; drawLoopBtns(); lcd(); }
+    if (LP.state === "first") { LP.cur.push({ t: t - LP.t0, p: i, v: vel, s: semis }); LP.lastHits.push(t); return; }
+    if (LP.state === "loop" && LP.cur && LP.playing) {
+      var pos = ((t - LP.t0) % LP.L + LP.L) % LP.L;
+      LP.cur.push({ t: pos, p: i, v: vel, s: semis });
+    }
+  }
+  function recPress() {
+    if (!ctx) return;
+    var now = ctx.currentTime;
+    if (LP.state === "empty") { LP.state = "armed"; }
+    else if (LP.state === "armed") { LP.state = "empty"; }
+    else if (LP.state === "first") {
+      var end = now, best = 0.09;
+      LP.lastHits.forEach(function (h) { var d = Math.abs(h - now); if (h > LP.t0 + 0.3 && d < best) { best = d; end = h; } });
+      if (end - LP.t0 < 0.3) return;
+      LP.L = end - LP.t0;
+      LP.beats = 1; while (60 * LP.beats / LP.L < 70) LP.beats *= 2;
+      LP.layers = [LP.cur.filter(function (e) { return e.t < LP.L - 0.005; })]; LP.muted = [false]; LP.cur = null;
+      LP.state = "loop"; LP.playing = true; LP.sched = end - 0.001;
+    } else if (LP.state === "loop") {
+      if (!LP.playing) { playLoop(); }
+      if (LP.cur) { if (LP.cur.length) { LP.layers.push(LP.cur); LP.muted.push(false); } LP.cur = null; }
+      else LP.cur = [];
+    }
+    drawLoopBtns(); lcd();
+  }
+  function playLoop() { if (LP.state !== "loop" || !ctx) return; LP.t0 = ctx.currentTime + 0.05; LP.sched = LP.t0 - 0.001; LP.playing = true; drawLoopBtns(); lcd(); }
+  function stopLoop() { if (LP.cur && LP.cur.length) { LP.layers.push(LP.cur); LP.muted.push(false); } LP.cur = null; LP.playing = false; for (var i = 0; i < 16; i++) stopVoice(i, ctx.currentTime); drawLoopBtns(); lcd(); }
+  function undoLoop() {
+    if (LP.state === "armed" || LP.state === "first") { LP.state = "empty"; LP.cur = null; }
+    else if (LP.cur) LP.cur = null;
+    else if (LP.layers.length > 1) { LP.layers.pop(); LP.muted.pop(); }
+    else clearLoop();
+    drawLoopBtns(); lcd();
+  }
+  function clearLoop() { LP.state = "empty"; LP.layers = []; LP.muted = []; LP.cur = null; LP.playing = false; drawLoopBtns(); lcd(); }
+  function toggleMute(n) { if (LP.layers[n]) { LP.muted[n] = !LP.muted[n]; lcd(); } }
+  // planificateur : 25 ms, 120 ms d'avance
+  setInterval(function () {
+    if (!ctx || LP.state !== "loop" || !LP.playing) return;
+    var a = LP.sched, b = ctx.currentTime + 0.12;
+    if (b <= a) return;
+    var c0 = Math.floor((a - LP.t0) / LP.L), c1 = Math.floor((b - LP.t0) / LP.L);
+    for (var c = c0; c <= c1; c++) {
+      var base = LP.t0 + c * LP.L;
+      LP.layers.forEach(function (ly, n) {
+        if (LP.muted[n]) return;
+        for (var k = 0; k < ly.length; k++) { var e = ly[k], t = base + e.t; if (t > a && t <= b) play(e.p, e.v, e.s, t); }
+      });
+    }
+    LP.sched = b;
+  }, 25);
+  setInterval(function () {
+    var w = 0;
+    if (ctx && LP.state === "loop" && LP.playing) w = (((ctx.currentTime - LP.t0) % LP.L + LP.L) % LP.L) / LP.L * 100;
+    else if (LP.state === "first" && ctx) w = 100;
+    $("progBar").style.width = w + "%";
+  }, 100);
+  var loopBtns = {};
+  function drawLoopBtns() {
+    if (!loopBtns.rec) return;
+    var st = LP.state;
+    loopBtns.rec.className = "btn " + (st === "armed" ? "armed" : "rec");
+    loopBtns.rec.innerHTML = st === "first" ? "FERMER" : st === "loop" ? (LP.cur ? "FIN DUB" : "REC / DUB") : st === "armed" ? "ARMÉ" : "REC";
+    loopBtns.play.innerHTML = LP.playing ? "STOP" : "PLAY";
   }
 
   // ---------- Interface ----------
@@ -169,6 +283,12 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
     button("◀ KIT", "0", "15%", function () { loadKit(kitI - 1); });
     button("KIT ▶", "16%", "15%", function () { loadKit(kitI + 1); });
     var fb = button("FULL LEVEL", "32%", "20%", function (b) { full = !full; b.className = full ? "btn on" : "btn"; });
+    loopBtns.rec = button("REC", "0", "30%", recPress); loopBtns.rec.style.top = "50px";
+    loopBtns.play = button("PLAY", "31.5%", "22%", function () { if (LP.playing) stopLoop(); else playLoop(); }); loopBtns.play.style.top = "50px";
+    var ub = button("UNDO", "55%", "21%", undoLoop); ub.style.top = "50px";
+    var cb = button("EFFACER", "77.5%", "22.5%", function (b) { b.className = "btn hold"; clearTimeout(b._t); b._t = setTimeout(function () { clearLoop(); b.className = "btn"; }, 700); }); cb.style.top = "50px";
+    cb.addEventListener("touchend", function () { clearTimeout(cb._t); cb.className = "btn"; }); cb.addEventListener("mouseup", function () { clearTimeout(cb._t); cb.className = "btn"; });
+    drawLoopBtns();
     slider("vol", "VOLUME", "0", "23.5%");
     slider("filt", "FILTRE", "25.5%", "23.5%");
     slider("echo", "ÉCHO", "51%", "23.5%");
@@ -183,7 +303,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
   }
   // pads : grille 4×4 qui remplit l'écran, pad 1 en bas à gauche comme sur l'Akai
   function layout() {
-    var W = window.innerWidth - 20, top = 178, H = window.innerHeight - top - 10, gap = 10;
+    var W = window.innerWidth - 20, top = 228, H = window.innerHeight - top - 10, gap = 10;
     var size = Math.min((W - 3 * gap) / 4, (H - 3 * gap) / 4), w = (W - 3 * gap) / 4;
     var ph = $("pads").style; ph.top = top + "px";
     for (var i = 0; i < 16; i++) {
@@ -196,7 +316,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
   document.addEventListener("touchmove", function (e) { e.preventDefault(); });
 
   // ---------- MIDI ----------
-  var learned = [];
+  var learned = [], sustain = false;
   function onMidi(e) {
     var d = e.data, st = d[0] & 0xf0, ch = (d[0] & 0x0f) + 1, n = d[1], v = d[2];
     if (st === 0x90 && v > 0) {
@@ -205,6 +325,8 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
       else play(lastPad, v / 127, n - 60); // clavier : le dernier pad, joué chromatiquement (do central = hauteur d'origine)
     } else if (st === 0xb0) {
       var k = n >= 70 && n <= 73 ? n - 70 : -1;
+      if (n === 64) { var down = v >= 64; if (down && !sustain) recPress(); sustain = down; return; }
+      if (v > 0) { if (n === 20) { if (LP.playing) stopLoop(); else playLoop(); } if (n === 21) undoLoop(); if (n >= 22 && n <= 27) toggleMute(n - 22); }
       if (n === 28) loadKit(kitI - 1); else if (n === 29) loadKit(kitI + 1);
       if (k >= 0) setKnob(["vol", "filt", "echo", "tune"][k], v / 127);
     } else if (st === 0xc0) loadKit(n);
@@ -222,6 +344,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #0c0b0a; color: #e
     }, function () { midiName = "refusé"; lcd(); });
   }
   build(); lcd();
+  window.liteDbg = { LP: LP, cache: cache, play: function (i) { play(i, 0.9); }, rec: function () { recPress(); }, kit: function (i) { loadKit(i); } };
 })();
 </script>
 </body>
