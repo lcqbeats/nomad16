@@ -266,7 +266,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   <div class="sheet-in">
     <h2>RÉGLAGES <button type="button" id="setClose">FERMER</button></h2>
     <p>COMPENSATION CASQUE</p>
-    <p>Recale les couches du looper quand le son arrive en retard (casque Bluetooth). 0 ms avec un casque filaire.</p>
+    <p>Recale les couches du looper quand le son arrive en retard (casque Bluetooth). Revient à 0 ms à chaque lancement, pour ne jamais rester actif par erreur en filaire ou sur le haut-parleur.</p>
     <div class="row"><input type="range" id="latRange" min="0" max="400" step="1" value="0" aria-label="Compensation en millisecondes"><span id="latVal">0 ms</span></div>
     <p id="latInfo">Latence annoncée par l'appareil : —</p>
     <div class="row"><button class="btn" id="calBtn" type="button">CALIBRER</button><span id="calMsg"></span></div>
@@ -585,9 +585,9 @@ registerProcessor('nomad-gate',Gate);`;
   }
 
   // ---------- Compensation de latence ----------
-  let latMs = store.get("latMs", 0);
+  let latMs = 0; // volontairement remis à zéro à chaque lancement
   $("latRange").value = latMs; $("latVal").textContent = latMs + " ms";
-  $("latRange").addEventListener("input", e => { latMs = +e.target.value; $("latVal").textContent = latMs + " ms"; store.set("latMs", latMs); });
+  $("latRange").addEventListener("input", e => { latMs = +e.target.value; $("latVal").textContent = latMs + " ms"; });
   function updateLatInfo() {
     if (!ctx) return;
     const out = ((ctx.outputLatency || 0) + (ctx.baseLatency || 0)) * 1000;
@@ -614,7 +614,7 @@ registerProcessor('nomad-gate',Gate);`;
       if (d.length < 4) { $("calMsg").textContent = "pas assez de frappes, recommencez"; return; }
       d.sort((a, b) => a - b);
       const med = Math.max(0, Math.round(d[Math.floor(d.length / 2)] * 1000));
-      latMs = Math.min(400, med); $("latRange").value = latMs; $("latVal").textContent = latMs + " ms"; store.set("latMs", latMs);
+      latMs = Math.min(400, med); $("latRange").value = latMs; $("latVal").textContent = latMs + " ms";
       $("calMsg").textContent = "mesuré : " + latMs + " ms";
     }, (12 * 0.5 + 1.2) * 1000);
   });
@@ -830,6 +830,7 @@ registerProcessor('nomad-gate',Gate);`;
       if (p) { s += ctx.currentTime * sr - (p.comp || 0) < p.sF ? " · ARMÉE" : " · REC ×" + p.k; cls = "rec"; }
       else if (!LP.playing) s += " · STOP";
     }
+    if (latMs > 0) s += " · BT +" + latMs + "ms";
     const key = s + cls;
     if (key !== lastLcd) { lastLcd = key; lcd("lcdLoop", "BOUCLE", s, cls); }
     $("btnRec").classList.toggle("armed", !!(p && ((p.type === "first" && p.phase === "armed") || (p.type === "layer" && ctx.currentTime * sr - (p.comp || 0) < p.sF))));
