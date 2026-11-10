@@ -240,7 +240,8 @@ button { font-family: var(--font-body); }
 :root[data-skin="clair"] .chord { background: linear-gradient(160deg, #ffffff, #ebe9e4); color: #1e1e1e; }
 .padtools { display: flex; gap: 6px; margin-bottom: 10px; }
 .padtools .btn { padding: 9px 8px; font-size: 11px; }
-.padtools .btn:first-child { flex: 1; text-align: left; }
+.padtools .btn:first-child { flex: 1; text-align: left; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.padtools .btn.on { background: var(--text); color: var(--ink); }
 .editor { background: #151412; border-radius: 8px; padding: 10px; box-shadow: inset 0 0 0 1px #050505; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
 .editor[hidden] { display: none; }
 #edCanvas { width: 100%; height: 96px; display: block; background: #0f0e0d; border-radius: 6px; touch-action: none; }
@@ -258,6 +259,22 @@ button { font-family: var(--font-body); }
 .pat.has { color: var(--text); } .pat.has::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--green); }
 .pat.on { background: var(--text); color: var(--ink); } .pat.next { box-shadow: inset 0 0 0 2px var(--red); }
 #seqCanvas { width: 100%; aspect-ratio: 1 / 1.02; display: block; background: #121110; border-radius: 8px; box-shadow: inset 0 0 0 1px #050505; touch-action: none; }
+.seqsel { grid-template-columns: repeat(8, 1fr) 1.6fr; margin-bottom: 8px; }
+.pat.metro { font-size: 10px; letter-spacing: .04em; }
+.songhead { display: grid; grid-template-columns: 1.2fr 1.2fr 1fr; gap: 6px; }
+.songhead .btn { padding: 11px 2px; font-size: 11px; }
+.songhead .btn.on { background: var(--text); color: var(--ink); }
+.songinfo { margin: 8px 0 6px; color: var(--muted); font-size: 11px; letter-spacing: .05em; }
+.songempty { color: var(--muted); font-size: 12px; }
+.songrow { position: relative; display: grid; grid-template-columns: 22px 1fr 30px 44px 30px 30px 30px 30px; gap: 4px; align-items: center; padding: 6px; margin-bottom: 5px; border-radius: 6px; background: #262421; overflow: hidden; }
+.songrow.on { box-shadow: inset 0 0 0 2px var(--red); }
+.songrow .sn { color: var(--muted); font-family: var(--font-display); font-size: 12px; text-align: center; }
+.songrow select { min-width: 0; background: #1b1a18; color: var(--text); border: 1px solid #3a3733; border-radius: 4px; padding: 7px 4px; font: inherit; font-size: 13px; }
+.songrow button { border: 0; border-radius: 4px; background: #34302c; color: var(--text); padding: 8px 0; font-size: 13px; cursor: pointer; }
+.songrow .rp { text-align: center; font-family: var(--font-display); font-size: 14px; color: var(--text); line-height: 1; }
+.songrow .rp small { display: block; font-size: 9px; color: var(--red); margin-top: 2px; }
+.songrow .bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--red); }
+:root[data-skin="clair"] .songrow { background: #d8d5ce; } :root[data-skin="clair"] .songrow select { background: #eeece7; } :root[data-skin="clair"] .songrow button { background: #c7c3bb; }
 .seqbar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .seqbar .btn { padding: 10px 2px; font-size: 10px; }
 .seqbar .btn.on { background: var(--text); color: var(--ink); }
@@ -353,7 +370,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" id="tab-play" aria-selected="true" type="button">PADS</button>
     <button class="tab" role="tab" id="tab-loops" aria-selected="false" type="button">LOOPER</button>
-    <button class="tab" role="tab" id="tab-seq" aria-selected="false" type="button">SÉQ</button>
+    <button class="tab" role="tab" id="tab-song" aria-selected="false" type="button">SONG</button>
     <button class="tab" role="tab" id="tab-guitar" aria-selected="false" type="button">GUITARE</button>
     <button class="tab" role="tab" id="tab-fx" aria-selected="false" type="button">FX</button>
     <button class="tab" role="tab" id="tab-sample" aria-selected="false" type="button">DIGGING</button>
@@ -363,7 +380,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   <div class="knobs" id="knobs"></div>
 
   <section class="view" id="view-play">
-    <div class="padtools"><button class="btn" id="edBtn" type="button">ÉDITER LE PAD 01</button><button class="btn" id="allPadsBtn" type="button" aria-pressed="false">TOUS LES PADS</button></div>
+    <div class="padtools"><button class="btn" id="edBtn" type="button">ÉDITER LE PAD 01</button><button class="btn" id="allPadsBtn" type="button" aria-pressed="false">TOUS</button><button class="btn" id="nrBtn" type="button">REPEAT</button><button class="btn" id="nrRate" type="button">1/16</button></div>
     <div class="editor" id="editor" hidden>
       <canvas id="edCanvas" aria-label="Début et fin du son : glissez les bords"></canvas>
       <div class="edrow">
@@ -387,9 +404,10 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   </section>
 
   <section class="view" id="view-loops" hidden>
+    <div class="pats seqsel" id="seqSel"></div>
     <canvas id="loopCanvas" aria-label="Pistes de boucles"></canvas>
     <div class="transport" style="grid-template-columns:1fr 1fr">
-      <button class="btn" id="expLoop" type="button">BOUCLE WAV</button>
+      <button class="btn" id="expLoop" type="button">SÉQUENCE WAV</button>
       <button class="btn" id="expSess" type="button">● SESSION</button>
     </div>
     <div class="transport" style="grid-template-columns:1fr">
@@ -426,22 +444,15 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     <p class="note help" style="margin-top:8px">Branchez l'iRig puis touchez ENTRÉE. Larsen : montez le seuil de bruit, baissez le niveau d'entrée et le volume de l'iPhone, et évitez le haut-parleur. L'accordeur coupe le son pendant l'accordage. Les 8 potards de l'Akai règlent l'ampli dans cet onglet.</p>
   </section>
 
-  <section class="view stack" id="view-seq" hidden>
-    <div class="pats" id="pats"></div>
-    <canvas id="seqCanvas" aria-label="Grille du séquenceur : touchez une case pour ajouter ou enlever une note"></canvas>
-    <div class="seqbar">
-      <button class="btn" id="sqPlay" type="button">▶ PLAY</button>
-      <button class="btn rec" id="sqRec" type="button">● REC</button>
-      <button class="btn" id="sqMetro" type="button">MÉTRONOME</button>
-      <button class="btn" id="sqNR" type="button">NOTE REPEAT</button>
+  <section class="view stack" id="view-song" hidden>
+    <div class="songhead">
+      <button class="btn" id="songPlay" type="button">▶ MORCEAU</button>
+      <button class="btn" id="songLoop" type="button">BOUCLER : NON</button>
+      <button class="btn" id="songAdd" type="button">+ PARTIE</button>
     </div>
-    <div class="seqbar">
-      <button class="btn" id="sqQuant" type="button">QUANT 1/16</button>
-      <button class="btn" id="sqBars" type="button">1 MESURE</button>
-      <button class="btn" id="sqDup" type="button">DOUBLER</button>
-      <button class="btn" id="sqClear" type="button">EFFACER</button>
-    </div>
-    <p class="note help">8 patterns (A à H) : touchez-en un pour le choisir, pendant la lecture il démarre à la fin de la mesure. ● REC enregistre vos frappes de pads, quantifiées, par-dessus ce qui existe (décompte d'une mesure si la lecture est à l'arrêt). Touchez une case de la grille pour ajouter ou enlever une note ; appui long sur un nom de pad pour vider sa ligne. NOTE REPEAT : tenez un pad, il se répète à la vitesse choisie (potard 3). Le tempo suit la boucle du looper quand il y en a une. Potards : swing, tempo, vitesse du repeat, quantification, pattern, mesures, page, métronome.</p>
+    <p class="songinfo" id="songInfo"></p>
+    <div id="songList"></div>
+    <p class="note help">Chaque partie joue une séquence du LOOPER (A à H) un certain nombre de fois. Les séquences se remplissent dans le LOOPER : choisissez une lettre puis enregistrez avec REC / Sustain. Le tempo est celui de la toute première boucle. ▶ sur une ligne lance le morceau depuis cette partie. Potards : volumes des pistes de la séquence en cours, volume des boucles, volume du métronome.</p>
   </section>
 
   <section class="view" id="view-fx" hidden>
@@ -586,14 +597,14 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   const SYNTH_NAMES = ["Kick","Snare","Hat","Open hat","Clap","Rim","Shaker","Snap","Tom bas","Tom haut","Conga","Cloche","Ride","Basse 808","Stab","Blip"];
   const KNOB_LABELS = {
     play: ["Filtre", "Écho", "Saleté", "Attaque", "Tune", "Decay", "Pan", "Niveau"],
+    song: ["Piste 1", "Piste 2", "Piste 3", "Piste 4", "Piste 5", "Piste 6", "Boucles", "Métronome"],
     loops: ["Piste 1", "Piste 2", "Piste 3", "Piste 4", "Piste 5", "Piste 6", "Boucles", "Undo ↻"],
     guitar: ["Gain", "Basses", "Médiums", "Aigus", "Présence", "Réverbe", "Master", "Écho"],
     fx: ["Filtre", "Réso", "Envoi écho", "Temps", "Retour", "Ressort", "Bitcrush", "Master"],
     sample: ["Bac ↻", "Pitch", "Sensib.", "Découpes", "—", "—", "—", "Volume"],
-    sons: ["Volume", "Relâche", "Filtre", "Réverbe", "Octave", "Tonalité", "Style", "Accord ↻"],
-    seq: ["Swing", "Tempo", "Repeat", "Quantif.", "Pattern", "Mesures", "Page", "Métronome"]
+    sons: ["Volume", "Relâche", "Filtre", "Réverbe", "Octave", "Tonalité", "Style", "Accord ↻"]
   };
-  const knobVals = { play: [0.5, 0, 0, 0, 0.5, 1, 0.5, 0.8], loops: [1, 1, 1, 1, 1, 1, 0.9, 0], guitar: [0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.6, 0.3], fx: [0.5, 0.2, 0, 0.5, 0.55, 0, 0, 0.85], sample: [0.5, 0.5, 0.5, 0.5, 0, 0, 0, 0.9], sons: [0.8, 0.35, 1, 0.25, 0.5, 0, 0, 0], seq: [0, 0.3, 0.5, 0.5, 0, 0, 0, 0.6] };
+  const knobVals = { play: [0.5, 0, 0, 0, 0.5, 1, 0.5, 0.8], loops: [1, 1, 1, 1, 1, 1, 0.9, 0], guitar: [0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.6, 0.3], fx: [0.5, 0.2, 0, 0.5, 0.55, 0, 0, 0.85], sample: [0.5, 0.5, 0.5, 0.5, 0, 0, 0, 0.9], sons: [0.8, 0.35, 1, 0.25, 0.5, 0, 0, 0], song: [1, 1, 1, 1, 1, 1, 0.9, 0.6] };
   let tab = "play";
 
   let ctx, sr, echoIn, liveIn, filter, drive, delay, delayFb, delayWet, padOut, liveBus, loopBus, master, fxOut;
@@ -713,7 +724,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   drawKnobs();
 
   // ---------- Onglets ----------
-  const TABS = ["play", "loops", "seq", "guitar", "fx", "sample", "sons"];
+  const TABS = ["play", "loops", "song", "guitar", "fx", "sample", "sons"];
   function setTab(t) {
     tab = t;
     TABS.forEach(x => { $("tab-" + x).setAttribute("aria-selected", x === t); $("view-" + x).hidden = x !== t; });
@@ -722,7 +733,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     if (t === "loops") resizeCanvas();
     if (t === "sample") enterDig();
     if (t === "sons") enterSons();
-    if (t === "seq") drawSeqUI();
+    if (t === "song") { for (let k = 0; k < 7; k++) knobVals.song[k] = knobVals.loops[k]; drawKnobs(); drawSong(true); }
   }
   TABS.forEach(x => $("tab-" + x).addEventListener("click", () => setTab(x)));
 
@@ -1118,6 +1129,77 @@ registerProcessor('nomad-fx',Fx);`;
 
   // ---------- Looper ----------
   const LP = { t0F: null, Lf: 0, beats: 4, layers: [], pending: null, playing: true };
+  // Séquences A à H : chacune a ses pistes ; le tempo (LP.Lf, LP.beats) est commun et fixé par la toute première boucle
+  const SQ = { list: Array.from({ length: 8 }, () => []), cur: 0, next: -1, sw: null, metro: false, metroF: 0 };
+  SQ.list[0] = LP.layers;
+  const gcdI = (x, y) => y ? gcdI(y, x % y) : x;
+  function cycF(layers) { let k = 1; layers.forEach(l => { k = k * l.k / gcdI(k, l.k); }); return Math.min(k, 8) * LP.Lf; }
+  function seqOf(l) { return SQ.list.findIndex(x => x.includes(l)); }
+  function syncLoopKnobs() { LP.layers.forEach((l, i) => { knobVals.loops[i] = l.vol; }); for (let i = LP.layers.length; i < 6; i++) knobVals.loops[i] = 1; if (tab === "loops" || tab === "song") drawKnobs(); }
+  // Change de séquence tout de suite (arrêt)
+  function switchNow(i) {
+    LP.layers.forEach(stopLayer);
+    SQ.cur = i; LP.layers = SQ.list[i]; SQ.next = -1; SQ.sw = null;
+    routeFx(); LP.layers.forEach(l => l.gain.gain.setValueAtTime(l.muted ? 0 : l.vol, ctx.currentTime));
+    syncLoopKnobs(); drawSeqSel();
+  }
+  // Change de séquence pile sur une fin de cycle (bF en frames)
+  function doSwitch(i, bF) {
+    const T = Math.max(bF / sr, ctx.currentTime + 0.005);
+    LP.layers.forEach(l => { if (l.src) { try { l.src.stop(T); } catch (e) {} l.src = null; } });
+    SQ.cur = i; LP.layers = SQ.list[i]; LP.t0F = bF; SQ.sw = null; SQ.next = -1;
+    routeFx();
+    LP.layers.forEach(l => { l.gain.gain.setValueAtTime(l.muted ? 0 : l.vol, ctx.currentTime); startLayer(l, T); });
+    syncLoopKnobs(); drawSeqSel();
+  }
+  function selectSeq(i) {
+    if (!ctx) return;
+    if (SONG.playing) songStop();
+    if (i === SQ.cur) { SQ.next = -1; SQ.sw = null; drawSeqSel(); return; }
+    if (LP.pending && LP.pending.type === "first") return;
+    if (LP.t0F === null || !LP.playing) { switchNow(i); lcd("lcdPad", "SÉQUENCE", SEQ_N[i] + (SQ.list[i].length ? "" : " · vide, REC pour la remplir")); return; }
+    SQ.next = i; SQ.sw = null; drawSeqSel();
+    lcd("lcdPad", "SÉQUENCE", SEQ_N[i] + " en attente · fin du cycle");
+  }
+  function seqTick() {
+    if (!ctx || LP.t0F === null) return;
+    const nowF = ctx.currentTime * sr;
+    if (SQ.next >= 0 && !SQ.sw && LP.playing && !LP.pending) {
+      const C = cycF(LP.layers), n = Math.ceil((nowF + 0.13 * sr - LP.t0F) / C);
+      SQ.sw = { i: SQ.next, bF: LP.t0F + n * C };
+    }
+    if (SQ.sw && nowF >= SQ.sw.bF - 0.12 * sr) doSwitch(SQ.sw.i, SQ.sw.bF);
+    // métronome : un clic par temps, accent tous les 4 temps
+    if (SQ.metro && LP.playing) {
+      const bF = LP.Lf / LP.beats; let n = Math.ceil((Math.max(nowF, SQ.metroF + 1) - LP.t0F) / bF);
+      for (let f = LP.t0F + n * bF; f < nowF + 0.1 * sr; n++, f = LP.t0F + n * bF) {
+        if (f <= SQ.metroF) continue;
+        SQ.metroF = f; const t = f / sr, o = ctx.createOscillator(), g = ctx.createGain();
+        o.frequency.value = ((n % 4) + 4) % 4 === 0 ? 1600 : 1050;
+        g.gain.setValueAtTime(knobVals.song[7] * 0.4 + 0.001, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+        o.connect(g); g.connect(fxOut); o.start(t); o.stop(t + 0.05);
+      }
+    }
+    songTick();
+  }
+  // Sélecteur de séquences du LOOPER (toucher : choisir ; glisser une séquence sur une autre : copier)
+  function drawSeqSel() {
+    for (let i = 0; i < 8; i++) {
+      const b = $("sq" + i); if (!b) return;
+      b.classList.toggle("on", i === SQ.cur); b.classList.toggle("has", SQ.list[i].length > 0);
+      b.classList.toggle("next", i === SQ.next || (SQ.sw && SQ.sw.i === i));
+    }
+    $("metroBtn").classList.toggle("on", SQ.metro);
+  }
+  function copySeq(a, b) {
+    if (a === b || !SQ.list[a].length) return;
+    const old = SQ.list[b].slice();
+    const make = () => SQ.list[a].map(l => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = l.muted ? 0 : l.vol; gain.connect(loopBus); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: l.muted, src: null }; });
+    const put = arr => { const T = SQ.list[b]; if (b === SQ.cur) T.forEach(stopLayer); T.length = 0; arr.forEach(l => T.push(l)); if (b === SQ.cur) { routeFx(); if (LP.playing) T.forEach(l => startLayer(l, ctx.currentTime + 0.005)); syncLoopKnobs(); } drawSeqSel(); };
+    const fresh = make(); put(fresh);
+    pushHist(`copie ${SEQ_N[a]} → ${SEQ_N[b]}`, () => put(old), () => put(fresh));
+    lcd("lcdPad", "SÉQUENCE", `${SEQ_N[a]} copiée sur ${SEQ_N[b]}`);
+  }
   const loopLen = () => LP.Lf / sr;
   const compF = () => Math.round(latMs / 1000 * sr);
   function onFirstNote(t) { const p = LP.pending; if (p && p.type === "first" && p.phase === "armed") { p.phase = "rec"; p.sT = t; } }
@@ -1172,6 +1254,7 @@ registerProcessor('nomad-fx',Fx);`;
     finish();
   }
   function looperTick() {
+    seqTick();
     const p = LP.pending;
     if (!p || p.type !== "layer") return;
     const eF = p.sF + p.k * LP.Lf + p.comp;
@@ -1191,14 +1274,25 @@ registerProcessor('nomad-fx',Fx);`;
     LP.layers.push(l);
     routeFx();
     if (LP.playing) startLayer(l, ctx.currentTime + 0.005);
-    if (hist) { const st = { Lf: LP.Lf, beats: LP.beats }; pushHist("nouvelle piste " + (idx + 1), () => removeLayer(LP.layers.indexOf(l), false), () => reinsertLayer(l, idx, st)); }
+    if (hist) { const st = { Lf: LP.Lf, beats: LP.beats, si: SQ.cur }; pushHist("nouvelle piste " + (idx + 1), () => dropLayer(l), () => reinsertLayer(l, idx, st)); }
+    drawSeqSel();
+  }
+  function dropLayer(l) {
+    const si = seqOf(l); if (si < 0) return;
+    if (si === SQ.cur) removeLayer(LP.layers.indexOf(l), false);
+    else { SQ.list[si].splice(SQ.list[si].indexOf(l), 1); try { l.gain.disconnect(); } catch (e) {} }
+    drawSeqSel();
   }
   function reinsertLayer(l, idx, st) {
     if (LP.t0F === null && st) { LP.Lf = st.Lf; LP.beats = st.beats; LP.t0F = Math.round((ctx.currentTime + 0.03) * sr); LP.playing = true; }
-    LP.layers.splice(Math.min(idx, LP.layers.length), 0, l);
-    routeFx();
-    if (!l.muted) l.gain.gain.setValueAtTime(l.vol, ctx.currentTime);
-    if (LP.playing) startLayer(l, ctx.currentTime + 0.005);
+    const si = st && st.si !== undefined ? st.si : SQ.cur, arr = SQ.list[si];
+    arr.splice(Math.min(idx, arr.length), 0, l);
+    if (si === SQ.cur) {
+      routeFx();
+      l.gain.gain.setValueAtTime(l.muted ? 0 : l.vol, ctx.currentTime);
+      if (LP.playing) startLayer(l, ctx.currentTime + 0.005);
+    }
+    drawSeqSel();
   }
   function startLayer(l, T) {
     const Lk = l.k * LP.Lf;
@@ -1211,26 +1305,36 @@ registerProcessor('nomad-fx',Fx);`;
     l.src = src;
   }
   function stopLayer(l) { if (l.src) { try { l.src.stop(); } catch (e) {} l.src.disconnect(); l.src = null; } }
-  function stopAll() { LP.layers.forEach(stopLayer); LP.playing = false; if (LP.pending && LP.pending.type === "layer") LP.pending = null; }
+  function stopAll() { LP.layers.forEach(stopLayer); LP.playing = false; SQ.sw = null; if (SONG.playing) songStop(); if (LP.pending && LP.pending.type === "layer") LP.pending = null; }
   function playAll() {
     if (!ctx || LP.t0F === null) return;
     const T = ctx.currentTime + 0.03;
-    LP.t0F = Math.round(T * sr);
+    LP.t0F = Math.round(T * sr); SQ.metroF = 0; SQ.sw = null;
     LP.layers.forEach(l => { stopLayer(l); startLayer(l, T); });
     LP.playing = true;
   }
   function togglePlay() { if (LP.playing) stopAll(); else playAll(); }
   function removeLayer(i, hist = true) {
     const l = LP.layers[i]; if (!l) return;
-    const st = { Lf: LP.Lf, beats: LP.beats };
-    if (hist) pushHist("effacer piste " + (i + 1), () => reinsertLayer(l, i, st), () => removeLayer(LP.layers.indexOf(l), false));
+    const st = { Lf: LP.Lf, beats: LP.beats, si: SQ.cur };
+    if (hist) pushHist("effacer piste " + (i + 1), () => reinsertLayer(l, i, st), () => dropLayer(l));
     stopLayer(l); l.gain.disconnect();
     LP.layers.splice(i, 1);
     routeFx();
     LP.layers.forEach((x, j) => { x.vol = knobVals.loops[j]; if (!x.muted) x.gain.gain.setTargetAtTime(x.vol, ctx.currentTime, 0.01); });
     if (!LP.layers.length) resetLooper();
   }
-  function resetLooper() { LP.layers.forEach(l => { stopLayer(l); l.gain.disconnect(); }); LP.layers = []; LP.t0F = null; LP.Lf = 0; LP.pending = null; LP.playing = true; }
+  function resetLooper() {
+    LP.layers.forEach(l => { stopLayer(l); l.gain.disconnect(); }); LP.layers.length = 0; LP.pending = null;
+    if (SQ.list.every(x => !x.length)) { LP.t0F = null; LP.Lf = 0; LP.playing = true; SQ.next = -1; SQ.sw = null; songStop(); }
+    drawSeqSel();
+  }
+  function resetAll() {
+    songStop();
+    SQ.list.forEach(x => { x.forEach(l => { stopLayer(l); l.gain.disconnect(); }); x.length = 0; });
+    SQ.cur = 0; LP.layers = SQ.list[0]; LP.t0F = null; LP.Lf = 0; LP.pending = null; LP.playing = true; SQ.next = -1; SQ.sw = null;
+    drawSeqSel();
+  }
   function undo() { if (LP.pending) { LP.pending = null; return; } removeLayer(LP.layers.length - 1); }
   function toggleMute(i) {
     const l = LP.layers[i]; if (!l) return;
@@ -1243,9 +1347,9 @@ registerProcessor('nomad-fx',Fx);`;
   $("btnPlay").addEventListener("click", togglePlay);
   let clearTimer = null;
   $("btnClear").addEventListener("pointerdown", e => { e.currentTarget.classList.add("holding"); clearTimer = setTimeout(() => {
-    const ls = LP.layers.slice(), st = { Lf: LP.Lf, beats: LP.beats };
+    const ls = LP.layers.slice(), st = { Lf: LP.Lf, beats: LP.beats, si: SQ.cur };
     resetLooper(); $("btnClear").classList.remove("holding");
-    if (ls.length) pushHist("effacer le looper", () => ls.forEach((l, i) => reinsertLayer(l, i, st)), () => resetLooper());
+    if (ls.length) pushHist("effacer la séquence " + SEQ_N[st.si], () => ls.forEach((l, i) => reinsertLayer(l, i, st)), () => ls.forEach(dropLayer));
   }, 700); });
   ["pointerup", "pointerleave", "pointercancel"].forEach(ev => $("btnClear").addEventListener(ev, () => { clearTimeout(clearTimer); $("btnClear").classList.remove("holding"); }));
 
@@ -1271,7 +1375,7 @@ registerProcessor('nomad-fx',Fx);`;
     drawLcdStrip();
     if (tab === "fx") drawFxBar();
     if (tab === "sample") drawDig();
-    if (tab === "seq") drawSeqGrid();
+    if (tab === "song") drawSong();
     if (tab === "guitar") { drawMeter(); drawTuner(); }
     if (tab !== "loops") return;
     if (!cv.width) resizeCanvas();
@@ -1352,7 +1456,8 @@ registerProcessor('nomad-fx',Fx);`;
     else if (LP.t0F === null) { s = "vide · Sustain pour armer"; }
     else {
       const bpm = (60 * LP.beats / loopLen()).toFixed(1);
-      s = `${bpm} BPM · ${LP.layers.length}/${MAX_LAYERS}`;
+      const mb = Math.round(SQ.list.reduce((a, x) => a + x.reduce((b, l) => b + l.buf.length * l.buf.numberOfChannels * 4, 0), 0) / 1048576);
+      s = `SÉQ ${SEQ_N[SQ.cur]} · ${bpm} BPM · ${LP.layers.length}/${MAX_LAYERS}` + (mb >= 40 ? ` · ${mb} Mo` : "");
       if (p) { s += ctx.currentTime * sr - (p.comp || 0) < p.sF ? " · ARMÉE" : " · REC ×" + p.k; cls = "rec"; }
       else if (!LP.playing) s += " · STOP";
     }
@@ -2433,195 +2538,126 @@ registerProcessor('nomad-fx',Fx);`;
     if (k === 7) { const st = STYLES[styleIdx]; const i = Math.min(st.p.length - 1, Math.floor(val * st.p.length)); if (i !== knobChord) { knobChord = i; chordOn("knob", i, 0.7, 0); clearTimeout(knobChordT); knobChordT = setTimeout(() => releaseKey("knob"), 1200); } }
   }
 
-  // ---------- SÉQUENCEUR ----------
-  // 384 ticks par mesure (96 par temps). Un événement = { t: tick, p: pad, v: vélocité }.
-  const TPB = 384;
-  const QUANTS = [[0, "LIBRE"], [8, "1/8"], [16, "1/16"], [32, "1/32"], [24, "1/16T"], [12, "1/8T"]];
+  // ---------- NOTE REPEAT (PADS) : un pad tenu se répète, calé sur la boucle quand elle existe ----------
   const NR_DIVS = [4, 8, 16, 32, 12, 24], NR_NAMES = ["1/4", "1/8", "1/16", "1/32", "1/8T", "1/16T"];
-  const SEQ = { pats: Array.from({ length: 8 }, () => ({ bars: 1, ev: [] })), cur: 0, next: -1, playing: false, rec: false, metro: false, swing: 0.5,
-    qIdx: 2, nrIdx: 2, nr: false, page: 0, t0: 0, segTick: 0, schedTick: 0, iter: 0, countIn: 0, metroVol: 0.6, recSnap: null, clock: false };
-  const held = new Map();
-  const pat = () => SEQ.pats[SEQ.cur];
-  const patLen = () => pat().bars * TPB;
-  const secPerTick = () => 60 / curBpm() / 96;
-  function seqNow() { return (ctx.currentTime - SEQ.t0) / secPerTick(); }
-  function tickToTime(tk) { return SEQ.t0 + tk * secPerTick(); }
-  function swingOf(tk) { const inBeat = tk % 48; return inBeat === 24 ? Math.round((SEQ.swing - 0.5) * 48) : 0; }
-  function click(time, accent) {
-    if (!SEQ.metro && SEQ.countIn <= 0) return;
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    o.frequency.value = accent ? 1600 : 1050;
-    g.gain.setValueAtTime(SEQ.metroVol * 0.4, time); g.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
-    o.connect(g); g.connect(fxOut); o.start(time); o.stop(time + 0.05);
-  }
-  function seqStart(countIn) {
-    if (!ctx) return;
-    const barSec = TPB * secPerTick(), now = ctx.currentTime + 0.06;
-    let start = now;
-    if (LP.t0F !== null && LP.playing) { const t0 = LP.t0F / sr; start = t0 + Math.ceil((now - t0) / barSec) * barSec; }
-    if (countIn) { SEQ.countIn = TPB; start = Math.max(start, now + barSec); }
-    SEQ.t0 = start - (countIn ? barSec : 0); SEQ.segTick = countIn ? TPB : 0; SEQ.schedTick = 0; SEQ.iter = 0;
-    SEQ.playing = true; SEQ.clock = false; drawSeqUI();
-  }
-  function seqStop() { SEQ.playing = false; SEQ.countIn = 0; if (SEQ.rec) seqToggleRec(); drawSeqUI(); }
-  function seqTogglePlay() { if (SEQ.playing) seqStop(); else seqStart(false); }
-  function seqToggleRec() {
-    if (!SEQ.rec) {
-      SEQ.rec = true; SEQ.recSnap = JSON.stringify(SEQ.pats);
-      if (!SEQ.playing) seqStart(true);
-    } else {
-      SEQ.rec = false;
-      const before = SEQ.recSnap, after = JSON.stringify(SEQ.pats);
-      if (before !== after) pushHist("enregistrement séquence", () => { SEQ.pats = JSON.parse(before); drawSeqUI(); }, () => { SEQ.pats = JSON.parse(after); drawSeqUI(); });
-    }
-    drawSeqUI();
-  }
-  function seqSelect(i) {
-    if (SEQ.playing && i !== SEQ.cur) { SEQ.next = i; } else { SEQ.cur = i; SEQ.page = 0; }
-    drawSeqUI();
-  }
-  // Ordonnanceur : prépare les notes ~120 ms à l'avance avec des temps exacts
-  function seqTick() {
-    if (!ctx || (!SEQ.playing && !SEQ.clock)) return;
-    const spt = secPerTick(), horizon = (ctx.currentTime + 0.12 - SEQ.t0) / spt;
-    let guard = 0;
-    while (SEQ.schedTick < horizon && guard++ < 200) {
-      const a = SEQ.schedTick;
-      let b = Math.min(horizon, a + 24);
-      if (SEQ.playing && a >= SEQ.countIn) b = Math.min(b, SEQ.segTick + patLen());
-      if (b <= a) b = a + 1;
-      // métronome (et décompte d'une mesure avant l'enregistrement)
-      for (let tk = Math.ceil(a / 96) * 96; tk < b; tk += 96) { if (tk >= SEQ.countIn && !SEQ.metro) continue; click(tickToTime(tk), tk % TPB === 0); }
-      if (SEQ.playing && b > SEQ.countIn) {
-        const base = SEQ.segTick;
-        pat().ev.forEach(ev => {
-          if (ev.skip === SEQ.iter) return;
-          const at = base + ev.t + swingOf(ev.t);
-          if (at >= a && at < b && at >= SEQ.countIn) { const when = tickToTime(at); voice(ev.p, ev.v, 1, when); hits.push(when); if (hits.length > 32) hits.shift(); setTimeout(() => flash(ev.p), Math.max(0, (when - ctx.currentTime) * 1000)); }
-        });
+  const NR = { on: false, idx: 2, held: new Map() };
+  function padDown(i, vel, t) { if (NR.on) NR.held.set(i, { v: vel, t, last: t }); }
+  function padUp(i) { NR.held.delete(i); }
+  function nrTick() {
+    if (!ctx || !NR.on || !NR.held.size) return;
+    const step = 60 / curBpm() * 4 / NR_DIVS[NR.idx], horizon = ctx.currentTime + 0.08;
+    const grid = LP.t0F !== null && LP.playing;
+    NR.held.forEach((h, p) => {
+      const anchor = grid ? LP.t0F / sr : h.t;
+      let next = anchor + Math.ceil((h.last + step * 0.5 - anchor) / step) * step;
+      while (next < horizon) {
+        const when = Math.max(next, ctx.currentTime);
+        voice(p, h.v, 1, when); hits.push(when); if (hits.length > 32) hits.shift();
+        setTimeout(() => flash(p), Math.max(0, (when - ctx.currentTime) * 1000));
+        h.last = next; next += step;
       }
-      // note repeat sur les pads tenus
-      if (SEQ.nr && held.size) {
-        const step = TPB / NR_DIVS[SEQ.nrIdx];
-        for (let tk = Math.ceil(a / step) * step; tk < b; tk += step) {
-          const when = tickToTime(tk);
-          held.forEach((h, p) => { if (when - h.t < 0.04) return; voice(p, h.v, 1, when); setTimeout(() => flash(p), Math.max(0, (when - ctx.currentTime) * 1000)); if (SEQ.rec && SEQ.playing) recordHit(p, h.v, when); });
-        }
-      }
-      SEQ.schedTick = b;
-      if (SEQ.playing && b >= SEQ.countIn && b >= SEQ.segTick + patLen()) {
-        SEQ.segTick += patLen(); SEQ.iter++;
-        if (SEQ.next >= 0) { SEQ.cur = SEQ.next; SEQ.next = -1; SEQ.page = 0; setTimeout(drawSeqUI, 0); }
-      }
-    }
-    if (SEQ.countIn > 0 && seqNow() >= SEQ.countIn) SEQ.countIn = 0;
-  }
-  function recordHit(p, v, when) {
-    const L = patLen();
-    let tk = (when - SEQ.t0) / secPerTick() - SEQ.segTick;
-    if (tk < -48) return;
-    const q = QUANTS[SEQ.qIdx][0];
-    if (q) { const st = TPB / q; tk = Math.round(tk / st) * st; }
-    tk = ((Math.round(tk) % L) + L) % L;
-    const ev = pat().ev;
-    if (ev.some(e => e.p === p && Math.abs(e.t - tk) < 6)) return;
-    // si la note quantifiée tombe juste après, on évite qu'elle sonne une 2e fois dans ce passage
-    const abs = SEQ.segTick + tk;
-    ev.push({ t: tk, p, v: Math.round(v * 100) / 100, skip: abs >= SEQ.schedTick - 1 ? SEQ.iter : -1 });
-  }
-  function padDown(i, vel, t) {
-    if (SEQ.rec && SEQ.playing && seqNow() >= SEQ.countIn) recordHit(i, vel, t);
-    if (SEQ.nr) {
-      held.set(i, { v: vel, t });
-      if (!SEQ.playing && !SEQ.clock) { SEQ.clock = true; SEQ.t0 = t; SEQ.schedTick = 0; SEQ.segTick = 0; SEQ.countIn = 0; }
-    }
-  }
-  function padUp(i) { held.delete(i); if (!held.size && SEQ.clock) SEQ.clock = false; }
-  setInterval(seqTick, 25);
-
-  // Interface du séquenceur
-  const scv = $("seqCanvas"), sg = scv.getContext("2d");
-  const PAT_N = "ABCDEFGH";
-  for (let i = 0; i < 8; i++) { const b = document.createElement("button"); b.type = "button"; b.className = "pat"; b.id = "pat" + i; b.textContent = PAT_N[i]; b.addEventListener("click", () => seqSelect(i)); $("pats").appendChild(b); }
-  function drawSeqUI() {
-    for (let i = 0; i < 8; i++) { const b = $("pat" + i); b.classList.toggle("on", i === SEQ.cur); b.classList.toggle("next", i === SEQ.next); b.classList.toggle("has", SEQ.pats[i].ev.length > 0); }
-    $("sqPlay").textContent = SEQ.playing ? "■ STOP" : "▶ PLAY"; $("sqPlay").classList.toggle("on", SEQ.playing);
-    $("sqRec").classList.toggle("on", SEQ.rec);
-    $("sqMetro").classList.toggle("on", SEQ.metro);
-    $("sqNR").textContent = "REPEAT " + NR_NAMES[SEQ.nrIdx]; $("sqNR").classList.toggle("on", SEQ.nr);
-    $("sqQuant").textContent = "QUANT " + QUANTS[SEQ.qIdx][1];
-    $("sqBars").textContent = pat().bars + (pat().bars > 1 ? " MESURES" : " MESURE");
-    seqDirty = true;
-  }
-  let seqDirty = true, seqLastStep = -1;
-  function drawSeqGrid() {
-    fitCanvas(scv);
-    const cur = SEQ.playing ? Math.floor(((seqNow() - SEQ.segTick) % patLen() + patLen()) % patLen() / 24) : -1;
-    if (!seqDirty && cur === seqLastStep) return;
-    seqDirty = false; seqLastStep = cur;
-    const W = scv.width, H = scv.height, d = window.devicePixelRatio || 1, lab = 54 * d, cw = (W - lab) / 16, rh = H / 16;
-    sg.clearRect(0, 0, W, H);
-    const page = Math.min(SEQ.page, pat().bars - 1), off = page * TPB;
-    for (let r = 0; r < 16; r++) {
-      const p = r, y = r * rh;
-      sg.fillStyle = p < 8 ? "rgba(217,43,47,.10)" : "rgba(34,163,90,.10)"; sg.fillRect(0, y, lab - 2 * d, rh - d);
-      sg.fillStyle = p === selected ? "#ece3d3" : "#8f877a"; sg.font = `${9 * d}px IBM Plex Mono, monospace`; sg.textAlign = "left"; sg.textBaseline = "middle";
-      sg.fillText(`${String(p + 1).padStart(2, "0")} ${(names[p] || "").slice(0, 6)}`, 3 * d, y + rh / 2);
-      for (let c = 0; c < 16; c++) {
-        const x = lab + c * cw;
-        sg.fillStyle = Math.floor(c / 4) % 2 ? "#1d1b19" : "#242220"; if (c + page * 16 === cur) sg.fillStyle = "#3a3530";
-        sg.fillRect(x + d, y + d, cw - 2 * d, rh - 2 * d);
-      }
-    }
-    pat().ev.forEach(ev => {
-      if (ev.t < off || ev.t >= off + TPB) return;
-      const c = (ev.t - off) / 24, x = lab + c * cw, y = ev.p * rh;
-      sg.fillStyle = ev.p < 8 ? "#d92b2f" : "#22a35a"; sg.globalAlpha = 0.45 + 0.55 * ev.v;
-      sg.fillRect(x + 2 * d, y + 2 * d, Math.max(3 * d, cw - 4 * d), rh - 4 * d); sg.globalAlpha = 1;
     });
-    if (pat().bars > 1) { sg.fillStyle = "#ece3d3"; sg.font = `${10 * d}px IBM Plex Mono, monospace`; sg.textAlign = "right"; sg.fillText(`page ${page + 1}/${pat().bars}`, W - 4 * d, H - 6 * d); }
   }
-  let sqPress = null;
-  scv.addEventListener("pointerdown", e => {
-    const r = scv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, lab = 54, cw = (r.width - lab) / 16, row = Math.floor(y / (r.height / 16));
-    if (row < 0 || row > 15) return;
-    if (x < lab) { sqPress = setTimeout(() => { const before = JSON.stringify(SEQ.pats); pat().ev = pat().ev.filter(ev => ev.p !== row); const after = JSON.stringify(SEQ.pats); pushHist("vider la ligne", () => { SEQ.pats = JSON.parse(before); drawSeqUI(); }, () => { SEQ.pats = JSON.parse(after); drawSeqUI(); }); drawSeqUI(); }, 600); select(row); voice(row, 0.9, 1); seqDirty = true; return; }
-    const col = Math.floor((x - lab) / cw), tk = Math.min(SEQ.page, pat().bars - 1) * TPB + col * 24;
-    const before = JSON.stringify(SEQ.pats);
-    const ex = pat().ev.findIndex(ev => ev.p === row && Math.abs(ev.t - tk) < 12);
-    if (ex >= 0) pat().ev.splice(ex, 1); else { pat().ev.push({ t: tk, p: row, v: 0.85 }); if (ctx) voice(row, 0.85, 1); }
-    const after = JSON.stringify(SEQ.pats);
-    pushHist("note de séquence", () => { SEQ.pats = JSON.parse(before); drawSeqUI(); }, () => { SEQ.pats = JSON.parse(after); drawSeqUI(); });
-    drawSeqUI();
-  });
-  scv.addEventListener("pointerup", () => clearTimeout(sqPress));
-  $("sqPlay").addEventListener("click", seqTogglePlay);
-  $("sqRec").addEventListener("click", seqToggleRec);
-  $("sqMetro").addEventListener("click", () => { SEQ.metro = !SEQ.metro; drawSeqUI(); });
-  $("sqNR").addEventListener("click", () => { SEQ.nr = !SEQ.nr; drawSeqUI(); });
-  $("sqQuant").addEventListener("click", () => { SEQ.qIdx = (SEQ.qIdx + 1) % QUANTS.length; drawSeqUI(); });
-  function setBars(n) { const before = JSON.stringify(SEQ.pats); pat().bars = n; pat().ev = pat().ev.filter(ev => ev.t < n * TPB); SEQ.page = 0; const after = JSON.stringify(SEQ.pats); pushHist("longueur du pattern", () => { SEQ.pats = JSON.parse(before); drawSeqUI(); }, () => { SEQ.pats = JSON.parse(after); drawSeqUI(); }); drawSeqUI(); }
-  $("sqBars").addEventListener("click", () => setBars({ 1: 2, 2: 4, 4: 1 }[pat().bars]));
-  $("sqDup").addEventListener("click", () => {
-    const P = pat(); if (P.bars >= 4) return;
-    const before = JSON.stringify(SEQ.pats), L = P.bars * TPB;
-    P.ev = P.ev.concat(P.ev.map(ev => ({ ...ev, t: ev.t + L, skip: -1 }))); P.bars *= 2;
-    const after = JSON.stringify(SEQ.pats);
-    pushHist("doubler le pattern", () => { SEQ.pats = JSON.parse(before); drawSeqUI(); }, () => { SEQ.pats = JSON.parse(after); drawSeqUI(); }); drawSeqUI();
-  });
-  let sqClearT = null;
-  $("sqClear").addEventListener("pointerdown", () => { $("sqClear").classList.add("holding"); sqClearT = setTimeout(() => { const before = JSON.stringify(SEQ.pats); pat().ev = []; const after = JSON.stringify(SEQ.pats); pushHist("effacer le pattern", () => { SEQ.pats = JSON.parse(before); drawSeqUI(); }, () => { SEQ.pats = JSON.parse(after); drawSeqUI(); }); $("sqClear").classList.remove("holding"); drawSeqUI(); }, 600); });
-  ["pointerup", "pointerleave", "pointercancel"].forEach(ev => $("sqClear").addEventListener(ev, () => { clearTimeout(sqClearT); $("sqClear").classList.remove("holding"); }));
-  function seqKnob(k, val) {
-    knobVals.seq[k] = val;
-    if (k === 0) { SEQ.swing = 0.5 + val * 0.25; lcd("lcdPad", "SÉQ", "swing " + Math.round(SEQ.swing * 100) + " %"); }
-    if (k === 1) { if (LP.t0F !== null) { lcd("lcdPad", "SÉQ", "tempo réglé par la boucle"); return; } manualBpm = Math.round(60 + val * 120); lcd("lcdPad", "SÉQ", manualBpm + " BPM"); }
-    if (k === 2) { SEQ.nrIdx = Math.min(5, Math.floor(val * 6)); drawSeqUI(); lcd("lcdPad", "REPEAT", NR_NAMES[SEQ.nrIdx]); }
-    if (k === 3) { SEQ.qIdx = Math.min(5, Math.floor(val * 6)); drawSeqUI(); }
-    if (k === 4) { const i = Math.min(7, Math.floor(val * 8)); if (i !== SEQ.cur && i !== SEQ.next) seqSelect(i); }
-    if (k === 5) { const n = [1, 2, 4][Math.min(2, Math.floor(val * 3))]; if (n !== pat().bars) setBars(n); }
-    if (k === 6) { SEQ.page = Math.min(pat().bars - 1, Math.floor(val * pat().bars)); seqDirty = true; }
-    if (k === 7) { SEQ.metroVol = val; }
+  setInterval(nrTick, 20);
+  function drawNR() { $("nrBtn").classList.toggle("on", NR.on); $("nrRate").textContent = NR_NAMES[NR.idx]; }
+  function setNR(on) { NR.on = on; if (!on) NR.held.clear(); drawNR(); lcd("lcdPad", "NOTE REPEAT", on ? "activé · " + NR_NAMES[NR.idx] + " · tenez un pad" : "désactivé"); }
+  $("nrBtn").addEventListener("click", () => setNR(!NR.on));
+  $("nrRate").addEventListener("click", () => { NR.idx = (NR.idx + 1) % NR_DIVS.length; drawNR(); lcd("lcdPad", "NOTE REPEAT", NR_NAMES[NR.idx]); });
+  drawNR();
+
+  // ---------- SONG : enchaînement des séquences ----------
+  const SONG = { steps: [{ s: 0, r: 2 }], playing: false, idx: 0, loop: false, stepT0: 0, endT: null };
+  const SEQ_N = "ABCDEFGH";
+  function songPlay() {
+    if (!ctx) return;
+    if (LP.t0F === null) { lcd("lcdPad", "SONG", "enregistrez d'abord une boucle au LOOPER"); return; }
+    if (!SONG.steps.length) return;
+    SONG.idx = 0; SONG.endT = null;
+    switchNow(SONG.steps[0].s);
+    playAll();
+    SONG.stepT0 = LP.t0F; SONG.playing = true; drawSong(true);
+  }
+  function songStop() { if (!SONG.playing) return; SONG.playing = false; clearTimeout(SONG.endT); SONG.endT = null; SQ.next = -1; SQ.sw = null; drawSong(true); drawSeqSel(); }
+  function songTick() {
+    if (!SONG.playing || !LP.playing || SQ.sw || LP.t0F === null) return;
+    const st = SONG.steps[SONG.idx]; if (!st) { songStop(); return; }
+    const endF = SONG.stepT0 + st.r * cycF(LP.layers), nowF = ctx.currentTime * sr;
+    if (nowF < endF - 0.15 * sr) return;
+    let idx = SONG.idx + 1;
+    if (idx >= SONG.steps.length) {
+      if (!SONG.loop) { const T = endF / sr; LP.layers.forEach(l => { if (l.src) { try { l.src.stop(T); } catch (e) {} } }); SONG.playing = false; SONG.endT = setTimeout(() => { stopAll(); drawSong(true); }, Math.max(0, (T - ctx.currentTime) * 1000)); drawSong(true); return; }
+      idx = 0;
+    }
+    SONG.idx = idx; SONG.stepT0 = endF;
+    const nx = SONG.steps[idx].s;
+    if (nx !== SQ.cur) SQ.sw = { i: nx, bF: endF };
+    drawSong(true);
+  }
+  // Interface SONG
+  let songKey = "";
+  function drawSong(force) {
+    const list = $("songList");
+    const prog = SONG.playing && LP.t0F !== null ? (() => { const st = SONG.steps[SONG.idx], C = cycF(LP.layers); const el = Math.max(0, ctx.currentTime * sr - SONG.stepT0); return { rep: Math.min(st.r, Math.floor(el / C) + 1), f: (el % C) / C }; })() : null;
+    const key = JSON.stringify([SONG.steps, SONG.playing, SONG.idx, SONG.loop, prog && prog.rep, SQ.list.map(x => x.length)]);
+    if (force || key !== songKey) {
+      songKey = key;
+      list.innerHTML = "";
+      if (!SONG.steps.length) list.innerHTML = '<p class="songempty">Aucune partie. Touchez + PARTIE.</p>';
+      SONG.steps.forEach((st, i) => {
+        const row = document.createElement("div"); row.className = "songrow" + (SONG.playing && i === SONG.idx ? " on" : "");
+        const bars = n => { const L = SQ.list[n]; if (!L.length || !LP.Lf) return "vide"; return Math.round(cycF(L) / LP.Lf * LP.beats / 4 * 10) / 10 + " m"; };
+        row.innerHTML = `<span class="sn">${i + 1}</span><select aria-label="Séquence de la partie ${i + 1}">${[...SEQ_N].map((c, n) => `<option value="${n}"${n === st.s ? " selected" : ""}>${c} · ${bars(n)}</option>`).join("")}</select>
+          <button type="button" data-a="m" aria-label="Moins de répétitions">−</button><span class="rp">×${st.r}${SONG.playing && i === SONG.idx && prog ? `<small>${prog.rep}/${st.r}</small>` : ""}</span><button type="button" data-a="p" aria-label="Plus de répétitions">+</button>
+          <button type="button" data-a="u" aria-label="Monter">▲</button><button type="button" data-a="go" aria-label="Lancer depuis cette partie">▶</button><button type="button" data-a="x" aria-label="Supprimer">✕</button><i class="bar"></i>`;
+        row.querySelector("select").addEventListener("change", e => songEdit("séquence de la partie", () => { st.s = +e.target.value; }));
+        row.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+          const a = b.dataset.a;
+          if (a === "m") songEdit("répétitions", () => { st.r = Math.max(1, st.r - 1); });
+          if (a === "p") songEdit("répétitions", () => { st.r = Math.min(64, st.r + 1); });
+          if (a === "u" && i > 0) songEdit("ordre des parties", () => { SONG.steps.splice(i - 1, 0, SONG.steps.splice(i, 1)[0]); if (SONG.playing && SONG.idx === i) SONG.idx--; });
+          if (a === "x") songEdit("supprimer une partie", () => { SONG.steps.splice(i, 1); if (SONG.idx >= SONG.steps.length) SONG.idx = 0; });
+          if (a === "go") { songPlay(); if (SONG.playing && i) { SONG.idx = i; switchNow(SONG.steps[i].s); playAll(); SONG.stepT0 = LP.t0F; drawSong(true); } }
+        }));
+        list.appendChild(row);
+      });
+      $("songPlay").textContent = SONG.playing ? "■ STOP" : "▶ MORCEAU";
+      $("songPlay").classList.toggle("on", SONG.playing);
+      $("songLoop").textContent = "BOUCLER : " + (SONG.loop ? "OUI" : "NON");
+      $("songLoop").classList.toggle("on", SONG.loop);
+      const tot = SONG.steps.reduce((a, st) => a + (LP.Lf ? st.r * cycF(SQ.list[st.s]) / sr : 0), 0);
+      $("songInfo").textContent = LP.Lf ? `${SONG.steps.length} partie(s) · ${Math.floor(tot / 60)} min ${String(Math.round(tot % 60)).padStart(2, "0")} s · ${curBpm().toFixed(1).replace(/\.0$/, "")} BPM` : "tempo défini par la première boucle du LOOPER";
+    }
+    const on = list.querySelector(".songrow.on .bar"); if (on && prog) on.style.width = (prog.f * 100) + "%";
+  }
+  function songEdit(label, fn) {
+    const before = JSON.stringify(SONG.steps); fn(); const after = JSON.stringify(SONG.steps);
+    pushHist(label, () => { SONG.steps = JSON.parse(before); drawSong(true); }, () => { SONG.steps = JSON.parse(after); drawSong(true); });
+    drawSong(true);
+  }
+  $("songPlay").addEventListener("click", () => SONG.playing ? (songStop(), stopAll()) : songPlay());
+  $("songLoop").addEventListener("click", () => { SONG.loop = !SONG.loop; drawSong(true); });
+  $("songAdd").addEventListener("click", () => songEdit("ajouter une partie", () => { const last = SONG.steps[SONG.steps.length - 1]; SONG.steps.push({ s: last ? Math.min(7, last.s + 1) : SQ.cur, r: 2 }); }));
+  // Boutons du sélecteur de séquences (LOOPER)
+  {
+    let drag = null;
+    for (let i = 0; i < 8; i++) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "pat"; b.id = "sq" + i; b.textContent = SEQ_N[i]; b.dataset.i = i;
+      b.addEventListener("pointerdown", e => { drag = { from: i, x: e.clientX, y: e.clientY }; });
+      b.addEventListener("pointerup", e => {
+        const el = document.elementFromPoint(e.clientX, e.clientY), to = el && el.dataset && el.dataset.i !== undefined ? +el.dataset.i : -1;
+        if (drag && to >= 0 && to !== drag.from) copySeq(drag.from, to); else if (drag && drag.from === i) selectSeq(i);
+        drag = null;
+      });
+      $("seqSel").appendChild(b);
+    }
+    document.addEventListener("pointerup", e => {
+      if (!drag) return; const el = document.elementFromPoint(e.clientX, e.clientY), to = el && el.dataset && el.dataset.i !== undefined ? +el.dataset.i : -1;
+      if (to >= 0 && to !== drag.from) copySeq(drag.from, to); drag = null;
+    });
+    const m = document.createElement("button"); m.type = "button"; m.className = "pat metro"; m.id = "metroBtn"; m.textContent = "MÉTRO";
+    m.addEventListener("click", () => { SQ.metro = !SQ.metro; SQ.metroF = 0; drawSeqSel(); lcd("lcdPad", "MÉTRONOME", SQ.metro ? "activé" : "désactivé"); });
+    $("seqSel").appendChild(m);
+    drawSeqSel();
   }
 
   // ---------- Écran LCD : compteur, son frappé, vumètres ----------
@@ -2631,17 +2667,12 @@ registerProcessor('nomad-fx',Fx);`;
   const mBuf = new Float32Array(256);
   function level(an) { an.getFloatTimeDomainData(mBuf); let m = 0; for (let i = 0; i < 256; i++) m = Math.max(m, Math.abs(mBuf[i])); return m; }
   function transport() {
-    if (SEQ.playing) {
-      const raw = seqNow();
-      if (raw < SEQ.countIn) { const bt = Math.floor(raw / 96); return { s: `● décompte ${4 - bt}`, on: raw % 96 < 24 }; }
-      const tk = ((raw - SEQ.segTick) % patLen() + patLen()) % patLen();
-      return { s: `▶ ${PAT_N[SEQ.cur]} ${Math.floor(tk / TPB) + 1}.${Math.floor(tk % TPB / 96) + 1}.${Math.floor(tk % 96 / 24) + 1}`, on: tk % 96 < 24 };
-    }
     if (LP.t0F !== null && LP.playing) {
-      const pos = ((ctx.currentTime * sr - LP.t0F) % LP.Lf + LP.Lf) % LP.Lf, bl = LP.Lf / LP.beats, beat = Math.floor(pos / bl);
-      return { s: `↻ ${Math.floor(beat / 4) + 1}.${beat % 4 + 1}.${Math.floor((pos % bl) / bl * 4) + 1}`, on: (pos % bl) / bl < 0.25 };
+      const C = cycF(LP.layers), pos = ((ctx.currentTime * sr - LP.t0F) % C + C) % C, bl = LP.Lf / LP.beats, beat = Math.floor(pos / bl);
+      const nx = SQ.sw ? SQ.sw.i : SQ.next, tag = SONG.playing ? `♫${SONG.idx + 1} ` : "";
+      return { s: `${tag}${SEQ_N[SQ.cur]}${nx >= 0 ? "→" + SEQ_N[nx] : ""} ${Math.floor(beat / 4) + 1}.${beat % 4 + 1}.${Math.floor((pos % bl) / bl * 4) + 1}`, on: (pos % bl) / bl < 0.25 };
     }
-    return { s: `■ ${Math.round(curBpm())} BPM`, on: false };
+    return { s: `■ ${SEQ_N[SQ.cur]} · ${Math.round(curBpm())} BPM`, on: false };
   }
   function drawLcdStrip() {
     const tr = transport();
@@ -2692,12 +2723,8 @@ registerProcessor('nomad-fx',Fx);`;
   }
   const stamp = () => new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
   $("expLoop").addEventListener("click", () => {
-    if (!LP.layers.length) { lcd("lcdPad", "EXPORT", "pas de boucle à exporter"); return; }
-    const gcd = (x, y) => y ? gcd(y, x % y) : x; let k = 1; LP.layers.forEach(l => { k = k * l.k / gcd(k, l.k); });
-    k = Math.min(k, 8); const L = k * LP.Lf, out = [new Float32Array(L), new Float32Array(L)];
-    LP.layers.forEach(l => { const g = (l.muted ? 0 : l.vol) * loopBus.gain.value, LkL = l.k * LP.Lf, off = l.m * LP.Lf; for (let c = 0; c < 2; c++) { const s2 = l.buf.getChannelData(Math.min(c, l.buf.numberOfChannels - 1)); for (let p = 0; p < L; p++) out[c][p] += s2[(((p - off) % LkL) + LkL) % LkL] * g; } });
-    let pk = 0; out.forEach(c => c.forEach(v => { pk = Math.max(pk, Math.abs(v)); })); if (pk > 0.98) out.forEach(c => { for (let i = 0; i < c.length; i++) c[i] *= 0.95 / pk; });
-    deliver(wavBlob(out, sr), `nomad16-boucle-${Math.round(curBpm())}bpm-${stamp()}.wav`);
+    if (!LP.layers.length) { lcd("lcdPad", "EXPORT", "séquence vide, rien à exporter"); return; }
+    deliver(wavBlob(loopStems().mix, sr), `nomad16-sequence${SEQ_N[SQ.cur]}-${Math.round(curBpm())}bpm-${stamp()}.wav`);
   });
   let sess = null;
   $("expSess").addEventListener("click", () => {
@@ -2931,17 +2958,6 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     for (let i = 0; i < 128; i++) x += `      <PadNote number="${i + 1}">\n        <Note>${MPC_NOTES[i]}</Note>\n      </PadNote>\n`;
     return x + "    </PadNoteMap>\n  </Program>\n</MPCVObject>\n";
   }
-  // MIDI (format 0, 96 ticks par noire) : les notes visent les pads de la MPC (A01 = 37, A02 = 36...)
-  function makeMidi(P, bpm) {
-    const ev = [], vlq = n => { const b = [n & 127]; while ((n >>= 7)) b.unshift((n & 127) | 128); return b; };
-    P.ev.forEach(e => { const t = Math.max(0, Math.round(e.t + swingOf(e.t))), note = MPC_NOTES[e.p], vel = Math.max(1, Math.min(127, Math.round(e.v * 127))); ev.push([t, 1, [0x90, note, vel]], [t + 22, 0, [0x80, note, 0]]); });
-    ev.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-    const us = Math.round(60e6 / bpm), trk = [0, 0xFF, 0x51, 3, (us >> 16) & 255, (us >> 8) & 255, us & 255, 0, 0xFF, 0x58, 4, 4, 2, 24, 8];
-    let now = 0; ev.forEach(([t, , m]) => { trk.push(...vlq(t - now), ...m); now = t; });
-    trk.push(...vlq(Math.max(0, P.bars * TPB - now)), 0xFF, 0x2F, 0);
-    const hd = [0x4D, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, 0, 96], tl = trk.length;
-    return new Uint8Array([...hd, 0x4D, 0x54, 0x72, 0x6B, (tl >>> 24) & 255, (tl >> 16) & 255, (tl >> 8) & 255, tl & 255, ...trk]);
-  }
   // ZIP sans compression (lisible par l'app Fichiers : touchez le .zip pour obtenir le dossier)
   const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
   const crc32 = d => { let c = 0xFFFFFFFF; for (let i = 0; i < d.length; i++) c = CRC[(c ^ d[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
@@ -2958,17 +2974,29 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cs, true); e.setUint32(16, off, true);
     return new Blob([...parts, ...cen, new Uint8Array(e.buffer)], { type: "application/zip" });
   }
-  function loopStems() {
-    if (!LP.layers.length) return null;
-    const gcd = (x, y) => y ? gcd(y, x % y) : x; let k = 1; LP.layers.forEach(l => { k = k * l.k / gcd(k, l.k); });
-    k = Math.min(k, 8); const L = k * LP.Lf, mix = [new Float32Array(L), new Float32Array(L)];
-    const stems = LP.layers.map(l => {
+  function loopStems(layers = LP.layers, norm = true) {
+    if (!layers.length) return null;
+    const L = cycF(layers), mix = [new Float32Array(L), new Float32Array(L)];
+    const stems = layers.map(l => {
       const out = [new Float32Array(L), new Float32Array(L)], LkL = l.k * LP.Lf, off = l.m * LP.Lf, g = l.vol;
       for (let c = 0; c < 2; c++) { const s2 = l.buf.getChannelData(Math.min(c, l.buf.numberOfChannels - 1)); for (let p = 0; p < L; p++) { const x = s2[(((p - off) % LkL) + LkL) % LkL] * g; out[c][p] = x; if (!l.muted) mix[c][p] += x * loopBus.gain.value; } }
       return out;
     });
-    let pk = 0; mix.forEach(c => c.forEach(v => { pk = Math.max(pk, Math.abs(v)); })); if (pk > 0.98) mix.forEach(c => { for (let i = 0; i < c.length; i++) c[i] *= 0.95 / pk; });
+    if (norm) normalize(mix);
     return { stems, mix, L };
+  }
+  function normalize(chs) { let pk = 0; chs.forEach(c => { for (let i = 0; i < c.length; i++) pk = Math.max(pk, Math.abs(c[i])); }); if (pk > 0.98) chs.forEach(c => { for (let i = 0; i < c.length; i++) c[i] *= 0.95 / pk; }); }
+  // Le morceau complet (onglet SONG) en un seul fichier
+  function songMix() {
+    if (!SONG.steps.length || !LP.Lf) return null;
+    const mixes = SQ.list.map(x => x.length ? loopStems(x, false) : null);
+    const lenOf = st => mixes[st.s] ? mixes[st.s].L : LP.Lf;
+    const N = SONG.steps.reduce((a, st) => a + st.r * lenOf(st), 0);
+    if (N > sr * 60 * 12) return null;
+    const out = [new Float32Array(N), new Float32Array(N)]; let o = 0;
+    SONG.steps.forEach(st => { const m = mixes[st.s], L = lenOf(st); for (let r = 0; r < st.r; r++) { if (m) { out[0].set(m.mix[0], o); out[1].set(m.mix[1], o); } o += L; } });
+    normalize(out);
+    return out;
   }
   const PAD_COLORS = i => i < 8 ? 0xD92B2F : 0x1D9C74, STEM_COLORS = [0xD92B2F, 0x1D9C74, 0xF2B705, 0x4C8DD9, 0xC86BD9, 0xE8E2D4];
   async function exportMpc() {
@@ -2987,18 +3015,26 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
           mute: kitChoke ? 1 : (pp.choke || ((i === 2 || i === 3) && !padParams[2].choke && !padParams[3].choke ? 7 : 0)), oneshot: pp.oneshot && !pp.loop, loop: pp.loop, release: pp.oneshot ? 0 : Math.min(1, pp.rel), color: PAD_COLORS(i) };
       }
       files.push({ name: kitDir + `NOMAD16_${kitN}.xpm`, data: makeXpm(`NOMAD16 ${kitN}`, pads) });
-      // 2. Pistes du looper : une par piste + mix + programme (piste n sur le pad A0n, mix sur A07)
-      const st = loopStems();
-      if (st) {
-        const dir = `${root}/Pistes_${bpm}bpm/`, sp = [];
-        st.stems.forEach((ch, i) => { const nm = `N16_Piste${i + 1}_${bpm}bpm`; files.push({ name: dir + nm + ".wav", data: wav24(ch, sr) }); sp[i] = { name: nm, frames: st.L, vol: 0.707946, pan: 0.5, coarse: 0, fine: 0, mute: 0, oneshot: true, release: 0, color: STEM_COLORS[i] }; });
-        files.push({ name: dir + `N16_Mix_${bpm}bpm.wav`, data: wav24(st.mix, sr) });
-        sp[6] = { name: `N16_Mix_${bpm}bpm`, frames: st.L, vol: 0.707946, pan: 0.5, coarse: 0, fine: 0, mute: 0, oneshot: true, release: 0, color: 0xFFFFFF };
-        files.push({ name: dir + `NOMAD16_Pistes_${bpm}bpm.xpm`, data: makeXpm(`NOMAD16 Pistes ${bpm}`, sp) });
+      // 2. Chaque séquence : une piste par couche + mix + programme (piste n sur le pad A0n, mix sur A07)
+      const seqDone = [];
+      for (let q = 0; q < 8; q++) {
+        const st = loopStems(SQ.list[q]); if (!st) continue;
+        btn.textContent = "SÉQUENCE " + SEQ_N[q] + "…"; await new Promise(r => setTimeout(r, 0));
+        const bars = Math.round(st.L / LP.Lf * LP.beats / 4 * 10) / 10, tag = `Seq${SEQ_N[q]}_${bpm}bpm`, dir = `${root}/Sequence_${SEQ_N[q]}_${bars}mes_${bpm}bpm/`, sp = [];
+        st.stems.forEach((ch, i) => { const nm = `N16_${tag}_Piste${i + 1}`; files.push({ name: dir + nm + ".wav", data: wav24(ch, sr) }); sp[i] = { name: nm, frames: st.L, vol: 0.707946, pan: 0.5, coarse: 0, fine: 0, mute: 0, oneshot: true, release: 0, color: STEM_COLORS[i] }; });
+        files.push({ name: dir + `N16_${tag}_Mix.wav`, data: wav24(st.mix, sr) });
+        sp[6] = { name: `N16_${tag}_Mix`, frames: st.L, vol: 0.707946, pan: 0.5, coarse: 0, fine: 0, mute: 0, oneshot: true, release: 0, color: 0xFFFFFF };
+        files.push({ name: dir + `NOMAD16_${tag}.xpm`, data: makeXpm(`NOMAD16 ${tag}`, sp) });
+        seqDone.push(`${SEQ_N[q]} (${bars} mes., ${st.stems.length} piste(s))`);
       }
-      // 3. Patterns du séquenceur en MIDI
-      SEQ.pats.forEach((P, i) => { if (P.ev.length) files.push({ name: `${root}/MIDI/Pattern_${PAT_N[i]}_${bpm}bpm.mid`, data: makeMidi(P, bpm) }); });
-      files.push({ name: `${root}/LISEZMOI.txt`, data: `NOMAD-16 - export du ${new Date().toLocaleString("fr-FR")}\r\nTempo : ${bpm} BPM\r\n\r\nKit_${kitN} : les 16 sons (WAV 24 bits, 44,1/48 kHz) et le programme de batterie NOMAD16_${kitN}.xpm.\r\n  Pad 1 de l'Akai = pad A01 de la MPC. Tune, pan, niveau et groupes de mute sont repris dans le programme.\r\n  Filtre, saleté, attaque, decay, reverse et découpe sont déjà appliqués aux WAV. L'écho n'est pas inclus.\r\n` + (st ? `Pistes_${bpm}bpm : une piste par couche du looper, toutes de la même longueur et calées au début, plus le mix.\r\n  Le programme NOMAD16_Pistes_${bpm}bpm.xpm les met sur les pads A01 à A06, le mix sur A07.\r\n` : "") + `MIDI : un fichier par pattern du séquenceur. Les notes visent les pads de la MPC (à charger avec le programme du kit).\r\n\r\nSur la MPC : copiez le dossier sur une carte SD ou une clé USB, ouvrez le .xpm depuis le navigateur de la MPC.\r\nGardez chaque .xpm dans le même dossier que ses WAV.\r\n` });
+      // 3. Le morceau (onglet SONG)
+      let songTxt = "";
+      if (seqDone.length) {
+        btn.textContent = "MORCEAU…"; await new Promise(r => setTimeout(r, 0));
+        const sm = songMix();
+        if (sm) { files.push({ name: `${root}/NOMAD16_Morceau_${bpm}bpm.wav`, data: wav24(sm, sr) }); songTxt = `NOMAD16_Morceau_${bpm}bpm.wav : le morceau complet, dans l'ordre de l'onglet SONG :\r\n` + SONG.steps.map((st, i) => `  ${i + 1}. séquence ${SEQ_N[st.s]} x${st.r}`).join("\r\n") + "\r\n"; }
+      }
+      files.push({ name: `${root}/LISEZMOI.txt`, data: `NOMAD-16 - export du ${new Date().toLocaleString("fr-FR")}\r\nTempo : ${bpm} BPM\r\n\r\nKit_${kitN} : les 16 sons (WAV 24 bits, 44,1/48 kHz) et le programme de batterie NOMAD16_${kitN}.xpm.\r\n  Pad 1 de l'Akai = pad A01 de la MPC. Tune, pan, niveau et groupes de mute sont repris dans le programme.\r\n  Filtre, saleté, attaque, decay, reverse et découpe sont déjà appliqués aux WAV. L'écho n'est pas inclus.\r\n` + (seqDone.length ? `Sequence_X : pour chaque séquence du looper (${seqDone.join(", ")}), une piste WAV par couche, toutes de la même longueur et calées au début, plus le mix.\r\n  Le programme .xpm de chaque dossier met les pistes sur les pads A01 à A06 et le mix sur A07.\r\n` : "") + songTxt + `\r\nSur la MPC : copiez le dossier sur une carte SD ou une clé USB, ouvrez le .xpm depuis le navigateur de la MPC.\r\nGardez chaque .xpm dans le même dossier que ses WAV.\r\n` });
       const zip = makeZip(files);
       btn.textContent = "EXPORT MULTIPISTE + MPC";
       await deliver(zip, root + ".zip", "application/zip");
@@ -3137,9 +3173,9 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       id, name: name.toUpperCase().slice(0, 40), created: Date.now(),
       kit: kitCur, kitEmbed: (kitCur === "chops") ? { names: names.slice(), gains: gains.slice(), bufs: buffers.map(packBuf) } : null,
       knobs: JSON.parse(JSON.stringify(knobVals)), manualBpm, padParams: padParams.map(p => ({ ...p })), fxTarget,
-      seq: { pats: SEQ.pats, swing: SEQ.swing, qIdx: SEQ.qIdx, nrIdx: SEQ.nrIdx, cur: SEQ.cur },
+      song: { steps: SONG.steps, loop: SONG.loop, cur: SQ.cur, nr: NR.idx },
       guitar: { amp: G.amp, fx: [...G.fx], preset: G.preset },
-      loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, layers: LP.layers.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, buf: packBuf(l.buf) })) }
+      loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, buf: packBuf(l.buf) }))) }
     };
     await DB.put("projects", p);
   }
@@ -3156,12 +3192,19 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     } else if (kitIndex.some(k => k.id === p.kit)) await loadKit(p.kit);
     if (p.padParams) { padParams = fixParams(p.padParams); select(selected); }
     if (p.fxTarget) setFxTarget(p.fxTarget);
-    if (p.seq) { if (SEQ.playing) seqStop(); SEQ.pats = JSON.parse(JSON.stringify(p.seq.pats)); SEQ.swing = p.seq.swing; SEQ.qIdx = p.seq.qIdx; SEQ.nrIdx = p.seq.nrIdx; SEQ.cur = p.seq.cur || 0; drawSeqUI(); }
-    resetLooper();
+    resetAll();
+    SONG.steps = p.song ? JSON.parse(JSON.stringify(p.song.steps)) : [{ s: 0, r: 2 }]; SONG.loop = !!(p.song && p.song.loop); if (p.song) NR.idx = p.song.nr ?? 2; drawNR();
     if (p.loop && p.loop.sr === sr) {
       LP.Lf = p.loop.Lf; LP.beats = p.loop.beats; LP.t0F = Math.round((ctx.currentTime + 0.05) * sr); LP.playing = true;
-      p.loop.layers.forEach((l, i) => { addLayer(unpackBuf(l.buf), l.k, l.m, false); const L = LP.layers[i]; L.vol = l.vol; L.muted = l.muted; L.gain.gain.value = l.muted ? 0 : l.vol; });
+      const seqs = p.loop.seqs || [p.loop.layers], cur = p.song ? p.song.cur || 0 : 0;
+      seqs.forEach((arr, q) => {
+        switchNow(q);
+        arr.forEach((l, i) => { addLayer(unpackBuf(l.buf), l.k, l.m, false); const L = LP.layers[i]; L.vol = l.vol; L.muted = l.muted; L.gain.gain.value = l.muted ? 0 : l.vol; });
+        if (q !== cur) LP.layers.forEach(stopLayer);
+      });
+      switchNow(cur); LP.playing = false; playAll();
     } else if (p.loop) lcd("lcdLoop", "BOUCLE", "boucles enregistrées à une autre fréquence, non chargées");
+    drawSong(true);
     drawKnobs();
     lcd("lcdPad", "PROJET", p.name + " chargé");
   }
@@ -3173,7 +3216,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       const row = document.createElement("div"); row.className = "item-row";
       const b = document.createElement("button"); b.type = "button"; b.className = "kititem";
       const d = new Date(p.created);
-      b.innerHTML = `${p.name}<small>${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · ${p.loop ? p.loop.layers.length + " piste(s)" : "sans boucle"}</small>`;
+      b.innerHTML = `${p.name}<small>${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · ${p.loop ? (p.loop.seqs ? p.loop.seqs.filter(x => x.length).length + " séquence(s)" : p.loop.layers.length + " piste(s)") : "sans boucle"}</small>`;
       b.addEventListener("click", async () => { $("setSheet").hidden = true; await loadProject(p.id); });
       const del = document.createElement("button"); del.type = "button"; del.className = "mini"; del.textContent = "SUPPR.";
       del.addEventListener("click", async () => { if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "SÛR ?"; return; } await DB.del("projects", p.id); renderProjects(); });
@@ -3202,8 +3245,8 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   function padCommand(n) {
     const map = {
       20: togglePlay, 21: undo, 22: () => toggleMute(0), 23: () => toggleMute(1), 24: () => toggleMute(2), 25: () => toggleMute(3), 26: () => toggleMute(4), 27: () => toggleMute(5),
-      28: () => stepKit(-1), 29: () => stepKit(1), 30: seqTogglePlay, 31: seqToggleRec,
-      32: () => { SEQ.nr = !SEQ.nr; drawSeqUI(); lcd("lcdPad", "NOTE REPEAT", SEQ.nr ? "activé · " + NR_NAMES[SEQ.nrIdx] : "désactivé"); }, 33: () => seqSelect((SEQ.cur + 1) % 8),
+      28: () => stepKit(-1), 29: () => stepKit(1), 30: () => SONG.playing ? (songStop(), stopAll()) : songPlay(), 31: () => selectSeq((SQ.cur + 7) % 8),
+      32: () => setNR(!NR.on), 33: () => selectSeq((SQ.cur + 1) % 8),
       34: () => setTab(TABS[(TABS.indexOf(tab) + 1) % TABS.length]), 35: () => { if (G.on) stopInput(); else startInput(); }
     };
     if (map[n]) map[n]();
@@ -3239,9 +3282,13 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (tab === "fx") { knobVals.fx[k] = val; applyFxKnob(k); $("dial" + k).style.setProperty("--v", val); return; }
     if (tab === "sample") { sampleKnob(k, v); $("dial" + k).style.setProperty("--v", val); return; }
     if (tab === "guitar") return;
-    if (tab === "seq") { seqKnob(k, val); $("dial" + k).style.setProperty("--v", knobVals.seq[k]); return; }
+    if (tab === "song") {
+      knobVals.song[k] = val; $("dial" + k).style.setProperty("--v", val);
+      if (k === 7) { lcd("lcdPad", "MÉTRONOME", "volume " + Math.round(val * 100) + " %"); return; }
+      knobVals.loops[k] = val;
+    }
     if (tab === "sons") { sonsKnob(k, val); $("dial" + k).style.setProperty("--v", knobVals.sons[k]); return; }
-    knobVals[tab][k] = val;
+    if (tab !== "song") knobVals[tab][k] = val;
     if (tab === "play") applyPlayKnob(k);
     else if (ctx) {
       if (k < 6) { const l = LP.layers[k]; if (l) { l.vol = val; if (!l.muted) l.gain.gain.setTargetAtTime(val, ctx.currentTime, 0.02); } }
@@ -3292,7 +3339,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   }
   initMidi();
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
-  window.nomadDbg = { SEQ, LP, get padParams() { return padParams; }, get buffers() { return buffers; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
+  window.nomadDbg = { get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
   let probe = null;
   window.nomadProbe = () => { if (!probe) { probe = ctx.createAnalyser(); probe.fftSize = 2048; fxMaster.connect(probe); } const a = new Float32Array(2048); probe.getFloatTimeDomainData(a); let m = 0; for (const v of a) m = Math.max(m, Math.abs(v)); return +m.toFixed(3); };
   window.nomadState = () => ({ kit: kitCur, kits: kitIndex.length, bufs: buffers.filter(Boolean).length, names: names.slice(0, 4), t0F: LP.t0F, Lf: LP.Lf, layers: LP.layers.map(l => ({ k: l.k, m: l.m })), pending: LP.pending && { ...LP.pending }, latMs, guitar: { amp: G.amp, preset: G.preset, fx: [...G.fx], on: G.on }, cap: capLatest, now: ctx && ctx.currentTime });
