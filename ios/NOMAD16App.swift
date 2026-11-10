@@ -1,4 +1,4 @@
-// NOMAD-16 pour iPhone : une app qui ouvre NOMAD et lui donne le MIDI de l'iPhone (Akai MPK mini), sans MIDIWeb.
+// NOMAD-16 pour iPhone — VERSION 3 (corrigée pour Xcode 16) : une app qui ouvre NOMAD et lui donne le MIDI de l'iPhone (Akai MPK mini), sans MIDIWeb.
 // À coller à la place du contenu de NOMAD16App.swift dans un projet Xcode « App » (SwiftUI, Swift).
 // Supprimer ContentView.swift. Ajouter dans l'onglet Info de la cible : « Privacy - Microphone Usage Description ».
 
