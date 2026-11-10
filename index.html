@@ -138,8 +138,9 @@ button { font-family: var(--font-body); }
 .gk .cap::after { content: ""; position: absolute; left: 50%; top: 3px; width: 3px; height: 12px; margin-left: -1.5px; border-radius: 2px; background: var(--knob-ink); }
 .gk label { font-family: var(--font-display); font-size: 8px; letter-spacing: .08em; color: var(--panel-ink); text-align: center; }
 .gk .val { font-size: 9px; color: var(--panel-ink); opacity: .7; font-variant-numeric: tabular-nums; }
-.amp-io { display: flex; align-items: center; gap: 8px; }
-.amp-io .btn { padding: 9px 10px; font-size: 11px; }
+.amp-io { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.amp-io .meter { order: 9; flex-basis: 100%; }
+.amp-io .btn { padding: 9px 10px; font-size: 11px; white-space: nowrap; }
 .meter { flex: 1; height: 10px; border-radius: 5px; background: #0a0a0a; box-shadow: inset 0 0 0 1px #000; overflow: hidden; }
 .meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--green) 0 70%, #e0b02a 70% 88%, var(--red) 88%); }
 .pedals { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
@@ -156,6 +157,25 @@ button { font-family: var(--font-body); }
 .preset span { display: block; font-size: 9px; color: var(--muted); margin-top: 2px; }
 .preset.on { background: var(--text); color: var(--ink); }
 .preset.on span { color: #4a443c; }
+.fxgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.fxpad { min-width: 0; aspect-ratio: 1.25; border: 0; border-radius: 7px; cursor: pointer; color: var(--text); text-align: left; padding: 7px; display: flex; flex-direction: column; justify-content: space-between;
+  background: linear-gradient(160deg, #2c3a31, #1f2a23 60%); box-shadow: 0 0 0 2px var(--pad-edge), inset 0 -3px 0 rgba(0,0,0,.35), inset 3px 0 0 var(--green); touch-action: none; }
+.fxpad b { font-size: 12px; letter-spacing: .04em; }
+.fxpad span { font-size: 9px; color: var(--muted); }
+.fxpad.on { background: radial-gradient(circle, #5df08f, var(--green) 70%); color: #06150c; }
+.fxpad.on span { color: #06150c; }
+.fxbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.fxbar .btn { padding: 9px 10px; font-size: 11px; }
+.fxbar .bpm { font-family: var(--font-lcd); font-size: 22px; color: var(--lcd-ink); }
+.gtools { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+.gtools label { font-family: var(--font-display); font-size: 8px; letter-spacing: .1em; color: var(--piping); display: flex; justify-content: space-between; }
+.gtools input { width: 100%; accent-color: #d9b968; }
+.tuner { background: #0a0a0a; border-radius: 6px; padding: 8px 10px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; font-family: var(--font-lcd); color: var(--lcd-ink); }
+.tuner[hidden] { display: none; }
+.tuner .tn { font-size: 40px; min-width: 2.2ch; text-align: center; line-height: 1; }
+.tuner .tbar { position: relative; height: 18px; border-radius: 9px; background: linear-gradient(90deg, #5a1414, #3a3a1a 40%, #134d2b 48% 52%, #3a3a1a 60%, #5a1414); }
+.tuner .tbar i { position: absolute; top: -3px; width: 4px; height: 24px; margin-left: -2px; border-radius: 2px; background: var(--text); left: 50%; transition: left .08s; }
+.tuner .tc { font-size: 20px; min-width: 5ch; text-align: right; }
 .note { font-size: 10px; color: var(--muted); line-height: 1.5; margin: 0; }
 select.dev { background: #262421; color: var(--text); border: 0; border-radius: 6px; padding: 8px; font-family: var(--font-body); font-size: 11px; max-width: 150px; }
 
@@ -212,7 +232,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     <button class="tab" role="tab" id="tab-play" aria-selected="true" type="button">JOUER</button>
     <button class="tab" role="tab" id="tab-loops" aria-selected="false" type="button">BOUCLES</button>
     <button class="tab" role="tab" id="tab-guitar" aria-selected="false" type="button">GUITARE</button>
-    <button class="tab" role="tab" type="button" disabled title="Étape suivante">FX LIVE</button>
+    <button class="tab" role="tab" id="tab-fx" aria-selected="false" type="button">FX LIVE</button>
     <button class="tab" role="tab" type="button" disabled title="Étape suivante">SONS</button>
   </div>
 
@@ -240,11 +260,30 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
         <button class="btn" id="inBtn" type="button">ENTRÉE OFF</button>
         <div class="meter" aria-label="Niveau d'entrée"><i id="meter"></i></div>
         <select class="dev" id="devSel" aria-label="Entrée audio" hidden></select>
+        <button class="btn" id="tunBtn" type="button">ACCORDEUR</button>
+      </div>
+      <div class="tuner" id="tuner" hidden><span class="tn" id="tunNote">—</span><div class="tbar"><i id="tunNeedle"></i></div><span class="tc" id="tunCents"></span></div>
+      <div class="gtools">
+        <label for="gateSl">SEUIL DE BRUIT <span id="gateVal">-55 dB</span></label>
+        <label for="trimSl">NIVEAU D'ENTRÉE <span id="trimVal">100 %</span></label>
+        <input type="range" id="gateSl" min="-80" max="-25" step="1" value="-55">
+        <input type="range" id="trimSl" min="0.2" max="2" step="0.05" value="1">
       </div>
       <div class="pedals" id="pedals"></div>
     </div>
     <div class="presets" id="presets" style="margin-top:10px"></div>
-    <p class="note" style="margin-top:8px">Branchez l'iRig puis touchez ENTRÉE. Au casque filaire de préférence : en Bluetooth, le retard rend le jeu en direct difficile. Les 8 potards de l'Akai règlent l'ampli dans cet onglet.</p>
+    <p class="note" style="margin-top:8px">Branchez l'iRig puis touchez ENTRÉE. Larsen : montez le seuil de bruit, baissez le niveau d'entrée et le volume de l'iPhone, et évitez le haut-parleur. L'accordeur coupe le son pendant l'accordage. Les 8 potards de l'Akai règlent l'ampli dans cet onglet.</p>
+  </section>
+
+  <section class="view" id="view-fx" hidden>
+    <div class="fxgrid" id="fxgrid"></div>
+    <div class="fxbar">
+      <button class="btn on" id="fxQuant" type="button">CALÉ 1/16</button>
+      <span class="bpm" id="fxBpm">90 BPM</span>
+      <button class="btn" id="fxBpmDown" type="button" aria-label="Tempo moins">−</button>
+      <button class="btn" id="fxBpmUp" type="button" aria-label="Tempo plus">+</button>
+    </div>
+    <p class="note" style="margin-top:8px">Bank 2 de l'Akai : maintenez un pad pour l'effet, relâchez pour revenir. Potards : filtre (gauche passe-bas, droite passe-haut), envoi d'écho dub, ressort, bitcrush. Le tempo suit la boucle quand il y en a une.</p>
   </section>
 
   <div class="legend" id="legend">
@@ -290,12 +329,13 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   const KNOB_LABELS = {
     play: ["Filtre", "Écho", "Saleté", "Volume", "—", "—", "—", "—"],
     loops: ["Piste 1", "Piste 2", "Piste 3", "Piste 4", "Piste 5", "Piste 6", "Boucles", "Undo ↻"],
-    guitar: ["Gain", "Basses", "Médiums", "Aigus", "Présence", "Réverbe", "Master", "Écho"]
+    guitar: ["Gain", "Basses", "Médiums", "Aigus", "Présence", "Réverbe", "Master", "Écho"],
+    fx: ["Filtre", "Réso", "Envoi écho", "Temps", "Retour", "Ressort", "Bitcrush", "Master"]
   };
-  const knobVals = { play: [1, 0, 0, 0.85, 0, 0, 0, 0], loops: [1, 1, 1, 1, 1, 1, 0.9, 0], guitar: [0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.6, 0.3] };
+  const knobVals = { play: [1, 0, 0, 0.85, 0, 0, 0, 0], loops: [1, 1, 1, 1, 1, 1, 0.9, 0], guitar: [0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.6, 0.3], fx: [0.5, 0.2, 0, 0.5, 0.55, 0, 0, 0.85] };
   let tab = "play";
 
-  let ctx, sr, liveIn, filter, drive, delay, delayFb, delayWet, padOut, liveBus, loopBus, master;
+  let ctx, sr, liveIn, filter, drive, delay, delayFb, delayWet, padOut, liveBus, loopBus, master, fxOut;
   const store = {
     get(k, d) { try { const v = localStorage.getItem("nomad16." + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem("nomad16." + k, JSON.stringify(v)); } catch (e) {} }
@@ -350,13 +390,13 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       knobEls[k].classList.toggle("off", label === "—");
       const dial = $("dial" + k);
       dial.style.setProperty("--v", knobVals[tab][k]);
-      dial.style.setProperty("--kc", tab === "loops" && k < 6 ? COLORS[k] : tab === "guitar" ? "#d9b968" : "var(--red)");
+      dial.style.setProperty("--kc", tab === "loops" && k < 6 ? COLORS[k] : tab === "fx" ? "var(--green)" : tab === "guitar" ? "#d9b968" : "var(--red)");
     }
   }
   drawKnobs();
 
   // ---------- Onglets ----------
-  const TABS = ["play", "loops", "guitar"];
+  const TABS = ["play", "loops", "guitar", "fx"];
   function setTab(t) {
     tab = t;
     TABS.forEach(x => { $("tab-" + x).setAttribute("aria-selected", x === t); $("view-" + x).hidden = x !== t; });
@@ -488,7 +528,25 @@ process(inputs,outputs){const i=inputs[0],o=outputs[0];if(!i||!i[0]){return true
 for(let s=0;s<n;s++){let v=0;for(let c=0;c<i.length;c++)v=Math.max(v,Math.abs(i[c][s]));this.env=Math.max(v,this.env*0.9995);
 if(!this.open&&this.env>this.th)this.open=true;else if(this.open&&this.env<this.th*0.5)this.open=false;
 this.g+=((this.open?1:0)-this.g)*(this.open?0.02:0.0008);for(let c=0;c<o.length;c++)o[c][s]=(i[c]||i[0])[s]*this.g;}return true;}}
-registerProcessor('nomad-gate',Gate);`;
+registerProcessor('nomad-gate',Gate);
+class Fx extends AudioWorkletProcessor{constructor(){super();this.N=(sampleRate*12)|0;this.b=[new Float32Array(this.N),new Float32Array(this.N)];this.mode=null;this.pend=null;this.mix=0;this.pos=0;this.rel=false;
+this.port.onmessage=e=>{const m=e.data;if(m.type==='start')this.pend=m;else if(m.type==='stop'){this.pend=null;this.rel=true;}};}
+rd(c,x){const N=this.N;let i=Math.floor(x);const f=x-i;i=((i%N)+N)%N;return this.b[c][i]*(1-f)+this.b[c][(i+1)%N]*f;}
+process(inputs,outputs){const inp=inputs[0],out=outputs[0],n=out[0].length,N=this.N;
+for(let s=0;s<n;s++){const fr=currentFrame+s,w=fr%N;
+for(let c=0;c<2;c++){const ch=inp&&inp.length?(inp[c]||inp[0]):null;this.b[c][w]=ch?ch[s]:0;}
+if(this.pend&&fr>=this.pend.at){const p=this.pend;this.pend=null;this.mode=p.mode;this.anchor=fr;this.seg=Math.max(64,p.seg|0);this.dur=Math.max(64,p.dur|0);this.pos=0;this.rel=false;}
+const tgt=this.mode&&!this.rel?1:0;this.mix+=(tgt-this.mix)*0.006;if(this.rel&&this.mix<0.001){this.mode=null;this.rel=false;this.mix=0;}
+let ri=fr,g=1;
+if(this.mode){const t=fr-this.anchor;
+if(this.mode==='repeat'){const k=t%this.seg;ri=this.anchor+k;const xf=Math.min(96,this.seg>>3);g=k<xf?k/xf:(k>this.seg-xf?(this.seg-k)/xf:1);}
+else if(this.mode==='reverse'){ri=this.anchor-1-t;if(t>N-4800)g=0;}
+else if(this.mode==='tapestop'){const r=Math.max(0,1-t/this.dur);this.pos+=r*r;ri=this.anchor+this.pos;g=Math.min(1,r*8);}
+else if(this.mode==='half'){ri=this.anchor+t*0.5;}
+else if(this.mode==='gate'){const k=t%(this.seg*2);g=k<this.seg?Math.min(1,k/48,(this.seg-k)/48):0;}}
+for(let c=0;c<2;c++){const dry=this.b[c][w];const wet=this.mode?(this.mode==='gate'?dry*g:this.rd(c,ri)*g):dry;out[c][s]=dry*(1-this.mix)+wet*this.mix;}}
+return true;}}
+registerProcessor('nomad-fx',Fx);`;
   let hasWorklet = false;
   async function setupCapture() {
     ringN = Math.floor(sr * CAP_SECONDS);
@@ -538,12 +596,15 @@ registerProcessor('nomad-gate',Gate);`;
     liveIn.connect(filter); filter.connect(drive); drive.connect(padOut);
     drive.connect(delay); delay.connect(delayFb); delayFb.connect(delay); delay.connect(delayWet); delayWet.connect(padOut);
     padOut.connect(liveBus);
-    liveBus.connect(master); loopBus.connect(master); master.connect(comp); comp.connect(ctx.destination);
+    liveBus.connect(master); loopBus.connect(master);
+    fxOut = comp;
+    comp.connect(ctx.destination);
     synthBuffers = render(sr).map(data => { const b = ctx.createBuffer(1, data.length, sr); b.copyToChannel(data, 0); return b; });
     buffers = synthBuffers.slice();
     for (let k = 0; k < 4; k++) applyPlayKnob(k);
     loopBus.gain.value = knobVals.loops[6];
     await setupCapture();
+    buildFx();
     buildGuitar();
     $("power").hidden = true;
     setInterval(looperTick, 15);
@@ -754,7 +815,8 @@ registerProcessor('nomad-gate',Gate);`;
     requestAnimationFrame(draw);
     if (!ctx) return;
     updateLoopLcd();
-    if (tab === "guitar") drawMeter();
+    if (tab === "fx") drawFxBar();
+    if (tab === "guitar") { drawMeter(); drawTuner(); }
     if (tab !== "loops") return;
     if (!cv.width) resizeCanvas();
     const d = window.devicePixelRatio || 1;
@@ -847,11 +909,114 @@ registerProcessor('nomad-gate',Gate);`;
   cv.addEventListener("pointerup", () => { if (pressT) clearTimeout(pressT); if (pressCell >= 0 && LP.layers[pressCell]) toggleMute(pressCell); pressCell = -1; pressT = null; });
   cv.addEventListener("pointercancel", () => { if (pressT) clearTimeout(pressT); pressCell = -1; });
 
+  // ---------- FX LIVE ----------
+  const FXS = [
+    { name: "REPEAT 1/4", sub: "répète le temps", mode: "repeat", div: 1 },
+    { name: "REPEAT 1/8", sub: "croche", mode: "repeat", div: 2 },
+    { name: "REPEAT 1/16", sub: "double croche", mode: "repeat", div: 4 },
+    { name: "STUTTER", sub: "1/32", mode: "repeat", div: 8 },
+    { name: "TAPE STOP", sub: "la bande ralentit", mode: "tapestop", div: 1 },
+    { name: "REVERSE", sub: "à l'envers", mode: "reverse", div: 1 },
+    { name: "GATE", sub: "hachage 1/16", mode: "gate", div: 4 },
+    { name: "DEMI-VITESSE", sub: "une octave plus bas", mode: "half", div: 1 }
+  ];
+  let fxNode = null, fxFilt, fxCrush, fxPost, echoSend, echoDly, echoFb, springSend, fxMaster;
+  let fxActive = -1, fxQuant = true, manualBpm = 90;
+  const fxEls = [];
+  // Rangée du bas = pads 1 à 4 de la Bank 2, comme sur l'Akai.
+  [4, 5, 6, 7, 0, 1, 2, 3].forEach(i => {
+    const f = FXS[i], b = document.createElement("button");
+    b.type = "button"; b.className = "fxpad"; b.id = "fx" + i;
+    b.innerHTML = `<span>B2 · PAD ${i + 1}</span><b>${f.name}</b><span>${f.sub}</span>`;
+    b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture(e.pointerId); fxStart(i); });
+    ["pointerup", "pointercancel"].forEach(ev => b.addEventListener(ev, () => fxStop(i)));
+    $("fxgrid").appendChild(b); fxEls[i] = b;
+  });
+  function curBpm() { return LP.t0F !== null && LP.Lf ? 60 * LP.beats / loopLen() : manualBpm; }
+  function drawFxBar() { $("fxBpm").textContent = curBpm().toFixed(1).replace(/\.0$/, "") + " BPM"; $("fxQuant").textContent = fxQuant ? "CALÉ 1/16" : "LIBRE"; $("fxQuant").classList.toggle("on", fxQuant); }
+  $("fxQuant").addEventListener("click", () => { fxQuant = !fxQuant; drawFxBar(); });
+  $("fxBpmDown").addEventListener("click", () => { manualBpm = Math.max(60, manualBpm - 1); drawFxBar(); applyFxKnob(3); });
+  $("fxBpmUp").addEventListener("click", () => { manualBpm = Math.min(180, manualBpm + 1); drawFxBar(); applyFxKnob(3); });
+  function fxStart(i) {
+    if (!ctx || !fxNode) return;
+    const f = FXS[i], beatF = 60 / curBpm() * sr;
+    const nowF = ctx.currentTime * sr, q = beatF / 4;
+    const base = LP.t0F !== null ? LP.t0F : 0;
+    const at = fxQuant ? base + Math.ceil((nowF - base) / q) * q : nowF;
+    fxNode.port.postMessage({ type: "start", mode: f.mode, seg: beatF / f.div, dur: beatF, at: Math.round(at) });
+    if (fxActive >= 0) fxEls[fxActive].classList.remove("on");
+    fxActive = i; fxEls[i].classList.add("on");
+    lcd("lcdPad", "FX", f.name + " · " + f.sub);
+  }
+  function fxStop(i) {
+    if (fxActive !== i || !fxNode) return;
+    fxNode.port.postMessage({ type: "stop" });
+    fxEls[i].classList.remove("on"); fxActive = -1;
+  }
+  function crushCurve(bits) { const n = 4096, c = new Float32Array(n), st = Math.pow(2, bits - 1); for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; c[i] = Math.round(x * st) / st; } return c; }
+  function springIR() {
+    const n = Math.floor(sr * 2.4), b = ctx.createBuffer(2, n, sr);
+    let y = new Float32Array(n); y[0] = 1;
+    const a = -0.62;
+    for (let it = 0; it < 60; it++) { const z = new Float32Array(n); let px = 0, py = 0; for (let i = 0; i < n; i++) { const x = y[i]; const v = a * x + px - a * py; z[i] = v; px = x; py = v; } y = z; }
+    const d = Math.floor(0.037 * sr);
+    for (let ch = 0; ch < 2; ch++) {
+      const o = b.getChannelData(ch); const off = ch * 37;
+      for (let k = 0; k * d < n; k++) { const g = Math.pow(0.7, k); for (let i = 0; i + k * d + off < n; i++) o[i + k * d + off] += y[i] * g; }
+      let lpv = 0, hpv = 0; for (let i = 0; i < n; i++) { lpv += 0.35 * (o[i] - lpv); hpv += 0.03 * (lpv - hpv); o[i] = (lpv - hpv) * Math.exp(-4.5 * i / n); }
+    }
+    return b;
+  }
+  function buildFx() {
+    fxFilt = ctx.createBiquadFilter(); fxFilt.type = "lowpass"; fxFilt.frequency.value = 20000;
+    fxCrush = ctx.createWaveShaper();
+    fxPost = ctx.createGain(); fxMaster = ctx.createGain();
+    let head = master;
+    if (hasWorklet) {
+      fxNode = new AudioWorkletNode(ctx, "nomad-fx", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: "explicit" });
+      master.connect(fxNode); head = fxNode;
+    }
+    head.connect(fxFilt); fxFilt.connect(fxCrush); fxCrush.connect(fxPost); fxPost.connect(fxMaster); fxMaster.connect(fxOut);
+    // Écho dub : envoi ponctuel, filtres et saturation dans la boucle de retour
+    echoSend = ctx.createGain(); echoSend.gain.value = 0;
+    echoDly = ctx.createDelay(3); echoFb = ctx.createGain();
+    const eh = ctx.createBiquadFilter(); eh.type = "highpass"; eh.frequency.value = 180;
+    const el = ctx.createBiquadFilter(); el.type = "lowpass"; el.frequency.value = 2600;
+    const es = ctx.createWaveShaper(); es.curve = makeDriveCurve(0.05);
+    fxPost.connect(echoSend); echoSend.connect(echoDly); echoDly.connect(eh); eh.connect(el); el.connect(es); es.connect(echoFb); echoFb.connect(echoDly);
+    const echoRet = ctx.createGain(); echoRet.gain.value = 0.8; es.connect(echoRet); echoRet.connect(fxMaster);
+    // Réverbe à ressort
+    springSend = ctx.createGain(); springSend.gain.value = 0;
+    const spr = ctx.createConvolver(); spr.normalize = true; spr.buffer = springIR();
+    const sprRet = ctx.createGain(); sprRet.gain.value = 0.9;
+    fxPost.connect(springSend); springSend.connect(spr); spr.connect(sprRet); sprRet.connect(fxMaster);
+    for (let k = 0; k < 8; k++) applyFxKnob(k);
+    drawFxBar();
+  }
+  const ECHO_DIVS = [0.5, 0.75, 1, 1.5, 2];
+  const ECHO_NAMES = ["1/8", "1/8 pointée", "1/4", "3/8", "1/2"];
+  function applyFxKnob(k) {
+    if (!fxFilt) return;
+    const v = knobVals.fx[k], t = ctx.currentTime;
+    if (k === 0) {
+      if (v < 0.47) { fxFilt.type = "lowpass"; fxFilt.frequency.setTargetAtTime(60 * Math.pow(18000 / 60, v / 0.47), t, 0.02); }
+      else if (v > 0.53) { fxFilt.type = "highpass"; fxFilt.frequency.setTargetAtTime(20 * Math.pow(6000 / 20, (v - 0.53) / 0.47), t, 0.02); }
+      else { fxFilt.type = "lowpass"; fxFilt.frequency.setTargetAtTime(20000, t, 0.02); }
+    }
+    if (k === 1) fxFilt.Q.setTargetAtTime(0.7 + v * v * 16, t, 0.02);
+    if (k === 2) echoSend.gain.setTargetAtTime(v * v, t, 0.015);
+    if (k === 3) { const i = Math.min(4, Math.floor(v * 5)); echoDly.delayTime.setTargetAtTime(Math.min(2.9, 60 / curBpm() * ECHO_DIVS[i]), t, 0.05); if (tab === "fx") lcd("lcdPad", "FX", "écho " + ECHO_NAMES[i]); }
+    if (k === 4) echoFb.gain.setTargetAtTime(Math.min(1.05, v * 1.1), t, 0.02);
+    if (k === 5) springSend.gain.setTargetAtTime(v * v * 1.2, t, 0.02);
+    if (k === 6) fxCrush.curve = v < 0.03 ? null : crushCurve(Math.round(14 - v * 11));
+    if (k === 7) fxMaster.gain.setTargetAtTime(v * 1.2, t, 0.02);
+  }
+
   // ---------- Ampli guitare ----------
   const AMPS = {
-    cristal: { label: "CRISTAL 22", skin: "cristal", maxDrive: 6, asym: 0.05, midF: 500, midQ: 0.7, midBase: -3, cab: 6500, low: 1 },
-    brit: { label: "BRIT 59", skin: "", maxDrive: 40, asym: 0.15, midF: 800, midQ: 0.8, midBase: 2, cab: 5200, low: 0 },
-    agrume: { label: "AGRUME 30", skin: "agrume", maxDrive: 70, asym: 0.2, midF: 600, midQ: 0.7, midBase: 4, cab: 4800, low: 2 },
+    cristal: { label: "CRISTAL 22", skin: "cristal", maxDrive: 5, asym: 0.05, midF: 500, midQ: 0.7, midBase: -3, cab: 6500, low: 1 },
+    brit: { label: "BRIT 59", skin: "", maxDrive: 24, asym: 0.15, midF: 800, midQ: 0.8, midBase: 2, cab: 5200, low: 0 },
+    agrume: { label: "AGRUME 30", skin: "agrume", maxDrive: 38, asym: 0.2, midF: 600, midQ: 0.7, midBase: 4, cab: 4800, low: 2 },
     bois: { label: "BOIS · ACOUSTIQUE", skin: "bois" }
   };
   const PEDALS = [
@@ -871,6 +1036,7 @@ registerProcessor('nomad-gate',Gate);`;
   ];
   const AMP_LABELS = ["GAIN", "BASS", "MIDDLE", "TREBLE", "PRESENCE", "REVERB", "MASTER"];
   const G = { amp: "brit", fx: new Set(), preset: -1, on: false };
+  let tuning = false;
   let gn = null; // nœuds audio de la guitare
 
   // Interface de la tête
@@ -949,7 +1115,7 @@ registerProcessor('nomad-gate',Gate);`;
   function buildGuitar() {
     gn = {};
     gn.input = gain(1);
-    gn.analyser = ctx.createAnalyser(); gn.analyser.fftSize = 512;
+    gn.analyser = ctx.createAnalyser(); gn.analyser.fftSize = 2048;
     gn.input.connect(gn.analyser);
     let head = gn.input;
     if (hasWorklet) {
@@ -959,8 +1125,8 @@ registerProcessor('nomad-gate',Gate);`;
     const hpIn = bq("highpass", 70, 0.7); head.connect(hpIn);
     // Pédales
     gn.comp = insert(i => { const c = ctx.createDynamicsCompressor(); c.threshold.value = -32; c.ratio.value = 5; c.attack.value = 0.008; c.release.value = 0.15; const mk = gain(2.2); i.connect(c); c.connect(mk); return mk; });
-    gn.drive = insert(i => { const h = bq("highpass", 720, 0.5), s = ctx.createWaveShaper(); s.curve = curve(6, 0.05); s.oversample = "4x"; const pre = gain(3), l = bq("lowpass", 4200, 0.6), dryMix = gain(0.35), o = gain(0.9); i.connect(h); h.connect(pre); pre.connect(s); s.connect(l); l.connect(o); i.connect(dryMix); dryMix.connect(o); return o; });
-    gn.fuzz = insert(i => { const pre = gain(14), s = ctx.createWaveShaper(); s.curve = fuzzCurve(); s.oversample = "4x"; const l = bq("lowpass", 3200, 0.6), o = gain(0.45); i.connect(pre); pre.connect(s); s.connect(l); l.connect(o); return o; });
+    gn.drive = insert(i => { const h = bq("highpass", 720, 0.5), s = ctx.createWaveShaper(); s.curve = curve(6, 0.05); s.oversample = "2x"; const pre = gain(2), l = bq("lowpass", 3800, 0.6), dryMix = gain(0.35), o = gain(0.8); i.connect(h); h.connect(pre); pre.connect(s); s.connect(l); l.connect(o); i.connect(dryMix); dryMix.connect(o); return o; });
+    gn.fuzz = insert(i => { const pre = gain(8), s = ctx.createWaveShaper(); s.curve = fuzzCurve(); s.oversample = "2x"; const l = bq("lowpass", 3200, 0.6), o = gain(0.45); i.connect(pre); pre.connect(s); s.connect(l); l.connect(o); return o; });
     gn.vibe = insert(i => {
       const o = gain(0.7), lfo = ctx.createOscillator(); lfo.frequency.value = 5.2; lfo.start();
       let prev = i; [260, 560, 1150, 2400].forEach(f => { const a = bq("allpass", f, 0.6); const dep = gain(f * 0.55); lfo.connect(dep); dep.connect(a.frequency); prev.connect(a); prev = a; });
@@ -969,7 +1135,7 @@ registerProcessor('nomad-gate',Gate);`;
     // Ampli
     gn.pre = gain(1);
     gn.bass = bq("lowshelf", 120, undefined, 0); gn.mid = bq("peaking", 800, 0.8, 0); gn.treble = bq("highshelf", 2800, undefined, 0);
-    gn.shaper = ctx.createWaveShaper(); gn.shaper.oversample = "4x";
+    gn.shaper = ctx.createWaveShaper(); gn.shaper.oversample = "2x";
     gn.post = gain(1);
     gn.presence = bq("highshelf", 4500, undefined, 0);
     gn.cab1 = bq("highpass", 80, 0.7); gn.cab2 = bq("peaking", 120, 1.0, 3); gn.cab3 = bq("peaking", 2600, 1.0, -4); gn.cab4 = bq("lowpass", 5200, 0.7); gn.cab5 = bq("lowpass", 5200, 0.7);
@@ -994,7 +1160,10 @@ registerProcessor('nomad-gate',Gate);`;
     gn.chorus.out.connect(gn.rev); gn.rev.connect(gn.revWet);
     gn.master = gain(0);
     gn.chorus.out.connect(gn.master); gn.dlyWet.connect(gn.master); gn.revWet.connect(gn.master);
-    gn.master.connect(liveBus);
+    // Limiteur : empêche un larsen de s'emballer
+    gn.lim = ctx.createDynamicsCompressor(); gn.lim.threshold.value = -6; gn.lim.knee.value = 0; gn.lim.ratio.value = 20; gn.lim.attack.value = 0.001; gn.lim.release.value = 0.08;
+    gn.master.connect(gn.lim); gn.lim.connect(liveBus);
+    setGate(store.get("gate", -55)); setTrim(store.get("trim", 1));
     const saved = store.get("gpreset", 0);
     loadPreset(saved >= 0 && saved < PRESETS.length ? saved : 0);
   }
@@ -1024,7 +1193,7 @@ registerProcessor('nomad-gate',Gate);`;
       gn.acTreb.gain.setTargetAtTime(db(k[3]) * 0.6 + 3, t, 0.02);
     }
     gn.revWet.gain.setTargetAtTime(Math.pow(k[5], 1.5) * 0.9, t, 0.02);
-    gn.master.gain.setTargetAtTime(G.on ? Math.pow(k[6], 1.5) * 1.6 : 0, t, 0.02);
+    gn.master.gain.setTargetAtTime(G.on && !tuning ? Math.pow(k[6], 1.5) * 1.6 : 0, t, 0.02);
     const dl = G.fx.has("delay") ? Math.max(k[7], 0.25) : k[7];
     gn.dlyWet.gain.setTargetAtTime(dl * 0.7, t, 0.02);
     gn.dlyFb.gain.setTargetAtTime(0.2 + dl * 0.35, t, 0.02);
@@ -1041,6 +1210,7 @@ registerProcessor('nomad-gate',Gate);`;
       micStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: deviceId ? { exact: deviceId } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false, latency: 0 } });
       micSrc = ctx.createMediaStreamSource(micStream);
       micSrc.connect(gn.input);
+      gn.input.gain.value = +$("trimSl").value;
       G.on = true; applyGuitar();
       lcd("lcdPad", "GUITARE", "entrée active · " + (micStream.getAudioTracks()[0].label || "micro"));
       const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "audioinput");
@@ -1060,6 +1230,50 @@ registerProcessor('nomad-gate',Gate);`;
     G.on = false; applyGuitar();
   }
   $("inBtn").addEventListener("click", () => { if (G.on) stopInput(); else startInput(); });
+  function setGate(db) { $("gateSl").value = db; $("gateVal").textContent = db + " dB"; store.set("gate", db); if (gn && gn.gate) gn.gate.port.postMessage(db); }
+  function setTrim(v) { $("trimSl").value = v; $("trimVal").textContent = Math.round(v * 100) + " %"; store.set("trim", v); if (gn) gn.input.gain.setTargetAtTime(v, ctx.currentTime, 0.02); }
+  $("gateSl").addEventListener("input", e => setGate(+e.target.value));
+  $("trimSl").addEventListener("input", e => setTrim(+e.target.value));
+
+  // ---------- Accordeur ----------
+  let tunLast = 0;
+  const NOTE_FR = ["DO", "DO#", "RÉ", "RÉ#", "MI", "FA", "FA#", "SOL", "SOL#", "LA", "LA#", "SI"];
+  const NOTE_EN = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  $("tunBtn").addEventListener("click", () => {
+    tuning = !tuning;
+    $("tuner").hidden = !tuning;
+    $("tunBtn").classList.toggle("on", tuning);
+    if (tuning && !G.on) startInput();
+    applyGuitar();
+  });
+  const yinBuf = new Float32Array(2048);
+  function detectPitch() {
+    gn.analyser.getFloatTimeDomainData(yinBuf);
+    let rms = 0; for (let i = 0; i < yinBuf.length; i++) rms += yinBuf[i] * yinBuf[i];
+    if (Math.sqrt(rms / yinBuf.length) < 0.008) return null;
+    const W = 1024, maxT = Math.min(1000, Math.floor(sr / 60)), d = new Float32Array(maxT);
+    for (let t = 1; t < maxT; t++) { let sum = 0; for (let i = 0; i < W; i++) { const x = yinBuf[i] - yinBuf[i + t]; sum += x * x; } d[t] = sum; }
+    let run = 0, tau = -1;
+    for (let t = 1; t < maxT; t++) { run += d[t]; const cm = d[t] * t / (run || 1); d[t] = cm; }
+    for (let t = Math.floor(sr / 1100); t < maxT - 1; t++) { if (d[t] < 0.12) { while (t + 1 < maxT && d[t + 1] < d[t]) t++; tau = t; break; } }
+    if (tau < 0) return null;
+    const a = d[tau - 1], b = d[tau], c = d[tau + 1] ?? b;
+    const shift = (a - c) / (2 * (a - 2 * b + c) || 1);
+    return sr / (tau + (isFinite(shift) ? shift : 0));
+  }
+  function drawTuner() {
+    if (!tuning || !gn || !G.on) return;
+    const now = performance.now(); if (now - tunLast < 60) return; tunLast = now;
+    const f = detectPitch();
+    if (!f || f < 40 || f > 1200) { $("tunNote").textContent = "—"; $("tunCents").textContent = ""; $("tunNeedle").style.left = "50%"; return; }
+    const m = 69 + 12 * Math.log2(f / 440), n = Math.round(m), cents = Math.round((m - n) * 100);
+    const pc = ((n % 12) + 12) % 12;
+    $("tunNote").textContent = NOTE_EN[pc];
+    $("tunCents").textContent = (cents > 0 ? "+" : "") + cents + "¢";
+    $("tunNote").title = NOTE_FR[pc];
+    $("tunNeedle").style.left = (50 + cents) + "%";
+    $("tunNote").style.color = Math.abs(cents) <= 3 ? "#7dffa6" : Math.abs(cents) <= 12 ? "#e0b02a" : "#ff6b61";
+  }
   $("devSel").addEventListener("change", e => startInput(e.target.value));
   const meterBuf = new Float32Array(512);
   function drawMeter() {
@@ -1085,7 +1299,7 @@ registerProcessor('nomad-gate',Gate);`;
     const map = {
       20: togglePlay, 21: undo, 22: () => toggleMute(0), 23: () => toggleMute(1), 24: () => toggleMute(2), 25: () => toggleMute(3), 26: () => toggleMute(4), 27: () => toggleMute(5),
       28: () => stepKit(-1), 29: () => stepKit(1), 30: () => loadPreset((Math.max(0, G.preset) + PRESETS.length - 1) % PRESETS.length), 31: () => loadPreset((G.preset + 1) % PRESETS.length),
-      32: () => setTab("play"), 33: () => setTab("loops"), 34: () => setTab("guitar"), 35: () => { if (G.on) stopInput(); else startInput(); }
+      32: () => setTab("play"), 33: () => setTab("loops"), 34: () => setTab(tab === "fx" ? "guitar" : "fx"), 35: () => { if (G.on) stopInput(); else startInput(); }
     };
     if (map[n]) map[n]();
   }
@@ -1099,6 +1313,7 @@ registerProcessor('nomad-gate',Gate);`;
       if (k < 7) setGuitarKnob(k, val); else { knobVals.guitar[7] = val; applyGuitar(); }
       return;
     }
+    if (tab === "fx") { knobVals.fx[k] = val; applyFxKnob(k); $("dial" + k).style.setProperty("--v", val); return; }
     knobVals[tab][k] = val;
     if (tab === "play") applyPlayKnob(k);
     else if (ctx) {
@@ -1117,8 +1332,12 @@ registerProcessor('nomad-gate',Gate);`;
       if (ch === 10) padsOnCh10 = true;
       const idx = d1 - BASE_NOTE;
       const isPad = ch === 10 || (!padsOnCh10 && idx >= 0 && idx < 16);
-      if (isPad && idx >= 0 && idx < 16) playPad(idx, d2 / 127);
+      if (isPad && idx >= 8 && idx < 16 && tab === "fx") fxStart(idx - 8);
+      else if (isPad && idx >= 0 && idx < 16) playPad(idx, d2 / 127);
       else if (!isPad) playKey(d1, d2 / 127);
+    } else if (type === 0x80 || (type === 0x90 && d2 === 0)) {
+      const idx = d1 - BASE_NOTE;
+      if (idx >= 8 && idx < 16 && (ch === 10 || !padsOnCh10)) fxStop(idx - 8);
     } else if (type === 0xb0) {
       lcd("lcdLast", "DERNIER", `CC ${d1}=${d2} CH${ch}`);
       onCC(d1, d2);
@@ -1142,6 +1361,8 @@ registerProcessor('nomad-gate',Gate);`;
   }
   initMidi();
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
+  let probe = null;
+  window.nomadProbe = () => { if (!probe) { probe = ctx.createAnalyser(); probe.fftSize = 2048; fxMaster.connect(probe); } const a = new Float32Array(2048); probe.getFloatTimeDomainData(a); let m = 0; for (const v of a) m = Math.max(m, Math.abs(v)); return +m.toFixed(3); };
   window.nomadState = () => ({ kit: kitCur, kits: kitIndex.length, bufs: buffers.filter(Boolean).length, names: names.slice(0, 4), t0F: LP.t0F, Lf: LP.Lf, layers: LP.layers.map(l => ({ k: l.k, m: l.m })), pending: LP.pending && { ...LP.pending }, latMs, guitar: { amp: G.amp, preset: G.preset, fx: [...G.fx], on: G.on }, cap: capLatest, now: ctx && ctx.currentTime });
 
   const KEYS = ["z","x","c","v","a","s","d","f","q","w","e","r","1","2","3","4"];
