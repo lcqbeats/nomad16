@@ -950,7 +950,12 @@ registerProcessor('nomad-fx',Fx);`;
       liveBus.connect(node); node.connect(silent);
     } catch (err) {
       const sp = ctx.createScriptProcessor(1024, 2, 2);
-      sp.onaudioprocess = e => onCapture(Math.round(e.playbackTime * sr), e.inputBuffer.getChannelData(0).slice(), e.inputBuffer.getChannelData(1).slice());
+      let spF = null;
+      sp.onaudioprocess = e => {
+        // anciens Safari : pas de playbackTime, on compte les blocs
+        const f = e.playbackTime !== undefined ? Math.round(e.playbackTime * sr) : (spF = spF === null ? Math.round(ctx.currentTime * sr) : spF + 1024);
+        onCapture(f, e.inputBuffer.getChannelData(0).slice(), e.inputBuffer.getChannelData(1).slice());
+      };
       liveBus.connect(sp); sp.connect(silent);
     }
   }
