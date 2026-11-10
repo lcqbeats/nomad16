@@ -146,16 +146,19 @@ final class NomadCoordinator: NSObject, WKScriptMessageHandler, WKUIDelegate, WK
 
 // MARK: - MIDI (CoreMIDI) : entrées vers la page, sorties depuis la page
 
-nonisolated final class MIDIEngine: @unchecked Sendable {
-    var onMessage: (@Sendable (String, [UInt8]) -> Void)?
-    var onDevices: (@Sendable (String) -> Void)?
-    private var client = MIDIClientRef()
-    private var inPort = MIDIPortRef()
-    private var outPort = MIDIPortRef()
-    private var connected = Set<MIDIUniqueID>()
-    private let lock = NSLock()
+// Les rappels MIDI arrivent sur un fil de CoreMIDI : rien ici n'est lié au fil principal (compatible Xcode 16 et Xcode 26).
+final class MIDIEngine: @unchecked Sendable {
+    nonisolated(unsafe) var onMessage: (@Sendable (String, [UInt8]) -> Void)?
+    nonisolated(unsafe) var onDevices: (@Sendable (String) -> Void)?
+    nonisolated(unsafe) private var client = MIDIClientRef()
+    nonisolated(unsafe) private var inPort = MIDIPortRef()
+    nonisolated(unsafe) private var outPort = MIDIPortRef()
+    nonisolated(unsafe) private var connected = Set<MIDIUniqueID>()
+    nonisolated private let lock = NSLock()
 
-    func start() {
+    nonisolated init() {}
+
+    nonisolated func start() {
         MIDIClientCreateWithBlock("NOMAD16" as CFString, &client) { [weak self] note in
             if note.pointee.messageID == .msgSetupChanged { self?.rescan() }
         }
@@ -172,18 +175,18 @@ nonisolated final class MIDIEngine: @unchecked Sendable {
         rescan()
     }
 
-    private func uid(_ obj: MIDIObjectRef) -> MIDIUniqueID {
+    nonisolated private func uid(_ obj: MIDIObjectRef) -> MIDIUniqueID {
         var v: MIDIUniqueID = 0
         MIDIObjectGetIntegerProperty(obj, kMIDIPropertyUniqueID, &v)
         return v
     }
-    private func name(_ obj: MIDIObjectRef) -> String {
+    nonisolated private func name(_ obj: MIDIObjectRef) -> String {
         var s: Unmanaged<CFString>?
         MIDIObjectGetStringProperty(obj, kMIDIPropertyDisplayName, &s)
         return (s?.takeRetainedValue() as String?) ?? "MIDI"
     }
 
-    func rescan() {
+    nonisolated func rescan() {
         lock.lock(); defer { lock.unlock() }
         var ins: [[String: String]] = [], outs: [[String: String]] = []
         var now = Set<MIDIUniqueID>()
@@ -206,7 +209,7 @@ nonisolated final class MIDIEngine: @unchecked Sendable {
         }
     }
 
-    func send(to id: String, bytes: [UInt8]) {
+    nonisolated func send(to id: String, bytes: [UInt8]) {
         guard !bytes.isEmpty else { return }
         for i in 0..<MIDIGetNumberOfDestinations() {
             let dst = MIDIGetDestination(i)
@@ -222,7 +225,7 @@ nonisolated final class MIDIEngine: @unchecked Sendable {
     }
 
     // découpe un paquet en messages MIDI (statut courant compris)
-    static func split(_ b: [UInt8]) -> [[UInt8]] {
+    nonisolated static func split(_ b: [UInt8]) -> [[UInt8]] {
         var out: [[UInt8]] = []
         var i = 0
         var running: UInt8 = 0
