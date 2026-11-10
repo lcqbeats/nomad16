@@ -212,6 +212,12 @@ button { font-family: var(--font-body); }
 .deckctl input[type=range] { flex: 1; accent-color: var(--red); }
 #waveCanvas { width: 100%; height: 110px; display: block; background: #0f0e0d; border-radius: 6px; box-shadow: inset 0 0 0 1px #050505; touch-action: none; }
 .chopbar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.dpads { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; }
+.dpad { height: 44px; border: 0; border-radius: 6px; background: #2b2825; color: var(--muted); font-family: var(--font-display); font-size: 12px; cursor: pointer; touch-action: none; box-shadow: inset 0 -3px 0 #1d9c74; }
+.dpad:nth-child(n+9) { box-shadow: inset 0 -3px 0 var(--red); }
+.dpad.has { color: var(--text); background: #3a3530; }
+.dpad.hit { background: var(--red); color: #fff; }
+:root[data-skin="clair"] .dpad { background: #d8d5ce; } :root[data-skin="clair"] .dpad.has { background: #c7c3bb; }
 .chopbar .btn.on { background: var(--text); color: var(--ink); }
 .srcbar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
 .stack { display: flex; flex-direction: column; gap: 10px; }
@@ -495,11 +501,12 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       <canvas id="ttCanvas" aria-label="Platine"></canvas>
       <div class="deckctl">
         <div class="faces" id="faces"></div>
-        <div class="row2"><button class="btn" id="ttPlay" type="button">▶ ÉCOUTER</button><button class="btn" id="liveChop" type="button">CHOP LIVE</button><span id="ttMsg"></span></div>
+        <div class="row2"><button class="btn" id="ttPlay" type="button">▶ ÉCOUTER</button><button class="btn" id="liveChop" type="button">CHOP LIVE</button><button class="btn" id="ciBtn" type="button">DÉCOMPTE 4</button><span id="ttMsg"></span></div>
         <div class="row2"><label for="pitchSl">PITCH</label><input type="range" id="pitchSl" min="-12" max="12" step="1" value="0"><span id="pitchVal">0</span></div>
       </div>
     </div>
     <canvas id="waveCanvas" aria-label="Forme d'onde et découpes"></canvas>
+    <div class="dpads" id="digPads" aria-label="Pads"></div>
     <div class="chopbar">
       <button class="btn on" id="chAuto" type="button">AUTO</button>
       <button class="btn" id="chEq8" type="button">ÉGAL 8</button>
@@ -2161,15 +2168,25 @@ registerProcessor('nomad-fx',Fx);`;
     computePeaks(); rechop();
     lcd("lcdPad", "PLATINE", title);
   }
-  function stopTT() { if (ttSrc) { try { ttSrc.stop(); } catch (e) {} ttSrc = null; } $("ttPlay").textContent = "▶ ÉCOUTER"; }
-  $("ttPlay").addEventListener("click", () => {
+  let ciTimers = [];
+  function stopTT() { ciTimers.forEach(clearTimeout); ciTimers = []; if (ttSrc) { try { ttSrc.stop(); } catch (e) {} ttSrc = null; } $("ttPlay").textContent = "▶ ÉCOUTER"; }
+  // countIn : nombre de temps de décompte avant le départ (au tempo du looper, sinon au tempo réglé dans FX)
+  function ttStartPlay(countIn) {
     if (!clip || !ctx) return;
-    if (ttSrc) { stopTT(); return; }
     const s = ctx.createBufferSource(); s.buffer = clip.buf; s.playbackRate.value = Math.pow(2, pitchSemi / 12);
     const g = ctx.createGain(); g.gain.value = sampleVol; s.connect(g); g.connect(liveIn);
     s.onended = () => { if (ttSrc === s) stopTT(); };
-    s.start(); ttSrc = s; ttStart = ctx.currentTime; $("ttPlay").textContent = "■ STOP";
-  });
+    const beat = 60 / curBpm(), t0 = ctx.currentTime + 0.05 + (countIn ? countIn * beat : 0);
+    for (let k = 0; k < (countIn || 0); k++) {
+      const t = t0 - (countIn - k) * beat, o = ctx.createOscillator(), cg = ctx.createGain();
+      o.frequency.value = k === 0 ? 1600 : 1100; cg.gain.setValueAtTime(0.35, t); cg.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+      o.connect(cg); cg.connect(fxOut); o.start(t); o.stop(t + 0.06);
+      ciTimers.push(setTimeout(() => lcd("lcdPad", "CHOP LIVE", "décompte · " + (countIn - k) + " … préparez-vous"), Math.max(0, (t - ctx.currentTime) * 1000)));
+    }
+    if (countIn) ciTimers.push(setTimeout(() => lcd("lcdPad", "CHOP LIVE", "GO · frappez les pads"), Math.max(0, (t0 - ctx.currentTime) * 1000)));
+    s.start(t0); ttSrc = s; ttStart = t0; $("ttPlay").textContent = "■ STOP";
+  }
+  $("ttPlay").addEventListener("click", () => { if (ttSrc) stopTT(); else ttStartPlay(0); });
   function setPitch(v) { pitchSemi = v; $("pitchSl").value = v; $("pitchVal").textContent = (v > 0 ? "+" : "") + v; if (ttSrc) ttSrc.playbackRate.value = Math.pow(2, v / 12); }
   $("pitchSl").addEventListener("input", e => setPitch(+e.target.value));
 
@@ -2306,11 +2323,31 @@ registerProcessor('nomad-fx',Fx);`;
     } catch (e) { lcd("lcdPad", "MICRO", "micro refusé (" + e.name + ")"); }
   });
   // Chop live : pendant la lecture, chaque pad frappé prend le son à partir de cet instant
-  const LC = { on: false, marks: {} };
+  const LC = { on: false, marks: {}, countIn: store.get("chopCountIn", 4) };
   $("liveChop").addEventListener("click", () => {
     LC.on = !LC.on; $("liveChop").classList.toggle("on", LC.on);
-    if (LC.on) { LC.marks = {}; if (!ttSrc) $("ttPlay").click(); lcd("lcdPad", "CHOP LIVE", "frappez les pads pendant l'écoute"); }
+    if (LC.on) { LC.marks = {}; if (!ttSrc) ttStartPlay(LC.countIn); lcd("lcdPad", "CHOP LIVE", LC.countIn ? "décompte…" : "frappez les pads pendant l'écoute"); }
+    drawDigPads();
   });
+  $("ciBtn").addEventListener("click", () => {
+    LC.countIn = { 0: 4, 4: 8, 8: 0 }[LC.countIn]; store.set("chopCountIn", LC.countIn);
+    $("ciBtn").textContent = LC.countIn ? "DÉCOMPTE " + LC.countIn : "SANS DÉCOMPTE"; $("ciBtn").classList.toggle("on", !!LC.countIn);
+  });
+  $("ciBtn").textContent = LC.countIn ? "DÉCOMPTE " + LC.countIn : "SANS DÉCOMPTE"; $("ciBtn").classList.toggle("on", !!LC.countIn);
+  // Pads à l'écran sous la forme d'onde (sans l'Akai) : même rôle que les pads de l'Akai dans DIGGING
+  const digPadEls = [];
+  for (let r = 1; r >= 0; r--) for (let c = 0; c < 8; c++) {
+    const i = r * 8 + c, b = document.createElement("button"); b.type = "button"; b.className = "dpad"; b.textContent = i + 1;
+    b.addEventListener("pointerdown", e => { e.preventDefault(); digPadHit(i, 0.9); });
+    $("digPads").appendChild(b); digPadEls[i] = b;
+  }
+  function digPadHit(i, vel) {
+    if (LC.on && ttSrc && liveChopHit(i)) flash(i);
+    else playPad(i, vel);
+    const b = digPadEls[i]; b.classList.add("hit"); clearTimeout(b._t); b._t = setTimeout(() => b.classList.remove("hit"), 110);
+    drawDigPads();
+  }
+  function drawDigPads() { digPadEls.forEach((b, i) => b.classList.toggle("has", LC.on ? LC.marks[i] !== undefined : kitCur === "chops" && !!buffers[i])); }
   function ttPos() { return ttSrc ? Math.floor((ctx.currentTime - ttStart) * Math.pow(2, pitchSemi / 12) * sr) : -1; }
   function sliceBuf(a, b, rate) {
     const len = Math.max(32, Math.floor((b - a) / rate)), out = ctx.createBuffer(clip.buf.numberOfChannels, len, sr);
@@ -3428,7 +3465,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       const idx = d1 - BASE_NOTE;
       const isPad = ch === 10 || (!padsOnCh10 && idx >= 0 && idx < 16);
       if (isPad && idx >= 0 && idx < 16 && tab === "sons" && chordMode) { const j = idx % 8; chordOn("p" + idx, j < 7 ? j : 0, d2 / 127, 0, (idx >= 8 ? 1 : 0) + (j === 7 ? 1 : 0)); flash(idx); }
-      else if (isPad && idx >= 0 && idx < 16 && tab === "sample" && LC.on && ttSrc && liveChopHit(idx)) { flash(idx); }
+      else if (isPad && idx >= 0 && idx < 16 && tab === "sample" && LC.on && ttSrc && liveChopHit(idx)) { flash(idx); drawDigPads(); }
       else if (isPad && idx >= 8 && idx < 16 && tab === "fx") fxStart(idx - 8);
       else if (isPad && idx >= 0 && idx < 16) playPad(idx, d2 / 127);
       else if (!isPad) playKey(d1, d2 / 127);
