@@ -43,7 +43,7 @@ button { font-family: var(--font-body); }
   box-shadow: 0 0 0 1px #000, inset 0 1px 0 #3a3733, 0 20px 40px rgba(0,0,0,.6);
   display: flex; flex-direction: column; gap: 12px; padding: 14px; align-self: flex-start;
 }
-.stripe { height: 8px; border-radius: 3px; background: linear-gradient(90deg, var(--red) 0 33.3%, #050505 33.3% 66.6%, var(--green) 66.6%); }
+.stripe { height: 8px; border-radius: 3px; background: linear-gradient(90deg, var(--red) 0 33.3%, var(--stripe-mid, #050505) 33.3% 66.6%, var(--green) 66.6%); }
 .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .brand { font-family: var(--font-display); font-size: 26px; letter-spacing: .02em; line-height: 1; }
 .brand span { color: var(--red); }
@@ -74,7 +74,7 @@ button { font-family: var(--font-body); }
 .knobs[hidden] { display: none; }
 .knob { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .dial {
-  width: 40px; height: 40px; border-radius: 50%;
+  width: 40px; height: 40px; border-radius: 50%; touch-action: none; cursor: ns-resize;
   background: conic-gradient(from 225deg, var(--kc, var(--red)) calc(var(--v, 0) * 270deg), #33302c 0 270deg, transparent 0);
   display: grid; place-items: center;
 }
@@ -229,6 +229,39 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   box-shadow: 0 0 0 3px #050505, 0 0 0 6px var(--green); cursor: pointer;
 }
 .power p { max-width: 34ch; color: var(--muted); line-height: 1.5; margin: 0; }
+/* ---------- Style CLAIR : contrôleur gris clair, pads blancs à liseré de couleur ---------- */
+:root[data-skin="clair"] { --body: #e6e4df; --ink: #c9c6bf; --text: #1e1e1e; --muted: #6b6760; --pad: #f7f6f3; --pad-edge: #b3afa6; --lcd-bg: #182631; --lcd-ink: #8fdcff; --red: #e0442e; --green: #1d9c74; --stripe-mid: #f2c230; color-scheme: light; }
+:root[data-skin="clair"] .machine { box-shadow: 0 0 0 1px #9e9a92, inset 0 1px 0 #fff, 0 20px 40px rgba(0,0,0,.25); }
+:root[data-skin="clair"] .pad { background: linear-gradient(160deg, #ffffff, #ebe9e4 70%); color: #1e1e1e; }
+:root[data-skin="clair"] .pad .n { color: #8a867e; }
+:root[data-skin="clair"] .tab, :root[data-skin="clair"] .gear, :root[data-skin="clair"] .btn, :root[data-skin="clair"] .preset, :root[data-skin="clair"] .face { background: #d6d3cc; color: #2a2a2a; }
+:root[data-skin="clair"] .tab[aria-selected="true"], :root[data-skin="clair"] .btn.on, :root[data-skin="clair"] .preset.on { background: #1e1e1e; color: #f4f2ee; }
+:root[data-skin="clair"] .btn.rec { background: var(--red); color: #fff; }
+:root[data-skin="clair"] .dial::after { background: radial-gradient(circle at 40% 35%, #ffffff, #cfccc5); box-shadow: 0 2px 4px rgba(0,0,0,.35); }
+:root[data-skin="clair"] .lcd { text-shadow: 0 0 6px rgba(143,220,255,.45); }
+:root[data-skin="clair"] #loopCanvas, :root[data-skin="clair"] .deck, :root[data-skin="clair"] #waveCanvas { background: #2a2a2a; }
+:root[data-skin="clair"] .fxpad { background: linear-gradient(160deg, #ffffff, #e6efe9 70%); color: #1e1e1e; }
+/* ---------- Style DUB : sound system, rouge or vert, LCD ambré ---------- */
+:root[data-skin="dub"] { --body: #13160f; --ink: #050604; --text: #f3e8c6; --muted: #a59f80; --red: #d42a1f; --green: #1f8f3d; --stripe-mid: #f2b705; --pad: #26301f; --pad-edge: #070905; --lcd-bg: #1e1403; --lcd-ink: #ffb52e; }
+:root[data-skin="dub"] .machine { background: radial-gradient(circle at 50% 0, #1d2216, #13160f 60%); }
+:root[data-skin="dub"] .brand span { color: #f2b705; }
+:root[data-skin="dub"] .lcd { text-shadow: 0 0 7px rgba(255,181,46,.5); }
+:root[data-skin="dub"] .kitline { border-bottom-color: rgba(255,181,46,.3); }
+:root[data-skin="dub"] .kitline button, :root[data-skin="dub"] .sheet-in h2 button, :root[data-skin="dub"] .kititem { color: var(--lcd-ink); border-color: rgba(255,181,46,.35); background: rgba(255,181,46,.08); }
+:root[data-skin="dub"] .sheet-in { text-shadow: 0 0 6px rgba(255,181,46,.45); }
+:root[data-skin="dub"] .pad { background: radial-gradient(circle at 50% 45%, #2f3a27, #1d2418 75%); }
+:root[data-skin="dub"] .pad.bank1 { box-shadow: 0 0 0 2px var(--pad-edge), inset 0 -3px 0 rgba(0,0,0,.35), inset 0 3px 0 #f2b705; }
+:root[data-skin="dub"] .tab[aria-selected="true"] { background: #f2b705; color: #13160f; }
+.skins { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0 12px; }
+.skin { border: 2px solid transparent; border-radius: 6px; padding: 10px 4px 8px; cursor: pointer; font-family: var(--font-display); font-size: 11px; letter-spacing: .06em; }
+.skin.on { border-color: var(--lcd-ink); }
+.saverow { display: flex; gap: 6px; margin: 6px 0; }
+.saverow input { flex: 1; min-width: 0; font-family: var(--font-lcd); font-size: 20px; background: rgba(0,0,0,.4); color: var(--lcd-ink); border: 1px solid rgba(125,255,166,.35); border-radius: 4px; padding: 4px 8px; }
+.saverow .btn { padding: 8px 10px; font-size: 11px; }
+.item-row { display: flex; gap: 6px; align-items: stretch; margin-bottom: 6px; }
+.item-row .kititem { margin: 0; flex: 1; }
+.mini { font-family: var(--font-lcd); font-size: 17px; color: var(--lcd-ink); background: rgba(0,0,0,.35); border: 1px solid rgba(125,255,166,.3); border-radius: 4px; cursor: pointer; padding: 0 8px; }
+.sheet-in h3 { font-family: var(--font-lcd); font-weight: 400; font-size: 21px; margin: 14px 0 4px; opacity: .85; border-top: 1px dashed rgba(125,255,166,.25); padding-top: 10px; }
 @media (prefers-reduced-motion: reduce) { .pad { transition: none; } .btn.rec.armed { animation: none; } }
 </style>
 </head>
@@ -255,8 +288,8 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   </div>
 
   <div class="tabs" role="tablist">
-    <button class="tab" role="tab" id="tab-play" aria-selected="true" type="button">JOUER</button>
-    <button class="tab" role="tab" id="tab-loops" aria-selected="false" type="button">BOUCLES</button>
+    <button class="tab" role="tab" id="tab-play" aria-selected="true" type="button">PADS</button>
+    <button class="tab" role="tab" id="tab-loops" aria-selected="false" type="button">LOOPER</button>
     <button class="tab" role="tab" id="tab-guitar" aria-selected="false" type="button">GUITARE</button>
     <button class="tab" role="tab" id="tab-fx" aria-selected="false" type="button">FX LIVE</button>
     <button class="tab" role="tab" id="tab-sample" aria-selected="false" type="button">DIGGING</button>
@@ -327,7 +360,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       <canvas id="ttCanvas" aria-label="Platine"></canvas>
       <div class="deckctl">
         <div class="faces" id="faces"></div>
-        <div class="row2"><button class="btn" id="ttPlay" type="button">▶ ÉCOUTER</button><span id="ttMsg"></span></div>
+        <div class="row2"><button class="btn" id="ttPlay" type="button">▶ ÉCOUTER</button><button class="btn" id="liveChop" type="button">CHOP LIVE</button><span id="ttMsg"></span></div>
         <div class="row2"><label for="pitchSl">PITCH</label><input type="range" id="pitchSl" min="-12" max="12" step="1" value="0"><span id="pitchVal">0</span></div>
       </div>
     </div>
@@ -358,6 +391,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
 <div class="sheet" id="kitSheet" hidden>
   <div class="sheet-in">
     <h2>KITS <button type="button" id="kitClose">FERMER</button></h2>
+    <div class="saverow"><input id="kitSaveName" type="text" maxlength="30" placeholder="nom du kit actuel" aria-label="Nom du kit"><button class="btn rec" id="kitSave" type="button">ENREGISTRER</button></div>
     <div id="kitList"></div>
   </div>
 </div>
@@ -365,7 +399,17 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
 <div class="sheet" id="setSheet" hidden>
   <div class="sheet-in">
     <h2>RÉGLAGES <button type="button" id="setClose">FERMER</button></h2>
-    <p>COMPENSATION CASQUE</p>
+    <p>STYLE</p>
+    <div class="skins">
+      <button class="skin" type="button" data-skin="" style="background:#1b1a18;color:#ece3d3;box-shadow:inset 0 -4px 0 #d92b2f">NOMAD</button>
+      <button class="skin" type="button" data-skin="clair" style="background:#e6e4df;color:#1e1e1e;box-shadow:inset 0 -4px 0 #1d9c74">CLAIR</button>
+      <button class="skin" type="button" data-skin="dub" style="background:#13160f;color:#f2b705;box-shadow:inset 0 -4px 0 #d42a1f">DUB</button>
+    </div>
+    <h3>PROJETS</h3>
+    <p>Un projet garde le kit, les boucles, l'ampli, les effets et les potards. Il est enregistré dans cet appareil.</p>
+    <div class="saverow"><input id="projName" type="text" maxlength="40" placeholder="nom du projet" aria-label="Nom du projet"><button class="btn rec" id="projSave" type="button">ENREGISTRER</button></div>
+    <div id="projList"></div>
+    <h3>COMPENSATION CASQUE</h3>
     <p>Recale les couches du looper quand le son arrive en retard (casque Bluetooth). Revient à 0 ms à chaque lancement, pour ne jamais rester actif par erreur en filaire ou sur le haut-parleur.</p>
     <div class="row"><input type="range" id="latRange" min="0" max="400" step="1" value="0" aria-label="Compensation en millisecondes"><span id="latVal">0 ms</span></div>
     <p id="latInfo">Latence annoncée par l'appareil : —</p>
@@ -405,6 +449,28 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   const $ = id => document.getElementById(id);
   function lcd(id, label, value, cls) { $(id).innerHTML = `<span class="k">${label}&nbsp;</span><span class="${cls || ""}">${value}</span>`; }
 
+  // ---------- Stockage dans l'appareil (IndexedDB) ----------
+  const DB = {
+    db: null,
+    open() {
+      if (this.db) return Promise.resolve(this.db);
+      return new Promise((res, rej) => {
+        const r = indexedDB.open("nomad16", 1);
+        r.onupgradeneeded = () => { const d = r.result; d.createObjectStore("kits", { keyPath: "id" }); d.createObjectStore("projects", { keyPath: "id" }); };
+        r.onsuccess = () => { this.db = r.result; res(this.db); };
+        r.onerror = () => rej(r.error);
+      });
+    },
+    async tx(store, mode, fn) { const d = await this.open(); return new Promise((res, rej) => { const t = d.transaction(store, mode); const os = t.objectStore(store); const rq = fn(os); t.oncomplete = () => res(rq && rq.result); t.onerror = () => rej(t.error); }); },
+    put(store, obj) { return this.tx(store, "readwrite", os => os.put(obj)); },
+    get(store, id) { return this.tx(store, "readonly", os => os.get(id)); },
+    all(store) { return this.tx(store, "readonly", os => os.getAll()); },
+    del(store, id) { return this.tx(store, "readwrite", os => os.delete(id)); }
+  };
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+  const packBuf = b => b ? { sr: b.sampleRate, ch: Array.from({ length: b.numberOfChannels }, (_, c) => b.getChannelData(c).slice()) } : null;
+  const unpackBuf = o => { if (!o) return null; const b = ctx.createBuffer(o.ch.length, o.ch[0].length, o.sr); o.ch.forEach((d, c) => b.copyToChannel(d, c)); return b; };
+
   // ---------- Kit courant ----------
   let names = SYNTH_NAMES.slice();
   let buffers = [];
@@ -441,8 +507,17 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   for (let k = 0; k < 8; k++) {
     const d = document.createElement("div");
     d.className = "knob";
-    d.innerHTML = `<div class="dial" id="dial${k}"></div><label for="dial${k}" id="klab${k}"></label>`;
+    d.innerHTML = `<div class="dial" id="dial${k}" role="slider" tabindex="0" aria-labelledby="klab${k}"></div><label for="dial${k}" id="klab${k}"></label>`;
     $("knobs").appendChild(d);
+    // Glisser vers le haut ou vers le bas sur le potard de l'écran, comme sur une appli de MPC
+    const dial = d.querySelector(".dial");
+    let y0 = 0, v0 = 0;
+    dial.addEventListener("pointerdown", e => { e.preventDefault(); dial.setPointerCapture(e.pointerId); y0 = e.clientY; v0 = knobVals[tab][k]; });
+    dial.addEventListener("pointermove", e => {
+      if (!dial.hasPointerCapture(e.pointerId) || KNOB_LABELS[tab][k] === "—") return;
+      const nv = Math.min(1, Math.max(0, v0 + (y0 - e.clientY) / 160));
+      knobInput(k, Math.round(nv * 127));
+    });
     knobEls.push(d);
   }
   function drawKnobs() {
@@ -507,6 +582,46 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       const j = await r.json();
       kitIndex = kitIndex.slice(0, 1).concat(j.kits);
     } catch (e) { /* hors ligne ou aperçu : seul le kit synthétisé est disponible */ }
+    await refreshUserKits();
+  }
+  async function refreshUserKits() {
+    try {
+      const mine = await DB.all("kits");
+      kitIndex = kitIndex.filter(k => !k.user);
+      mine.sort((a, b) => a.created - b.created).forEach(k => kitIndex.push({ id: k.id, name: k.name, style: "Perso", desc: "kit enregistré dans cet appareil", user: true }));
+    } catch (e) {}
+  }
+  async function saveCurrentKit(name) {
+    const id = "user-" + Date.now().toString(36);
+    await DB.put("kits", { id, name: name.toUpperCase().slice(0, 30), names: names.slice(), gains: gains.slice(), bufs: buffers.map(packBuf), created: Date.now() });
+    await refreshUserKits();
+    await loadKit(id);
+  }
+  function renderKitList() {
+    $("kitList").innerHTML = "";
+    kitIndex.forEach(k => {
+      const row = document.createElement("div"); row.className = "item-row";
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "kititem" + (k.id === kitCur ? " cur" : "");
+      b.innerHTML = `${k.name}<small>${k.style} · ${k.desc}</small>`;
+      b.addEventListener("click", () => { $("kitSheet").hidden = true; loadKit(k.id); });
+      row.appendChild(b);
+      if (k.user) {
+        const rn = document.createElement("button"); rn.type = "button"; rn.className = "mini"; rn.textContent = "RENOMMER";
+        rn.addEventListener("click", async () => {
+          const nn = $("kitSaveName").value.trim(); if (!nn) { $("kitSaveName").focus(); $("kitSaveName").placeholder = "tapez le nouveau nom ici"; return; }
+          const rec = await DB.get("kits", k.id); rec.name = nn.toUpperCase().slice(0, 30); await DB.put("kits", rec);
+          await refreshUserKits(); if (kitCur === k.id) $("kitName").textContent = rec.name; $("kitSaveName").value = ""; renderKitList();
+        });
+        const del = document.createElement("button"); del.type = "button"; del.className = "mini"; del.textContent = "SUPPR.";
+        del.addEventListener("click", async () => {
+          if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "SÛR ?"; return; }
+          await DB.del("kits", k.id); await refreshUserKits(); if (kitCur === k.id) loadKit("synth"); renderKitList();
+        });
+        row.appendChild(rn); row.appendChild(del);
+      }
+      $("kitList").appendChild(row);
+    });
   }
   let kitLoading = 0;
   async function loadKit(id) {
@@ -518,6 +633,12 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       buffers = synthBuffers.slice(); names = SYNTH_NAMES.slice(); gains = new Array(16).fill(1);
     } else if (meta.id === "chops") {
       buffers = chopKit.buffers.slice(); names = chopKit.names.slice(); gains = new Array(16).fill(1);
+    } else if (meta.user) {
+      try {
+        const k = await DB.get("kits", meta.id);
+        if (ticket !== kitLoading) return;
+        buffers = k.bufs.map(unpackBuf); names = k.names.slice(); gains = k.gains ? k.gains.slice() : new Array(16).fill(1);
+      } catch (e) { lcd("lcdPad", "PAD", "kit perso illisible"); return; }
     } else {
       try {
         const kit = await (await fetch(`kits/${id}/kit.json`)).json();
@@ -543,16 +664,13 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   function stepKit(d) { const i = kitIndex.findIndex(k => k.id === kitCur); loadKit(kitIndex[(i + d + kitIndex.length) % kitIndex.length].id); }
   $("kitPrev").addEventListener("click", () => stepKit(-1));
   $("kitNext").addEventListener("click", () => stepKit(1));
-  $("kitName").addEventListener("click", () => {
-    $("kitList").innerHTML = "";
-    kitIndex.forEach(k => {
-      const b = document.createElement("button");
-      b.type = "button"; b.className = "kititem" + (k.id === kitCur ? " cur" : "");
-      b.innerHTML = `${k.name}<small>${k.style} · ${k.desc}</small>`;
-      b.addEventListener("click", () => { $("kitSheet").hidden = true; loadKit(k.id); });
-      $("kitList").appendChild(b);
-    });
-    $("kitSheet").hidden = false;
+  $("kitName").addEventListener("click", () => { renderKitList(); $("kitSheet").hidden = false; });
+  $("kitSave").addEventListener("click", async () => {
+    if (!ctx) return;
+    const n = $("kitSaveName").value.trim() || (kitIndex.find(k => k.id === kitCur).name + " PERSO");
+    $("kitSave").textContent = "…";
+    try { await saveCurrentKit(n); $("kitSaveName").value = ""; renderKitList(); } catch (e) { lcd("lcdPad", "KIT", "enregistrement impossible"); }
+    $("kitSave").textContent = "ENREGISTRER";
   });
   $("kitClose").addEventListener("click", () => { $("kitSheet").hidden = true; });
 
@@ -719,7 +837,7 @@ registerProcessor('nomad-fx',Fx);`;
     const out = ((ctx.outputLatency || 0) + (ctx.baseLatency || 0)) * 1000;
     $("latInfo").textContent = "Latence annoncée par l'appareil : " + (out ? Math.round(out) + " ms" : "inconnue");
   }
-  $("gearBtn").addEventListener("click", () => { updateLatInfo(); $("setSheet").hidden = false; });
+  $("gearBtn").addEventListener("click", () => { updateLatInfo(); renderProjects(); $("setSheet").hidden = false; });
   $("setClose").addEventListener("click", () => { $("setSheet").hidden = true; });
   $("calBtn").addEventListener("click", () => {
     if (!ctx || calib) return;
@@ -944,6 +1062,14 @@ registerProcessor('nomad-fx',Fx);`;
         text("+", x, y, 22 * d, "#3a3733");
       }
     }
+    drawDragGhost();
+  }
+  function drawDragGhost() {
+    if (!dragLoop || !dragLoop.moved) return;
+    const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+    const x = (dragLoop.x - r.left) * d, y = (dragLoop.y - r.top) * d, rr = cellGeom(0).r * 0.7;
+    g2.globalAlpha = 0.6; g2.beginPath(); g2.arc(x, y, rr, 0, Math.PI * 2); g2.fillStyle = COLORS[dragLoop.from]; g2.fill(); g2.globalAlpha = 1;
+    text("+", x, y, 26 * d, "#0c0b0a");
   }
   let lastLcd = "";
   function updateLoopLcd() {
@@ -971,9 +1097,46 @@ registerProcessor('nomad-fx',Fx);`;
     for (let i = 0; i < MAX_LAYERS; i++) { const c = cellGeom(i); if (Math.hypot(px - c.x, py - c.y) < c.r * 1.25) return i; }
     return -1;
   }
-  cv.addEventListener("pointerdown", e => { pressCell = cellAt(e); if (pressCell < 0 || !LP.layers[pressCell]) return; pressT = setTimeout(() => { removeLayer(pressCell); pressCell = -1; }, 650); });
-  cv.addEventListener("pointerup", () => { if (pressT) clearTimeout(pressT); if (pressCell >= 0 && LP.layers[pressCell]) toggleMute(pressCell); pressCell = -1; pressT = null; });
-  cv.addEventListener("pointercancel", () => { if (pressT) clearTimeout(pressT); pressCell = -1; });
+  // Toucher : muet. Appui long : effacer. Glisser un cercle sur un autre : fusionner les deux pistes.
+  let dragLoop = null;
+  cv.addEventListener("pointerdown", e => {
+    pressCell = cellAt(e); if (pressCell < 0 || !LP.layers[pressCell]) return;
+    cv.setPointerCapture(e.pointerId);
+    dragLoop = { from: pressCell, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false };
+    pressT = setTimeout(() => { if (!dragLoop || dragLoop.moved) return; removeLayer(pressCell); pressCell = -1; dragLoop = null; }, 650);
+  });
+  cv.addEventListener("pointermove", e => {
+    if (!dragLoop) return;
+    dragLoop.x = e.clientX; dragLoop.y = e.clientY;
+    if (Math.hypot(e.clientX - dragLoop.x0, e.clientY - dragLoop.y0) > 12) { dragLoop.moved = true; if (pressT) clearTimeout(pressT); }
+  });
+  cv.addEventListener("pointerup", e => {
+    if (pressT) clearTimeout(pressT); pressT = null;
+    const dl = dragLoop; dragLoop = null;
+    if (!dl) return;
+    if (dl.moved) { const to = cellAt(e); if (to >= 0 && to !== dl.from && LP.layers[to]) mergeLayers(dl.from, to); }
+    else if (LP.layers[dl.from]) toggleMute(dl.from);
+    pressCell = -1;
+  });
+  cv.addEventListener("pointercancel", () => { if (pressT) clearTimeout(pressT); pressCell = -1; dragLoop = null; });
+  function mergeLayers(a, b) {
+    const A = LP.layers[a], B = LP.layers[b];
+    const gcd = (x, y) => y ? gcd(y, x % y) : x;
+    const k = A.k * B.k / gcd(A.k, B.k);
+    if (k > 8) { lcd("lcdLoop", "BOUCLE", "fusion impossible : boucles trop longues ensemble"); return; }
+    const Lk = k * LP.Lf, out = ctx.createBuffer(2, Lk, sr);
+    [A, B].forEach(l => {
+      const g = l.muted ? 0 : l.vol, LkL = l.k * LP.Lf, off = l.m * LP.Lf;
+      for (let ch = 0; ch < 2; ch++) {
+        const src = l.buf.getChannelData(Math.min(ch, l.buf.numberOfChannels - 1)), dst = out.getChannelData(ch);
+        for (let p = 0; p < Lk; p++) dst[p] += src[(((p - off) % LkL) + LkL) % LkL] * g;
+      }
+    });
+    stopLayer(B); B.buf = out; B.k = k; B.m = 0; B.vol = 1; B.muted = false; B.gain.gain.setTargetAtTime(1, ctx.currentTime, 0.01);
+    if (LP.playing) startLayer(B, ctx.currentTime + 0.005);
+    removeLayer(a);
+    lcd("lcdLoop", "BOUCLE", `pistes ${a + 1} + ${b + 1} fusionnées`);
+  }
 
   // ---------- FX LIVE ----------
   const FXS = [
@@ -1656,15 +1819,7 @@ registerProcessor('nomad-fx',Fx);`;
     chopKit.buffers = []; chopKit.names = [];
     chops.slice(0, 16).forEach((c, i) => {
       const [a, b] = chopRange(i);
-      // le pitch est figé dans le son envoyé (rééchantillonnage simple)
-      const len = Math.max(32, Math.floor((b - a) / rate)), out = ctx.createBuffer(clip.buf.numberOfChannels, len, sr);
-      const fade = Math.min(Math.floor(sr * 0.004), Math.floor(len / 4));
-      for (let ch = 0; ch < clip.buf.numberOfChannels; ch++) {
-        const src = clip.buf.getChannelData(ch), dst = out.getChannelData(ch);
-        for (let j = 0; j < len; j++) { const p = a + j * rate, k = Math.floor(p), f = p - k; dst[j] = (src[k] || 0) * (1 - f) + (src[k + 1] || 0) * f; }
-        for (let j = 0; j < fade; j++) { dst[len - 1 - j] *= j / fade; }
-      }
-      chopKit.buffers.push(out); chopKit.names.push("Chop " + (i + 1));
+      chopKit.buffers.push(sliceBuf(a, b, rate)); chopKit.names.push("Chop " + (i + 1));
     });
     while (chopKit.buffers.length < 16) { chopKit.buffers.push(null); chopKit.names.push("—"); }
     if (!kitIndex.some(k => k.id === "chops")) kitIndex.splice(1, 0, { id: "chops", name: "MES CHOPS", style: "Sampling", desc: "" });
@@ -1708,6 +1863,40 @@ registerProcessor('nomad-fx',Fx);`;
       lcd("lcdPad", "MICRO", "enregistrement… (30 s max)");
     } catch (e) { lcd("lcdPad", "MICRO", "micro refusé (" + e.name + ")"); }
   });
+  // Chop live : pendant la lecture, chaque pad frappé prend le son à partir de cet instant
+  const LC = { on: false, marks: {} };
+  $("liveChop").addEventListener("click", () => {
+    LC.on = !LC.on; $("liveChop").classList.toggle("on", LC.on);
+    if (LC.on) { LC.marks = {}; if (!ttSrc) $("ttPlay").click(); lcd("lcdPad", "CHOP LIVE", "frappez les pads pendant l'écoute"); }
+  });
+  function ttPos() { return ttSrc ? Math.floor((ctx.currentTime - ttStart) * Math.pow(2, pitchSemi / 12) * sr) : -1; }
+  function sliceBuf(a, b, rate) {
+    const len = Math.max(32, Math.floor((b - a) / rate)), out = ctx.createBuffer(clip.buf.numberOfChannels, len, sr);
+    const fade = Math.min(Math.floor(sr * 0.004), Math.floor(len / 4));
+    for (let ch = 0; ch < clip.buf.numberOfChannels; ch++) {
+      const src = clip.buf.getChannelData(ch), dst = out.getChannelData(ch);
+      for (let j = 0; j < len; j++) { const p = a + j * rate, k = Math.floor(p), f = p - k; dst[j] = (src[k] || 0) * (1 - f) + (src[k + 1] || 0) * f; }
+      for (let j = 0; j < fade; j++) dst[len - 1 - j] *= j / fade;
+    }
+    return out;
+  }
+  function liveChopHit(i) {
+    const pos = ttPos(); if (pos < 0 || !clip) return false;
+    LC.marks[i] = pos;
+    const L = clip.buf.length, rate = Math.pow(2, pitchSemi / 12);
+    const starts = Object.values(LC.marks).sort((x, y) => x - y);
+    if (chopKit.buffers.length !== 16) { chopKit.buffers = new Array(16).fill(null); chopKit.names = new Array(16).fill("—"); }
+    Object.entries(LC.marks).forEach(([pad, a]) => {
+      const nxt = starts.find(x => x > a + sr * 0.05); const b = Math.min(L, nxt ?? a + sr * 4);
+      chopKit.buffers[+pad] = sliceBuf(a, b, rate); chopKit.names[+pad] = "Chop " + (+pad + 1);
+    });
+    chops = starts; drawWave();
+    if (!kitIndex.some(k => k.id === "chops")) kitIndex.splice(1, 0, { id: "chops", name: "MES CHOPS", style: "Sampling", desc: "" });
+    kitIndex.find(k => k.id === "chops").desc = (clip.title || "").slice(0, 60) + " · chop live";
+    if (kitCur !== "chops") loadKit("chops"); else { buffers = chopKit.buffers.slice(); names = chopKit.names.slice(); drawPads(); }
+    lcd("lcdPad", "CHOP LIVE", `pad ${i + 1} ← ${(pos / sr).toFixed(2)} s`);
+    return true;
+  }
   function sampleKnob(k, v) {
     const val = v / 127;
     knobVals.sample[k] = val;
@@ -1717,6 +1906,70 @@ registerProcessor('nomad-fx',Fx);`;
     if (k === 3) { const n = [4, 8, 12, 16][Math.min(3, Math.floor(val * 4))]; if (n !== eqN || chopMode !== "eq") setChopMode("eq", n); }
     if (k === 7) sampleVol = val;
   }
+
+  // ---------- Styles graphiques ----------
+  function setSkin(sk) {
+    if (sk) document.documentElement.dataset.skin = sk; else delete document.documentElement.dataset.skin;
+    document.querySelectorAll(".skin").forEach(b => b.classList.toggle("on", b.dataset.skin === sk));
+    store.set("skin", sk);
+  }
+  document.querySelectorAll(".skin").forEach(b => b.addEventListener("click", () => setSkin(b.dataset.skin)));
+  setSkin(store.get("skin", ""));
+
+  // ---------- Projets ----------
+  async function saveProject(name) {
+    const id = "proj-" + Date.now().toString(36);
+    const p = {
+      id, name: name.toUpperCase().slice(0, 40), created: Date.now(),
+      kit: kitCur, kitEmbed: (kitCur === "chops") ? { names: names.slice(), gains: gains.slice(), bufs: buffers.map(packBuf) } : null,
+      knobs: JSON.parse(JSON.stringify(knobVals)), manualBpm,
+      guitar: { amp: G.amp, fx: [...G.fx], preset: G.preset },
+      loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, layers: LP.layers.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, buf: packBuf(l.buf) })) }
+    };
+    await DB.put("projects", p);
+  }
+  async function loadProject(id) {
+    const p = await DB.get("projects", id); if (!p || !ctx) return;
+    Object.keys(p.knobs).forEach(t => { if (knobVals[t]) knobVals[t] = p.knobs[t].slice(); });
+    manualBpm = p.manualBpm || 90;
+    for (let k = 0; k < 4; k++) applyPlayKnob(k);
+    for (let k = 0; k < 8; k++) applyFxKnob(k);
+    G.amp = p.guitar.amp; G.fx = new Set(p.guitar.fx); G.preset = p.guitar.preset; applyGuitar();
+    if (p.kitEmbed) {
+      chopKit.buffers = p.kitEmbed.bufs.map(unpackBuf); chopKit.names = p.kitEmbed.names.slice();
+      if (!kitIndex.some(k => k.id === "chops")) kitIndex.splice(1, 0, { id: "chops", name: "MES CHOPS", style: "Sampling", desc: "du projet " + p.name });
+      await loadKit("chops");
+    } else if (kitIndex.some(k => k.id === p.kit)) await loadKit(p.kit);
+    resetLooper();
+    if (p.loop && p.loop.sr === sr) {
+      LP.Lf = p.loop.Lf; LP.beats = p.loop.beats; LP.t0F = Math.round((ctx.currentTime + 0.05) * sr); LP.playing = true;
+      p.loop.layers.forEach((l, i) => { addLayer(unpackBuf(l.buf), l.k, l.m); const L = LP.layers[i]; L.vol = l.vol; L.muted = l.muted; L.gain.gain.value = l.muted ? 0 : l.vol; });
+    } else if (p.loop) lcd("lcdLoop", "BOUCLE", "boucles enregistrées à une autre fréquence, non chargées");
+    drawKnobs();
+    lcd("lcdPad", "PROJET", p.name + " chargé");
+  }
+  async function renderProjects() {
+    let list = []; try { list = await DB.all("projects"); } catch (e) {}
+    list.sort((a, b) => b.created - a.created);
+    $("projList").innerHTML = list.length ? "" : "<p>Aucun projet pour l'instant.</p>";
+    list.forEach(p => {
+      const row = document.createElement("div"); row.className = "item-row";
+      const b = document.createElement("button"); b.type = "button"; b.className = "kititem";
+      const d = new Date(p.created);
+      b.innerHTML = `${p.name}<small>${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · ${p.loop ? p.loop.layers.length + " piste(s)" : "sans boucle"}</small>`;
+      b.addEventListener("click", async () => { $("setSheet").hidden = true; await loadProject(p.id); });
+      const del = document.createElement("button"); del.type = "button"; del.className = "mini"; del.textContent = "SUPPR.";
+      del.addEventListener("click", async () => { if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "SÛR ?"; return; } await DB.del("projects", p.id); renderProjects(); });
+      row.appendChild(b); row.appendChild(del); $("projList").appendChild(row);
+    });
+  }
+  $("projSave").addEventListener("click", async () => {
+    if (!ctx) return;
+    const n = $("projName").value.trim() || ("PROJET " + new Date().toLocaleDateString());
+    $("projSave").textContent = "…";
+    try { await saveProject(n); $("projName").value = ""; await renderProjects(); } catch (e) { lcd("lcdPad", "PROJET", "enregistrement impossible : " + e.name); }
+    $("projSave").textContent = "ENREGISTRER";
+  });
 
   // ---------- MIDI ----------
   const learned = store.get("cc", []);
@@ -1742,6 +1995,9 @@ registerProcessor('nomad-fx',Fx);`;
     if (cc >= 20 && cc <= 35) { if (v > 0) padCommand(cc); return; }
     const k = knobIndex(cc);
     if (k < 0) return;
+    knobInput(k, v);
+  }
+  function knobInput(k, v) {
     const val = v / 127;
     if (tab === "guitar") {
       if (k < 7) setGuitarKnob(k, val); else { knobVals.guitar[7] = val; applyGuitar(); }
@@ -1749,6 +2005,7 @@ registerProcessor('nomad-fx',Fx);`;
     }
     if (tab === "fx") { knobVals.fx[k] = val; applyFxKnob(k); $("dial" + k).style.setProperty("--v", val); return; }
     if (tab === "sample") { sampleKnob(k, v); $("dial" + k).style.setProperty("--v", val); return; }
+    if (tab === "guitar") return;
     knobVals[tab][k] = val;
     if (tab === "play") applyPlayKnob(k);
     else if (ctx) {
@@ -1767,7 +2024,8 @@ registerProcessor('nomad-fx',Fx);`;
       if (ch === 10) padsOnCh10 = true;
       const idx = d1 - BASE_NOTE;
       const isPad = ch === 10 || (!padsOnCh10 && idx >= 0 && idx < 16);
-      if (isPad && idx >= 8 && idx < 16 && tab === "fx") fxStart(idx - 8);
+      if (isPad && idx >= 0 && idx < 16 && tab === "sample" && LC.on && ttSrc && liveChopHit(idx)) { flash(idx); }
+      else if (isPad && idx >= 8 && idx < 16 && tab === "fx") fxStart(idx - 8);
       else if (isPad && idx >= 0 && idx < 16) playPad(idx, d2 / 127);
       else if (!isPad) playKey(d1, d2 / 127);
     } else if (type === 0x80 || (type === 0x90 && d2 === 0)) {
