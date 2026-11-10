@@ -6,6 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0c0b0a">
 <title>NOMAD-16</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wdth,wght@100..125,700..900&family=Arimo:wght@400;700&family=IBM+Plex+Mono:wght@400;600&family=VT323&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
@@ -334,13 +336,13 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
 :root[data-type="mpk"] .fxpad span, :root[data-type="mpk"] .preset span { color: var(--red); }
 :root[data-type="mpk"] .brand { display: grid; grid-template-columns: auto auto; align-items: baseline; column-gap: 4px; line-height: .9; }
 :root[data-type="mpk"] .bw { font-family: "Archivo", "Arial Black", sans-serif; font-stretch: 125%; font-variation-settings: "wdth" 125; font-weight: 900; color: var(--red); font-size: 27px; letter-spacing: -.01em; }
-:root[data-type="mpk"] .brand span { color: var(--text); font-family: "Arimo", Arial, sans-serif; font-weight: 700; font-size: 20px; }
+:root[data-type="mpk"] .brand span { color: var(--text); font-family: "Arimo", Arial, sans-serif; font-weight: 700; font-size: 23px; position: relative; margin-left: -.5em; top: .3em; z-index: 1; text-shadow: 2px 0 0 var(--body), -2px 0 0 var(--body), 0 2px 0 var(--body), 0 -2px 0 var(--body), 2px 2px 0 var(--body), -2px -2px 0 var(--body), 2px -2px 0 var(--body), -2px 2px 0 var(--body); }
 :root[data-type="mpk"] .brand span i { display: none; }
-:root[data-type="mpk"] .btag { display: block; grid-column: 1 / -1; font-family: "Archivo", Arial, sans-serif; font-stretch: 125%; font-variation-settings: "wdth" 125; font-weight: 700; font-size: 7.5px; letter-spacing: .14em; color: var(--red); margin-top: 3px; }
+:root[data-type="mpk"] .btag { display: block; grid-column: 1 / -1; margin-top: 6px !important; font-family: "Archivo", Arial, sans-serif; font-stretch: 125%; font-variation-settings: "wdth" 125; font-weight: 700; font-size: 7.5px; letter-spacing: .14em; color: var(--red); margin-top: 3px; }
 :root[data-type="mpk"] .power button { background: #0c0b0a; color: var(--red); padding: 22px 30px 18px; border-radius: 12px; box-shadow: 0 0 0 2px #2b2825, 0 10px 30px rgba(0,0,0,.6); display: grid; grid-template-columns: auto auto; align-items: baseline; column-gap: 8px; }
 :root[data-type="mpk"] .power .bw { font-size: 52px; }
-:root[data-type="mpk"] .power .b16 { display: inline; color: #ece3d3; font-family: "Arimo", Arial, sans-serif; font-weight: 700; font-size: 38px; }
-:root[data-type="mpk"] .power .btag { font-size: 11px; margin-top: 6px; text-align: left; }
+:root[data-type="mpk"] .power .b16 { display: inline; color: #ece3d3; font-family: "Arimo", Arial, sans-serif; font-weight: 700; font-size: 50px; position: relative; margin-left: -.55em; top: .3em; text-shadow: 3px 0 0 #0c0b0a, -3px 0 0 #0c0b0a, 0 3px 0 #0c0b0a, 0 -3px 0 #0c0b0a, 3px 3px 0 #0c0b0a, -3px -3px 0 #0c0b0a, 3px -3px 0 #0c0b0a, -3px 3px 0 #0c0b0a; }
+:root[data-type="mpk"] .power .btag { font-size: 11px; margin-top: 14px; text-align: left; }
 :root[data-skin="dub"][data-type="mpk"] .bw { color: #f2b705; }
 .power p { max-width: 34ch; color: var(--muted); line-height: 1.5; margin: 0; }
 /* ---------- Style CLAIR : contrôleur gris clair, pads blancs à liseré de couleur ---------- */
@@ -541,6 +543,10 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     </div>
     <canvas id="waveCanvas" aria-label="Forme d'onde et découpes"></canvas>
     <div class="dpads" id="digPads" aria-label="Pads"></div>
+    <div class="chopbar" style="grid-template-columns:1fr 1fr">
+      <button class="btn" id="lcUndo" type="button" disabled>↶ ANNULER LE CHOP</button>
+      <button class="btn" id="lcRestart" type="button" disabled>RECOMMENCER</button>
+    </div>
     <div class="chopbar">
       <button class="btn on" id="chAuto" type="button">AUTO</button>
       <button class="btn" id="chEq8" type="button">ÉGAL 8</button>
@@ -2365,10 +2371,10 @@ registerProcessor('nomad-fx',Fx);`;
     } catch (e) { lcd("lcdPad", "MICRO", "micro refusé (" + e.name + ")"); }
   });
   // Chop live : pendant la lecture, chaque pad frappé prend le son à partir de cet instant
-  const LC = { on: false, marks: {}, countIn: store.get("chopCountIn", 4) };
+  const LC = { on: false, marks: {}, hist: [], countIn: store.get("chopCountIn", 4) };
   $("liveChop").addEventListener("click", () => {
     LC.on = !LC.on; $("liveChop").classList.toggle("on", LC.on);
-    if (LC.on) { LC.marks = {}; if (!ttSrc) ttStartPlay(LC.countIn); lcd("lcdPad", "CHOP LIVE", LC.countIn ? "décompte…" : "frappez les pads pendant l'écoute"); }
+    if (LC.on) { LC.marks = {}; LC.hist = []; $("lcUndo").disabled = true; if (!ttSrc) ttStartPlay(LC.countIn); lcd("lcdPad", "CHOP LIVE", LC.countIn ? "décompte…" : "frappez les pads pendant l'écoute"); }
     drawDigPads();
   });
   $("ciBtn").addEventListener("click", () => {
@@ -2403,7 +2409,31 @@ registerProcessor('nomad-fx',Fx);`;
   }
   function liveChopHit(i) {
     const pos = ttPos(); if (pos < 0 || !clip) return false;
+    LC.hist.push({ i, prev: LC.marks[i] });
     LC.marks[i] = pos;
+    rebuildChops();
+    lcd("lcdPad", "CHOP LIVE", `pad ${i + 1} ← ${(pos / sr).toFixed(2)} s`);
+    return true;
+  }
+  // Annuler le dernier chop live (plusieurs fois de suite si besoin), ou tout recommencer en relançant l'extrait
+  function lcUndo() {
+    const h = LC.hist.pop(); if (!h) return;
+    if (h.prev === undefined) delete LC.marks[h.i]; else LC.marks[h.i] = h.prev;
+    rebuildChops(h.prev === undefined ? h.i : -1);
+    lcd("lcdPad", "CHOP LIVE", `chop du pad ${h.i + 1} annulé`);
+  }
+  function lcRestart() {
+    LC.marks = {}; LC.hist = []; rebuildChops(-2);
+    if (LC.on) { stopTT(); ttStartPlay(LC.countIn); }
+    lcd("lcdPad", "CHOP LIVE", "on recommence" + (LC.countIn ? " · décompte…" : ""));
+  }
+  $("lcUndo").addEventListener("click", lcUndo);
+  $("lcRestart").addEventListener("click", lcRestart);
+  function rebuildChops(cleared) {
+    if (!clip) return;
+    if (chopKit.buffers.length !== 16) { chopKit.buffers = new Array(16).fill(null); chopKit.names = new Array(16).fill("—"); }
+    if (cleared >= 0) { chopKit.buffers[cleared] = null; chopKit.names[cleared] = "—"; }
+    if (cleared === -2) { chopKit.buffers = new Array(16).fill(null); chopKit.names = new Array(16).fill("—"); }
     const L = clip.buf.length, rate = Math.pow(2, pitchSemi / 12);
     const starts = Object.values(LC.marks).sort((x, y) => x - y);
     if (chopKit.buffers.length !== 16) { chopKit.buffers = new Array(16).fill(null); chopKit.names = new Array(16).fill("—"); }
@@ -2415,8 +2445,8 @@ registerProcessor('nomad-fx',Fx);`;
     if (!kitIndex.some(k => k.id === "chops")) kitIndex.splice(1, 0, { id: "chops", name: "MES CHOPS", style: "Sampling", desc: "" });
     kitIndex.find(k => k.id === "chops").desc = (clip.title || "").slice(0, 60) + " · chop live";
     if (kitCur !== "chops") loadKit("chops"); else { buffers = chopKit.buffers.slice(); names = chopKit.names.slice(); drawPads(); }
-    lcd("lcdPad", "CHOP LIVE", `pad ${i + 1} ← ${(pos / sr).toFixed(2)} s`);
-    return true;
+    $("lcUndo").disabled = !LC.hist.length; $("lcRestart").disabled = !Object.keys(LC.marks).length && !LC.hist.length;
+    drawDigPads();
   }
   function sampleKnob(k, v) {
     const val = v / 127;
