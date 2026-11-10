@@ -8,7 +8,7 @@
 <title>NOMAD-16</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;600&family=VT323&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wdth,wght@100..125,700..900&family=Arimo:wght@400;700&family=IBM+Plex+Mono:wght@400;600&family=VT323&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
 <style>
 :root {
   /* Une machine noire mate, une bande tricolore rouge/noir/vert, un écran LCD, des pads en caoutchouc, des boucles en cercles, une tête d'ampli. */
@@ -321,6 +321,27 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   background: var(--red); color: #fff; border: 0; border-radius: 10px; padding: 18px 30px;
   box-shadow: 0 0 0 3px #050505, 0 0 0 6px var(--green); cursor: pointer;
 }
+/* bouton d'accueil et marque, style d'origine */
+.brand .btag, .power .btag, .power .b16, .pad .m { display: none; }
+.brand .bw { font-weight: inherit; }
+/* ---------- Lettrage MPK : capitales grasses façon sérigraphie de l'Akai, marque en capitales larges rouges ---------- */
+:root[data-type="mpk"] { --font-display: "Arimo", Arial, Helvetica, sans-serif; --font-body: "Arimo", Arial, Helvetica, sans-serif; }
+:root[data-type="mpk"] :is(.amp-model, .gk label, .gtools label, .crate, .diginfo b, .dpad, .chord b, .pat, .songrow .sn, .songrow .rp, .skin, .btn, .tab, .gear, .knob label, .pad .name, .pad .m, .fxpad b, .preset, .seqsel .pat, .songhead .btn) { font-weight: 700; }
+:root[data-type="mpk"] .tab { letter-spacing: .02em; }
+:root[data-type="mpk"] .knob label { color: var(--text); opacity: .85; letter-spacing: .06em; }
+:root[data-type="mpk"] .pad .n { display: none; }
+:root[data-type="mpk"] .pad .m { display: block; font-size: 10px; letter-spacing: .04em; color: var(--text); opacity: .8; }
+:root[data-type="mpk"] .fxpad span, :root[data-type="mpk"] .preset span { color: var(--red); }
+:root[data-type="mpk"] .brand { display: grid; grid-template-columns: auto auto; align-items: baseline; column-gap: 4px; line-height: .9; }
+:root[data-type="mpk"] .bw { font-family: "Archivo", "Arial Black", sans-serif; font-stretch: 125%; font-variation-settings: "wdth" 125; font-weight: 900; color: var(--red); font-size: 27px; letter-spacing: -.01em; }
+:root[data-type="mpk"] .brand span { color: var(--text); font-family: "Arimo", Arial, sans-serif; font-weight: 700; font-size: 20px; }
+:root[data-type="mpk"] .brand span i { display: none; }
+:root[data-type="mpk"] .btag { display: block; grid-column: 1 / -1; font-family: "Archivo", Arial, sans-serif; font-stretch: 125%; font-variation-settings: "wdth" 125; font-weight: 700; font-size: 7.5px; letter-spacing: .14em; color: var(--red); margin-top: 3px; }
+:root[data-type="mpk"] .power button { background: #0c0b0a; color: var(--red); padding: 22px 30px 18px; border-radius: 12px; box-shadow: 0 0 0 2px #2b2825, 0 10px 30px rgba(0,0,0,.6); display: grid; grid-template-columns: auto auto; align-items: baseline; column-gap: 8px; }
+:root[data-type="mpk"] .power .bw { font-size: 52px; }
+:root[data-type="mpk"] .power .b16 { display: inline; color: #ece3d3; font-family: "Arimo", Arial, sans-serif; font-weight: 700; font-size: 38px; }
+:root[data-type="mpk"] .power .btag { font-size: 11px; margin-top: 6px; text-align: left; }
+:root[data-skin="dub"][data-type="mpk"] .bw { color: #f2b705; }
 .power p { max-width: 34ch; color: var(--muted); line-height: 1.5; margin: 0; }
 /* ---------- Style CLAIR : contrôleur gris clair, pads blancs à liseré de couleur ---------- */
 :root[data-skin="clair"] { --body: #e6e4df; --ink: #c9c6bf; --text: #1e1e1e; --muted: #6b6760; --pad: #f7f6f3; --pad-edge: #b3afa6; --lcd-bg: #182631; --lcd-ink: #8fdcff; --red: #e0442e; --green: #1d9c74; --stripe-mid: #f2c230; color-scheme: light; }
@@ -362,7 +383,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
 <div class="machine">
   <div class="stripe" aria-hidden="true"></div>
   <div class="top">
-    <div class="brand">NOMAD<span>-16</span></div>
+    <div class="brand"><b class="bw">NOMAD</b><span><i>-</i>16</span><small class="btag">POCKET SAMPLER · LOOPER</small></div>
     <span style="display:flex;gap:6px"><button class="histbtn" id="undoBtn" type="button" aria-label="Annuler" disabled>↶</button><button class="histbtn" id="redoBtn" type="button" aria-label="Rétablir" disabled>↷</button>
     <button class="gear" id="gearBtn" type="button">RÉGLAGES</button></span>
   </div>
@@ -593,6 +614,11 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       <button class="skin" type="button" data-skin="clair" style="background:#e6e4df;color:#1e1e1e;box-shadow:inset 0 -4px 0 #1d9c74">CLAIR</button>
       <button class="skin" type="button" data-skin="dub" style="background:#13160f;color:#f2b705;box-shadow:inset 0 -4px 0 #d42a1f">DUB</button>
     </div>
+    <p>LETTRAGE</p>
+    <div class="skins" style="grid-template-columns:1fr 1fr">
+      <button class="skin ftype" type="button" data-type="mpk" style="background:#111;color:#e8322f;font-family:Arimo,Arial,sans-serif;font-weight:700">MPK</button>
+      <button class="skin ftype" type="button" data-type="" style="background:#1b1a18;color:#ece3d3;font-family:'Archivo Black',sans-serif">NOMAD</button>
+    </div>
     <h3>TEXTES D'AIDE</h3>
     <div class="row"><button class="btn" id="helpBtn" type="button" aria-pressed="false" style="flex:1">MASQUÉS</button></div>
     <h3>PROJETS</h3>
@@ -610,7 +636,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
 
 <div class="power" id="power">
   <div class="stripe" style="width:180px" aria-hidden="true"></div>
-  <button id="powerBtn" type="button">NOMAD</button>
+  <button id="powerBtn" type="button"><b class="bw">NOMAD</b><span class="b16">16</span><small class="btag">POCKET SAMPLER · LOOPER</small></button>
   <p>Touchez pour démarrer Nomad. Sur iPhone, coupez aussi le mode silencieux si vous n'entendez rien.</p>
 </div>
 
@@ -707,7 +733,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       padEls[i] = b;
     }
   }
-  function drawPads() { padEls.forEach((b, i) => { b.innerHTML = `<span class="n">${String(i + 1).padStart(2, "0")} · ${BASE_NOTE + i}</span><span class="name">${names[i] || "—"}</span>`; }); }
+  function drawPads() { padEls.forEach((b, i) => { b.innerHTML = `<span class="n">${String(i + 1).padStart(2, "0")} · ${BASE_NOTE + i}</span><span class="m">PAD ${i + 1}</span><span class="name">${names[i] || "—"}</span>`; }); }
   drawPads();
   function select(i) {
     padEls[selected].classList.remove("sel"); selected = i; padEls[i].classList.add("sel");
@@ -3339,6 +3365,14 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   }
   document.querySelectorAll(".skin").forEach(b => b.addEventListener("click", () => setSkin(b.dataset.skin)));
   setSkin(store.get("skin", ""));
+  // Lettrage : MPK (sérigraphie de l'Akai : capitales grasses façon Arial) ou NOMAD (d'origine)
+  function setType(t) {
+    if (t) document.documentElement.dataset.type = t; else delete document.documentElement.dataset.type;
+    document.querySelectorAll(".ftype").forEach(b => b.classList.toggle("on", b.dataset.type === t));
+    store.set("type", t);
+  }
+  document.querySelectorAll(".ftype").forEach(b => b.addEventListener("click", () => setType(b.dataset.type)));
+  setType(store.get("type", "mpk"));
 
   // ---------- Projets ----------
   async function saveProject(name) {
