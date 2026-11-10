@@ -430,9 +430,14 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
         <span>TONALITÉ</span><span class="kv" id="keyVal">C</span><span id="keyMode" style="color:var(--muted);font-size:11px"></span>
         <button class="btn" id="keyUp" type="button" aria-label="Tonalité plus haut">▶</button>
       </div>
+      <div class="keybar">
+        <button class="btn" id="octDown" type="button">OCTAVE −</button>
+        <span class="kv" id="octVal">0</span>
+        <button class="btn" id="octUp" type="button">OCTAVE +</button>
+      </div>
       <div class="styles" id="styles"></div>
       <div class="chords" id="chords"></div>
-      <p class="note">En mode ACCORDS, l'octave basse du clavier de l'Akai joue la progression : touches blanches DO, RÉ, MI, FA, SOL, LA, SI = accords 1 à 7 (touches noires = même accord, renversé plus haut). L'octave haute joue des notes simples, dans la tonalité. + BASSE ajoute la fondamentale une octave en dessous.</p>
+      <p class="note">Pads de l'Akai : Bank 1, pads 1 à 7 = accords 1 à 7, pad 8 = accord 1 à l'octave ; Bank 2 = les mêmes une octave plus haut. Clavier : l'octave basse du clavier de l'Akai joue la progression : touches blanches DO, RÉ, MI, FA, SOL, LA, SI = accords 1 à 7 (touches noires = même accord, renversé plus haut). L'octave haute joue des notes simples, dans la tonalité. + BASSE ajoute la fondamentale une octave en dessous.</p>
     </div>
     <p class="note" id="instCredit"></p>
   </section>
@@ -2118,7 +2123,7 @@ registerProcessor('nomad-fx',Fx);`;
     $("chords").innerHTML = "";
     st.p.forEach((c, i) => {
       const b = document.createElement("button"); b.type = "button"; b.className = "chord"; b.id = "ch" + i;
-      b.innerHTML = `<b>${NN[(tonic + c[0]) % 12]}${SYM[c[1]]}</b><span>${c[2]} · touche ${["DO", "RÉ", "MI", "FA", "SOL", "LA", "SI"][i]}</span>`;
+      b.innerHTML = `<b>${NN[(tonic + c[0]) % 12]}${SYM[c[1]]}</b><span>${c[2]} · pad ${i + 1} · ${["DO", "RÉ", "MI", "FA", "SOL", "LA", "SI"][i]}</span>`;
       b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture(e.pointerId); chordOn("screen" + i, i, 0.8, 0); });
       ["pointerup", "pointercancel"].forEach(ev => b.addEventListener(ev, () => releaseKey("screen" + i)));
       $("chords").appendChild(b);
@@ -2129,6 +2134,9 @@ registerProcessor('nomad-fx',Fx);`;
   $("mNotes").addEventListener("click", () => { chordMode = false; store.set("chordMode", false); drawSons(); });
   $("mChords").addEventListener("click", () => { chordMode = true; store.set("chordMode", true); drawSons(); });
   $("mBass").addEventListener("click", () => { addBass = !addBass; store.set("addBass", addBass); drawSons(); });
+  function setOct(o) { octShift = Math.max(-2, Math.min(2, o)); knobVals.sons[4] = (octShift + 2) / 4; $("octVal").textContent = (octShift > 0 ? "+" : "") + octShift; if (tab === "sons") drawKnobs(); }
+  $("octDown").addEventListener("click", () => setOct(octShift - 1));
+  $("octUp").addEventListener("click", () => setOct(octShift + 1));
   $("keyDown").addEventListener("click", () => { tonic = (tonic + 11) % 12; store.set("tonic", tonic); drawSons(); });
   $("keyUp").addEventListener("click", () => { tonic = (tonic + 1) % 12; store.set("tonic", tonic); drawSons(); });
 
@@ -2200,11 +2208,11 @@ registerProcessor('nomad-fx',Fx);`;
     lastVoicing = best.slice();
     return best;
   }
-  function chordOn(key, idx, vel, invUp) {
+  function chordOn(key, idx, vel, invUp, octUp) {
     const st = STYLES[styleIdx], c = st.p[idx % st.p.length];
-    const root = 48 + ((tonic + c[0]) % 12);
-    const notes = voiceChord(root, c[1], invUp).map(n => n + octShift * 12);
-    if (addBass) notes.unshift(root - 12 + octShift * 12);
+    const root = 48 + ((tonic + c[0]) % 12), sh = (octShift + (octUp || 0)) * 12;
+    const notes = voiceChord(root, c[1], invUp).map(n => n + sh);
+    if (addBass) notes.unshift(root - 12 + sh);
     releaseKey(key);
     const vs = notes.map(n => noteOn(n, vel)).filter(Boolean);
     activeKeys.set(key, vs);
@@ -2241,7 +2249,7 @@ registerProcessor('nomad-fx',Fx);`;
     if (k === 1) relTime = 0.05 + val * 2.5;
     if (k === 2 && instFilt) instFilt.frequency.setTargetAtTime(150 * Math.pow(20000 / 150, val), t, 0.02);
     if (k === 3 && instRevSend) instRevSend.gain.setTargetAtTime(val * 0.8, t, 0.02);
-    if (k === 4) { octShift = Math.round((val - 0.5) * 4); lcd("lcdPad", "SON", "octave " + (octShift > 0 ? "+" : "") + octShift); }
+    if (k === 4) { octShift = Math.round((val - 0.5) * 4); $("octVal").textContent = (octShift > 0 ? "+" : "") + octShift; lcd("lcdPad", "SON", "octave " + (octShift > 0 ? "+" : "") + octShift); }
     if (k === 5) { const nt = Math.min(11, Math.floor(val * 12)); if (nt !== tonic) { tonic = nt; store.set("tonic", tonic); drawSons(); } }
     if (k === 6) { const ns = Math.min(STYLES.length - 1, Math.floor(val * STYLES.length)); if (ns !== styleIdx) { styleIdx = ns; store.set("style", ns); drawSons(); } }
     if (k === 7) { const st = STYLES[styleIdx]; const i = Math.min(st.p.length - 1, Math.floor(val * st.p.length)); if (i !== knobChord) { knobChord = i; chordOn("knob", i, 0.7, 0); clearTimeout(knobChordT); knobChordT = setTimeout(() => releaseKey("knob"), 1200); } }
@@ -2367,7 +2375,8 @@ registerProcessor('nomad-fx',Fx);`;
       if (ch === 10) padsOnCh10 = true;
       const idx = d1 - BASE_NOTE;
       const isPad = ch === 10 || (!padsOnCh10 && idx >= 0 && idx < 16);
-      if (isPad && idx >= 0 && idx < 16 && tab === "sample" && LC.on && ttSrc && liveChopHit(idx)) { flash(idx); }
+      if (isPad && idx >= 0 && idx < 16 && tab === "sons" && chordMode) { const j = idx % 8; chordOn("p" + idx, j < 7 ? j : 0, d2 / 127, 0, (idx >= 8 ? 1 : 0) + (j === 7 ? 1 : 0)); flash(idx); }
+      else if (isPad && idx >= 0 && idx < 16 && tab === "sample" && LC.on && ttSrc && liveChopHit(idx)) { flash(idx); }
       else if (isPad && idx >= 8 && idx < 16 && tab === "fx") fxStart(idx - 8);
       else if (isPad && idx >= 0 && idx < 16) playPad(idx, d2 / 127);
       else if (!isPad) playKey(d1, d2 / 127);
@@ -2375,7 +2384,7 @@ registerProcessor('nomad-fx',Fx);`;
       const idx = d1 - BASE_NOTE;
       if (idx >= 8 && idx < 16 && (ch === 10 || !padsOnCh10)) fxStop(idx - 8);
       const isPadOff = ch === 10 || (!padsOnCh10 && idx >= 0 && idx < 16);
-      if (!isPadOff) keyOff(d1);
+      if (!isPadOff) keyOff(d1); else if (idx >= 0 && idx < 16) releaseKey("p" + idx);
     } else if (type === 0xb0) {
       lcd("lcdLast", "DERNIER", `CC ${d1}=${d2} CH${ch}`);
       onCC(d1, d2);
