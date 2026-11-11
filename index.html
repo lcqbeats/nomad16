@@ -153,7 +153,12 @@ button { font-family: var(--font-body); }
 .xfader .led { position: absolute; right: 8px; top: 6px; width: 8px; height: 8px; border-radius: 50%; background: #5a1414; }
 .xfader.open .led { background: #a8dd3a; box-shadow: 0 0 6px #a8dd3a; }
 .scrcuts, .scrph, .scrtools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.scrtools { grid-template-columns: repeat(4, 1fr); }
+.scrtools { grid-template-columns: repeat(3, 1fr); }
+.scrcues { display: grid; grid-template-columns: repeat(4, 1fr) 1.5fr; gap: 6px; }
+.scrcues .btn { padding: 11px 2px; font-size: 10px; }
+.scrcues .cue { box-shadow: 0 0 0 2px var(--pad-edge), inset 0 -4px 0 var(--cc); opacity: .55; }
+.scrcues .cue.set { opacity: 1; }
+.scrcues .cue.on { background: var(--text); color: var(--ink); opacity: 1; }
 .scrcuts .btn { padding: 16px 4px; font-size: 12px; touch-action: none; }
 #view-scratch .scrplay, #view-scratch .scrplay * { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 #scrLcd { cursor: pointer; }
@@ -655,6 +660,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       <button class="btn" id="scrOpen" type="button">OUVRE</button>
     </div>
     </div>
+    <div class="scrcues scrplay" id="scrCues"></div>
     <h4 class="sphead"><span>PHRASES</span></h4>
     <div class="scrph scrplay" id="scrPh"></div>
     <h4 class="sphead"><span>SUR LE DISQUE</span></h4>
@@ -662,13 +668,12 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     <div class="scrnav"><button class="btn" id="scrPrev" type="button" aria-label="Son précédent">◀</button><span id="scrName">—</span><button class="btn" id="scrNext" type="button" aria-label="Son suivant">▶</button></div>
     <div class="scrtools">
       <button class="btn" id="scrRand" type="button">HASARD</button>
-      <button class="btn" id="scrCue" type="button">REPÈRE ICI</button>
       <button class="btn" id="scrImp" type="button">IMPORTER</button>
       <button class="btn" id="scrKey" type="button">NOTE : —</button>
     </div>
     <input type="file" id="scrFile" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff" hidden>
     <div class="scrset" id="scrSet"></div>
-    <p class="note help">Posez le doigt sur le disque et tournez : en avant, en arrière, à la vitesse de votre main. Touchez l'écran vert pour enregistrer : le scratch est posé sur une nouvelle piste du looper, sur un tour de boucle complet (départ au début de la boucle suivante) ; sans boucle, c'est le REC du looper. Le son tourne en sillon fermé. START lance le moteur ; la main arrête le disque tant qu'elle est posée. Fader : la zone rouge coupe le son (HAMSTER inverse le côté). OUVRE, COUPE et les phrases agissent tant qu'on les tient (une phrase rejoue son geste en boucle, calée sur le tempo). Akai, banque A : pad 1 tire le disque en arrière, pad 5 le pousse en avant (plus on frappe fort, plus c'est rapide), pad 2 ouvre, pad 3 coupe, pads 4, 6, 7, 8 = baby, chirp, transform, flare ; banque B : 9 tear, 10 stab, 11 start/stop, 12 retour au repère, 13 et 14 son précédent/suivant, 15 hamster, 16 REC du scratch. Le clavier transpose le disque (scratch mélodique) ; potards : volume, pitch, filtre, démarrage, freinage, coupure, MAIN (déplace le disque comme une main, sur un demi-tour), fader. Tout passe dans le looper : REC / Sustain enregistre vos scratchs. Sons VOIX : Bibliothèque du Congrès (Citizen DJ), libres d'utilisation ; MES SONS : vos fichiers, gardés dans cet appareil.</p>
+    <p class="note help">Posez le doigt sur le disque et tournez : en avant, en arrière, à la vitesse de votre main. Touchez l'écran vert pour enregistrer : le scratch est posé sur une nouvelle piste du looper, sur un tour de boucle complet (départ au début de la boucle suivante) ; sans boucle, c'est le REC du looper. Le son tourne en sillon fermé. START lance le moteur ; la main arrête le disque tant qu'elle est posée. Fader : la zone rouge coupe le son (HAMSTER inverse le côté). OUVRE, COUPE et les phrases agissent tant qu'on les tient (une phrase rejoue son geste en boucle, calée sur le tempo). CUE 1 à 4 : toucher un repère vide le pose là où est le disque ; toucher un repère posé y ramène le disque et en fait le repère actif (l'autocollant blanc) ; appui long pour l'effacer. PHRASES : REPÈRE fait partir les phrases du repère actif, PHRASES : ICI de là où se trouve le disque. Akai, banque A : pad 1 tire le disque en arrière, pad 5 le pousse en avant (plus on frappe fort, plus c'est rapide), pad 2 ouvre, pad 3 coupe, pads 4, 6, 7, 8 = baby, chirp, transform, flare ; banque B : 9 tear, 10 stab, 11 start/stop, 12 retour au repère, 13 et 14 son précédent/suivant, 15 hamster, 16 REC du scratch. Le clavier transpose le disque (scratch mélodique) ; potards : volume, pitch, filtre, démarrage, freinage, coupure, MAIN (déplace le disque comme une main, sur un demi-tour), fader. Tout passe dans le looper : REC / Sustain enregistre vos scratchs. Sons VOIX : Bibliothèque du Congrès (Citizen DJ), libres d'utilisation ; MES SONS : vos fichiers, gardés dans cet appareil.</p>
   </section>
 
   <section class="view stack" id="view-sons" hidden>
@@ -3000,7 +3005,10 @@ registerProcessor('nomad-scratch',Scr);`;
     L.set(buf.getChannelData(0).subarray(0, n0)); R.set((buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0)).subarray(0, n0));
     let pk = 0; for (let i = 0; i < n0; i++) pk = Math.max(pk, Math.abs(L[i]), Math.abs(R[i]));
     let on = 0; for (; on < n0; on++) if (Math.max(Math.abs(L[on]), Math.abs(R[on])) > pk * 0.15) break;
-    SCR.cue = Math.max(0, on - Math.floor(bsr * 0.004)); SCR.N = N; SCR.bsr = bsr; SCR.name = name;
+    SCR.cue0 = SCR.cue = Math.max(0, on - Math.floor(bsr * 0.004)); SCR.N = N; SCR.bsr = bsr; SCR.name = name;
+    const mem = scrCueMem.get(name); SCR.cues = mem ? mem.cues.slice() : [null, null, null, null]; SCR.cueIdx = mem ? mem.idx : -1;
+    if (SCR.cueIdx >= 0 && SCR.cues[SCR.cueIdx] !== null) SCR.cue = SCR.cues[SCR.cueIdx];
+    drawScrCues();
     SCR.node.port.postMessage({ type: "buf", l: L, r: R, cue: SCR.cue }, [L.buffer, R.buffer]);
     SCR.rep = { pos: SCR.cue, vel: 0, t: performance.now() };
     scrApply();
@@ -3078,7 +3086,7 @@ registerProcessor('nomad-scratch',Scr);`;
     const nowF = Math.round(ctx.currentTime * sr) + 256;
     let at = nowF;
     if (LP.t0F !== null && LP.layers.length) at = LP.t0F + Math.ceil((nowF - LP.t0F) / step) * step;
-    const p = scrPosNow(), base = SCR.cue + Math.round((p - SCR.cue) / SCR.N) * SCR.N;
+    const p = scrPosNow(), base = SCR.phMode === "here" ? p : SCR.cue + Math.round((p - SCR.cue) / SCR.N) * SCR.N;
     const all = []; for (let k = 0; k < rep; k++) segs.forEach(([n, a, g]) => all.push({ d: Math.max(64, Math.round(n * step)), a: a * srr, g }));
     SCR.node.port.postMessage({ type: "phrase", at: Math.round(at), base, segs: all, loop: true });
     SCR.ph = i; drawScrPh();
@@ -3116,7 +3124,30 @@ registerProcessor('nomad-scratch',Scr);`;
   }
   function drawScrPh() { [...$("scrPh").children].forEach((b, j) => b.classList.toggle("on", j === SCR.ph)); }
   function drawScrSrc() { [...$("scrSrc").children].forEach(b => b.classList.toggle("on", b.dataset.s === SCR.src)); }
-  function scrCueHere() { if (!SCR.N) return; SCR.cue = ((Math.round(scrPosNow()) % SCR.N) + SCR.N) % SCR.N; lcd("lcdPad", "DISQUE", "repère posé ici"); }
+  // Points de repère (4 par son, gardés pour chaque son pendant la session) et mode des phrases
+  const SCR_CUEC = ["#d92b2f", "#22a35a", "#ece3d3", "#e0a63a"];
+  const scrCueMem = new Map();
+  SCR.cues = [null, null, null, null]; SCR.cueIdx = -1; SCR.phMode = store.get("scrPhMode", "cue");
+  const scrWrap = p => ((Math.round(p) % SCR.N) + SCR.N) % SCR.N;
+  function scrCueTap(i) {
+    if (!SCR.N) return;
+    if (SCR.cues[i] === null) { SCR.cues[i] = scrWrap(scrPosNow()); lcd("lcdPad", "REPÈRE", `${i + 1} posé ici`); }
+    else { SCR.cue = SCR.cues[i]; scrToCue(); lcd("lcdPad", "REPÈRE", `${i + 1} : le disque y retourne`); }
+    SCR.cue = SCR.cues[i]; SCR.cueIdx = i;
+    scrCueMem.set(SCR.name, { cues: SCR.cues.slice(), idx: i });
+    drawScrCues();
+  }
+  function scrCueClear(i) {
+    SCR.cues[i] = null;
+    if (SCR.cueIdx === i) { SCR.cueIdx = -1; SCR.cue = SCR.cue0; }
+    scrCueMem.set(SCR.name, { cues: SCR.cues.slice(), idx: SCR.cueIdx });
+    lcd("lcdPad", "REPÈRE", `${i + 1} effacé`); drawScrCues();
+  }
+  function drawScrCues() {
+    const el = $("scrCues"); if (!el) return;
+    [...el.querySelectorAll(".cue")].forEach((b, i) => { b.classList.toggle("set", SCR.cues[i] !== null); b.classList.toggle("on", SCR.cueIdx === i); });
+    $("scrPhMode").textContent = SCR.phMode === "cue" ? "PHRASES : REPÈRE" : "PHRASES : ICI";
+  }
   function scrToCue() { if (!SCR.node || !SCR.N) return; const p = scrPosNow(), base = SCR.cue + Math.round((p - SCR.cue) / SCR.N) * SCR.N; SCR.node.port.postMessage({ type: "seek", pos: base }); SCR.rep = { pos: base, vel: SCR.rep.vel, t: performance.now() }; }
   // Pads de l'Akai dans SCRATCH (tous tenus) : 1 arrière, 5 avant, 2 ouvre, 3 coupe, 4-6-7-8 et 9-10 phrases
   const SCR_PADPH = { 3: 0, 5: 1, 6: 2, 7: 3, 8: 4, 9: 5 };
@@ -3165,7 +3196,21 @@ registerProcessor('nomad-scratch',Scr);`;
   $("scrPrev").addEventListener("click", () => scrPick(-1));
   $("scrNext").addEventListener("click", () => scrPick(1));
   $("scrRand").addEventListener("click", async () => { if (!(await scrInit())) return; const n = (await scrList()).length; if (n) scrPick(0, Math.floor(Math.random() * n)); });
-  $("scrCue").addEventListener("click", scrCueHere);
+  (() => {
+    const el = $("scrCues");
+    for (let i = 0; i < 4; i++) {
+      const b = document.createElement("button"); b.className = "btn cue"; b.type = "button"; b.textContent = "CUE " + (i + 1); b.style.setProperty("--cc", SCR_CUEC[i]);
+      let t = null, long = false;
+      b.addEventListener("pointerdown", async e => { e.preventDefault(); long = false; if (!(await scrInit())) return; clearTimeout(t); t = setTimeout(() => { long = true; if (SCR.cues[i] !== null) scrCueClear(i); }, 650); });
+      b.addEventListener("pointerup", () => { clearTimeout(t); if (!long) scrCueTap(i); });
+      b.addEventListener("pointercancel", () => clearTimeout(t));
+      el.appendChild(b);
+    }
+    const m = document.createElement("button"); m.className = "btn"; m.type = "button"; m.id = "scrPhMode";
+    m.addEventListener("pointerdown", e => { e.preventDefault(); SCR.phMode = SCR.phMode === "cue" ? "here" : "cue"; store.set("scrPhMode", SCR.phMode); drawScrCues(); lcd("lcdPad", "PHRASES", SCR.phMode === "cue" ? "partent du repère actif" : "partent de là où est le disque"); });
+    el.appendChild(m);
+    drawScrCues();
+  })();
   $("scrKey").addEventListener("click", () => scrKey(null));
   $("scrImp").addEventListener("click", () => $("scrFile").click());
   $("scrFile").addEventListener("change", async e => {
@@ -3290,9 +3335,10 @@ registerProcessor('nomad-scratch',Scr);`;
     scg.drawImage(scrStatic.base, 0, 0);
     scg.save(); scg.translate(cx, cx); scg.rotate(ang);
     scg.fillStyle = "#e4e6e9"; const nd = 96; for (let k = 0; k < nd; k++) { const a = k / nd * 2 * Math.PI; scg.beginPath(); scg.arc(Math.cos(a) * R * 0.955, Math.sin(a) * R * 0.955, W * 0.0035, 0, 7); scg.fill(); }
-    scg.fillStyle = "rgba(255,255,255,.85)"; scg.fillRect(R * 0.36, -W * 0.004, R * 0.53, W * 0.008);
+    const NEEDLE = Math.atan2(0.2, 0.3), cueA = c => NEEDLE - c / (SCR_REV * SCR.bsr) * 2 * Math.PI;
+    scg.save(); scg.rotate(cueA(SCR.cue)); scg.fillStyle = "rgba(255,255,255,.85)"; scg.fillRect(R * 0.36, -W * 0.004, R * 0.53, W * 0.008); scg.fillStyle = "#f1ece0"; scg.fillRect(R * 0.2, -W * 0.018, R * 0.14, W * 0.036); scg.restore();
+    SCR.cues.forEach((c, i) => { if (c === null) return; const a = cueA(c); scg.beginPath(); scg.arc(Math.cos(a) * R * 0.87, Math.sin(a) * R * 0.87, W * 0.012, 0, 7); scg.fillStyle = SCR_CUEC[i]; scg.fill(); });
     scg.beginPath(); scg.arc(0, 0, R * 0.34, 0, 7); scg.fillStyle = "#d92b2f"; scg.fill();
-    scg.fillStyle = "#f1ece0"; scg.fillRect(R * 0.2, -W * 0.018, R * 0.14, W * 0.036);
     scg.fillStyle = "#fff"; scg.textAlign = "center"; scg.textBaseline = "middle";
     scg.font = `900 ${Math.round(W * 0.05)}px Archivo, "Arial Black", sans-serif`; scg.fillText("NOMAD", 0, -W * 0.035);
     scg.font = `700 ${Math.round(W * 0.026)}px Arimo, Arial, sans-serif`; scg.fillText((SCR.name || "").slice(0, 18), 0, W * 0.025);
