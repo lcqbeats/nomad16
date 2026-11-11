@@ -18,7 +18,7 @@ Instruments de l'onglet SONS : échantillons libres (VCSL CC0, Splendid Grand Pi
 
 Platine tactile : le doigt posé sur le disque l'arrête et le fait tourner, en avant comme en arrière ; le son tourne en sillon fermé. Fader de coupure (zone rouge = coupé, HAMSTER inverse), boutons OUVRE / COUPE à maintenir, six phrases calées sur le tempo (baby, chirp, transform, flare, tear, stab). Sources : banque intégrée (voyelles et sons synthétisés, voix de la Bibliothèque du Congrès), bac VOIX, pads, chops de DIGGING, pistes du looper, et vos propres fichiers (gardés dans l'appareil). Tout passe dans le looper.
 
-Akai dans SCRATCH (pads tenus) : banque A — pad 1 arrière, pad 5 avant (vitesse selon la frappe), pad 2 ouvre, pad 3 coupe, pads 4, 6, 7, 8 phrases baby, chirp, transform, flare ; banque B — 9 tear, 10 stab, 11 start/stop, 12 repère, 13/14 son précédent/suivant, 15 hamster, 16 REC du scratch. Le clavier transpose le disque. Potards : volume, pitch, filtre, démarrage, freinage, coupure, main (déplace le disque), fader.
+Akai dans SCRATCH (pads tenus) : banque A — pad 1 arrière, pad 5 avant (vitesse selon la frappe), pad 2 ouvre, pad 3 coupe, pads 4, 6, 7, 8 phrases baby, chirp, transform, flare ; banque B — 9 tear, 10 stab, 11 start/stop, 12 repère, 13 à 16 CUE 1 à 4 (frappe : poser/rappeler, tenu : effacer). Le clavier transpose le disque. Potards : volume, pitch, filtre, démarrage, freinage, coupure, main (déplace le disque), fader.
 
 ## Version LITE pour vieux iPad (iOS 9)
 

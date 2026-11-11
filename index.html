@@ -673,7 +673,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     </div>
     <input type="file" id="scrFile" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff" hidden>
     <div class="scrset" id="scrSet"></div>
-    <p class="note help">Posez le doigt sur le disque et tournez : en avant, en arrière, à la vitesse de votre main. Touchez l'écran vert pour enregistrer : le scratch est posé sur une nouvelle piste du looper, sur un tour de boucle complet (départ au début de la boucle suivante) ; sans boucle, c'est le REC du looper. Le son tourne en sillon fermé. START lance le moteur ; la main arrête le disque tant qu'elle est posée. Fader : la zone rouge coupe le son (HAMSTER inverse le côté). OUVRE, COUPE et les phrases agissent tant qu'on les tient (une phrase rejoue son geste en boucle, calée sur le tempo). CUE 1 à 4 : toucher un repère vide le pose là où est le disque ; toucher un repère posé y ramène le disque et en fait le repère actif (l'autocollant blanc) ; appui long pour l'effacer. PHRASES : REPÈRE fait partir les phrases du repère actif, PHRASES : ICI de là où se trouve le disque. Akai, banque A : pad 1 tire le disque en arrière, pad 5 le pousse en avant (plus on frappe fort, plus c'est rapide), pad 2 ouvre, pad 3 coupe, pads 4, 6, 7, 8 = baby, chirp, transform, flare ; banque B : 9 tear, 10 stab, 11 start/stop, 12 retour au repère, 13 et 14 son précédent/suivant, 15 hamster, 16 REC du scratch. Le clavier transpose le disque (scratch mélodique) ; potards : volume, pitch, filtre, démarrage, freinage, coupure, MAIN (déplace le disque comme une main, sur un demi-tour), fader. Tout passe dans le looper : REC / Sustain enregistre vos scratchs. Sons VOIX : Bibliothèque du Congrès (Citizen DJ), libres d'utilisation ; MES SONS : vos fichiers, gardés dans cet appareil.</p>
+    <p class="note help">Posez le doigt sur le disque et tournez : en avant, en arrière, à la vitesse de votre main. Touchez l'écran vert pour enregistrer : le scratch est posé sur une nouvelle piste du looper, sur un tour de boucle complet (départ au début de la boucle suivante) ; sans boucle, c'est le REC du looper. Le son tourne en sillon fermé. START lance le moteur ; la main arrête le disque tant qu'elle est posée. Fader : la zone rouge coupe le son (HAMSTER inverse le côté). OUVRE, COUPE et les phrases agissent tant qu'on les tient (une phrase rejoue son geste en boucle, calée sur le tempo). CUE 1 à 4 : toucher un repère vide le pose là où est le disque ; toucher un repère posé y ramène le disque et en fait le repère actif (l'autocollant blanc) ; appui long pour l'effacer. PHRASES : REPÈRE fait partir les phrases du repère actif, PHRASES : ICI de là où se trouve le disque. Akai, banque A : pad 1 tire le disque en arrière, pad 5 le pousse en avant (plus on frappe fort, plus c'est rapide), pad 2 ouvre, pad 3 coupe, pads 4, 6, 7, 8 = baby, chirp, transform, flare ; banque B : 9 tear, 10 stab, 11 start/stop, 12 retour au repère, 13 à 16 = CUE 1 à 4 (frappe : poser ou rappeler ; tenu : effacer). Le clavier transpose le disque (scratch mélodique) ; potards : volume, pitch, filtre, démarrage, freinage, coupure, MAIN (déplace le disque comme une main, sur un demi-tour), fader. Tout passe dans le looper : REC / Sustain enregistre vos scratchs. Sons VOIX : Bibliothèque du Congrès (Citizen DJ), libres d'utilisation ; MES SONS : vos fichiers, gardés dans cet appareil.</p>
   </section>
 
   <section class="view stack" id="view-sons" hidden>
@@ -3151,8 +3151,16 @@ registerProcessor('nomad-scratch',Scr);`;
   function scrToCue() { if (!SCR.node || !SCR.N) return; const p = scrPosNow(), base = SCR.cue + Math.round((p - SCR.cue) / SCR.N) * SCR.N; SCR.node.port.postMessage({ type: "seek", pos: base }); SCR.rep = { pos: base, vel: SCR.rep.vel, t: performance.now() }; }
   // Pads de l'Akai dans SCRATCH (tous tenus) : 1 arrière, 5 avant, 2 ouvre, 3 coupe, 4-6-7-8 et 9-10 phrases
   const SCR_PADPH = { 3: 0, 5: 1, 6: 2, 7: 3, 8: 4, 9: 5 };
+  const scrPadT = {};
   function scrPad(i, down, vel) {
     if (!SCR.node) { if (down) scrInit(); return; }
+    if (i >= 12) {
+      // pads 13 à 16 = CUE 1 à 4 : frappe = poser / rappeler, tenu plus d'une demi-seconde = effacer
+      const c = i - 12;
+      if (down) { scrPadT[c] = { long: false, t: setTimeout(() => { scrPadT[c].long = true; if (SCR.cues[c] !== null) scrCueClear(c); }, 650) }; }
+      else if (scrPadT[c]) { clearTimeout(scrPadT[c].t); if (!scrPadT[c].long) scrCueTap(c); delete scrPadT[c]; }
+      return;
+    }
     if (i === 0 || i === 4) { scrPush(i === 4 ? 1 : -1, down, vel); return; }
     if (i === 1) { SCR.padOpen = down; scrGate(); return; }
     if (i === 2) { SCR.padCut = down; scrGate(); return; }
@@ -3160,10 +3168,6 @@ registerProcessor('nomad-scratch',Scr);`;
     if (!down) return;
     if (i === 10) scrMotor();
     else if (i === 11) scrToCue();
-    else if (i === 12) scrPick(-1);
-    else if (i === 13) scrPick(1);
-    else if (i === 14) $("scrHam").click();
-    else if (i === 15) scrRecTap();
   }
   function scrKnob(k) {
     const v = knobVals.scratch[k];
