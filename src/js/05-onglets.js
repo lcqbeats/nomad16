@@ -1,0 +1,16 @@
+  // ---------- Onglets ----------
+  const TABS = ["play", "loops", "song", "fx", "sp", "sample", "scratch", "sons", "guitar"];
+  function setTab(t) {
+    tab = t;
+    TABS.forEach(x => { $("tab-" + x).setAttribute("aria-selected", x === t); $("view-" + x).hidden = x !== t; });
+    $("knobs").hidden = t === "guitar" || t === "scratch";
+    drawKnobs();
+    if (t === "loops") resizeCanvas();
+    if (t === "sample") enterDig();
+    if (t === "sons") enterSons();
+    if (t === "sp") drawSpPads();
+    if (t === "scratch") enterScratch();
+    if (t === "song") { for (let k = 0; k < 7; k++) knobVals.song[k] = knobVals.loops[k]; drawKnobs(); drawSong(true); }
+  }
+  TABS.forEach(x => $("tab-" + x).addEventListener("click", () => setTab(x)));
+

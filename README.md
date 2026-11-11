@@ -25,3 +25,10 @@ Akai dans SCRATCH (pads tenus) : banque A — pad 1 arrière, pad 5 avant (vites
 `ios9.html` : version très légère écrite à part (pads, kits, filtre, écho, pitch, full level), sans looper ni animations.
 Elle ne suit pas index.html et n'est mise à jour que sur demande. À ouvrir dans Web MIDI Browser : https://lcqbeats.github.io/nomad16/ios9.html
 Sous iOS 9, installer d'abord le certificat racine Let's Encrypt depuis Safari : http://x1.i.lencr.org/
+
+## Pour modifier NOMAD
+
+Le code est rangé dans `src/` : `shell.html` (la page), `style.css`, et `js/` en morceaux numérotés, collés bout à bout dans l'ordre.
+Après une modification : `python3 tools/build.py` reconstruit `index.html` (la page publiée, à ne pas modifier à la main).
+Tests dans un navigateur : `pip install pytest playwright && python -m playwright install chromium`, puis `python -m pytest tests -q`.
+Ils tournent aussi tout seuls sur GitHub à chaque envoi (onglet Actions).

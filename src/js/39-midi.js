@@ -1,0 +1,131 @@
+  // ---------- MIDI ----------
+  const learned = store.get("cc", []);
+  function knobIndex(cc) {
+    if (cc >= 70 && cc <= 77) return cc - 70;
+    if (cc >= 20 && cc <= 35) return -1;
+    let k = learned.indexOf(cc);
+    if (k < 0 && learned.length < 8) { learned.push(cc); k = learned.length - 1; store.set("cc", learned); }
+    return k;
+  }
+  let sustainDown = false, undoArmed = true;
+  // Pads en mode CC (preset 3) : commandes. Bank 1 = looper, Bank 2 = navigation.
+  function padCommand(n) {
+    const map = {
+      20: togglePlay, 21: undo, 22: () => toggleMute(0), 23: () => toggleMute(1), 24: () => toggleMute(2), 25: () => toggleMute(3), 26: () => toggleMute(4), 27: () => toggleMute(5),
+      28: () => stepKit(-1), 29: () => stepKit(1), 30: () => SONG.playing ? (songStop(), stopAll()) : songPlay(), 31: () => selectSeq((SQ.cur + 7) % 8),
+      32: () => setNR(!NR.on), 33: () => selectSeq((SQ.cur + 1) % 8),
+      34: () => setTab(TABS[(TABS.indexOf(tab) + 1) % TABS.length]), 35: () => { if (G.on) stopInput(); else startInput(); }
+    };
+    if (map[n]) map[n]();
+  }
+  function onCC(cc, v) {
+    if (cc === 64) { const down = v >= 64; if (down && !sustainDown) recPress(); sustainDown = down; return; }
+    if (cc >= 20 && cc <= 35) { if (v > 0) padCommand(cc); return; }
+    const k = knobIndex(cc);
+    if (k < 0) return;
+    if (tab === "fx" && FX_SPRING.includes(k)) { fxModKnob(k, v); return; }
+    if (pickup(k, v)) { knobInput(k, v); knobOwner[k] = { tab, val: knobVals[tab][k] }; }
+  }
+  // Reprise douce : un potard physique n'agit qu'une fois arrivé à la valeur affichée
+  // (après un changement de pad, d'onglet, de preset, un réglage tactile, un annuler...)
+  const knobOwner = Array(8).fill(null), knobPhys = Array(8).fill(null);
+  function pickup(k, v) {
+    const val = v / 127, prev = knobPhys[k]; knobPhys[k] = val;
+    if ((tab === "sample" && k === 0) || (tab === "loops" && k === 7) || (tab === "scratch" && k >= 6) || !knobVals[tab]) return true;
+    const cur = knobVals[tab][k], o = knobOwner[k];
+    const dial = $("dial" + k), lab = KNOB_LABELS[tab][k];
+    if (o && o.tab === tab && Math.abs(o.val - cur) < 1e-6) return true;
+    const near = Math.abs(val - cur) <= 3 / 127, crossed = prev !== null && (prev - cur) * (val - cur) <= 0;
+    if (near || crossed) { if (dial) dial.classList.remove("pickup"); return true; }
+    if (dial) { dial.classList.add("pickup"); dial.style.setProperty("--p", val); clearTimeout(dial._pt); dial._pt = setTimeout(() => dial.classList.remove("pickup"), 1500); }
+    lcd("lcdPad", "RATTRAPER", `${lab} ${val < cur ? "▲" : "▼"} ${Math.round(cur * 100)} %`);
+    return false;
+  }
+  function knobInput(k, v) {
+    const val = v / 127;
+    if (tab === "guitar") {
+      if (k < 7) setGuitarKnob(k, val); else { knobVals.guitar[7] = val; applyGuitar(); }
+      return;
+    }
+    if (tab === "fx") { knobVals.fx[k] = val; applyFxKnob(k); $("dial" + k).style.setProperty("--v", val); return; }
+    if (tab === "scratch") { knobVals.scratch[k] = val; scrKnob(k); $("dial" + k).style.setProperty("--v", val); return; }
+    if (tab === "sample") { sampleKnob(k, v); $("dial" + k).style.setProperty("--v", val); return; }
+    if (tab === "guitar") return;
+    if (tab === "sp") { knobVals.sp[k] = val; $("dial" + k).style.setProperty("--v", val); applySp(k); return; }
+    if (tab === "song") {
+      knobVals.song[k] = val; $("dial" + k).style.setProperty("--v", val);
+      if (k === 7) { lcd("lcdPad", "MÉTRONOME", "volume " + Math.round(val * 100) + " %"); return; }
+      knobVals.loops[k] = val;
+    }
+    if (tab === "sons") { sonsKnob(k, val); $("dial" + k).style.setProperty("--v", knobVals.sons[k]); return; }
+    if (tab !== "song") knobVals[tab][k] = val;
+    if (tab === "play") applyPlayKnob(k);
+    else if (ctx) {
+      if (k < 6) { const l = LP.layers[k]; if (l) { l.vol = val; if (!l.muted) l.gain.gain.setTargetAtTime(val, ctx.currentTime, 0.02); } }
+      if (k === 6) { loopBus.gain.setTargetAtTime(val, ctx.currentTime, 0.02); if (fxSolo) fxSolo.gain.setTargetAtTime(val, ctx.currentTime, 0.02); }
+      if (k === 7) { if (v >= 120 && undoArmed) { undo(); undoArmed = false; } if (v < 90) undoArmed = true; }
+    }
+    $("dial" + k).style.setProperty("--v", val);
+  }
+  function onMidi(e) {
+    const [st, d1, d2] = e.data;
+    const type = st & 0xf0, ch = (st & 0x0f) + 1;
+    if (type === 0x90 && d2 > 0) {
+      if (ch === 10) padsOnCh10 = true;
+      const idx = d1 - BASE_NOTE;
+      const isPad = ch === 10 || (!padsOnCh10 && idx >= 0 && idx < 16);
+      if (isPad && idx >= 0 && idx < 16 && tab === "sons" && chordMode) { const j = idx % 8; chordOn("p" + idx, j < 7 ? j : 0, d2 / 127, 0, (idx >= 8 ? 1 : 0) + (j === 7 ? 1 : 0)); flash(idx); }
+      else if (isPad && idx >= 0 && idx < 16 && tab === "sample" && LC.on && ttSrc && liveChopHit(idx)) { flash(idx); drawDigPads(); }
+      else if (isPad && idx >= 0 && idx < 16 && tab === "scratch") scrPad(idx, true, d2 / 127);
+      else if (isPad && idx >= 0 && idx < 16 && tab === "fx") fxStart(idx);
+      else if (isPad && idx >= 0 && idx < 16) playPad(idx, d2 / 127);
+      else if (!isPad && tab === "scratch") scrKey(d1);
+      else if (!isPad) playKey(d1, d2 / 127);
+    } else if (type === 0x80 || (type === 0x90 && d2 === 0)) {
+      const idx = d1 - BASE_NOTE;
+      if (idx >= 0 && idx < 16 && (ch === 10 || !padsOnCh10) && fxActive === idx) fxStop(idx);
+      const isPadOff = ch === 10 || (!padsOnCh10 && idx >= 0 && idx < 16);
+      if (!isPadOff) { if (tab !== "scratch") keyOff(d1); } else if (idx >= 0 && idx < 16) { if (tab === "scratch") scrPad(idx, false); releaseKey("p" + idx); padRelease(idx); padUp(idx); }
+    } else if (type === 0xb0) {
+      onCC(d1, d2);
+    } else if (type === 0xc0) {
+      if (d1 < kitIndex.length) loadKit(kitIndex[d1].id);
+    }
+  }
+  async function initMidi() {
+    if (!navigator.requestMIDIAccess) { setMidiStatus("non disponible ici", false); return; }
+    try {
+      const access = await navigator.requestMIDIAccess();
+      const refresh = () => {
+        const ins = [...access.inputs.values()];
+        ins.forEach(inp => inp.onmidimessage = onMidi);
+        setMidiStatus(ins.length ? ins.map(i => i.name).join(", ") : "aucun appareil", ins.length > 0);
+      };
+      access.onstatechange = refresh;
+      refresh();
+    } catch (err) { setMidiStatus("refusé (" + err.name + ")", false); }
+  }
+  let midiStatus = "en attente…";
+  function setMidiStatus(txt, ok) { midiStatus = txt; $("trMidi").classList.toggle("ok", ok); lcd("lcdPad", "MIDI", txt); }
+  $("trMidi").addEventListener("click", () => lcd("lcdPad", "MIDI", midiStatus));
+  // Commandes du looper dans l'écran, disponibles depuis tous les onglets
+  $("trRec").addEventListener("pointerdown", e => { e.preventDefault(); recPress(); });
+  $("trPlay").addEventListener("click", () => { if (SONG.playing) { songStop(); stopAll(); } else togglePlay(); });
+  $("trUndo").addEventListener("click", undo);
+  $("trMetro").addEventListener("click", () => { SQ.metro = !SQ.metro; SQ.metroF = 0; drawSeqSel(); lcd("lcdPad", "MÉTRONOME", SQ.metro ? "activé" : "désactivé"); });
+  initMidi();
+  try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi) { $("btBox").hidden = false; $("btPair").addEventListener("click", () => window.webkit.messageHandlers.nomadMidi.postMessage({ type: "btpair" })); } } catch (e) {}
+  window.nomadMidi = (bytes) => onMidi({ data: bytes });
+  window.nomadDbg = { SCR, scrPhrase, scrInit, autoSave, exportBackup, get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
+  let probe = null;
+  window.nomadProbe = () => { if (!probe) { probe = ctx.createAnalyser(); probe.fftSize = 2048; fxMaster.connect(probe); } const a = new Float32Array(2048); probe.getFloatTimeDomainData(a); let m = 0; for (const v of a) m = Math.max(m, Math.abs(v)); return +m.toFixed(3); };
+  window.nomadState = () => ({ kit: kitCur, kits: kitIndex.length, bufs: buffers.filter(Boolean).length, names: names.slice(0, 4), t0F: LP.t0F, Lf: LP.Lf, layers: LP.layers.map(l => ({ k: l.k, m: l.m })), pending: LP.pending && { ...LP.pending }, latMs, guitar: { amp: G.amp, preset: G.preset, fx: [...G.fx], on: G.on }, cap: capLatest, now: ctx && ctx.currentTime });
+
+  const KEYS = ["z","x","c","v","a","s","d","f","q","w","e","r","1","2","3","4"];
+  window.addEventListener("keydown", e => {
+    if (e.repeat || e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+    if (e.key === " ") { e.preventDefault(); recPress(); return; }
+    if (e.key === "Backspace") { e.preventDefault(); undo(); return; }
+    const i = KEYS.indexOf(e.key.toLowerCase());
+    if (i >= 0) { select(i); playPad(i, 0.9); }
+  });

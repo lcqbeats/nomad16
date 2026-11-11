@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0c0b0a">
+<title>NOMAD-16</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wdth,wght@100..125,700..900&family=Arimo:wght@400;700&family=IBM+Plex+Mono:wght@400;600&family=VT323&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
+<style>
+/*@css*/
+</style>
+</head>
+<body>
+<div class="machine">
+  <div class="stripe" aria-hidden="true"></div>
+  <div class="top">
+    <div class="brand"><b class="bw">NOMAD</b><span><i>-</i>16</span><small class="btag">POCKET SAMPLER · LOOPER</small></div>
+    <span style="display:flex;gap:6px"><button class="histbtn" id="undoBtn" type="button" aria-label="Annuler" disabled>↶</button><button class="histbtn" id="redoBtn" type="button" aria-label="Rétablir" disabled>↷</button>
+    <button class="gear" id="mixBtn" type="button">MIX</button><button class="gear" id="gearBtn" type="button">RÉGLAGES</button></span>
+  </div>
+
+  <div class="lcd" aria-live="polite">
+    <div class="kitline">
+      <span class="k">KIT</span>
+      <button type="button" id="kitPrev" aria-label="Kit précédent">◀</button>
+      <button type="button" id="kitName" class="kname">NOMAD SYNTH</button>
+      <button type="button" id="kitNext" aria-label="Kit suivant">▶</button>
+    </div>
+    <div class="wide lcdtr" id="lcdTrans">
+      <button type="button" id="trRec" class="trrec">● REC</button>
+      <button type="button" id="trPlay">▶ PLAY</button>
+      <button type="button" id="trUndo">UNDO</button>
+      <button type="button" id="trMetro">MÉTRO</button>
+      <button type="button" id="trMidi" class="trmidi" aria-label="État MIDI"><i></i></button>
+    </div>
+    <div class="wide" id="lcdPad"><span class="k">PAD&nbsp;</span>—</div>
+    <div class="wide" id="lcdLoop"><span class="k">BOUCLE&nbsp;</span>vide · Sustain pour armer</div>
+    <div class="lcdstrip"><canvas id="lcdScope" aria-hidden="true"></canvas><div class="trow"><i class="beatled" id="beatLed"></i><span id="lcdTr">■ 1.1.1</span></div></div>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-play" aria-selected="true" type="button">PADS</button>
+    <button class="tab" role="tab" id="tab-loops" aria-selected="false" type="button">LOOPER</button>
+    <button class="tab" role="tab" id="tab-song" aria-selected="false" type="button">SONG</button>
+    <button class="tab" role="tab" id="tab-fx" aria-selected="false" type="button">FX</button>
+    <button class="tab" role="tab" id="tab-sp" aria-selected="false" type="button">SP</button>
+    <button class="tab" role="tab" id="tab-sample" aria-selected="false" type="button">DIGGING</button>
+    <button class="tab" role="tab" id="tab-scratch" aria-selected="false" type="button">SCRATCH</button>
+    <button class="tab" role="tab" id="tab-sons" aria-selected="false" type="button">SONS</button>
+    <button class="tab" role="tab" id="tab-guitar" aria-selected="false" type="button">GUITARE</button>
+  </div>
+
+  <div class="knobs" id="knobs"></div>
+
+  <section class="view" id="view-play">
+    <div class="padtools"><button class="btn" id="edBtn" type="button">ÉDITER LE PAD 01</button><button class="btn" id="allPadsBtn" type="button" aria-pressed="false">TOUS</button><button class="btn" id="fullBtn" type="button">FULL</button><button class="btn" id="nrBtn" type="button">REPEAT</button><button class="btn" id="nrRate" type="button">1/16</button></div>
+    <div class="editor" id="editor" hidden>
+      <canvas id="edCanvas" aria-label="Début et fin du son : glissez les bords"></canvas>
+      <div class="edrow">
+        <button class="btn" id="edShot" type="button">ONE SHOT</button>
+        <button class="btn" id="edRev" type="button">REVERSE</button>
+        <button class="btn" id="edLoop" type="button">BOUCLE</button>
+        <button class="btn" id="edChoke" type="button">MUTE : —</button>
+      </div>
+      <div class="edsl"><label for="edAtt">ATTAQUE</label><input type="range" id="edAtt" min="0" max="1" step="0.01"><span id="edAttV"></span></div>
+      <div class="edsl"><label for="edRel">RELÂCHE</label><input type="range" id="edRel" min="0" max="1" step="0.01"><span id="edRelV"></span></div>
+      <div class="edsl"><label for="edTone">TON</label><input type="range" id="edTone" min="0" max="1" step="0.01"><span id="edToneV"></span></div>
+      <div class="edsl"><label for="edEqL">BASSES</label><input type="range" id="edEqL" min="-12" max="12" step="0.5"><span id="edEqLV"></span></div>
+      <div class="edsl"><label for="edEqM">MÉDIUMS</label><input type="range" id="edEqM" min="-12" max="12" step="0.5"><span id="edEqMV"></span></div>
+      <div class="edsl"><label for="edEqH">AIGUS</label><input type="range" id="edEqH" min="-12" max="12" step="0.5"><span id="edEqHV"></span></div>
+      <div class="edrow" style="grid-template-columns:1fr 1fr">
+        <button class="btn" id="edFit" type="button">TEMPO : —</button>
+        <button class="btn" id="edMode" type="button">MODE : RE-PITCH</button>
+      </div>
+      <div class="edrow" style="grid-template-columns:1fr 1fr 1fr">
+        <button class="btn" id="edNorm" type="button">NORMALISER</button>
+        <button class="btn" id="edCrop" type="button">TRONQUER</button>
+        <button class="btn" id="edReset" type="button">RÉINITIAL.</button>
+      </div>
+      <p class="note help">Glissez les bords rouges pour le début et la fin. MAINTENU : le son s'arrête au relâchement du pad. MUTE : les pads d'un même groupe se coupent entre eux. TEMPO : cale le son sur 1, 2, 4 ou 8 temps (change la vitesse). Glissez un pad sur un autre pour copier, échanger ou fusionner.</p>
+    </div>
+    <div class="pads" id="pads"></div>
+  </section>
+
+  <section class="view" id="view-loops" hidden>
+    <div class="pats seqsel" id="seqSel"></div>
+    <canvas id="loopCanvas" aria-label="Pistes de boucles"></canvas>
+    <div class="transport">
+      <button class="btn rec" id="btnRec" type="button">REC / DUB</button>
+      <button class="btn" id="btnUndo" type="button">UNDO</button>
+      <button class="btn" id="btnPlay" type="button">STOP</button>
+      <button class="btn" id="btnClear" type="button">EFFACER</button>
+    </div>
+    <div class="transport" style="grid-template-columns:1fr 1fr">
+      <button class="btn" id="expLoop" type="button">SÉQUENCE WAV</button>
+      <button class="btn" id="expSess" type="button">● SESSION</button>
+    </div>
+    <div class="transport" style="grid-template-columns:1fr">
+      <button class="btn" id="loopKit" type="button">→ KIT DE PADS (pistes, mix, séquences)</button>
+    </div>
+    <div class="transport" style="grid-template-columns:1fr">
+      <button class="btn" id="expMpc" type="button">EXPORT MULTIPISTE + MPC</button>
+    </div>
+  </section>
+
+  <section class="view" id="view-guitar" hidden>
+    <div class="amp" id="amp">
+      <div class="amp-head"><span class="amp-name">Nomad</span><span class="amp-model" id="ampModel">BRIT 59</span></div>
+      <div class="amp-panel"><div class="amp-knobs" id="ampKnobs"></div></div>
+      <div class="amp-io">
+        <button class="btn" id="inBtn" type="button">ENTRÉE OFF</button>
+        <div class="meter" aria-label="Niveau d'entrée"><i id="meter"></i></div>
+        <select class="dev" id="devSel" aria-label="Entrée audio" hidden></select>
+        <button class="btn" id="tunBtn" type="button">ACCORDEUR</button>
+      </div>
+      <div class="tuner" id="tuner" hidden><span class="tn" id="tunNote">—</span><div class="tbar"><i id="tunNeedle"></i></div><span class="tc" id="tunCents"></span></div>
+      <div class="gtools">
+        <label for="gateSl">SEUIL DE BRUIT <span id="gateVal">-55 dB</span></label>
+        <label for="trimSl">NIVEAU D'ENTRÉE <span id="trimVal">100 %</span></label>
+        <input type="range" id="gateSl" min="-80" max="-25" step="1" value="-55">
+        <input type="range" id="trimSl" min="0.2" max="2" step="0.05" value="1">
+      </div>
+      <div class="pedals" id="pedals"></div>
+    </div>
+    <div class="presets" id="presets" style="margin-top:10px"></div>
+    <p class="note help" style="margin-top:8px">Branchez l'iRig puis touchez ENTRÉE. Larsen : montez le seuil de bruit, baissez le niveau d'entrée et le volume de l'iPhone, et évitez le haut-parleur. L'accordeur coupe le son pendant l'accordage. Les 8 potards de l'Akai règlent l'ampli dans cet onglet.</p>
+  </section>
+
+  <section class="view stack" id="view-sp" hidden>
+    <h4 class="sphead"><span>RÉÉCHANTILLONNAGE</span></h4>
+    <div class="dpads" id="spPads" aria-label="Pad de destination"></div>
+    <div class="songhead">
+      <button class="btn rec" id="spRec" type="button">● RÉÉCH.</button>
+      <button class="btn" id="spSync" type="button">CALÉ : BOUCLE</button>
+      <button class="btn" id="spBypass" type="button">EFFETS SP : OUI</button>
+    </div>
+    <p class="songinfo" id="spInfo">Destination : pad 1</p>
+    <h4 class="sphead"><span>EFFETS SP</span></h4>
+    <div class="sppresets" id="spPresets"></div>
+    <p class="note help">RÉÉCH. enregistre tout ce qui sort de NOMAD (pads, boucles, sons, guitare, effets FX et SP) dans le pad choisi. CALÉ : BOUCLE attend le début de la séquence en cours et enregistre exactement un cycle ; LIBRE enregistre jusqu'au second appui. Le pad suivant est choisi tout seul. Le kit modifié est enregistré automatiquement sous le nom « … · RÉÉCH ». Les effets SP s'appliquent à toute la sortie : potards vinyle, cassette, lo-fi, isolateur 3 bandes (graves, médiums, aigus) et volume de sortie.</p>
+  </section>
+
+  <section class="view stack" id="view-song" hidden>
+    <div class="songhead">
+      <button class="btn" id="songPlay" type="button">▶ MORCEAU</button>
+      <button class="btn" id="songLoop" type="button">BOUCLER : NON</button>
+      <button class="btn" id="songAdd" type="button">+ PARTIE</button>
+    </div>
+    <p class="songinfo" id="songInfo"></p>
+    <div id="songList"></div>
+    <div class="transport" style="grid-template-columns:1fr"><button class="btn" id="songWav" type="button">EXPORTER LE MORCEAU (WAV)</button></div>
+    <p class="note help">Chaque partie joue une séquence du LOOPER (A à H) un certain nombre de fois. Les séquences se remplissent dans le LOOPER : choisissez une lettre puis enregistrez avec REC / Sustain. Le tempo est celui de la toute première boucle. ▶ sur une ligne lance le morceau depuis cette partie. Potards : volumes des pistes de la séquence en cours, volume des boucles, volume du métronome.</p>
+  </section>
+
+  <section class="view" id="view-fx" hidden>
+    <div class="fxgrid" id="fxgrid"></div>
+    <div class="fxtargets" role="group" aria-label="Cible des effets">
+      <button class="fxt on" type="button" data-t="all">TOUT</button><button class="fxt" type="button" data-t="live">LIVE</button>
+      <button class="fxt" type="button" data-t="1">P1</button><button class="fxt" type="button" data-t="2">P2</button><button class="fxt" type="button" data-t="3">P3</button>
+      <button class="fxt" type="button" data-t="4">P4</button><button class="fxt" type="button" data-t="5">P5</button><button class="fxt" type="button" data-t="6">P6</button>
+    </div>
+    <div class="fxbar">
+      <button class="btn" id="fxSet" type="button">MOTIFS FLEX</button>
+      <button class="btn" id="fxTrig" type="button">MAINTIEN</button>
+    </div>
+    <div class="fxbar">
+      <button class="btn on" id="fxQuant" type="button">CALÉ 1/16</button>
+      <span class="bpm" id="fxBpm">90 BPM</span>
+      <button class="btn" id="fxBpmDown" type="button" aria-label="Tempo moins">−</button>
+      <button class="btn" id="fxBpmUp" type="button" aria-label="Tempo plus">+</button>
+    </div>
+    <p class="note help" style="margin-top:8px">Cible : TOUT le morceau, le jeu en direct (LIVE) ou une seule piste du looper. MOTIFS FLEX rejoue la mesure qui vient de passer selon un motif (roulements, coupes, scratch, demi-vitesse…) ; CLASSIQUES = effets simples. Déclenchement : MAINTIEN (tant que le pad est tenu), 1 MESURE (joue le motif une fois), VERROU (un appui lance, un autre arrête). Bank 2 de l'Akai = les 8 effets. Potards : filtre (gauche passe-bas, droite passe-haut), envoi d'écho dub, ressort, bitcrush. Le tempo suit la boucle quand il y en a une.</p>
+  </section>
+
+  <section class="view stack" id="view-sample" hidden>
+    <div class="crates" id="crates" role="tablist" aria-label="Caisses"></div>
+    <canvas id="digCanvas" aria-label="Bac à disques : glissez ou utilisez les flèches pour feuilleter"></canvas>
+    <div class="diginfo"><b id="digTitle">—</b><span id="digYear"></span><span id="digArtist"></span><span id="digCount"></span><a id="digLink" href="#" target="_blank" rel="noopener">fiche à la Bibliothèque du Congrès</a></div>
+    <div class="digbar">
+      <button class="btn" id="digPrev" type="button">◀</button>
+      <button class="btn" id="digNext" type="button">▶</button>
+      <button class="btn" id="digRand" type="button">AU HASARD</button>
+      <button class="btn rec" id="digPull" type="button">SUR LA PLATINE</button>
+    </div>
+    <div class="deck" id="deck" hidden>
+      <canvas id="ttCanvas" aria-label="Platine"></canvas>
+      <div class="deckctl">
+        <div class="faces" id="faces"></div>
+        <div class="row2"><button class="btn" id="ttPlay" type="button">▶ ÉCOUTER</button><button class="btn" id="liveChop" type="button">CHOP LIVE</button><button class="btn" id="ciBtn" type="button">DÉCOMPTE 4</button><span id="ttMsg"></span></div>
+        <div class="row2"><label for="pitchSl">PITCH</label><input type="range" id="pitchSl" min="-12" max="12" step="1" value="0"><span id="pitchVal">0</span></div>
+      </div>
+    </div>
+    <canvas id="waveCanvas" aria-label="Forme d'onde et découpes"></canvas>
+    <div class="dpads" id="digPads" aria-label="Pads"></div>
+    <div class="chopbar" style="grid-template-columns:1fr 1fr">
+      <button class="btn" id="lcUndo" type="button" disabled>↶ ANNULER LE CHOP</button>
+      <button class="btn" id="lcRestart" type="button" disabled>RECOMMENCER</button>
+    </div>
+    <div class="chopbar">
+      <button class="btn on" id="chAuto" type="button">AUTO</button>
+      <button class="btn" id="chEq8" type="button">ÉGAL 8</button>
+      <button class="btn" id="chEq16" type="button">ÉGAL 16</button>
+      <button class="btn" id="chMan" type="button">MANUEL</button>
+    </div>
+    <div class="srcbar">
+      <button class="btn rec" id="toPads" type="button">→ PADS</button>
+      <button class="btn" id="fileBtn" type="button">IMPORTER</button>
+      <button class="btn" id="micBtn" type="button">● MICRO</button>
+    </div>
+    <input type="file" id="fileIn" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff" hidden>
+    <p class="note help">Feuilletez le bac (glissez, flèches, ou potard 1 de l'Akai), posez un disque sur la platine, choisissez un extrait. Touchez la forme d'onde pour écouter une découpe ; en MANUEL, touchez pour ajouter une coupe, appui long pour l'enlever. → PADS envoie les découpes dans le kit « MES CHOPS ». Sons : Bibliothèque du Congrès, Citizen DJ, libres d'utilisation.</p>
+  </section>
+
+  <section class="view stack" id="view-scratch" hidden>
+    <div class="scrplay">
+      <canvas id="scrCanvas" aria-label="Platine : posez le doigt sur le disque et faites-le tourner, en avant ou en arrière"></canvas>
+      <div class="scrplate">
+        <canvas id="scrLcd" role="button" aria-label="Écran : enregistrer le scratch dans le looper"></canvas>
+        <div class="scrbtns">
+          <button class="btn rec" id="scrStart" type="button">▶ START</button>
+          <div style="display:flex;gap:6px"><button class="scroval" id="scrSpeed" type="button">33</button><button class="scroval on" id="scrQuartz" type="button">QUARTZ</button></div>
+        </div>
+        <div class="scrpitch"><label for="scrPitch">PITCH</label><input type="range" id="scrPitch" min="-10" max="10" step="0.1" value="0"><span id="scrPitchV">0.0 %</span></div>
+        <div class="scrbrand"><small>DIRECT DRIVE · SCRATCH</small><b>NOMAD</b></div>
+      </div>
+    </div>
+    <div class="scrplay" style="display:flex;flex-direction:column;gap:10px">
+    <div class="xfader" id="scrFader" role="slider" aria-label="Fader de coupure" aria-valuemin="0" aria-valuemax="100"><div class="zone" id="scrZone"></div><div class="rail"></div><div class="cap" id="scrCap"></div><i class="led"></i></div>
+    <div class="scrcuts">
+      <button class="btn" id="scrHam" type="button">HAMSTER : NON</button>
+      <button class="btn" id="scrCut" type="button">COUPE</button>
+      <button class="btn" id="scrOpen" type="button">OUVRE</button>
+    </div>
+    </div>
+    <div class="scrcues scrplay" id="scrCues"></div>
+    <h4 class="sphead"><span>PHRASES</span></h4>
+    <div class="scrph scrplay" id="scrPh"></div>
+    <h4 class="sphead"><span>SUR LE DISQUE</span></h4>
+    <div class="scrsrc" id="scrSrc"></div>
+    <div class="scrnav"><button class="btn" id="scrPrev" type="button" aria-label="Son précédent">◀</button><span id="scrName">—</span><button class="btn" id="scrNext" type="button" aria-label="Son suivant">▶</button></div>
+    <div class="scrtools">
+      <button class="btn" id="scrRand" type="button">HASARD</button>
+      <button class="btn" id="scrImp" type="button">IMPORTER</button>
+      <button class="btn" id="scrKey" type="button">NOTE : —</button>
+    </div>
+    <input type="file" id="scrFile" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff" hidden>
+    <div class="scrset" id="scrSet"></div>
+    <p class="note help">Posez le doigt sur le disque et tournez : en avant, en arrière, à la vitesse de votre main. Touchez l'écran vert pour enregistrer : le scratch est posé sur une nouvelle piste du looper, sur un tour de boucle complet (départ au début de la boucle suivante) ; sans boucle, c'est le REC du looper. Le son tourne en sillon fermé. START lance le moteur ; la main arrête le disque tant qu'elle est posée. Fader : la zone rouge coupe le son (HAMSTER inverse le côté). OUVRE, COUPE et les phrases agissent tant qu'on les tient (une phrase rejoue son geste en boucle, calée sur le tempo). CUE 1 à 4 : toucher un repère vide le pose là où est le disque ; toucher un repère posé y ramène le disque et en fait le repère actif (l'autocollant blanc) ; appui long pour l'effacer. PHRASES : REPÈRE fait partir les phrases du repère actif, PHRASES : ICI de là où se trouve le disque. Akai, banque A : pad 1 tire le disque en arrière, pad 5 le pousse en avant (plus on frappe fort, plus c'est rapide), pad 2 ouvre, pad 3 coupe, pads 4, 6, 7, 8 = baby, chirp, transform, flare ; banque B : 9 tear, 10 stab, 11 start/stop, 12 retour au repère, 13 à 16 = CUE 1 à 4 (frappe : poser ou rappeler ; tenu : effacer). Le clavier transpose le disque (scratch mélodique) ; potards : volume, pitch, filtre, démarrage, freinage, coupure, MAIN (déplace le disque comme une main, sur un demi-tour), fader. Tout passe dans le looper : REC / Sustain enregistre vos scratchs. Sons VOIX : Bibliothèque du Congrès (Citizen DJ), libres d'utilisation ; MES SONS : vos fichiers, gardés dans cet appareil.</p>
+  </section>
+
+  <section class="view stack" id="view-sons" hidden>
+    <div class="cats" id="cats"></div>
+    <div class="insts" id="insts"></div>
+    <div class="modebar">
+      <button class="btn on" id="mNotes" type="button">NOTES</button>
+      <button class="btn" id="mChords" type="button">ACCORDS</button>
+      <button class="btn" id="mBass" type="button">+ BASSE</button>
+    </div>
+    <div id="chordPanel" class="stack" hidden>
+      <div class="keybar">
+        <button class="btn" id="keyDown" type="button" aria-label="Tonalité plus bas">◀</button>
+        <span>TONALITÉ</span><span class="kv" id="keyVal">C</span><span id="keyMode" style="color:var(--muted);font-size:11px"></span>
+        <button class="btn" id="keyUp" type="button" aria-label="Tonalité plus haut">▶</button>
+      </div>
+      <div class="keybar">
+        <button class="btn" id="octDown" type="button">OCTAVE −</button>
+        <span class="kv" id="octVal">0</span>
+        <button class="btn" id="octUp" type="button">OCTAVE +</button>
+      </div>
+      <div class="styles" id="styles"></div>
+      <div class="chords" id="chords"></div>
+      <p class="note help">Pads de l'Akai : Bank 1, pads 1 à 7 = accords 1 à 7, pad 8 = accord 1 à l'octave ; Bank 2 = les mêmes une octave plus haut. Clavier : l'octave basse du clavier de l'Akai joue la progression : touches blanches DO, RÉ, MI, FA, SOL, LA, SI = accords 1 à 7 (touches noires = même accord, renversé plus haut). L'octave haute joue des notes simples, dans la tonalité. + BASSE ajoute la fondamentale une octave en dessous.</p>
+    </div>
+    <p class="note" id="instCredit"></p>
+  </section>
+
+  <div class="legend help" id="legend">
+    <span><i class="dot" style="background:var(--red)"></i><b>Bank 1</b> batterie</span>
+    <span><i class="dot" style="background:var(--green)"></i><b>Bank 2</b> pads 9–16</span>
+    <span><b>Clavier</b> pad choisi</span>
+    <span><b>Sustain</b> REC / DUB</span>
+  </div>
+</div>
+
+<div class="sheet" id="padMenu" hidden>
+  <div class="sheet-in">
+    <h2 id="padMenuT">PAD → PAD <button type="button" id="padMenuClose">ANNULER</button></h2>
+    <div class="edrow" style="grid-template-columns:1fr 1fr 1fr"><button class="btn" id="pmCopy" type="button">COPIER</button><button class="btn" id="pmSwap" type="button">ÉCHANGER</button><button class="btn" id="pmMerge" type="button">FUSIONNER</button></div>
+  </div>
+</div>
+
+<div class="sheet" id="mixSheet" hidden>
+  <div class="sheet-in">
+    <h2>TABLE DE MIXAGE <button type="button" id="mixClose">FERMER</button></h2>
+    <div class="mixer" id="mixer"></div>
+    <p class="help">PADS comprend la platine DIGGING. Les voies PADS, SONS et GUITARE sont réglées avant le looper : ce qui est enregistré suit leurs niveaux. MASTER règle tout ce qui sort.</p>
+  </div>
+</div>
+
+<div class="sheet" id="kitSheet" hidden>
+  <div class="sheet-in">
+    <h2>KITS <button type="button" id="kitClose">FERMER</button></h2>
+    <div class="saverow"><input id="kitSaveName" type="text" maxlength="30" placeholder="nom du kit actuel" aria-label="Nom du kit"><button class="btn rec" id="kitSave" type="button">ENREGISTRER</button></div>
+    <div id="kitList"></div>
+  </div>
+</div>
+
+<div class="sheet" id="setSheet" hidden>
+  <div class="sheet-in">
+    <h2>RÉGLAGES <button type="button" id="setClose">FERMER</button></h2>
+    <h3>AIDE-MÉMOIRE AKAI</h3>
+    <div id="glossary"></div>
+    <p>STYLE</p>
+    <div class="skins">
+      <button class="skin" type="button" data-skin="" style="background:#1b1a18;color:#ece3d3;box-shadow:inset 0 -4px 0 #d92b2f">NOMAD</button>
+      <button class="skin" type="button" data-skin="clair" style="background:#e6e4df;color:#1e1e1e;box-shadow:inset 0 -4px 0 #1d9c74">CLAIR</button>
+      <button class="skin" type="button" data-skin="dub" style="background:#13160f;color:#f2b705;box-shadow:inset 0 -4px 0 #d42a1f">DUB</button>
+    </div>
+    <p>LETTRAGE</p>
+    <div class="skins" style="grid-template-columns:1fr 1fr">
+      <button class="skin ftype" type="button" data-type="mpk" style="background:#111;color:#e8322f;font-family:Arimo,Arial,sans-serif;font-weight:700">MPK</button>
+      <button class="skin ftype" type="button" data-type="" style="background:#1b1a18;color:#ece3d3;font-family:'Archivo Black',sans-serif">NOMAD</button>
+    </div>
+    <div id="btBox" hidden>
+      <h3>CONTRÔLEUR SANS FIL</h3>
+      <div class="row"><button class="btn" id="btPair" type="button" style="flex:1">APPAIRER UN CONTRÔLEUR BLUETOOTH MIDI</button></div>
+      <p class="help">Allumez le contrôleur, touchez son nom dans la liste, puis OK. Il apparaît ensuite comme l'Akai.</p>
+    </div>
+    <h3>BATTERIE</h3>
+    <div class="row"><button class="btn" id="hatsBtn" type="button" style="flex:1">CHARLEYS DISCRETS : OUI</button></div>
+    <p class="help">Dans les kits fournis : hats, shakers et cymbales plus bas, plus courts, un peu étouffés, et très sensibles à la force de frappe (frappe légère = presque rien). Chaque pad reste réglable dans PADS.</p>
+    <h3>TEXTES D'AIDE</h3>
+    <div class="row"><button class="btn" id="helpBtn" type="button" aria-pressed="false" style="flex:1">MASQUÉS</button></div>
+    <h3>PROJETS</h3>
+    <p class="help">Un projet garde le kit, les boucles, l'ampli, les effets et les potards. Il est enregistré dans cet appareil.</p>
+    <div class="saverow"><input id="projName" type="text" maxlength="40" placeholder="nom du projet" aria-label="Nom du projet"><button class="btn rec" id="projSave" type="button">ENREGISTRER</button></div>
+    <div class="saverow"><button class="btn" id="projImport" type="button" style="flex:1">IMPORTER UN PROJET (.nomad)</button><input type="file" id="projFile" accept=".nomad,.zip,application/zip,application/octet-stream" hidden></div>
+    <p class="help">FICHIER enregistre un projet complet (sons, séquences, morceau, réglages) dans un fichier .nomad, à garder dans l'app Fichiers ou à passer sur un autre appareil.</p>
+    <div id="projList"></div>
+    <h3>HORS LIGNE ET SAUVEGARDE</h3>
+    <p class="help">L'app et les kits sont gardés dans l'appareil pour jouer sans réseau. La session en cours est enregistrée toute seule (projet « SESSION AUTO ») et se reprend depuis l'écran d'accueil. iOS peut effacer les données d'un site : gardez une sauvegarde complète dans l'app Fichiers.</p>
+    <div class="row"><button class="btn" id="offBtn" type="button" style="flex:1">TOUT PRÉPARER POUR LE HORS-LIGNE</button></div>
+    <p id="offInfo">—</p>
+    <div class="row"><button class="btn rec" id="backupBtn" type="button" style="flex:1">SAUVEGARDE COMPLÈTE (.nomad)</button></div>
+    <p id="backupInfo">—</p>
+    <p class="help">La sauvegarde complète contient tous les projets, les kits perso et les sons de scratch importés. Pour la restaurer : IMPORTER UN PROJET.</p>
+    <h3>COMPENSATION CASQUE</h3>
+    <p class="help">Recale les couches du looper quand le son arrive en retard (casque Bluetooth). Revient à 0 ms à chaque lancement, pour ne jamais rester actif par erreur en filaire ou sur le haut-parleur.</p>
+    <div class="row"><input type="range" id="latRange" min="0" max="400" step="1" value="0" aria-label="Compensation en millisecondes"><span id="latVal">0 ms</span></div>
+    <p id="latInfo">Latence annoncée par l'appareil : —</p>
+    <div class="row"><button class="btn" id="calBtn" type="button">CALIBRER</button><span id="calMsg"></span></div>
+    <p class="help">Calibrage : 12 clics. À partir du 3e, frappez un pad pile sur chaque clic.</p>
+  </div>
+</div>
+
+<div class="power" id="power">
+  <div class="stripe" style="width:180px" aria-hidden="true"></div>
+  <button id="powerBtn" type="button"><b class="bw">NOMAD</b><span class="b16">16</span><small class="btag">POCKET SAMPLER · LOOPER</small></button>
+  <p>Touchez pour démarrer Nomad. Sur iPhone, coupez aussi le mode silencieux si vous n'entendez rien.</p>
+  <button id="resumeBtn" class="resume" type="button" hidden></button>
+</div>
+
+<script>
+(() => {
+//@js
+})();
+</script>
+</body>
+</html>

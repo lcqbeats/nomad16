@@ -1,0 +1,448 @@
+  // ---------- DIGGING / SAMPLING ----------
+  let crate = null, crateIdx = 0, recIdx = 0, digAnim = null, digDragX = null, digDirty = true;
+  const chopKit = { buffers: [], names: [] };
+  const clipCache = new Map();
+  let clip = null;          // { buf, title, peaks }
+  let chops = [];           // positions de départ (en échantillons)
+  let chopMode = "auto", sens = 0.5, eqN = 8, pitchSemi = 0, sampleVol = 0.9;
+  let ttSrc = null, ttStart = 0, ttAngle = 0, previewSrc = null, previewInfo = null;
+  const dcv = $("digCanvas"), dg = dcv.getContext("2d");
+  const tcv = $("ttCanvas"), tg = tcv.getContext("2d");
+  const wcv = $("waveCanvas"), wg = wcv.getContext("2d");
+  function fitCanvas(c) { const r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1; if (r.width && (c.width !== Math.round(r.width * d) || c.height !== Math.round(r.height * d))) { c.width = Math.round(r.width * d); c.height = Math.round(r.height * d); } }
+  // Petit générateur pseudo-aléatoire stable par disque (prix, couleurs, usure)
+  function seeded(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; }; }
+  const SLEEVES = ["#c9a874", "#b8915a", "#d8c49a", "#8f6b3e", "#a8b39a", "#c4a07a", "#e2d3b2"];
+  const PRICES = ["0,50 €", "1 €", "2 €", "1,50 €", "3 €", "50 c", "5 F", "1 $"];
+  async function loadCrate() {
+    if (crate) return;
+    try { crate = await (await fetch("crate/crate.json")).json(); }
+    catch (e) { $("digTitle").textContent = "Le bac n'a pas pu être chargé (hors ligne ?)"; return; }
+    $("crates").innerHTML = "";
+    crate.collections.forEach((c, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "crate"; b.id = "crate" + i; b.setAttribute("role", "tab");
+      b.innerHTML = `<i style="background:${c.color}"></i>${c.name}`;
+      b.addEventListener("click", () => { crateIdx = i; recIdx = 0; drawCrates(); showRecord(0); });
+      $("crates").appendChild(b);
+    });
+    const s = store.get("dig", { c: 0, r: 0 });
+    crateIdx = Math.min(s.c, crate.collections.length - 1); recIdx = Math.min(s.r, crate.collections[crateIdx].items.length - 1);
+    drawCrates(); showRecord(0);
+  }
+  function enterDig() { fitCanvas(dcv); fitCanvas(wcv); tcv.width = 240; tcv.height = 240; loadCrate(); drawWave(); }
+  function drawCrates() { digDirty = true; crate.collections.forEach((c, i) => { $("crate" + i).classList.toggle("on", i === crateIdx); $("crate" + i).setAttribute("aria-selected", i === crateIdx); }); }
+  const curItems = () => crate ? crate.collections[crateIdx].items : [];
+  const curItem = () => curItems()[recIdx];
+  function showRecord(dir) {
+    if (!crate) return;
+    const it = curItem(), c = crate.collections[crateIdx];
+    $("digTitle").textContent = it.t;
+    $("digYear").textContent = it.y || "";
+    $("digArtist").textContent = it.a || "artiste inconnu";
+    $("digCount").textContent = `${c.name} · ${recIdx + 1}/${curItems().length}`;
+    $("digLink").href = it.u;
+    if (dir) digAnim = { dir, t0: performance.now() };
+    digDirty = true;
+    store.set("dig", { c: crateIdx, r: recIdx });
+    if (tab === "sample") lcd("lcdPad", "BAC", `${c.name} · ${it.t}`);
+  }
+  function flip(d) { if (!crate) return; const n = curItems().length; recIdx = (recIdx + d + n) % n; showRecord(d); }
+  $("digPrev").addEventListener("click", () => flip(-1));
+  $("digNext").addEventListener("click", () => flip(1));
+  $("digRand").addEventListener("click", () => { if (!crate) return; crateIdx = Math.floor(Math.random() * crate.collections.length); recIdx = Math.floor(Math.random() * curItems().length); drawCrates(); showRecord(1); });
+  dcv.addEventListener("pointerdown", e => { digDragX = e.clientX; });
+  dcv.addEventListener("pointerup", e => { if (digDragX === null) return; const dx = e.clientX - digDragX; digDragX = null; if (Math.abs(dx) > 25) flip(dx < 0 ? 1 : -1); else pullRecord(); });
+  dcv.addEventListener("pointercancel", () => { digDragX = null; });
+
+  // Dessin du bac : planches de caisse, tranches des pochettes, pochette de 78 tours trouée sur l'étiquette
+  function labelColors(it) { const r = seeded(it.id); const base = crate.collections[crateIdx].color; const alt = ["#1d1d1d", "#6b1b1b", "#16324f", "#2c4a1e", "#4a2a5a", "#7a5a12"][Math.floor(r() * 6)]; return r() > 0.5 ? [base, "#f2e6c8"] : [alt, "#e8d9a8"]; }
+  function wrapText(g, text, x, y, maxW, lh, maxLines) {
+    const words = String(text).split(/\s+/); let line = "", lines = [];
+    words.forEach(w => { const t = line ? line + " " + w : w; if (g.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; });
+    if (line) lines.push(line);
+    lines = lines.slice(0, maxLines);
+    lines.forEach((l, i) => g.fillText(l, x, y + (i - (lines.length - 1) / 2) * lh));
+  }
+  function drawLabel(g, it, cx, cy, r, angle) {
+    const [bg, ink] = labelColors(it);
+    g.save(); g.translate(cx, cy); g.rotate(angle || 0);
+    g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fillStyle = bg; g.fill();
+    g.strokeStyle = ink; g.globalAlpha = 0.6; g.lineWidth = r * 0.02; g.beginPath(); g.arc(0, 0, r * 0.92, 0, Math.PI * 2); g.stroke(); g.globalAlpha = 1;
+    g.fillStyle = ink; g.textAlign = "center"; g.textBaseline = "middle";
+    g.font = `italic 700 ${r * 0.16}px ${"Playfair Display, Georgia, serif"}`;
+    g.fillText(crate.collections[crateIdx].name.split(" ")[0], 0, -r * 0.62);
+    g.font = `600 ${r * 0.075}px IBM Plex Mono, monospace`;
+    g.fillText("78 TOURS · DOMAINE PUBLIC", 0, -r * 0.42);
+    g.font = `700 ${r * 0.13}px Archivo Black, sans-serif`;
+    wrapText(g, it.t.toUpperCase(), 0, r * 0.25, r * 1.35, r * 0.15, 2);
+    g.font = `${r * 0.09}px IBM Plex Mono, monospace`;
+    g.fillText((it.a || "").slice(0, 34), 0, r * 0.55);
+    g.fillText(String(it.y || ""), 0, r * 0.7);
+    g.beginPath(); g.arc(0, 0, r * 0.055, 0, Math.PI * 2); g.fillStyle = "#111"; g.fill();
+    g.restore();
+  }
+  function drawSleeve(g, it, x, y, w, h, rot) {
+    const r = seeded(it.id + "s");
+    g.save(); g.translate(x + w / 2, y + h / 2); g.rotate(rot);
+    const col = SLEEVES[Math.floor(r() * SLEEVES.length)];
+    g.fillStyle = col; g.fillRect(-w / 2, -h / 2, w, h);
+    // usure du papier
+    g.globalAlpha = 0.08; g.fillStyle = "#000";
+    for (let i = 0; i < 40; i++) { g.fillRect(-w / 2 + r() * w, -h / 2 + r() * h, r() * w * 0.2, 1 + r() * 2); }
+    g.globalAlpha = 0.18; g.fillRect(-w / 2, -h / 2, w, 3); g.globalAlpha = 1;
+    // trou central qui montre l'étiquette
+    const lr = w * 0.24;
+    g.beginPath(); g.arc(0, 0, lr * 1.12, 0, Math.PI * 2); g.fillStyle = "#121212"; g.fill();
+    drawLabel(g, it, 0, 0, lr, (r() - 0.5) * 0.5);
+    g.strokeStyle = "rgba(0,0,0,.35)"; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, lr * 1.12, 0, Math.PI * 2); g.stroke();
+    // texte imprimé de la pochette
+    g.fillStyle = "rgba(40,25,10,.55)"; g.font = `700 ${w * 0.035}px Archivo Black, sans-serif`; g.textAlign = "center";
+    g.fillText("PROTÉGEZ VOS DISQUES", 0, -h / 2 + w * 0.08);
+    g.font = `${w * 0.028}px IBM Plex Mono, monospace`;
+    g.fillText("78 T · NE PAS EXPOSER AU SOLEIL", 0, h / 2 - w * 0.05);
+    // étiquette de prix du bac
+    const pr = PRICES[Math.floor(r() * PRICES.length)];
+    g.save(); g.translate(w / 2 - w * 0.13, -h / 2 + w * 0.12); g.rotate(0.12);
+    g.fillStyle = r() > 0.5 ? "#f6e35a" : "#ff8a6b"; g.fillRect(-w * 0.09, -w * 0.035, w * 0.18, w * 0.07);
+    g.fillStyle = "#1a1a1a"; g.font = `700 ${w * 0.04}px IBM Plex Mono, monospace`; g.textBaseline = "middle"; g.fillText(pr, 0, 0);
+    g.restore();
+    g.restore();
+  }
+  function drawDig() {
+    if (!crate) return;
+    drawTurntable();
+    drawWave();
+    const pw = dcv.width; fitCanvas(dcv); if (dcv.width !== pw) digDirty = true;
+    if (!digDirty && !digAnim) return;
+    digDirty = false;
+    const W = dcv.width, H = dcv.height, g = dg;
+    // fond : intérieur de caisse en bois
+    const grd = g.createLinearGradient(0, 0, 0, H); grd.addColorStop(0, "#2a1c10"); grd.addColorStop(1, "#4a3220");
+    g.fillStyle = grd; g.fillRect(0, 0, W, H);
+    g.fillStyle = "rgba(0,0,0,.25)"; for (let i = 1; i < 4; i++) g.fillRect(0, H * i / 4, W, 2);
+    const items = curItems(), n = items.length;
+    const w = Math.min(W * 0.62, H * 0.86), x0 = (W - w) / 2;
+    let p = 1, dir = 0;
+    if (digAnim) { p = Math.min(1, (performance.now() - digAnim.t0) / 260); dir = digAnim.dir; if (p >= 1) digAnim = null; }
+    const ease = 1 - Math.pow(1 - p, 3);
+    // tranches des disques derrière (on voit le haut des pochettes)
+    for (let k = 5; k >= 1; k--) {
+      const it = items[(recIdx + k) % n]; const r = seeded(it.id + "s");
+      const yy = H * 0.05 + (5 - k) * H * 0.018 - (dir > 0 ? (1 - ease) * H * 0.018 : 0);
+      g.fillStyle = SLEEVES[Math.floor(r() * SLEEVES.length)];
+      g.save(); g.translate(W / 2, yy + w / 2); g.rotate((r() - 0.5) * 0.04); g.fillRect(-w / 2, -w / 2, w, w);
+      g.fillStyle = "rgba(0,0,0,.28)"; g.fillRect(-w / 2, -w / 2, w, w); g.restore();
+    }
+    // disque de devant
+    const yFront = H * 0.05 + 5 * H * 0.018 + H * 0.03;
+    const it = items[recIdx];
+    let off = 0, alpha = 1;
+    if (dir > 0) off = (1 - ease) * H * 0.12; else if (dir < 0) off = -(1 - ease) * H * 0.5;
+    g.globalAlpha = alpha;
+    g.shadowColor = "rgba(0,0,0,.6)"; g.shadowBlur = 18; g.shadowOffsetY = 6;
+    drawSleeve(g, it, x0, yFront + off, w, w, (seeded(it.id)() - 0.5) * 0.03);
+    g.shadowColor = "transparent";
+    // avant de la caisse
+    g.fillStyle = "#5e3f23"; g.fillRect(0, H * 0.84, W, H * 0.16);
+    g.fillStyle = "rgba(255,255,255,.06)"; g.fillRect(0, H * 0.84, W, 3);
+    g.fillStyle = "#f3e9d2"; g.font = `${H * 0.06}px Archivo Black, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText(crate.collections[crateIdx].name + " · " + crate.collections[crateIdx].sub, W / 2, H * 0.92);
+    g.globalAlpha = 1;
+  }
+
+  // Platine
+  function drawTurntable() {
+    if ($("deck").hidden || !clip) return;
+    const g = tg, W = tcv.width, c = W / 2;
+    g.clearRect(0, 0, W, W);
+    g.fillStyle = "#1c1b19"; g.fillRect(0, 0, W, W);
+    g.beginPath(); g.arc(c, c, W * 0.46, 0, Math.PI * 2); g.fillStyle = "#0b0b0b"; g.fill();
+    if (ttSrc) ttAngle += 0.06 * Math.pow(2, pitchSemi / 12);
+    g.strokeStyle = "rgba(255,255,255,.05)"; g.lineWidth = 1;
+    for (let rr = W * 0.2; rr < W * 0.45; rr += 3) { g.beginPath(); g.arc(c, c, rr, 0, Math.PI * 2); g.stroke(); }
+    g.strokeStyle = "rgba(255,255,255,.12)"; g.beginPath(); g.arc(c, c, W * 0.38, ttAngle, ttAngle + 0.6); g.stroke();
+    drawLabel(g, clip.item, c, c, W * 0.17, ttAngle);
+    // bras de lecture
+    g.strokeStyle = "#c9c2b3"; g.lineWidth = 5; g.lineCap = "round";
+    g.beginPath(); g.moveTo(W * 0.92, W * 0.08); g.lineTo(W * 0.86, W * 0.62); g.lineTo(ttSrc ? W * 0.66 : W * 0.78, ttSrc ? W * 0.74 : W * 0.8); g.stroke();
+    g.beginPath(); g.arc(W * 0.92, W * 0.08, 9, 0, Math.PI * 2); g.fillStyle = "#c9c2b3"; g.fill();
+  }
+  function pullRecord() {
+    if (!crate) return;
+    const it = curItem();
+    $("deck").hidden = false;
+    $("faces").innerHTML = "";
+    it.c.forEach((cl, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "face"; b.textContent = "extrait " + (i + 1) + " · " + cl[1];
+      b.addEventListener("click", () => loadClip(it, i));
+      $("faces").appendChild(b);
+    });
+    loadClip(it, 0);
+  }
+  $("digPull").addEventListener("click", pullRecord);
+  async function loadClip(it, i) {
+    if (!ctx) return;
+    stopTT();
+    [...$("faces").children].forEach((b, j) => b.classList.toggle("on", j === i));
+    const file = it.c[i][0], url = crate.base + crate.collections.find(c => c.items.includes(it)).id + "/" + file + ".wav";
+    $("ttMsg").textContent = "on pose le disque…";
+    try {
+      let buf = clipCache.get(url);
+      if (!buf) {
+        const ab = await (await fetch(url)).arrayBuffer();
+        buf = await new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej));
+        clipCache.set(url, buf); if (clipCache.size > 4) clipCache.delete(clipCache.keys().next().value);
+      }
+      setClip(buf, it, `${it.t} · extrait ${i + 1}`);
+      $("ttMsg").textContent = Math.round(buf.duration) + " s";
+    } catch (e) { $("ttMsg").textContent = "chargement impossible"; }
+  }
+  function setClip(buf, item, title) {
+    clip = { buf, item, title, peaks: null };
+    computePeaks(); rechop();
+    lcd("lcdPad", "PLATINE", title);
+  }
+  let ciTimers = [];
+  function stopTT() { ciTimers.forEach(clearTimeout); ciTimers = []; if (ttSrc) { try { ttSrc.stop(); } catch (e) {} ttSrc = null; } $("ttPlay").textContent = "▶ ÉCOUTER"; }
+  // countIn : nombre de temps de décompte avant le départ (au tempo du looper, sinon au tempo réglé dans FX)
+  function ttStartPlay(countIn) {
+    if (!clip || !ctx) return;
+    const s = ctx.createBufferSource(); s.buffer = clip.buf; s.playbackRate.value = Math.pow(2, pitchSemi / 12);
+    const g = ctx.createGain(); g.gain.value = sampleVol; s.connect(g); g.connect(liveIn);
+    s.onended = () => { if (ttSrc === s) stopTT(); };
+    const beat = 60 / curBpm(), t0 = ctx.currentTime + 0.05 + (countIn ? countIn * beat : 0);
+    for (let k = 0; k < (countIn || 0); k++) {
+      const t = t0 - (countIn - k) * beat, o = ctx.createOscillator(), cg = ctx.createGain();
+      o.frequency.value = k === 0 ? 1600 : 1100; cg.gain.setValueAtTime(0.35, t); cg.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+      o.connect(cg); cg.connect(fxOut); o.start(t); o.stop(t + 0.06);
+      ciTimers.push(setTimeout(() => lcd("lcdPad", "CHOP LIVE", "décompte · " + (countIn - k) + " … préparez-vous"), Math.max(0, (t - ctx.currentTime) * 1000)));
+    }
+    if (countIn) ciTimers.push(setTimeout(() => lcd("lcdPad", "CHOP LIVE", "GO · frappez les pads"), Math.max(0, (t0 - ctx.currentTime) * 1000)));
+    s.start(t0); ttSrc = s; ttStart = t0; $("ttPlay").textContent = "■ STOP";
+  }
+  $("ttPlay").addEventListener("click", () => { if (ttSrc) stopTT(); else ttStartPlay(0); });
+  function setPitch(v) { pitchSemi = v; $("pitchSl").value = v; $("pitchVal").textContent = (v > 0 ? "+" : "") + v; if (ttSrc) ttSrc.playbackRate.value = Math.pow(2, v / 12); }
+  $("pitchSl").addEventListener("input", e => setPitch(+e.target.value));
+
+  // Forme d'onde et découpe
+  function mono(buf) { const n = buf.length, out = new Float32Array(n); for (let ch = 0; ch < buf.numberOfChannels; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < n; i++) out[i] += d[i] / buf.numberOfChannels; } return out; }
+  function computePeaks() { clip.mono = mono(clip.buf); }
+  function detectOnsets() {
+    const x = clip.mono, hop = 512, n = Math.floor(x.length / hop);
+    const e = new Float32Array(n); let prev = 0;
+    for (let i = 0; i < n; i++) { let s = 0, hf = 0; for (let j = 0; j < hop; j++) { const v = x[i * hop + j], d = v - prev; prev = v; s += v * v; hf += d * d; } e[i] = Math.log(1e-6 + hf + s * 0.2); }
+    const flux = new Float32Array(n); for (let i = 1; i < n; i++) flux[i] = Math.max(0, e[i] - e[i - 1]);
+    let mean = 0; flux.forEach(v => mean += v); mean /= n; let sd = 0; flux.forEach(v => sd += (v - mean) ** 2); sd = Math.sqrt(sd / n);
+    const th = mean + sd * (2.6 - sens * 2.2), minGap = Math.floor(0.12 * sr / hop);
+    const peaks = [];
+    for (let i = 2; i < n - 2; i++) if (flux[i] > th && flux[i] >= flux[i - 1] && flux[i] >= flux[i + 1]) peaks.push([i, flux[i]]);
+    const keep = []; peaks.sort((a, b) => b[1] - a[1]).forEach(p => { if (keep.length < 16 && keep.every(k => Math.abs(k - p[0]) >= minGap)) keep.push(p[0]); });
+    return keep.sort((a, b) => a - b).map(i => Math.max(0, i * hop - 256));
+  }
+  function rechop() {
+    if (!clip) return;
+    const L = clip.buf.length;
+    if (chopMode === "auto") chops = detectOnsets();
+    else if (chopMode === "eq") chops = Array.from({ length: eqN }, (_, i) => Math.floor(i * L / eqN));
+    if (!chops.length) chops = [0];
+    drawWave();
+  }
+  function setChopMode(m, n) {
+    chopMode = m; if (n) eqN = n;
+    ["chAuto", "chEq8", "chEq16", "chMan"].forEach(id => $(id).classList.remove("on"));
+    $(m === "auto" ? "chAuto" : m === "man" ? "chMan" : eqN === 8 ? "chEq8" : "chEq16").classList.add("on");
+    if (m !== "man") rechop();
+  }
+  $("chAuto").addEventListener("click", () => setChopMode("auto"));
+  $("chEq8").addEventListener("click", () => setChopMode("eq", 8));
+  $("chEq16").addEventListener("click", () => setChopMode("eq", 16));
+  $("chMan").addEventListener("click", () => setChopMode("man"));
+  function chopRange(i) { const L = clip.buf.length; return [chops[i], i + 1 < chops.length ? chops[i + 1] : L]; }
+  function drawWave() {
+    fitCanvas(wcv);
+    const g = wg, W = wcv.width, H = wcv.height, d = window.devicePixelRatio || 1;
+    g.clearRect(0, 0, W, H);
+    if (!clip) { g.fillStyle = "#5d574f"; g.font = `${12 * d}px IBM Plex Mono, monospace`; g.textAlign = "center"; g.fillText("posez un disque ou importez un son", W / 2, H / 2); return; }
+    const x = clip.mono, L = x.length, mid = H / 2;
+    chops.forEach((c, i) => { const [a, b] = chopRange(i); g.fillStyle = i % 2 ? "rgba(34,163,90,.10)" : "rgba(217,43,47,.10)"; g.fillRect(a / L * W, 0, (b - a) / L * W, H); });
+    g.fillStyle = "#cfc6b6";
+    if (!clip.pk || clip.pk.W !== W) {
+      const mnA = new Float32Array(W), mxA = new Float32Array(W);
+      for (let px = 0; px < W; px++) { const s0 = Math.floor(px / W * L), e0 = Math.floor((px + 1) / W * L); let mn = 0, mx = 0; for (let i = s0; i < e0; i += 2) { const v = x[i]; if (v < mn) mn = v; if (v > mx) mx = v; } mnA[px] = mn; mxA[px] = mx; }
+      clip.pk = { W, mnA, mxA };
+    }
+    for (let px = 0; px < W; px++) g.fillRect(px, mid - clip.pk.mxA[px] * mid * 0.95, 1, Math.max(1, (clip.pk.mxA[px] - clip.pk.mnA[px]) * mid * 0.95));
+    chops.forEach((c, i) => {
+      const xx = c / L * W; g.fillStyle = i < 8 ? "#d92b2f" : "#22a35a"; g.fillRect(xx, 0, 2 * d, H);
+      g.font = `600 ${10 * d}px IBM Plex Mono, monospace`; g.textAlign = "left"; g.fillText(String(i + 1), xx + 3 * d, 11 * d);
+    });
+    if (previewInfo && ctx) { const t = (ctx.currentTime - previewInfo.t0) * Math.pow(2, pitchSemi / 12) * sr + previewInfo.a; if (t < previewInfo.b) { g.fillStyle = "#fff"; g.fillRect(t / L * W, 0, 1.5 * d, H); } }
+    if (ttSrc && ctx) { const t = (ctx.currentTime - ttStart) * Math.pow(2, pitchSemi / 12) * sr; g.fillStyle = "#7dffa6"; g.fillRect(t / L * W, 0, 1.5 * d, H); }
+  }
+  function previewChop(i) {
+    if (!clip || !ctx) return;
+    const [a, b] = chopRange(i);
+    if (previewSrc) { try { previewSrc.stop(); } catch (e) {} }
+    const s = ctx.createBufferSource(); s.buffer = clip.buf; s.playbackRate.value = Math.pow(2, pitchSemi / 12);
+    const g = ctx.createGain(); g.gain.value = sampleVol; s.connect(g); g.connect(liveIn);
+    s.start(0, a / sr, (b - a) / sr); previewSrc = s; previewInfo = { t0: ctx.currentTime, a, b };
+    lcd("lcdPad", "CHOP", `${i + 1}/${chops.length} · ${((b - a) / sr).toFixed(2)} s`);
+  }
+  let wPress = null;
+  wcv.addEventListener("pointerdown", e => {
+    if (!clip) return;
+    const r = wcv.getBoundingClientRect(), pos = Math.floor((e.clientX - r.left) / r.width * clip.buf.length);
+    wPress = { pos, t: setTimeout(() => {
+      if (chopMode === "man" && chops.length > 1) { let bi = 0, bd = Infinity; chops.forEach((c, i) => { const d = Math.abs(c - pos); if (d < bd) { bd = d; bi = i; } }); chops.splice(bi, 1); drawWave(); }
+      wPress = null;
+    }, 550) };
+  });
+  wcv.addEventListener("pointerup", () => {
+    if (!wPress) return; clearTimeout(wPress.t);
+    const pos = wPress.pos; wPress = null;
+    if (chopMode === "man" && chops.length < 16 && chops.every(c => Math.abs(c - pos) > sr * 0.03)) {
+      let z = pos; const m = clip.mono; for (let k = 0; k < 400 && z + 1 < m.length; k++) { if (m[z] <= 0 && m[z + 1] > 0) break; z++; }
+      chops.push(z); chops.sort((a, b) => a - b); drawWave(); return;
+    }
+    let idx = 0; chops.forEach((c, i) => { if (c <= pos) idx = i; }); previewChop(idx);
+  });
+  $("toPads").addEventListener("click", () => {
+    if (!clip || !ctx) return;
+    const rate = Math.pow(2, pitchSemi / 12);
+    chopKit.buffers = []; chopKit.names = [];
+    chops.slice(0, 16).forEach((c, i) => {
+      const [a, b] = chopRange(i);
+      chopKit.buffers.push(sliceBuf(a, b, rate)); chopKit.names.push("Chop " + (i + 1));
+    });
+    while (chopKit.buffers.length < 16) { chopKit.buffers.push(null); chopKit.names.push("—"); }
+    if (!kitIndex.some(k => k.id === "chops")) kitIndex.splice(1, 0, { id: "chops", name: "MES CHOPS", style: "Sampling", desc: "" });
+    const meta = kitIndex.find(k => k.id === "chops");
+    meta.desc = (clip.title || "").slice(0, 60);
+    loadKit("chops");
+    lcd("lcdPad", "PADS", `${Math.min(16, chops.length)} découpes envoyées · kit MES CHOPS`);
+  });
+  // Import de fichier et enregistrement micro
+  $("fileBtn").addEventListener("click", () => $("fileIn").click());
+  $("fileIn").addEventListener("change", async e => {
+    const f = e.target.files[0]; if (!f || !ctx) return;
+    try { const buf = await new Promise(async (res, rej) => ctx.decodeAudioData(await f.arrayBuffer(), res, rej)); $("deck").hidden = true; setClip(buf, null, f.name); }
+    catch (err) { lcd("lcdPad", "IMPORT", "format non lu : " + f.name); }
+    e.target.value = "";
+  });
+  let micRec = null;
+  $("micBtn").addEventListener("click", async () => {
+    if (!ctx) return;
+    if (micRec) {
+      const { stream, node, src, chunks } = micRec; micRec = null;
+      src.disconnect(); node.disconnect(); stream.getTracks().forEach(t => t.stop());
+      try { if (navigator.audioSession && !G.on) navigator.audioSession.type = "playback"; } catch (e) {}
+      $("micBtn").textContent = "● MICRO"; $("micBtn").classList.remove("on");
+      const n = chunks.reduce((s, c) => s + c.length, 0); if (!n) return;
+      const buf = ctx.createBuffer(1, n, sr); const d = buf.getChannelData(0); let o = 0; chunks.forEach(c => { d.set(c, o); o += c.length; });
+      $("deck").hidden = true; setClip(buf, null, "Micro " + new Date().toLocaleTimeString().slice(0, 5));
+      return;
+    }
+    try {
+      try { if (navigator.audioSession) navigator.audioSession.type = "play-and-record"; } catch (e) {}
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      const src = ctx.createMediaStreamSource(stream), chunks = [];
+      let node;
+      if (hasWorklet) { node = new AudioWorkletNode(ctx, "nomad-cap", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: "explicit" }); node.port.onmessage = e => { if (chunks.length * 1024 < sr * 30) chunks.push(e.data.l); }; }
+      else { node = ctx.createScriptProcessor(1024, 1, 1); node.onaudioprocess = e => { if (chunks.length * 1024 < sr * 30) chunks.push(e.inputBuffer.getChannelData(0).slice()); }; }
+      const mute = ctx.createGain(); mute.gain.value = 0;
+      src.connect(node); node.connect(mute); mute.connect(ctx.destination);
+      micRec = { stream, node, src, chunks };
+      $("micBtn").textContent = "■ STOP"; $("micBtn").classList.add("on");
+      lcd("lcdPad", "MICRO", "enregistrement… (30 s max)");
+    } catch (e) { lcd("lcdPad", "MICRO", "micro refusé (" + e.name + ")"); }
+  });
+  // Chop live : pendant la lecture, chaque pad frappé prend le son à partir de cet instant
+  const LC = { on: false, marks: {}, hist: [], countIn: store.get("chopCountIn", 4) };
+  $("liveChop").addEventListener("click", () => {
+    LC.on = !LC.on; $("liveChop").classList.toggle("on", LC.on);
+    if (LC.on) { LC.marks = {}; LC.hist = []; $("lcUndo").disabled = true; if (!ttSrc) ttStartPlay(LC.countIn); lcd("lcdPad", "CHOP LIVE", LC.countIn ? "décompte…" : "frappez les pads pendant l'écoute"); }
+    drawDigPads();
+  });
+  $("ciBtn").addEventListener("click", () => {
+    LC.countIn = { 0: 4, 4: 8, 8: 0 }[LC.countIn]; store.set("chopCountIn", LC.countIn);
+    $("ciBtn").textContent = LC.countIn ? "DÉCOMPTE " + LC.countIn : "SANS DÉCOMPTE"; $("ciBtn").classList.toggle("on", !!LC.countIn);
+  });
+  $("ciBtn").textContent = LC.countIn ? "DÉCOMPTE " + LC.countIn : "SANS DÉCOMPTE"; $("ciBtn").classList.toggle("on", !!LC.countIn);
+  // Pads à l'écran sous la forme d'onde (sans l'Akai) : même rôle que les pads de l'Akai dans DIGGING
+  const digPadEls = [];
+  for (let r = 1; r >= 0; r--) for (let c = 0; c < 8; c++) {
+    const i = r * 8 + c, b = document.createElement("button"); b.type = "button"; b.className = "dpad"; b.textContent = i + 1;
+    b.addEventListener("pointerdown", e => { e.preventDefault(); digPadHit(i, 0.9); });
+    $("digPads").appendChild(b); digPadEls[i] = b;
+  }
+  function digPadHit(i, vel) {
+    if (LC.on && ttSrc && liveChopHit(i)) flash(i);
+    else playPad(i, vel);
+    const b = digPadEls[i]; b.classList.add("hit"); clearTimeout(b._t); b._t = setTimeout(() => b.classList.remove("hit"), 110);
+    drawDigPads();
+  }
+  function drawDigPads() { digPadEls.forEach((b, i) => b.classList.toggle("has", LC.on ? LC.marks[i] !== undefined : kitCur === "chops" && !!buffers[i])); }
+  function ttPos() { return ttSrc ? Math.floor((ctx.currentTime - ttStart) * Math.pow(2, pitchSemi / 12) * sr) : -1; }
+  function sliceBuf(a, b, rate) {
+    const len = Math.max(32, Math.floor((b - a) / rate)), out = ctx.createBuffer(clip.buf.numberOfChannels, len, sr);
+    const fade = Math.min(Math.floor(sr * 0.004), Math.floor(len / 4));
+    for (let ch = 0; ch < clip.buf.numberOfChannels; ch++) {
+      const src = clip.buf.getChannelData(ch), dst = out.getChannelData(ch);
+      for (let j = 0; j < len; j++) { const p = a + j * rate, k = Math.floor(p), f = p - k; dst[j] = (src[k] || 0) * (1 - f) + (src[k + 1] || 0) * f; }
+      for (let j = 0; j < fade; j++) dst[len - 1 - j] *= j / fade;
+    }
+    return out;
+  }
+  function liveChopHit(i) {
+    const pos = ttPos(); if (pos < 0 || !clip) return false;
+    LC.hist.push({ i, prev: LC.marks[i] });
+    LC.marks[i] = pos;
+    rebuildChops();
+    lcd("lcdPad", "CHOP LIVE", `pad ${i + 1} ← ${(pos / sr).toFixed(2)} s`);
+    return true;
+  }
+  // Annuler le dernier chop live (plusieurs fois de suite si besoin), ou tout recommencer en relançant l'extrait
+  function lcUndo() {
+    const h = LC.hist.pop(); if (!h) return;
+    if (h.prev === undefined) delete LC.marks[h.i]; else LC.marks[h.i] = h.prev;
+    rebuildChops(h.prev === undefined ? h.i : -1);
+    lcd("lcdPad", "CHOP LIVE", `chop du pad ${h.i + 1} annulé`);
+  }
+  function lcRestart() {
+    LC.marks = {}; LC.hist = []; rebuildChops(-2);
+    if (LC.on) { stopTT(); ttStartPlay(LC.countIn); }
+    lcd("lcdPad", "CHOP LIVE", "on recommence" + (LC.countIn ? " · décompte…" : ""));
+  }
+  $("lcUndo").addEventListener("click", lcUndo);
+  $("lcRestart").addEventListener("click", lcRestart);
+  function rebuildChops(cleared) {
+    if (!clip) return;
+    if (chopKit.buffers.length !== 16) { chopKit.buffers = new Array(16).fill(null); chopKit.names = new Array(16).fill("—"); }
+    if (cleared >= 0) { chopKit.buffers[cleared] = null; chopKit.names[cleared] = "—"; }
+    if (cleared === -2) { chopKit.buffers = new Array(16).fill(null); chopKit.names = new Array(16).fill("—"); }
+    const L = clip.buf.length, rate = Math.pow(2, pitchSemi / 12);
+    const starts = Object.values(LC.marks).sort((x, y) => x - y);
+    if (chopKit.buffers.length !== 16) { chopKit.buffers = new Array(16).fill(null); chopKit.names = new Array(16).fill("—"); }
+    Object.entries(LC.marks).forEach(([pad, a]) => {
+      const nxt = starts.find(x => x > a + sr * 0.05); const b = Math.min(L, nxt ?? a + sr * 4);
+      chopKit.buffers[+pad] = sliceBuf(a, b, rate); chopKit.names[+pad] = "Chop " + (+pad + 1);
+    });
+    chops = starts; drawWave();
+    if (!kitIndex.some(k => k.id === "chops")) kitIndex.splice(1, 0, { id: "chops", name: "MES CHOPS", style: "Sampling", desc: "" });
+    kitIndex.find(k => k.id === "chops").desc = (clip.title || "").slice(0, 60) + " · chop live";
+    if (kitCur !== "chops") loadKit("chops"); else { buffers = chopKit.buffers.slice(); names = chopKit.names.slice(); drawPads(); }
+    $("lcUndo").disabled = !LC.hist.length; $("lcRestart").disabled = !Object.keys(LC.marks).length && !LC.hist.length;
+    drawDigPads();
+  }
+  function sampleKnob(k, v) {
+    const val = v / 127;
+    knobVals.sample[k] = val;
+    if (k === 0) { if (!crate) return; const n = curItems().length; const target = Math.round(val * (n - 1)); if (target !== recIdx) { const d = target > recIdx ? 1 : -1; recIdx = target; showRecord(d); } }
+    if (k === 1) setPitch(Math.round((val - 0.5) * 24));
+    if (k === 2) { sens = val; if (chopMode === "auto") rechop(); }
+    if (k === 3) { const n = [4, 8, 12, 16][Math.min(3, Math.floor(val * 4))]; if (n !== eqN || chopMode !== "eq") setChopMode("eq", n); }
+    if (k === 7) sampleVol = val;
+  }
+
