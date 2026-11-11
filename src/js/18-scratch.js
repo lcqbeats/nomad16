@@ -280,7 +280,7 @@
     lcd("lcdPad", "SCRATCH", `${KNOB_LABELS.scratch[k].toLowerCase()} ${Math.round(v * 100)} %`);
   }
   // Interface
-  SCR_PH.forEach(([nm], i) => { const b = document.createElement("button"); b.className = "btn"; b.type = "button"; b.textContent = nm; b.addEventListener("pointerdown", async e => { e.preventDefault(); b.setPointerCapture(e.pointerId); b._held = true; if (await scrInit() && b._held) scrPhrase(i); }); ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => b.addEventListener(ev, () => { b._held = false; scrPhraseStop(i); })); $("scrPh").appendChild(b); });
+  SCR_PH.forEach(([nm], i) => { const b = document.createElement("button"); b.className = "btn hold"; b.type = "button"; b.textContent = nm; b.addEventListener("pointerdown", async e => { e.preventDefault(); b.setPointerCapture(e.pointerId); b._held = true; if (await scrInit() && b._held) scrPhrase(i); }); ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => b.addEventListener(ev, () => { b._held = false; scrPhraseStop(i); })); $("scrPh").appendChild(b); });
   SCR_SRCS.forEach(([id, nm]) => { const b = document.createElement("button"); b.className = "btn"; b.type = "button"; b.textContent = nm; b.dataset.s = id; b.addEventListener("click", async () => { SCR.src = id; drawScrSrc(); if (await scrInit()) scrPick(0, 0); }); $("scrSrc").appendChild(b); });
   [[0, "VOLUME"], [2, "FILTRE"], [3, "DÉMARRAGE"], [4, "FREINAGE"], [5, "COUPURE"]].forEach(([k, nm]) => {
     const l = document.createElement("label"); l.htmlFor = "scrS" + k; l.textContent = nm;

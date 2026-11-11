@@ -233,8 +233,8 @@
     <div class="xfader" id="scrFader" role="slider" aria-label="Fader de coupure" aria-valuemin="0" aria-valuemax="100"><div class="zone" id="scrZone"></div><div class="rail"></div><div class="cap" id="scrCap"></div><i class="led"></i></div>
     <div class="scrcuts">
       <button class="btn" id="scrHam" type="button">HAMSTER : NON</button>
-      <button class="btn" id="scrCut" type="button">COUPE</button>
-      <button class="btn" id="scrOpen" type="button">OUVRE</button>
+      <button class="btn hold" id="scrCut" type="button">COUPE</button>
+      <button class="btn hold" id="scrOpen" type="button">OUVRE</button>
     </div>
     </div>
     <div class="scrcues scrplay" id="scrCues"></div>
@@ -331,6 +331,9 @@
       <div class="row"><button class="btn" id="btPair" type="button" style="flex:1">APPAIRER UN CONTRÔLEUR BLUETOOTH MIDI</button></div>
       <p class="help">Allumez le contrôleur, touchez son nom dans la liste, puis OK. Il apparaît ensuite comme l'Akai.</p>
     </div>
+    <h3>TÉMOIN REC SUR L'AKAI</h3>
+    <div class="row"><button class="btn" id="tapLedBtn" type="button" style="flex:1">TÉMOIN REC SUR TAP TEMPO : NON</button></div>
+    <p class="help">Expérimental, dans l'app iPhone : pendant un enregistrement, NOMAD envoie une horloge MIDI à l'Akai ; si son arpégiateur est réglé sur horloge externe (éditeur Akai, une seule fois), le voyant TAP TEMPO clignote tant que vous enregistrez. Aucun son ajouté. L'arpégiateur, s'il est allumé, suivra ce tempo.</p>
     <h3>BATTERIE</h3>
     <div class="row"><button class="btn" id="hatsBtn" type="button" style="flex:1">CHARLEYS DISCRETS : OUI</button></div>
     <p class="help">Dans les kits fournis : hats, shakers et cymbales plus bas, plus courts, un peu étouffés, et très sensibles à la force de frappe (frappe légère = presque rien). Chaque pad reste réglable dans PADS.</p>
@@ -363,6 +366,17 @@
   <button id="powerBtn" type="button"><b class="bw">NOMAD</b><span class="b16">16</span><small class="btag">POCKET SAMPLER · LOOPER</small></button>
   <p>Touchez pour démarrer Nomad. Sur iPhone, coupez aussi le mode silencieux si vous n'entendez rien.</p>
   <button id="resumeBtn" class="resume" type="button" hidden></button>
+  <button id="tourBtn" class="resume tourlink" type="button">DÉCOUVRIR NOMAD EN 6 ÉCRANS</button>
+</div>
+
+<div class="tour" id="tour" hidden role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+  <div class="tour-in">
+    <button type="button" class="tourx" id="tourClose" aria-label="Fermer">×</button>
+    <h2 id="tourTitle"></h2>
+    <p id="tourText"></p>
+    <div class="tourdots" id="tourDots"></div>
+    <div class="tournav"><button class="btn" id="tourPrev" type="button">PRÉCÉDENT</button><button class="btn rec" id="tourNext" type="button">SUIVANT</button></div>
+  </div>
 </div>
 
 <script>

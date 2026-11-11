@@ -439,3 +439,19 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
 .mini { font-family: var(--font-lcd); font-size: 17px; color: var(--lcd-ink); background: rgba(0,0,0,.35); border: 1px solid rgba(125,255,166,.3); border-radius: 4px; cursor: pointer; padding: 0 8px; }
 .sheet-in h3 { font-family: var(--font-lcd); font-weight: 400; font-size: 21px; margin: 14px 0 4px; opacity: .85; border-top: 1px dashed rgba(125,255,166,.25); padding-top: 10px; }
 @media (prefers-reduced-motion: reduce) { .pad { transition: none; } .btn.rec.armed { animation: none; } }
+/* Règles communes à tous les onglets : allumé = crème, REC armé = rouge qui clignote, en enregistrement = rouge plein cerclé de blanc,
+   petit coin = bouton à tenir (agit tant que le doigt ou le pad reste appuyé) ; appui long = effacer */
+.hold { position: relative; }
+.hold::after { content: ""; position: absolute; right: 4px; top: 4px; border-left: 7px solid transparent; border-top: 7px solid currentColor; opacity: .5; pointer-events: none; }
+.btn.rec.on { background: var(--red); color: #fff; box-shadow: 0 0 0 2px var(--pad-edge), inset 0 0 0 2px #fff; }
+.btn.rec.armed, .lcdtr .trrec.armed, .seqbar .btn.rec.on { animation-duration: .8s; }
+.power button.tourlink, :root[data-type="mpk"] .power button.tourlink { border: 0; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; padding: 6px; }
+.tour { position: fixed; inset: 0; z-index: 40; background: rgba(5,5,5,.88); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.tour[hidden] { display: none; }
+.tour-in { position: relative; max-width: 380px; width: 100%; background: var(--body); border-radius: 14px; padding: 22px 18px 16px; box-shadow: 0 0 0 2px #2b2825; }
+.tour-in h2 { margin: 0 30px 10px 0; font-family: var(--font-display); font-size: 20px; color: var(--red); }
+.tour-in p { margin: 0 0 14px; font-size: 13px; line-height: 1.5; }
+.tourx { position: absolute; right: 10px; top: 8px; background: none; border: 0; color: var(--muted); font-size: 26px; cursor: pointer; }
+.tourdots { display: flex; gap: 6px; justify-content: center; margin-bottom: 12px; }
+.tourdots i { width: 7px; height: 7px; border-radius: 50%; background: #3a3734; } .tourdots i.on { background: var(--text); }
+.tournav { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

@@ -198,3 +198,27 @@ def test_hors_ligne(browser, server):
     page.reload()
     assert page.is_visible("#powerBtn")
     ctx.close()
+
+
+def test_presentation_depuis_l_accueil(browser, server):
+    ctx = browser.new_context(viewport={"width": 414, "height": 896})
+    page = ctx.new_page()
+    page.goto(server)
+    page.click("#tourBtn")
+    assert page.is_visible("#tour")
+    for _ in range(5):
+        page.click("#tourNext")
+    assert page.inner_text("#tourNext") == "TERMINER"
+    page.click("#tourNext")
+    assert not page.is_visible("#tour")
+    ctx.close()
+
+
+def test_temoin_rec_sans_erreur(app):
+    app.click("#gearBtn")
+    app.click("#tapLedBtn")
+    assert "OUI" in app.inner_text("#tapLedBtn")
+    app.evaluate("nomadMidi([0xB0, 64, 127])")   # Sustain : REC armé
+    app.evaluate("nomadMidi([0x99, 36, 100])")
+    app.wait_for_timeout(300)
+    app.click("#tapLedBtn")

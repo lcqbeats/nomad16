@@ -42,7 +42,7 @@
   const fxEl = i => (i >> 3) === fxBank ? fxEls[i & 7] : null;
   function setFxBank(b) { if (b === fxBank) return; fxBank = b; store.set("fxBank", b); drawFxPads(); }
   function drawFxPads() {
-    for (let i = 0; i < 8; i++) { const f = FXS[fxBank * 8 + i]; fxEls[i].innerHTML = `<span>BANK ${fxBank + 1} · PAD ${fxBank * 8 + i + 1}</span><b>${f.name}</b><span>${f.sub}</span>`; fxEls[i].classList.toggle("on", fxActive === fxBank * 8 + i); }
+    for (let i = 0; i < 8; i++) { const f = FXS[fxBank * 8 + i]; fxEls[i].innerHTML = `<span>BANK ${fxBank + 1} · PAD ${fxBank * 8 + i + 1}</span><b>${f.name}</b><span>${f.sub}</span>`; fxEls[i].classList.toggle("on", fxActive === fxBank * 8 + i); fxEls[i].classList.toggle("hold", fxTrig === "hold"); }
     $("fxSet").textContent = "BANK " + (fxBank + 1) + (fxBank ? " · TEXTURES" : " · RYTHMES");
     $("fxTrig").textContent = { hold: "MAINTIEN", one: "1 MESURE", latch: "VERROU" }[fxTrig];
     document.querySelectorAll(".fxt").forEach(b => b.classList.toggle("on", b.dataset.t === fxTarget));

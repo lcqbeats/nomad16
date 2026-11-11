@@ -100,6 +100,7 @@
         const ins = [...access.inputs.values()];
         ins.forEach(inp => inp.onmidimessage = onMidi);
         setMidiStatus(ins.length ? ins.map(i => i.name).join(", ") : "aucun appareil", ins.length > 0);
+        try { TAPLED.outs = [...access.outputs.values()]; } catch (e) {}
       };
       access.onstatechange = refresh;
       refresh();

@@ -453,6 +453,22 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
 .mini { font-family: var(--font-lcd); font-size: 17px; color: var(--lcd-ink); background: rgba(0,0,0,.35); border: 1px solid rgba(125,255,166,.3); border-radius: 4px; cursor: pointer; padding: 0 8px; }
 .sheet-in h3 { font-family: var(--font-lcd); font-weight: 400; font-size: 21px; margin: 14px 0 4px; opacity: .85; border-top: 1px dashed rgba(125,255,166,.25); padding-top: 10px; }
 @media (prefers-reduced-motion: reduce) { .pad { transition: none; } .btn.rec.armed { animation: none; } }
+/* Règles communes à tous les onglets : allumé = crème, REC armé = rouge qui clignote, en enregistrement = rouge plein cerclé de blanc,
+   petit coin = bouton à tenir (agit tant que le doigt ou le pad reste appuyé) ; appui long = effacer */
+.hold { position: relative; }
+.hold::after { content: ""; position: absolute; right: 4px; top: 4px; border-left: 7px solid transparent; border-top: 7px solid currentColor; opacity: .5; pointer-events: none; }
+.btn.rec.on { background: var(--red); color: #fff; box-shadow: 0 0 0 2px var(--pad-edge), inset 0 0 0 2px #fff; }
+.btn.rec.armed, .lcdtr .trrec.armed, .seqbar .btn.rec.on { animation-duration: .8s; }
+.power button.tourlink, :root[data-type="mpk"] .power button.tourlink { border: 0; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; padding: 6px; }
+.tour { position: fixed; inset: 0; z-index: 40; background: rgba(5,5,5,.88); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.tour[hidden] { display: none; }
+.tour-in { position: relative; max-width: 380px; width: 100%; background: var(--body); border-radius: 14px; padding: 22px 18px 16px; box-shadow: 0 0 0 2px #2b2825; }
+.tour-in h2 { margin: 0 30px 10px 0; font-family: var(--font-display); font-size: 20px; color: var(--red); }
+.tour-in p { margin: 0 0 14px; font-size: 13px; line-height: 1.5; }
+.tourx { position: absolute; right: 10px; top: 8px; background: none; border: 0; color: var(--muted); font-size: 26px; cursor: pointer; }
+.tourdots { display: flex; gap: 6px; justify-content: center; margin-bottom: 12px; }
+.tourdots i { width: 7px; height: 7px; border-radius: 50%; background: #3a3734; } .tourdots i.on { background: var(--text); }
+.tournav { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 </style>
 </head>
 <body>
@@ -673,8 +689,8 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     <div class="xfader" id="scrFader" role="slider" aria-label="Fader de coupure" aria-valuemin="0" aria-valuemax="100"><div class="zone" id="scrZone"></div><div class="rail"></div><div class="cap" id="scrCap"></div><i class="led"></i></div>
     <div class="scrcuts">
       <button class="btn" id="scrHam" type="button">HAMSTER : NON</button>
-      <button class="btn" id="scrCut" type="button">COUPE</button>
-      <button class="btn" id="scrOpen" type="button">OUVRE</button>
+      <button class="btn hold" id="scrCut" type="button">COUPE</button>
+      <button class="btn hold" id="scrOpen" type="button">OUVRE</button>
     </div>
     </div>
     <div class="scrcues scrplay" id="scrCues"></div>
@@ -771,6 +787,9 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       <div class="row"><button class="btn" id="btPair" type="button" style="flex:1">APPAIRER UN CONTRÔLEUR BLUETOOTH MIDI</button></div>
       <p class="help">Allumez le contrôleur, touchez son nom dans la liste, puis OK. Il apparaît ensuite comme l'Akai.</p>
     </div>
+    <h3>TÉMOIN REC SUR L'AKAI</h3>
+    <div class="row"><button class="btn" id="tapLedBtn" type="button" style="flex:1">TÉMOIN REC SUR TAP TEMPO : NON</button></div>
+    <p class="help">Expérimental, dans l'app iPhone : pendant un enregistrement, NOMAD envoie une horloge MIDI à l'Akai ; si son arpégiateur est réglé sur horloge externe (éditeur Akai, une seule fois), le voyant TAP TEMPO clignote tant que vous enregistrez. Aucun son ajouté. L'arpégiateur, s'il est allumé, suivra ce tempo.</p>
     <h3>BATTERIE</h3>
     <div class="row"><button class="btn" id="hatsBtn" type="button" style="flex:1">CHARLEYS DISCRETS : OUI</button></div>
     <p class="help">Dans les kits fournis : hats, shakers et cymbales plus bas, plus courts, un peu étouffés, et très sensibles à la force de frappe (frappe légère = presque rien). Chaque pad reste réglable dans PADS.</p>
@@ -803,6 +822,17 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   <button id="powerBtn" type="button"><b class="bw">NOMAD</b><span class="b16">16</span><small class="btag">POCKET SAMPLER · LOOPER</small></button>
   <p>Touchez pour démarrer Nomad. Sur iPhone, coupez aussi le mode silencieux si vous n'entendez rien.</p>
   <button id="resumeBtn" class="resume" type="button" hidden></button>
+  <button id="tourBtn" class="resume tourlink" type="button">DÉCOUVRIR NOMAD EN 6 ÉCRANS</button>
+</div>
+
+<div class="tour" id="tour" hidden role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+  <div class="tour-in">
+    <button type="button" class="tourx" id="tourClose" aria-label="Fermer">×</button>
+    <h2 id="tourTitle"></h2>
+    <p id="tourText"></p>
+    <div class="tourdots" id="tourDots"></div>
+    <div class="tournav"><button class="btn" id="tourPrev" type="button">PRÉCÉDENT</button><button class="btn rec" id="tourNext" type="button">SUIVANT</button></div>
+  </div>
 </div>
 
 <script>
@@ -1862,7 +1892,7 @@ registerProcessor('nomad-scratch',Scr);`;
   const fxEl = i => (i >> 3) === fxBank ? fxEls[i & 7] : null;
   function setFxBank(b) { if (b === fxBank) return; fxBank = b; store.set("fxBank", b); drawFxPads(); }
   function drawFxPads() {
-    for (let i = 0; i < 8; i++) { const f = FXS[fxBank * 8 + i]; fxEls[i].innerHTML = `<span>BANK ${fxBank + 1} · PAD ${fxBank * 8 + i + 1}</span><b>${f.name}</b><span>${f.sub}</span>`; fxEls[i].classList.toggle("on", fxActive === fxBank * 8 + i); }
+    for (let i = 0; i < 8; i++) { const f = FXS[fxBank * 8 + i]; fxEls[i].innerHTML = `<span>BANK ${fxBank + 1} · PAD ${fxBank * 8 + i + 1}</span><b>${f.name}</b><span>${f.sub}</span>`; fxEls[i].classList.toggle("on", fxActive === fxBank * 8 + i); fxEls[i].classList.toggle("hold", fxTrig === "hold"); }
     $("fxSet").textContent = "BANK " + (fxBank + 1) + (fxBank ? " · TEXTURES" : " · RYTHMES");
     $("fxTrig").textContent = { hold: "MAINTIEN", one: "1 MESURE", latch: "VERROU" }[fxTrig];
     document.querySelectorAll(".fxt").forEach(b => b.classList.toggle("on", b.dataset.t === fxTarget));
@@ -3231,7 +3261,7 @@ registerProcessor('nomad-scratch',Scr);`;
     lcd("lcdPad", "SCRATCH", `${KNOB_LABELS.scratch[k].toLowerCase()} ${Math.round(v * 100)} %`);
   }
   // Interface
-  SCR_PH.forEach(([nm], i) => { const b = document.createElement("button"); b.className = "btn"; b.type = "button"; b.textContent = nm; b.addEventListener("pointerdown", async e => { e.preventDefault(); b.setPointerCapture(e.pointerId); b._held = true; if (await scrInit() && b._held) scrPhrase(i); }); ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => b.addEventListener(ev, () => { b._held = false; scrPhraseStop(i); })); $("scrPh").appendChild(b); });
+  SCR_PH.forEach(([nm], i) => { const b = document.createElement("button"); b.className = "btn hold"; b.type = "button"; b.textContent = nm; b.addEventListener("pointerdown", async e => { e.preventDefault(); b.setPointerCapture(e.pointerId); b._held = true; if (await scrInit() && b._held) scrPhrase(i); }); ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => b.addEventListener(ev, () => { b._held = false; scrPhraseStop(i); })); $("scrPh").appendChild(b); });
   SCR_SRCS.forEach(([id, nm]) => { const b = document.createElement("button"); b.className = "btn"; b.type = "button"; b.textContent = nm; b.dataset.s = id; b.addEventListener("click", async () => { SCR.src = id; drawScrSrc(); if (await scrInit()) scrPick(0, 0); }); $("scrSrc").appendChild(b); });
   [[0, "VOLUME"], [2, "FILTRE"], [3, "DÉMARRAGE"], [4, "FREINAGE"], [5, "COUPURE"]].forEach(([k, nm]) => {
     const l = document.createElement("label"); l.htmlFor = "scrS" + k; l.textContent = nm;
@@ -4674,6 +4704,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
         const ins = [...access.inputs.values()];
         ins.forEach(inp => inp.onmidimessage = onMidi);
         setMidiStatus(ins.length ? ins.map(i => i.name).join(", ") : "aucun appareil", ins.length > 0);
+        try { TAPLED.outs = [...access.outputs.values()]; } catch (e) {}
       };
       access.onstatechange = refresh;
       refresh();
@@ -4703,6 +4734,53 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     const i = KEYS.indexOf(e.key.toLowerCase());
     if (i >= 0) { select(i); playPad(i, 0.9); }
   });
+  // ---------- TÉMOIN REC SUR LE MPK (expérimental) : horloge MIDI envoyée seulement pendant l'enregistrement ----------
+  // Le MPK mini mk1 ne permet pas d'allumer ses voyants. Si son arpégiateur est réglé sur horloge externe (éditeur Akai),
+  // son voyant TAP TEMPO clignote au rythme de l'horloge reçue : il clignote donc seulement quand NOMAD enregistre.
+  const TAPLED = { on: store.get("tapLed", false), rec: false, next: 0, outs: [] };
+  function isRecording() {
+    const p = LP.pending, nowF = ctx ? ctx.currentTime * sr : 0;
+    if (p && p.type === "first" && p.phase === "rec") return true;
+    if (p && p.type === "layer" && nowF - (p.comp || 0) >= p.sF) return true;
+    if (SCR.rec && nowF >= SCR.rec.sF) return true;
+    return $("spRec").classList.contains("on");
+  }
+  function midiOutSend(bytes) { TAPLED.outs.forEach(o => { try { o.send(bytes); } catch (e) {} }); }
+  function tapLedTick() {
+    if (!TAPLED.on || !ctx || !TAPLED.outs.length) return;
+    const rec = isRecording(), now = performance.now();
+    if (rec !== TAPLED.rec) { TAPLED.rec = rec; midiOutSend([rec ? 0xFA : 0xFC]); TAPLED.next = now; }
+    if (!rec) return;
+    const step = 60000 / curBpm() / 24;
+    let n = 0; while (TAPLED.next <= now && n < 4) { midiOutSend([0xF8]); TAPLED.next += step; n++; }
+    if (TAPLED.next < now) TAPLED.next = now + step;
+  }
+  setInterval(tapLedTick, 5);
+  function drawTapLed() { $("tapLedBtn").textContent = "TÉMOIN REC SUR TAP TEMPO : " + (TAPLED.on ? "OUI" : "NON"); $("tapLedBtn").classList.toggle("on", TAPLED.on); }
+  $("tapLedBtn").addEventListener("click", () => { TAPLED.on = !TAPLED.on; store.set("tapLed", TAPLED.on); if (!TAPLED.on && TAPLED.rec) { midiOutSend([0xFC]); TAPLED.rec = false; } drawTapLed(); });
+  drawTapLed();
+
+  // ---------- PRÉSENTATION (facultative, depuis l'écran d'accueil) ----------
+  const TOUR = [
+    ["NOMAD se joue au MPK", "L'écran sert à trouver ses marques ; le jeu se fait à l'Akai MPK mini, les yeux libres. Tout ce que font les pads, les potards et les boutons CC / PROG CHANGE est rangé dans RÉGLAGES → AIDE-MÉMOIRE AKAI."],
+    ["Les pads", "Les 16 pads jouent le kit (banque A : 1 à 8, banque B : 9 à 16). PROG CHANGE puis un pad charge un autre kit. Dans PADS, les potards règlent le pad choisi : filtre, écho, saleté, attaque, hauteur, durée, panoramique, niveau."],
+    ["Enregistrer en boucle", "La pédale Sustain fait REC : la première boucle part au premier son et se ferme au second appui, ce qui fixe le tempo. Chaque REC suivant ajoute une piste (6 par séquence). Huit séquences, A à H ; l'onglet SONG les enchaîne en morceau."],
+    ["Trouver des sons", "DIGGING : un bac de disques libres de droits, à découper en chops. SCRATCH : une platine, au doigt ou aux pads. SONS : claviers et accords au clavier de l'Akai. GUITARE : un ampli et ses effets, via le micro ou une interface."],
+    ["Transformer", "FX : des motifs rythmiques et des textures, joués aux pads. SP : la couleur du sampler de poche (vinyle, cassette, lo-fi) et le rééchantillonnage sur un pad. MIX : les volumes de chaque partie."],
+    ["Garder, et finir sur MPC", "La session s'enregistre toute seule et se reprend depuis l'accueil, même sans réseau. Dans RÉGLAGES, une sauvegarde complète va dans l'app Fichiers. EXPORT MULTIPISTE + MPC (LOOPER) prépare les sons, les pistes et un programme pour la MPC."]
+  ];
+  let tourI = 0;
+  function drawTour() {
+    const [t, d] = TOUR[tourI];
+    $("tourTitle").textContent = t; $("tourText").textContent = d;
+    $("tourDots").innerHTML = TOUR.map((_, i) => `<i class="${i === tourI ? "on" : ""}"></i>`).join("");
+    $("tourPrev").disabled = tourI === 0;
+    $("tourNext").textContent = tourI === TOUR.length - 1 ? "TERMINER" : "SUIVANT";
+  }
+  $("tourBtn").addEventListener("click", () => { tourI = 0; drawTour(); $("tour").hidden = false; });
+  $("tourPrev").addEventListener("click", () => { if (tourI > 0) { tourI--; drawTour(); } });
+  $("tourNext").addEventListener("click", () => { if (tourI < TOUR.length - 1) { tourI++; drawTour(); } else $("tour").hidden = true; });
+  $("tourClose").addEventListener("click", () => { $("tour").hidden = true; });
 })();
 </script>
 </body>
