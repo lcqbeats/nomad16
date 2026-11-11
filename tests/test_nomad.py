@@ -259,11 +259,13 @@ def test_remplacer_le_son_d_un_pad(app):
     app.click("#edSrcBtn")
     app.wait_for_function("document.querySelectorAll('#srcList .kititem').length > 40", timeout=8000)
     item = app.locator("#srcList .kititem").nth(20)      # un son d'un kit fourni
+    row_use = app.locator("#srcList .item-row").nth(20).locator(".mini")
     name = item.inner_text()
     item.click()                                         # écoute
     app.wait_for_function("!document.getElementById('srcUse').disabled", timeout=5000)
     assert app.evaluate("nomadState().names[0]") == "Kick"   # pas encore remplacé
-    app.click("#srcUse")
+    row_use.click()                                      # UTILISER sur la ligne
+    app.wait_for_function("document.getElementById('srcSheet').hidden", timeout=5000)
     assert app.evaluate("nomadState().names[0]") == name
     app.click("#undoBtn")
     assert app.evaluate("nomadState().names[0]") == "Kick"

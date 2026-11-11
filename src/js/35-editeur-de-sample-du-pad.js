@@ -119,8 +119,23 @@
     $("srcList").innerHTML = "";
     groups.forEach(g => {
       const h = document.createElement("p"); h.textContent = g.label; h.style.cssText = "margin:12px 0 6px;opacity:.7"; $("srcList").appendChild(h);
-      g.items.forEach(it => { const b = document.createElement("button"); b.type = "button"; b.className = "kititem"; b.textContent = it.n || "—"; b.addEventListener("click", () => srcPreview(it.v, b)); $("srcList").appendChild(b); });
+      g.items.forEach(it => {
+        // toucher = écouter ; UTILISER en face de chaque son, ou appui long sur le son = remplacer directement
+        const row = document.createElement("div"); row.className = "item-row";
+        const b = document.createElement("button"); b.type = "button"; b.className = "kititem"; b.textContent = it.n || "—";
+        let lt = null, long = false;
+        b.addEventListener("pointerdown", () => { long = false; clearTimeout(lt); lt = setTimeout(() => { long = true; srcUseNow(it.v); }, 600); });
+        ["pointerup", "pointercancel", "pointerleave"].forEach(ev => b.addEventListener(ev, () => clearTimeout(lt)));
+        b.addEventListener("click", () => { if (!long) srcPreview(it.v, b); });
+        const u = document.createElement("button"); u.type = "button"; u.className = "mini"; u.textContent = "UTILISER";
+        u.addEventListener("click", () => srcUseNow(it.v));
+        row.append(b, u); $("srcList").appendChild(row);
+      });
     });
+  }
+  async function srcUseNow(v) {
+    try { let r = srcPick.bufs.get(v); if (!r) r = await edSrcBuffer(v); closeSrcSheet(); if (r) edSrcApply(r); }
+    catch (e) { lcd("lcdPad", "PAD", "son introuvable (hors ligne ?)"); }
   }
   function closeSrcSheet() { if (srcPick.src) { try { srcPick.src.stop(); } catch (e) {} srcPick.src = null; } $("srcSheet").hidden = true; }
   $("edSrcBtn").addEventListener("click", openSrcSheet);
