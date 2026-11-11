@@ -85,8 +85,7 @@
 
   // Remplacer le son du pad : n'importe quel son des kits fournis, des kits perso, des chops, ou un fichier
   const edSrcCache = new Map();
-  async function edSrcFill() {
-    const sel = $("edSrc"), keep = sel.value;
+  async function edSrcGroups() {
     const groups = [];
     groups.push({ label: "NOMAD SYNTH", items: SYNTH_NAMES.map((n, i) => ({ v: `synth|${i}`, n })) });
     for (const k of kitIndex) {
@@ -95,10 +94,39 @@
     }
     if (chopKit.buffers.length) groups.push({ label: "MES CHOPS", items: chopKit.names.map((n, i) => ({ v: `chop|${i}`, n })) });
     try { const mine = await DB.all("kits"); mine.forEach(k => groups.push({ label: k.name, items: k.names.map((n, i) => ({ v: `user|${k.id}|${i}`, n })) })); } catch (e) {}
-    sel.innerHTML = `<option value="">— remplacer le son du pad par… —</option><option value="file">un fichier de l'appareil…</option>` +
-      groups.map(g => `<optgroup label="${g.label.replace(/"/g, "")}">${g.items.map(it => `<option value="${it.v}">${(it.n || "—").replace(/</g, "")}</option>`).join("")}</optgroup>`).join("");
-    sel.value = keep && [...sel.options].some(o => o.value === keep) ? keep : "";
+    return groups;
   }
+  // Liste des sons avec écoute : toucher = écouter (sans passer par le looper), UTILISER = remplacer
+  const srcPick = { v: null, r: null, src: null, bufs: new Map() };
+  async function srcPreview(v, el) {
+    [...$("srcList").querySelectorAll(".kititem")].forEach(b => b.classList.toggle("cur", b === el));
+    srcPick.v = v; $("srcUse").disabled = true;
+    try {
+      let r = srcPick.bufs.get(v); if (!r) { r = await edSrcBuffer(v); srcPick.bufs.set(v, r); if (srcPick.bufs.size > 24) srcPick.bufs.delete(srcPick.bufs.keys().next().value); }
+      if (srcPick.v !== v || !r || !r.buf) return;
+      srcPick.r = r; $("srcUse").disabled = false;
+      if (srcPick.src) { try { srcPick.src.stop(); } catch (e) {} }
+      const s = ctx.createBufferSource(), g = ctx.createGain(); g.gain.value = 0.8 * (r.gain || 1);
+      s.buffer = r.buf; s.connect(g); g.connect(mixOut); s.start(); srcPick.src = s;
+    } catch (e) { lcd("lcdPad", "PAD", "son introuvable (hors ligne ?)"); }
+  }
+  async function openSrcSheet() {
+    if (!ctx) return;
+    $("srcTitle").textContent = `SON DU PAD ${selected + 1}`;
+    $("srcUse").disabled = true; srcPick.v = null; srcPick.r = null;
+    $("srcList").innerHTML = "<p>…</p>"; $("srcSheet").hidden = false;
+    const groups = await edSrcGroups();
+    $("srcList").innerHTML = "";
+    groups.forEach(g => {
+      const h = document.createElement("p"); h.textContent = g.label; h.style.cssText = "margin:12px 0 6px;opacity:.7"; $("srcList").appendChild(h);
+      g.items.forEach(it => { const b = document.createElement("button"); b.type = "button"; b.className = "kititem"; b.textContent = it.n || "—"; b.addEventListener("click", () => srcPreview(it.v, b)); $("srcList").appendChild(b); });
+    });
+  }
+  function closeSrcSheet() { if (srcPick.src) { try { srcPick.src.stop(); } catch (e) {} srcPick.src = null; } $("srcSheet").hidden = true; }
+  $("edSrcBtn").addEventListener("click", openSrcSheet);
+  $("srcClose").addEventListener("click", closeSrcSheet);
+  $("srcUse").addEventListener("click", () => { const r = srcPick.r; closeSrcSheet(); if (r) edSrcApply(r); });
+  $("srcFile").addEventListener("click", () => { closeSrcSheet(); $("edFile").click(); });
   async function edSrcBuffer(v) {
     const [kind, a, b] = v.split("|");
     if (kind === "synth") return { buf: synthBuffers[+a], name: SYNTH_NAMES[+a], gain: 1 };
@@ -118,14 +146,6 @@
     syncPlayKnobs(); drawEditor(); voice(i, 0.9, 1);
     lcd("lcdPad", "PAD", `${String(i + 1).padStart(2, "0")} ← ${r.name}`);
   }
-  $("edSrc").addEventListener("focus", edSrcFill);
-  $("edSrc").addEventListener("pointerdown", edSrcFill);
-  $("edSrc").addEventListener("change", async e => {
-    const v = e.target.value; e.target.value = "";
-    if (!v || !ctx) return;
-    if (v === "file") { $("edFile").click(); return; }
-    try { edSrcApply(await edSrcBuffer(v)); } catch (err) { lcd("lcdPad", "PAD", "son introuvable (hors ligne ?)"); }
-  });
   $("edFile").addEventListener("change", async e => {
     const f = e.target.files[0]; e.target.value = ""; if (!f || !ctx) return;
     try { const buf = await new Promise(async (res, rej) => ctx.decodeAudioData(await f.arrayBuffer(), res, rej)); edSrcApply({ buf, name: f.name.replace(/\.[^.]+$/, "").slice(0, 16), gain: 1 }); }

@@ -60,7 +60,7 @@
   <section class="view" id="view-play">
     <div class="padtools"><button class="btn" id="edBtn" type="button">ÉDITER LE PAD 01</button><button class="btn" id="allPadsBtn" type="button" aria-pressed="false">TOUS</button><button class="btn" id="fullBtn" type="button">FULL</button><button class="btn" id="nrBtn" type="button">REPEAT</button><button class="btn" id="nrRate" type="button">1/16</button></div>
     <div class="editor" id="editor" hidden>
-      <div class="edsrc"><label for="edSrc">SON</label><select id="edSrc" aria-label="Remplacer le son du pad"><option value="">— remplacer le son du pad par… —</option></select><input type="file" id="edFile" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff" hidden></div>
+      <div class="edsrc"><label for="edSrcBtn">SON</label><button class="btn" id="edSrcBtn" type="button">REMPLACER LE SON… (avec écoute)</button><input type="file" id="edFile" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff" hidden></div>
       <canvas id="edCanvas" aria-label="Début et fin du son : glissez les bords"></canvas>
       <div class="edrow">
         <button class="btn" id="edShot" type="button">ONE SHOT</button>
@@ -307,6 +307,15 @@
     <h2>TABLE DE MIXAGE <button type="button" id="mixClose">FERMER</button></h2>
     <div class="mixer" id="mixer"></div>
     <p class="help">PADS comprend la platine DIGGING. Les voies PADS, SONS et GUITARE sont réglées avant le looper : ce qui est enregistré suit leurs niveaux. MASTER règle tout ce qui sort.</p>
+  </div>
+</div>
+
+<div class="sheet" id="srcSheet" hidden>
+  <div class="sheet-in">
+    <h2><span id="srcTitle">SON DU PAD</span> <button type="button" id="srcClose">FERMER</button></h2>
+    <p style="font-size:16px;margin:0 0 8px">Touchez un son pour l'écouter, puis UTILISER.</p>
+    <div class="saverow"><button class="btn" id="srcFile" type="button" style="flex:1">UN FICHIER DE L'APPAREIL…</button><button class="btn rec" id="srcUse" type="button" disabled>UTILISER</button></div>
+    <div id="srcList"></div>
   </div>
 </div>
 

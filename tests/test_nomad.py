@@ -256,13 +256,15 @@ def test_prog_change_onglets_et_kits(app):
 
 def test_remplacer_le_son_d_un_pad(app):
     app.click("#edBtn")
-    app.click("#edSrc")
-    app.wait_for_function("document.querySelectorAll('#edSrc optgroup').length >= 2", timeout=5000)
-    val = app.evaluate("[...document.querySelectorAll('#edSrc option')].find(o => o.value.startsWith('kit|')).value")
-    app.select_option("#edSrc", val)
-    app.wait_for_timeout(800)
-    name = app.evaluate("nomadState().names[0]")
-    assert name == app.evaluate(f"[...document.querySelectorAll('#edSrc option')].find(o => o.value === '{val}').textContent")
+    app.click("#edSrcBtn")
+    app.wait_for_function("document.querySelectorAll('#srcList .kititem').length > 40", timeout=8000)
+    item = app.locator("#srcList .kititem").nth(20)      # un son d'un kit fourni
+    name = item.inner_text()
+    item.click()                                         # écoute
+    app.wait_for_function("!document.getElementById('srcUse').disabled", timeout=5000)
+    assert app.evaluate("nomadState().names[0]") == "Kick"   # pas encore remplacé
+    app.click("#srcUse")
+    assert app.evaluate("nomadState().names[0]") == name
     app.click("#undoBtn")
     assert app.evaluate("nomadState().names[0]") == "Kick"
 
