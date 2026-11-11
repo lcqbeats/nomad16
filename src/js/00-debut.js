@@ -11,7 +11,7 @@
     guitar: ["Gain", "Basses", "Médiums", "Aigus", "Présence", "Réverbe", "Master", "Écho"],
     fx: ["Filtre", "Réso", "Envoi écho", "Temps", "Retour", "Ressort", "Bitcrush", "Master"],
     sample: ["Bac ↻", "Pitch", "Sensib.", "Découpes", "—", "—", "—", "Volume"],
-    sons: ["Volume", "Relâche", "Filtre", "Réverbe", "Octave", "Tonalité", "Style", "Accord ↻"],
+    sons: ["Volume", "Relâche", "Filtre", "Réverbe", "Octave", "Tonalité", "Style", "Strum"],
     scratch: ["Volume", "Pitch", "Filtre", "Démarrage", "Freinage", "Coupure", "Main", "Fader"]
   };
   const knobVals = { play: [0.5, 0, 0, 0, 0.5, 1, 0.5, 0.8], loops: [1, 1, 1, 1, 1, 1, 0.9, 0], guitar: [0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.6, 0.3], fx: [0.5, 0.2, 0, 0.5, 0.55, 0, 0, 0.85], sample: [0.5, 0.5, 0.5, 0.5, 0, 0, 0, 0.9], sons: [0.8, 0.35, 1, 0.25, 0.5, 0, 0, 0], song: [1, 1, 1, 1, 1, 1, 0.9, 0.6], sp: [0, 0, 0, 0.5, 0.5, 0.5, 0.8, 0], scratch: [0.85, 0.5, 0.5, 0.2, 0.3, 0.3, 0, 0.2] };

@@ -331,3 +331,13 @@ def test_looper_tout_couper_solo_tape_stop_lecture(app):
     app.evaluate("nomadMidi([0x99, 51, 100])")       # pad 16 : lecture
     assert app.evaluate("nomadDbg.LP.playing") is True
     assert max(loud(app, 100) for _ in range(6)) > 0.01
+
+
+def test_sons_strum(app):
+    app.click("#tab-sons")
+    app.click("#mChords")
+    app.evaluate("nomadMidi([0xB0, 77, 100])")      # potard 8 : strum
+    assert "ms" in app.inner_text("#lcdPad")
+    app.evaluate("nomadMidi([0x99, 36, 100])")      # pad 1 : accord
+    app.wait_for_timeout(600)
+    app.evaluate("nomadMidi([0x89, 36, 0])")

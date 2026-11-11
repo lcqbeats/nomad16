@@ -111,15 +111,15 @@
   }
   // Une voix : échantillon transposé, ou synthèse maison
   let sonsFull = store.get("sonsFull", false);
-  function noteOn(note, vel) {
+  function noteOn(note, vel, when) {
     if (sonsFull) vel = 1;
-    const v = noteOnRaw(note, vel);
-    if (v && ctx) v.log = logNote("key", note, vel, ctx.currentTime);
+    const v = noteOnRaw(note, vel, when);
+    if (v && ctx) v.log = logNote("key", note, vel, Math.max(ctx.currentTime, when || 0));
     return v;
   }
-  function noteOnRaw(note, vel) {
+  function noteOnRaw(note, vel, when) {
     if (!ctx || !instBus) return null;
-    const t = ctx.currentTime, inst = allInsts().find(i => i.id === instCur);
+    const t = Math.max(ctx.currentTime, when || 0), inst = allInsts().find(i => i.id === instCur);
     const amp = (0.2 + 0.8 * Math.pow(vel, 1.4)) * 0.5;
     const g = ctx.createGain(); g.connect(instBus);
     if (inst && inst.regions) {
@@ -129,7 +129,7 @@
       const r = inst.regions[ri], src = ctx.createBufferSource();
       src.buffer = bufs[ri]; src.playbackRate.value = Math.pow(2, (note - r[3] + r[4] / 100) / 12);
       g.gain.value = amp * Math.pow(10, Math.min(12, r[5]) / 40);
-      src.connect(g); src.start();
+      src.connect(g); src.start(t);
       return { g, srcs: [src], rel: Math.max(0.08, relTime * (inst.rel || 1)) };
     }
     const f = 440 * Math.pow(2, (note - 69) / 12), srcs = [];
@@ -173,12 +173,15 @@
     const notes = voiceChord(root, c[1], invUp).map(n => n + sh);
     if (addBass) notes.unshift(root - 12 + sh);
     releaseKey(key);
-    const vs = notes.map(n => noteOn(n, vel)).filter(Boolean);
+    // STRUM (potard 8) : les notes partent l'une après l'autre, de la plus grave à la plus aiguë, de plus en plus douces
+    const gap = strumGap(), t0 = ctx.currentTime;
+    const vs = notes.map((n, k) => noteOn(n, gap ? Math.max(0.05, vel * (1 - 0.05 * k)) : vel, t0 + k * gap)).filter(Boolean);
     activeKeys.set(key, vs);
     onFirstNote(ctx.currentTime);
     const b = $("ch" + (idx % st.p.length)); if (b) { b.classList.add("hit"); b.dataset.k = key; }
     lcd("lcdPad", "ACCORD", `${NN[root % 12]}${SYM[c[1]]} · ${notes.map(n => NN[n % 12]).join(" ")}`);
   }
+  const strumGap = () => { const v = knobVals.sons[7]; return v < 0.02 ? 0 : v * v * 0.15; };
   function scaleSnap(note) {
     const st = STYLES[styleIdx], sc = st.minor ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11];
     const pc = ((note - tonic) % 12 + 12) % 12; if (sc.includes(pc)) return note;
@@ -211,6 +214,6 @@
     if (k === 4) { octShift = Math.round((val - 0.5) * 4); $("octVal").textContent = (octShift > 0 ? "+" : "") + octShift; lcd("lcdPad", "SON", "octave " + (octShift > 0 ? "+" : "") + octShift); }
     if (k === 5) { const nt = Math.min(11, Math.floor(val * 12)); if (nt !== tonic) { tonic = nt; store.set("tonic", tonic); drawSons(); } }
     if (k === 6) { const ns = Math.min(STYLES.length - 1, Math.floor(val * STYLES.length)); if (ns !== styleIdx) { styleIdx = ns; store.set("style", ns); drawSons(); } }
-    if (k === 7) { const st = STYLES[styleIdx]; const i = Math.min(st.p.length - 1, Math.floor(val * st.p.length)); if (i !== knobChord) { knobChord = i; chordOn("knob", i, 0.7, 0); clearTimeout(knobChordT); knobChordT = setTimeout(() => releaseKey("knob"), 1200); } }
+    if (k === 7) { const g = strumGap(); lcd("lcdPad", "STRUM", g ? `${Math.round(g * 1000)} ms entre les notes` : "accords plaqués"); }
   }
 
