@@ -7,7 +7,7 @@
     play: ["Filtre", "Écho", "Saleté", "Attaque", "Tune", "Decay", "Pan", "Niveau"],
     sp: ["Vinyle", "Cassette", "Lo-fi", "Graves", "Médiums", "Aigus", "Sortie SP", "—"],
     song: ["Piste 1", "Piste 2", "Piste 3", "Piste 4", "Piste 5", "Piste 6", "Boucles", "Métronome"],
-    loops: ["Piste 1", "Piste 2", "Piste 3", "Piste 4", "Piste 5", "Piste 6", "Boucles", "Undo ↻"],
+    loops: ["Piste 1", "Piste 2", "Piste 3", "Piste 4", "Piste 5", "Piste 6", "Boucles", "Longueur"],
     guitar: ["Gain", "Basses", "Médiums", "Aigus", "Présence", "Réverbe", "Master", "Écho"],
     fx: ["Filtre", "Réso", "Envoi écho", "Temps", "Retour", "Ressort", "Bitcrush", "Master"],
     sample: ["Bac ↻", "Pitch", "Sensib.", "Découpes", "—", "—", "—", "Volume"],

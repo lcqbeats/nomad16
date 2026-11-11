@@ -55,6 +55,7 @@
   }
   // Sélecteur de séquences du LOOPER (toucher : choisir ; glisser une séquence sur une autre : copier)
   function drawSeqSel() {
+    try { drawLenBar(); } catch (e) {}
     for (let i = 0; i < 8; i++) {
       const b = $("sq" + i); if (!b) return;
       b.classList.toggle("on", i === SQ.cur); b.classList.toggle("has", SQ.list[i].length > 0);
@@ -93,7 +94,7 @@
       return;
     }
     if (!LP.playing) playAll();
-    if (p && p.type === "layer") { p.k = Math.min(8, p.k + 1); return; }
+    if (p && p.type === "layer") { if (p.half) p.half = false; else p.k = Math.min(8, p.k + 1); return; }
     if (p) return;
     if (LP.layers.length >= MAX_LAYERS) { lcdFull = performance.now(); return; }
     // Avec un casque à retard, on raisonne sur ce que l'oreille entend.
@@ -102,7 +103,8 @@
     const cyc = Math.floor(rel / LP.Lf);
     const pos = rel - cyc * LP.Lf;
     const m = pos < 0.15 * LP.Lf ? cyc : cyc + 1;
-    LP.pending = { type: "layer", m, sF: LP.t0F + m * LP.Lf, k: 1, comp: compF() };
+    const nl = LP.nextLen || "1";
+    LP.pending = { type: "layer", m, sF: LP.t0F + m * LP.Lf, k: nl === "h" ? 1 : +nl, half: nl === "h" && LP.beats % 2 === 0, comp: compF() };
   }
   function closeFirst() {
     const p = LP.pending;
@@ -140,11 +142,13 @@
     guitarOnsetTick();
     const p = LP.pending;
     if (!p || p.type !== "layer") return;
-    const eF = p.sF + p.k * LP.Lf + p.comp;
+    const len = p.half ? Math.floor(LP.Lf / 2) : p.k * LP.Lf, eF = p.sF + len + p.comp;
     if (capLatest >= eF) {
-      const buf = extract(p.sF + p.comp, p.k * LP.Lf);
+      let buf = extract(p.sF + p.comp, len), notes = notesIn(p.sF + p.comp, len);
       LP.pending = null;
-      if (buf) addLayer(buf, p.k, p.m, true, notesIn(p.sF + p.comp, p.k * LP.Lf));
+      // ÷2 : la demi-boucle jouée deux fois remplit un tour de boucle
+      if (buf && p.half) { const full = ctx.createBuffer(buf.numberOfChannels, LP.Lf, buf.sampleRate); for (let c = 0; c < buf.numberOfChannels; c++) { const a = buf.getChannelData(c), d = full.getChannelData(c); for (let j = 0; j < LP.Lf; j++) d[j] = a[j % a.length]; } buf = full; notes = notes.concat(notes.map(n => ({ ...n, at: n.at + len }))); }
+      if (buf) addLayer(buf, p.half ? 1 : p.k, p.m, true, notes);
     }
   }
   function addLayer(buf, k, m, hist = true, notes = null) {
@@ -154,7 +158,7 @@
     const l = { buf, k, m, gain, an, vol: knobVals.loops[idx] ?? 1, muted: false, src: null, notes: notes || [] };
     gain.gain.value = l.vol;
     gain.connect(loopBus);
-    LP.layers.push(l);
+    LP.layers.push(l); LP.sel = -1;
     routeFx();
     if (LP.playing) startLayer(l, ctx.currentTime + 0.005);
     if (hist) { const st = { Lf: LP.Lf, beats: LP.beats, si: SQ.cur }; pushHist("nouvelle piste " + (idx + 1), () => dropLayer(l), () => reinsertLayer(l, idx, st)); }
@@ -219,6 +223,44 @@
     drawSeqSel();
   }
   function undo() { if (LP.pending) { LP.pending = null; return; } removeLayer(LP.layers.length - 1); }
+  // ---------- Longueurs : prochaine piste (×1, ×2, ×4, ÷2) et piste existante (÷2, ×2) ----------
+  const LEN_ORDER = ["h", "1", "2", "4"], LEN_NAME = { h: "÷2", 1: "×1", 2: "×2", 4: "×4" };
+  LP.nextLen = "1"; LP.sel = -1;
+  function repeatBuf(b, n) { const o = ctx.createBuffer(b.numberOfChannels, b.length * n, b.sampleRate); for (let c = 0; c < b.numberOfChannels; c++) { const s = b.getChannelData(c), d = o.getChannelData(c); for (let r = 0; r < n; r++) d.set(s, r * b.length); } return o; }
+  function setNextLen(v) {
+    LP.nextLen = v; drawLenBar();
+    lcd("lcdLoop", "BOUCLE", `prochaine piste : ${LEN_NAME[v]}` + (v === "h" ? " (demi-boucle répétée)" : v === "1" ? "" : ` (${v} tours de boucle)`));
+  }
+  function selLayer() { const i = LP.sel >= 0 && LP.layers[LP.sel] ? LP.sel : LP.layers.length - 1; return i; }
+  function resizeLayer(i, mode) {
+    const l = LP.layers[i]; if (!l || !ctx) return;
+    const old = { buf: l.buf, k: l.k, m: l.m, notes: l.notes };
+    const LkL = l.k * LP.Lf, n = l.buf.length;
+    let buf, k = l.k, m = l.m, notes = l.notes || [];
+    if (mode === "double") {
+      if (l.k * 2 > 8) { lcd("lcdLoop", "BOUCLE", "piste déjà trop longue pour ×2"); return; }
+      buf = repeatBuf(l.buf, 2); k = l.k * 2; notes = notes.concat(notes.map(x => ({ ...x, at: x.at + n })));
+    } else {
+      // ÷2 : garde la moitié qui joue en ce moment
+      const off = l.m * LP.Lf, ph = LP.playing ? ((((ctx.currentTime * sr - compF() - LP.t0F - off) % LkL) + LkL) % LkL) : 0, h = ph < LkL / 2 ? 0 : 1, half = Math.floor(n / 2);
+      const hb = ctx.createBuffer(l.buf.numberOfChannels, half, l.buf.sampleRate);
+      for (let c = 0; c < l.buf.numberOfChannels; c++) hb.copyToChannel(l.buf.getChannelData(c).subarray(h * half, h * half + half), c);
+      const hn = notes.filter(x => x.at >= h * half && x.at < (h + 1) * half).map(x => ({ ...x, at: x.at - h * half }));
+      if (l.k % 2 === 0) { buf = hb; k = l.k / 2; m = l.m + h * k; notes = hn; }
+      else { buf = ctx.createBuffer(l.buf.numberOfChannels, n, l.buf.sampleRate); for (let c = 0; c < l.buf.numberOfChannels; c++) { const src = hb.getChannelData(c), dst = buf.getChannelData(c); for (let j = 0; j < n; j++) dst[j] = src[j % half]; } notes = hn.concat(hn.map(x => ({ ...x, at: x.at + half }))); }
+    }
+    const apply = st => { stopLayer(l); Object.assign(l, st); if (LP.playing) startLayer(l, ctx.currentTime + 0.005); drawSeqSel(); };
+    const now = { buf, k, m, notes };
+    apply(now);
+    pushHist(`piste ${i + 1} ${mode === "double" ? "×2" : "÷2"}`, () => apply(old), () => apply(now));
+    lcd("lcdLoop", "BOUCLE", `piste ${i + 1} ${mode === "double" ? "doublée (×2)" : "coupée en deux (÷2)"}`);
+  }
+  function drawLenBar() {
+    if (!$("lenNext")) return;
+    $("lenNext").textContent = "PROCHAINE : " + LEN_NAME[LP.nextLen];
+    const i = selLayer();
+    $("lenSel").textContent = LP.layers.length ? "PISTE " + (i + 1) : "PISTE —";
+  }
   function toggleMute(i) {
     const l = LP.layers[i]; if (!l) return;
     LP.solo = null;
@@ -247,6 +289,10 @@
   function playLoops() { if (!ctx || LP.t0F === null) return; if (!LP.playing) playAll(); }
 
   $("btnRec").addEventListener("pointerdown", e => { e.preventDefault(); recPress(); });
+  $("lenNext").addEventListener("click", () => setNextLen(LEN_ORDER[(LEN_ORDER.indexOf(LP.nextLen) + 1) % LEN_ORDER.length]));
+  $("lenSel").addEventListener("click", () => { if (!LP.layers.length) return; LP.sel = (selLayer() + 1) % LP.layers.length; drawLenBar(); });
+  $("lenHalf").addEventListener("click", () => resizeLayer(selLayer(), "half"));
+  $("lenDouble").addEventListener("click", () => resizeLayer(selLayer(), "double"));
   $("btnUndo").addEventListener("click", undo);
   $("btnPlay").addEventListener("click", togglePlay);
   let clearTimer = null;

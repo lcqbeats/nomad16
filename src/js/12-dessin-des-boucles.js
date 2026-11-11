@@ -62,7 +62,7 @@
             text(el.toFixed(1) + " s", x, y + 16 * d, 16 * d, "#ece3d3", "VT323, monospace");
           }
         } else {
-          const Lk = p.k * LP.Lf, beatF = LP.Lf / LP.beats;
+          const Lk = p.half ? LP.Lf / 2 : p.k * LP.Lf, beatF = LP.Lf / LP.beats;
           if (!recording) {
             const left = Math.ceil((p.sF - heard) / beatF);
             ring(x, y, r, 0, Math.PI * 2, `rgba(217,43,47,${0.3 + 0.7 * pulse})`, lw);
@@ -74,7 +74,7 @@
             ring(x, y, r, 0, Math.PI * 2, "#34302c", lw);
             ring(x, y, r, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2, "#d92b2f", lw);
             text("REC", x, y - 6 * d, 20 * d, "#fff");
-            text("×" + p.k, x, y + 16 * d, 16 * d, "#ece3d3", "VT323, monospace");
+            text(p.half ? "÷2" : "×" + p.k, x, y + 16 * d, 16 * d, "#ece3d3", "VT323, monospace");
           }
         }
       } else {
@@ -104,7 +104,7 @@
       const bpm = (60 * LP.beats / loopLen()).toFixed(1);
       const mb = Math.round(SQ.list.reduce((a, x) => a + x.reduce((b, l) => b + l.buf.length * l.buf.numberOfChannels * 4, 0), 0) / 1048576);
       s = `SÉQ ${SEQ_N[SQ.cur]} · ${bpm} BPM · ${LP.layers.length}/${MAX_LAYERS}` + (mb >= 40 ? ` · ${mb} Mo` : "");
-      if (p) { s += ctx.currentTime * sr - (p.comp || 0) < p.sF ? " · ARMÉE" : " · REC ×" + p.k; cls = "rec"; }
+      if (p) { s += ctx.currentTime * sr - (p.comp || 0) < p.sF ? " · ARMÉE" : " · REC " + (p.half ? "÷2" : "×" + p.k); cls = "rec"; }
       else if (!LP.playing) s += " · STOP";
     }
     if (latMs > 0) s += " · BT +" + latMs + "ms";

@@ -360,3 +360,36 @@ def test_scratch_reprise_immediate_moteur(app):
     assert app.evaluate("nomadDbg.SCR.cueIdx") == 0
     app.evaluate("nomadMidi([0x99, 51, 100])")          # pad 16 : repère suivant
     assert app.evaluate("nomadDbg.SCR.cueIdx") == 1
+
+
+def test_longueur_des_pistes(app):
+    fake_loop(app)
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[0], 1, 0)")
+    app.click("#tab-loops")
+    n = app.evaluate("nomadDbg.LP.layers[0].buf.length")
+    app.click("#lenDouble")
+    assert app.evaluate("[nomadDbg.LP.layers[0].k, nomadDbg.LP.layers[0].buf.length]") == [2, 2 * n]
+    app.click("#lenHalf")
+    assert app.evaluate("nomadDbg.LP.layers[0].k") == 1
+    app.click("#lenHalf")    # k = 1 : demi-boucle répétée, même longueur
+    assert app.evaluate("[nomadDbg.LP.layers[0].k, nomadDbg.LP.layers[0].buf.length]") == [1, n]
+    app.click("#undoBtn")
+    app.click("#lenNext")
+    assert "×2" in app.inner_text("#lenNext")
+    app.evaluate("nomadMidi([0xB0, 77, 0])")      # potard 8 du LOOPER : ÷2
+    assert "÷2" in app.inner_text("#lenNext")
+
+
+def test_prochaine_piste_demi_boucle(app):
+    app.evaluate("nomadMidi([0xB0, 64, 127]); nomadMidi([0xB0, 64, 0])")
+    for note in [36, 38, 36, 38]:
+        app.evaluate(f"nomadMidi([0x99, {note}, 100])")
+        app.wait_for_timeout(250)
+    app.evaluate("nomadMidi([0xB0, 64, 127]); nomadMidi([0xB0, 64, 0]); nomadMidi([0x99, 36, 100])")
+    app.wait_for_function("nomadDbg.LP.layers.length === 1", timeout=5000)
+    app.click("#tab-loops")
+    app.click("#lenNext"); app.click("#lenNext"); app.click("#lenNext")   # ×1 → ×2 → ×4 → ÷2
+    assert "÷2" in app.inner_text("#lenNext")
+    app.evaluate("nomadMidi([0xB0, 64, 127]); nomadMidi([0xB0, 64, 0])")
+    app.wait_for_function("nomadDbg.LP.layers.length === 2", timeout=8000)
+    assert app.evaluate("nomadDbg.LP.layers[1].buf.length === nomadDbg.LP.Lf && nomadDbg.LP.layers[1].k === 1")

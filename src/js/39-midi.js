@@ -63,7 +63,7 @@
     else if (ctx) {
       if (k < 6) { const l = LP.layers[k]; if (l) { l.vol = val; if (!l.muted) l.gain.gain.setTargetAtTime(val, ctx.currentTime, 0.02); } }
       if (k === 6) { loopBus.gain.setTargetAtTime(val, ctx.currentTime, 0.02); if (fxSolo) fxSolo.gain.setTargetAtTime(val, ctx.currentTime, 0.02); }
-      if (k === 7) { if (v >= 120 && undoArmed) { undo(); undoArmed = false; } if (v < 90) undoArmed = true; }
+      if (k === 7 && tab === "loops") { const nl = LEN_ORDER[Math.min(3, Math.floor(val * 4))]; if (nl !== LP.nextLen) setNextLen(nl); }
     }
     $("dial" + k).style.setProperty("--v", val);
   }

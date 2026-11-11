@@ -15,6 +15,10 @@ Instruments de l'onglet SONS : échantillons libres (VCSL CC0, Splendid Grand Pi
 - Bank 2 (CC 28–35) : kit précédent, kit suivant, lecture/arrêt du morceau (SONG), séquence précédente, note repeat, séquence suivante, onglet suivant, entrée guitare (ouvre aussi l'onglet GUITARE).
 - PROG CHANGE : banque A = onglets (1 PADS, 2 LOOPER, 3 SONG, 4 FX, 5 SP, 6 DIGGING, 7 SCRATCH, 8 SONS), banque B = kits 1 à 8.
 
+## Longueur des pistes (LOOPER)
+
+PROCHAINE : ×1, ×2, ×4 ou ÷2 (aussi au potard 8 du LOOPER) fixe la longueur de la prochaine piste ; pendant un REC, chaque nouvel appui rallonge encore d'un tour. PISTE n choisit une piste existante (la dernière par défaut) : ÷2 garde la moitié qui joue en ce moment, ×2 la répète pour la doubler. Tout s'annule avec ↶.
+
 ## Onglet SCRATCH
 
 Platine tactile : le doigt posé sur le disque l'arrête et le fait tourner, en avant comme en arrière ; le son tourne en sillon fermé. Fader de coupure (zone rouge = coupé, HAMSTER inverse), boutons OUVRE / COUPE à maintenir, six phrases calées sur le tempo (baby, chirp, transform, flare, tear, stab). Sources : banque intégrée (voyelles et sons synthétisés, voix de la Bibliothèque du Congrès), bac VOIX, pads, chops de DIGGING, pistes du looper, et vos propres fichiers (gardés dans l'appareil). Tout passe dans le looper.
