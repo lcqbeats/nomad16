@@ -1,7 +1,16 @@
   // ---------- TÉMOIN REC SUR LE MPK (expérimental) : horloge MIDI envoyée seulement pendant l'enregistrement ----------
   // Le MPK mini mk1 ne permet pas d'allumer ses voyants. Si son arpégiateur est réglé sur horloge externe (éditeur Akai),
   // son voyant TAP TEMPO clignote au rythme de l'horloge reçue : il clignote donc seulement quand NOMAD enregistre.
-  const TAPLED = { on: store.get("tapLed", false), rec: false, next: 0, outs: [] };
+  const TAPLED = { on: store.get("tapLed", false), pads: store.get("padLed", false), rec: false, prec: false, next: 0, outs: [] };
+  // Pads 8 et 16 allumés pendant le REC : NOMAD renvoie leur note (canal 10) et leur CC (preset 3) au MPK.
+  // Le MPK mini mk1 n'est pas documenté pour ça : à essayer avec le bouton ESSAYER.
+  function padLeds(on) {
+    [[BASE_NOTE + 7, 27], [BASE_NOTE + 15, 35]].forEach(([n, cc]) => {
+      midiOutSend(on ? [0x99, n, 127] : [0x89, n, 0]);
+      midiOutSend(on ? [0x90, n, 127] : [0x80, n, 0]);
+      midiOutSend([0xB0, cc, on ? 127 : 0]); midiOutSend([0xB9, cc, on ? 127 : 0]);
+    });
+  }
   function isRecording() {
     const p = LP.pending, nowF = ctx ? ctx.currentTime * sr : 0;
     if (p && p.type === "first" && p.phase === "rec") return true;
@@ -11,8 +20,10 @@
   }
   function midiOutSend(bytes) { TAPLED.outs.forEach(o => { try { o.send(bytes); } catch (e) {} }); }
   function tapLedTick() {
-    if (!TAPLED.on || !ctx || !TAPLED.outs.length) return;
+    if (!ctx || !TAPLED.outs.length) return;
     const rec = isRecording(), now = performance.now();
+    if (TAPLED.pads && rec !== TAPLED.prec) { TAPLED.prec = rec; padLeds(rec); }
+    if (!TAPLED.on) return;
     if (rec !== TAPLED.rec) { TAPLED.rec = rec; midiOutSend([rec ? 0xFA : 0xFC]); TAPLED.next = now; }
     if (!rec) return;
     const step = 60000 / curBpm() / 24;
@@ -23,6 +34,13 @@
   function drawTapLed() { $("tapLedBtn").textContent = "TÉMOIN REC SUR TAP TEMPO : " + (TAPLED.on ? "OUI" : "NON"); $("tapLedBtn").classList.toggle("on", TAPLED.on); }
   $("tapLedBtn").addEventListener("click", () => { TAPLED.on = !TAPLED.on; store.set("tapLed", TAPLED.on); if (!TAPLED.on && TAPLED.rec) { midiOutSend([0xFC]); TAPLED.rec = false; } drawTapLed(); });
   drawTapLed();
+  function drawPadLed() { $("padLedBtn").textContent = "TÉMOIN REC SUR LES PADS 8 ET 16 : " + (TAPLED.pads ? "OUI" : "NON"); $("padLedBtn").classList.toggle("on", TAPLED.pads); }
+  $("padLedBtn").addEventListener("click", () => { TAPLED.pads = !TAPLED.pads; store.set("padLed", TAPLED.pads); if (!TAPLED.pads && TAPLED.prec) { padLeds(false); TAPLED.prec = false; } drawPadLed(); });
+  $("padLedTest").addEventListener("click", () => {
+    if (!TAPLED.outs.length) { lcd("lcdPad", "MPK", "pas de sortie MIDI : seulement dans l'app iPhone, Akai branché"); return; }
+    padLeds(true); lcd("lcdPad", "MPK", "pads 8 et 16 allumés ? (3 secondes)"); setTimeout(() => padLeds(false), 3000);
+  });
+  drawPadLed();
 
   // ---------- PRÉSENTATION (facultative, depuis l'écran d'accueil) ----------
   const TOUR = [
