@@ -1336,10 +1336,24 @@ registerProcessor('nomad-scratch',Scr);`;
     for (let c = 0; c < b.numberOfChannels; c++) { const s = b.getChannelData(c), d = r.getChannelData(c), n = s.length; for (let k = 0; k < n; k++) d[k] = s[n - 1 - k]; }
     revCache.set(b, r); return r;
   }
+  // Journal des notes jouées (pads et clavier) : chaque piste du looper garde les siennes, pour l'export .mid vers la MPC
+  const NOTELOG = [];
+  function logNote(kind, n, v, t) { const e = { t, kind, n, v, off: null }; NOTELOG.push(e); if (NOTELOG.length > 4000) NOTELOG.splice(0, 1000); return e; }
+  function notesIn(startF, lenF) {
+    const a = startF / sr, b = (startF + lenF) / sr;
+    return NOTELOG.filter(e => e.t >= a && e.t < b).map(e => ({ at: Math.round(e.t * sr - startF), dur: Math.max(64, Math.round(((e.off ?? e.t + 0.1) - e.t) * sr)), kind: e.kind, n: e.n, v: Math.max(1, Math.min(127, Math.round(e.v * 127))) }));
+  }
+  // notes d'une piste placées dans un cycle de L échantillons, comme le son de la piste (mêmes répétitions, même décalage)
+  function spreadNotes(l, L) {
+    const LkL = l.k * LP.Lf, off = l.m * LP.Lf, out = [];
+    (l.notes || []).forEach(nt => { const p0 = (((nt.at + off) % LkL) + LkL) % LkL; for (let p = p0; p < L; p += LkL) out.push({ ...nt, at: p }); });
+    return out;
+  }
   function voice(i, vel, rate, when) {
     const now = ctx.currentTime, t = Math.max(now, when || now);
     notesAny.push(t); if (notesAny.length > 32) notesAny.shift();
     if (calib) { calib.taps.push(t); return t; }
+    if (rate === 1) logNote("pad", i, vel, t);
     if (!buffers[i]) return t;
     const pp = padParams[i];
     // Chaque pad coupe sa propre voix ; groupes de mute ; dans un kit de chops, tous les pads se coupent entre eux.
@@ -1401,6 +1415,7 @@ registerProcessor('nomad-scratch',Scr);`;
     lcd("lcdPad", "PAD", String(selected + 1).padStart(2, "0") + " " + (names[selected] || "").toUpperCase() + " ♪" + note);
     flash(selected);
     if (!ctx) return;
+    logNote("key", note, vel, ctx.currentTime);
     voice(selected, vel, Math.pow(2, (note - 60) / 12));
   }
 
@@ -1561,7 +1576,7 @@ registerProcessor('nomad-scratch',Scr);`;
       let beats = 1; while (60 * beats / loopLen() < 70) beats *= 2;
       LP.beats = beats;
       LP.playing = true;
-      addLayer(buf, 1, 0);
+      addLayer(buf, 1, 0, true, notesIn(sF, eF - sF));
     };
     finish();
   }
@@ -1585,14 +1600,14 @@ registerProcessor('nomad-scratch',Scr);`;
     if (capLatest >= eF) {
       const buf = extract(p.sF + p.comp, p.k * LP.Lf);
       LP.pending = null;
-      if (buf) addLayer(buf, p.k, p.m);
+      if (buf) addLayer(buf, p.k, p.m, true, notesIn(p.sF + p.comp, p.k * LP.Lf));
     }
   }
-  function addLayer(buf, k, m, hist = true) {
+  function addLayer(buf, k, m, hist = true, notes = null) {
     const idx = LP.layers.length;
     const gain = ctx.createGain();
     const an = ctx.createAnalyser(); an.fftSize = 256;
-    const l = { buf, k, m, gain, an, vol: knobVals.loops[idx] ?? 1, muted: false, src: null };
+    const l = { buf, k, m, gain, an, vol: knobVals.loops[idx] ?? 1, muted: false, src: null, notes: notes || [] };
     gain.gain.value = l.vol;
     gain.connect(loopBus);
     LP.layers.push(l);
@@ -1826,7 +1841,7 @@ registerProcessor('nomad-scratch',Scr);`;
   cv.addEventListener("pointercancel", () => { if (pressT) clearTimeout(pressT); pressCell = -1; dragLoop = null; });
   function mergeLayers(a, b, hist = true) {
     const A = LP.layers[a], B = LP.layers[b];
-    const old = { buf: B.buf, k: B.k, m: B.m, vol: B.vol, muted: B.muted };
+    const old = { buf: B.buf, k: B.k, m: B.m, vol: B.vol, muted: B.muted, notes: B.notes };
     const gcd = (x, y) => y ? gcd(y, x % y) : x;
     const k = A.k * B.k / gcd(A.k, B.k);
     if (k > 8) { lcd("lcdLoop", "BOUCLE", "fusion impossible : boucles trop longues ensemble"); return; }
@@ -1838,7 +1853,8 @@ registerProcessor('nomad-scratch',Scr);`;
         for (let p = 0; p < Lk; p++) dst[p] += src[(((p - off) % LkL) + LkL) % LkL] * g;
       }
     });
-    stopLayer(B); B.buf = out; B.k = k; B.m = 0; B.vol = 1; B.muted = false; B.gain.gain.setTargetAtTime(1, ctx.currentTime, 0.01);
+    const mergedNotes = spreadNotes(A, Lk).concat(spreadNotes(B, Lk)).sort((x, y) => x.at - y.at);
+    stopLayer(B); B.buf = out; B.notes = mergedNotes; B.k = k; B.m = 0; B.vol = 1; B.muted = false; B.gain.gain.setTargetAtTime(1, ctx.currentTime, 0.01);
     if (LP.playing) startLayer(B, ctx.currentTime + 0.005);
     removeLayer(a, false);
     if (hist) pushHist(`fusion pistes ${a + 1} + ${b + 1}`, () => {
@@ -2884,6 +2900,11 @@ registerProcessor('nomad-scratch',Scr);`;
   }
   // Une voix : échantillon transposé, ou synthèse maison
   function noteOn(note, vel) {
+    const v = noteOnRaw(note, vel);
+    if (v && ctx) v.log = logNote("key", note, vel, ctx.currentTime);
+    return v;
+  }
+  function noteOnRaw(note, vel) {
     if (!ctx || !instBus) return null;
     const t = ctx.currentTime, inst = allInsts().find(i => i.id === instCur);
     const amp = (0.2 + 0.8 * Math.pow(vel, 1.4)) * 0.5;
@@ -2911,6 +2932,7 @@ registerProcessor('nomad-scratch',Scr);`;
   }
   function voiceOff(v) {
     if (!v) return;
+    if (v.log && v.log.off === null) v.log.off = ctx.currentTime;
     const t = ctx.currentTime;
     v.g.gain.cancelScheduledValues(t); v.g.gain.setValueAtTime(v.g.gain.value, t); v.g.gain.setTargetAtTime(0, t, v.rel / 4);
     v.srcs.forEach(s => { try { s.stop(t + v.rel * 1.5); } catch (e) {} });
@@ -4029,6 +4051,34 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     normalize(out);
     return out;
   }
+  // Fichier MIDI (format 1) : une piste par couche du looper. Pads → canal 10, notes des pads de la MPC (A01 = pad 1) ;
+  // clavier → canal 1. 96 ticks par noire, tempo de la boucle.
+  function makeMidi(name, bpm, L, layers) {
+    const PPQ = 96, tick = f => Math.round(f / sr * bpm / 60 * PPQ);
+    const vlq = n => { const b = [n & 0x7f]; while ((n >>= 7)) b.unshift((n & 0x7f) | 0x80); return b; };
+    const txt = (type, s) => { const d = [...new TextEncoder().encode(s)]; return [0xff, type, ...vlq(d.length), ...d]; };
+    const chunk = (id, data) => [...new TextEncoder().encode(id), (data.length >>> 24) & 255, (data.length >>> 16) & 255, (data.length >>> 8) & 255, data.length & 255, ...data];
+    const us = Math.round(60000000 / bpm), endT = tick(L);
+    const head = [0, ...txt(3, name), 0, 0xff, 0x51, 3, (us >> 16) & 255, (us >> 8) & 255, us & 255, 0, 0xff, 0x58, 4, 4, 2, 24, 8, ...vlq(endT), 0xff, 0x2f, 0];
+    const tracks = [chunk("MTrk", head)];
+    layers.forEach((l, i) => {
+      const ns = spreadNotes(l, L); if (!ns.length) return;
+      const ev = [];
+      ns.forEach(nt => {
+        const ch = nt.kind === "pad" ? 9 : 0, note = nt.kind === "pad" ? MPC_NOTES[nt.n] : Math.max(0, Math.min(127, nt.n));
+        const t0 = tick(nt.at), t1 = Math.min(endT, Math.max(t0 + 1, tick(nt.at + nt.dur)));
+        ev.push([t0, 1, [0x90 | ch, note, nt.v]], [t1, 0, [0x80 | ch, note, 0]]);
+      });
+      ev.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      const data = [0, ...txt(3, `Piste ${i + 1}`)]; let last = 0;
+      ev.forEach(([t, , m]) => { data.push(...vlq(t - last), ...m); last = t; });
+      data.push(...vlq(Math.max(0, endT - last)), 0xff, 0x2f, 0);
+      tracks.push(chunk("MTrk", data));
+    });
+    if (tracks.length === 1) return null;
+    const hdr = chunk("MThd", [0, 1, 0, tracks.length, 0, PPQ]);
+    return new Uint8Array([...hdr, ...tracks.flat()]);
+  }
   const PAD_COLORS = i => i < 8 ? 0xD92B2F : 0x1D9C74, STEM_COLORS = [0xD92B2F, 0x1D9C74, 0xF2B705, 0x4C8DD9, 0xC86BD9, 0xE8E2D4];
   async function exportMpc() {
     if (!ctx) return;
@@ -4047,7 +4097,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       }
       files.push({ name: kitDir + `NOMAD16_${kitN}.xpm`, data: makeXpm(`NOMAD16 ${kitN}`, pads) });
       // 2. Chaque séquence : une piste par couche + mix + programme (piste n sur le pad A0n, mix sur A07)
-      const seqDone = [];
+      const seqDone = []; let midiDone = false;
       for (let q = 0; q < 8; q++) {
         const st = loopStems(SQ.list[q]); if (!st) continue;
         btn.textContent = "SÉQUENCE " + SEQ_N[q] + "…"; await new Promise(r => setTimeout(r, 0));
@@ -4056,6 +4106,8 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
         files.push({ name: dir + `N16_${tag}_Mix.wav`, data: wav24(st.mix, sr) });
         sp[6] = { name: `N16_${tag}_Mix`, frames: st.L, vol: 0.707946, pan: 0.5, coarse: 0, fine: 0, mute: 0, oneshot: true, release: 0, color: 0xFFFFFF };
         files.push({ name: dir + `NOMAD16_${tag}.xpm`, data: makeXpm(`NOMAD16 ${tag}`, sp) });
+        const mid = makeMidi(`NOMAD16 ${tag}`, curBpm(), st.L, SQ.list[q]);
+        if (mid) { files.push({ name: dir + `NOMAD16_${tag}_notes.mid`, data: mid }); midiDone = true; }
         seqDone.push(`${SEQ_N[q]} (${bars} mes., ${st.stems.length} piste(s))`);
       }
       // 3. Le morceau (onglet SONG)
@@ -4065,7 +4117,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
         const sm = songMix();
         if (sm) { files.push({ name: `${root}/NOMAD16_Morceau_${bpm}bpm.wav`, data: wav24(sm, sr) }); songTxt = `NOMAD16_Morceau_${bpm}bpm.wav : le morceau complet, dans l'ordre de l'onglet SONG :\r\n` + SONG.steps.map((st, i) => `  ${i + 1}. séquence ${SEQ_N[st.s]} x${st.r}`).join("\r\n") + "\r\n"; }
       }
-      files.push({ name: `${root}/LISEZMOI.txt`, data: `NOMAD-16 - export du ${new Date().toLocaleString("fr-FR")}\r\nTempo : ${bpm} BPM\r\n\r\nKit_${kitN} : les 16 sons (WAV 24 bits, 44,1/48 kHz) et le programme de batterie NOMAD16_${kitN}.xpm.\r\n  Pad 1 de l'Akai = pad A01 de la MPC. Tune, pan, niveau et groupes de mute sont repris dans le programme.\r\n  Filtre, saleté, attaque, decay, reverse et découpe sont déjà appliqués aux WAV. L'écho n'est pas inclus.\r\n` + (seqDone.length ? `Sequence_X : pour chaque séquence du looper (${seqDone.join(", ")}), une piste WAV par couche, toutes de la même longueur et calées au début, plus le mix.\r\n  Le programme .xpm de chaque dossier met les pistes sur les pads A01 à A06 et le mix sur A07.\r\n` : "") + songTxt + `\r\nSur la MPC : copiez le dossier sur une carte SD ou une clé USB, ouvrez le .xpm depuis le navigateur de la MPC.\r\nGardez chaque .xpm dans le même dossier que ses WAV.\r\n` });
+      files.push({ name: `${root}/LISEZMOI.txt`, data: `NOMAD-16 - export du ${new Date().toLocaleString("fr-FR")}\r\nTempo : ${bpm} BPM\r\n\r\nKit_${kitN} : les 16 sons (WAV 24 bits, 44,1/48 kHz) et le programme de batterie NOMAD16_${kitN}.xpm.\r\n  Pad 1 de l'Akai = pad A01 de la MPC. Tune, pan, niveau et groupes de mute sont repris dans le programme.\r\n  Filtre, saleté, attaque, decay, reverse et découpe sont déjà appliqués aux WAV. L'écho n'est pas inclus.\r\n` + (seqDone.length ? `Sequence_X : pour chaque séquence du looper (${seqDone.join(", ")}), une piste WAV par couche, toutes de la même longueur et calées au début, plus le mix.\r\n  Le programme .xpm de chaque dossier met les pistes sur les pads A01 à A06 et le mix sur A07.\r\n` : "") + (midiDone ? `  _notes.mid : les notes jouées pendant l'enregistrement de chaque piste (une piste MIDI par couche). Pads sur le canal 10, avec les notes des pads de la MPC (pad 1 = A01) : à jouer avec le programme du kit. Clavier sur le canal 1.\r\n` : "") + songTxt + `\r\nSur la MPC : copiez le dossier sur une carte SD ou une clé USB, ouvrez le .xpm depuis le navigateur de la MPC.\r\nGardez chaque .xpm dans le même dossier que ses WAV.\r\n` });
       const zip = makeZip(files);
       btn.textContent = "EXPORT MULTIPISTE + MPC";
       await deliver(zip, root + ".zip", "application/zip");
@@ -4542,7 +4594,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       knobs: JSON.parse(JSON.stringify(knobVals)), manualBpm, padParams: padParams.map(p => ({ ...p })), fxTarget,
       song: { steps: SONG.steps, loop: SONG.loop, cur: SQ.cur, nr: NR.idx },
       guitar: { amp: G.amp, fx: [...G.fx], preset: G.preset },
-      loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, buf: packBuf(l.buf) }))) }
+      loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, notes: l.notes || [], buf: packBuf(l.buf) }))) }
     };
     await DB.put("projects", p);
   }
@@ -4566,7 +4618,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       const seqs = p.loop.seqs || [p.loop.layers], cur = p.song ? p.song.cur || 0 : 0;
       seqs.forEach((arr, q) => {
         switchNow(q);
-        arr.forEach((l, i) => { addLayer(unpackBuf(l.buf), l.k, l.m, false); const L = LP.layers[i]; L.vol = l.vol; L.muted = l.muted; L.gain.gain.value = l.muted ? 0 : l.vol; });
+        arr.forEach((l, i) => { addLayer(unpackBuf(l.buf), l.k, l.m, false, l.notes || []); const L = LP.layers[i]; L.vol = l.vol; L.muted = l.muted; L.gain.gain.value = l.muted ? 0 : l.vol; });
         if (q !== cur) LP.layers.forEach(stopLayer);
       });
       switchNow(cur); LP.playing = false; playAll();

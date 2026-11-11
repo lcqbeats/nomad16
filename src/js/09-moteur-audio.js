@@ -84,10 +84,24 @@
     for (let c = 0; c < b.numberOfChannels; c++) { const s = b.getChannelData(c), d = r.getChannelData(c), n = s.length; for (let k = 0; k < n; k++) d[k] = s[n - 1 - k]; }
     revCache.set(b, r); return r;
   }
+  // Journal des notes jouées (pads et clavier) : chaque piste du looper garde les siennes, pour l'export .mid vers la MPC
+  const NOTELOG = [];
+  function logNote(kind, n, v, t) { const e = { t, kind, n, v, off: null }; NOTELOG.push(e); if (NOTELOG.length > 4000) NOTELOG.splice(0, 1000); return e; }
+  function notesIn(startF, lenF) {
+    const a = startF / sr, b = (startF + lenF) / sr;
+    return NOTELOG.filter(e => e.t >= a && e.t < b).map(e => ({ at: Math.round(e.t * sr - startF), dur: Math.max(64, Math.round(((e.off ?? e.t + 0.1) - e.t) * sr)), kind: e.kind, n: e.n, v: Math.max(1, Math.min(127, Math.round(e.v * 127))) }));
+  }
+  // notes d'une piste placées dans un cycle de L échantillons, comme le son de la piste (mêmes répétitions, même décalage)
+  function spreadNotes(l, L) {
+    const LkL = l.k * LP.Lf, off = l.m * LP.Lf, out = [];
+    (l.notes || []).forEach(nt => { const p0 = (((nt.at + off) % LkL) + LkL) % LkL; for (let p = p0; p < L; p += LkL) out.push({ ...nt, at: p }); });
+    return out;
+  }
   function voice(i, vel, rate, when) {
     const now = ctx.currentTime, t = Math.max(now, when || now);
     notesAny.push(t); if (notesAny.length > 32) notesAny.shift();
     if (calib) { calib.taps.push(t); return t; }
+    if (rate === 1) logNote("pad", i, vel, t);
     if (!buffers[i]) return t;
     const pp = padParams[i];
     // Chaque pad coupe sa propre voix ; groupes de mute ; dans un kit de chops, tous les pads se coupent entre eux.
@@ -149,6 +163,7 @@
     lcd("lcdPad", "PAD", String(selected + 1).padStart(2, "0") + " " + (names[selected] || "").toUpperCase() + " ♪" + note);
     flash(selected);
     if (!ctx) return;
+    logNote("key", note, vel, ctx.currentTime);
     voice(selected, vel, Math.pow(2, (note - 60) / 12));
   }
 

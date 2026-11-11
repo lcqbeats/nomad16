@@ -242,6 +242,34 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     normalize(out);
     return out;
   }
+  // Fichier MIDI (format 1) : une piste par couche du looper. Pads → canal 10, notes des pads de la MPC (A01 = pad 1) ;
+  // clavier → canal 1. 96 ticks par noire, tempo de la boucle.
+  function makeMidi(name, bpm, L, layers) {
+    const PPQ = 96, tick = f => Math.round(f / sr * bpm / 60 * PPQ);
+    const vlq = n => { const b = [n & 0x7f]; while ((n >>= 7)) b.unshift((n & 0x7f) | 0x80); return b; };
+    const txt = (type, s) => { const d = [...new TextEncoder().encode(s)]; return [0xff, type, ...vlq(d.length), ...d]; };
+    const chunk = (id, data) => [...new TextEncoder().encode(id), (data.length >>> 24) & 255, (data.length >>> 16) & 255, (data.length >>> 8) & 255, data.length & 255, ...data];
+    const us = Math.round(60000000 / bpm), endT = tick(L);
+    const head = [0, ...txt(3, name), 0, 0xff, 0x51, 3, (us >> 16) & 255, (us >> 8) & 255, us & 255, 0, 0xff, 0x58, 4, 4, 2, 24, 8, ...vlq(endT), 0xff, 0x2f, 0];
+    const tracks = [chunk("MTrk", head)];
+    layers.forEach((l, i) => {
+      const ns = spreadNotes(l, L); if (!ns.length) return;
+      const ev = [];
+      ns.forEach(nt => {
+        const ch = nt.kind === "pad" ? 9 : 0, note = nt.kind === "pad" ? MPC_NOTES[nt.n] : Math.max(0, Math.min(127, nt.n));
+        const t0 = tick(nt.at), t1 = Math.min(endT, Math.max(t0 + 1, tick(nt.at + nt.dur)));
+        ev.push([t0, 1, [0x90 | ch, note, nt.v]], [t1, 0, [0x80 | ch, note, 0]]);
+      });
+      ev.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      const data = [0, ...txt(3, `Piste ${i + 1}`)]; let last = 0;
+      ev.forEach(([t, , m]) => { data.push(...vlq(t - last), ...m); last = t; });
+      data.push(...vlq(Math.max(0, endT - last)), 0xff, 0x2f, 0);
+      tracks.push(chunk("MTrk", data));
+    });
+    if (tracks.length === 1) return null;
+    const hdr = chunk("MThd", [0, 1, 0, tracks.length, 0, PPQ]);
+    return new Uint8Array([...hdr, ...tracks.flat()]);
+  }
   const PAD_COLORS = i => i < 8 ? 0xD92B2F : 0x1D9C74, STEM_COLORS = [0xD92B2F, 0x1D9C74, 0xF2B705, 0x4C8DD9, 0xC86BD9, 0xE8E2D4];
   async function exportMpc() {
     if (!ctx) return;
@@ -260,7 +288,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       }
       files.push({ name: kitDir + `NOMAD16_${kitN}.xpm`, data: makeXpm(`NOMAD16 ${kitN}`, pads) });
       // 2. Chaque séquence : une piste par couche + mix + programme (piste n sur le pad A0n, mix sur A07)
-      const seqDone = [];
+      const seqDone = []; let midiDone = false;
       for (let q = 0; q < 8; q++) {
         const st = loopStems(SQ.list[q]); if (!st) continue;
         btn.textContent = "SÉQUENCE " + SEQ_N[q] + "…"; await new Promise(r => setTimeout(r, 0));
@@ -269,6 +297,8 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
         files.push({ name: dir + `N16_${tag}_Mix.wav`, data: wav24(st.mix, sr) });
         sp[6] = { name: `N16_${tag}_Mix`, frames: st.L, vol: 0.707946, pan: 0.5, coarse: 0, fine: 0, mute: 0, oneshot: true, release: 0, color: 0xFFFFFF };
         files.push({ name: dir + `NOMAD16_${tag}.xpm`, data: makeXpm(`NOMAD16 ${tag}`, sp) });
+        const mid = makeMidi(`NOMAD16 ${tag}`, curBpm(), st.L, SQ.list[q]);
+        if (mid) { files.push({ name: dir + `NOMAD16_${tag}_notes.mid`, data: mid }); midiDone = true; }
         seqDone.push(`${SEQ_N[q]} (${bars} mes., ${st.stems.length} piste(s))`);
       }
       // 3. Le morceau (onglet SONG)
@@ -278,7 +308,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
         const sm = songMix();
         if (sm) { files.push({ name: `${root}/NOMAD16_Morceau_${bpm}bpm.wav`, data: wav24(sm, sr) }); songTxt = `NOMAD16_Morceau_${bpm}bpm.wav : le morceau complet, dans l'ordre de l'onglet SONG :\r\n` + SONG.steps.map((st, i) => `  ${i + 1}. séquence ${SEQ_N[st.s]} x${st.r}`).join("\r\n") + "\r\n"; }
       }
-      files.push({ name: `${root}/LISEZMOI.txt`, data: `NOMAD-16 - export du ${new Date().toLocaleString("fr-FR")}\r\nTempo : ${bpm} BPM\r\n\r\nKit_${kitN} : les 16 sons (WAV 24 bits, 44,1/48 kHz) et le programme de batterie NOMAD16_${kitN}.xpm.\r\n  Pad 1 de l'Akai = pad A01 de la MPC. Tune, pan, niveau et groupes de mute sont repris dans le programme.\r\n  Filtre, saleté, attaque, decay, reverse et découpe sont déjà appliqués aux WAV. L'écho n'est pas inclus.\r\n` + (seqDone.length ? `Sequence_X : pour chaque séquence du looper (${seqDone.join(", ")}), une piste WAV par couche, toutes de la même longueur et calées au début, plus le mix.\r\n  Le programme .xpm de chaque dossier met les pistes sur les pads A01 à A06 et le mix sur A07.\r\n` : "") + songTxt + `\r\nSur la MPC : copiez le dossier sur une carte SD ou une clé USB, ouvrez le .xpm depuis le navigateur de la MPC.\r\nGardez chaque .xpm dans le même dossier que ses WAV.\r\n` });
+      files.push({ name: `${root}/LISEZMOI.txt`, data: `NOMAD-16 - export du ${new Date().toLocaleString("fr-FR")}\r\nTempo : ${bpm} BPM\r\n\r\nKit_${kitN} : les 16 sons (WAV 24 bits, 44,1/48 kHz) et le programme de batterie NOMAD16_${kitN}.xpm.\r\n  Pad 1 de l'Akai = pad A01 de la MPC. Tune, pan, niveau et groupes de mute sont repris dans le programme.\r\n  Filtre, saleté, attaque, decay, reverse et découpe sont déjà appliqués aux WAV. L'écho n'est pas inclus.\r\n` + (seqDone.length ? `Sequence_X : pour chaque séquence du looper (${seqDone.join(", ")}), une piste WAV par couche, toutes de la même longueur et calées au début, plus le mix.\r\n  Le programme .xpm de chaque dossier met les pistes sur les pads A01 à A06 et le mix sur A07.\r\n` : "") + (midiDone ? `  _notes.mid : les notes jouées pendant l'enregistrement de chaque piste (une piste MIDI par couche). Pads sur le canal 10, avec les notes des pads de la MPC (pad 1 = A01) : à jouer avec le programme du kit. Clavier sur le canal 1.\r\n` : "") + songTxt + `\r\nSur la MPC : copiez le dossier sur une carte SD ou une clé USB, ouvrez le .xpm depuis le navigateur de la MPC.\r\nGardez chaque .xpm dans le même dossier que ses WAV.\r\n` });
       const zip = makeZip(files);
       btn.textContent = "EXPORT MULTIPISTE + MPC";
       await deliver(zip, root + ".zip", "application/zip");

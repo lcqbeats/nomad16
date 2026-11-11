@@ -147,7 +147,7 @@
   cv.addEventListener("pointercancel", () => { if (pressT) clearTimeout(pressT); pressCell = -1; dragLoop = null; });
   function mergeLayers(a, b, hist = true) {
     const A = LP.layers[a], B = LP.layers[b];
-    const old = { buf: B.buf, k: B.k, m: B.m, vol: B.vol, muted: B.muted };
+    const old = { buf: B.buf, k: B.k, m: B.m, vol: B.vol, muted: B.muted, notes: B.notes };
     const gcd = (x, y) => y ? gcd(y, x % y) : x;
     const k = A.k * B.k / gcd(A.k, B.k);
     if (k > 8) { lcd("lcdLoop", "BOUCLE", "fusion impossible : boucles trop longues ensemble"); return; }
@@ -159,7 +159,8 @@
         for (let p = 0; p < Lk; p++) dst[p] += src[(((p - off) % LkL) + LkL) % LkL] * g;
       }
     });
-    stopLayer(B); B.buf = out; B.k = k; B.m = 0; B.vol = 1; B.muted = false; B.gain.gain.setTargetAtTime(1, ctx.currentTime, 0.01);
+    const mergedNotes = spreadNotes(A, Lk).concat(spreadNotes(B, Lk)).sort((x, y) => x.at - y.at);
+    stopLayer(B); B.buf = out; B.notes = mergedNotes; B.k = k; B.m = 0; B.vol = 1; B.muted = false; B.gain.gain.setTargetAtTime(1, ctx.currentTime, 0.01);
     if (LP.playing) startLayer(B, ctx.currentTime + 0.005);
     removeLayer(a, false);
     if (hist) pushHist(`fusion pistes ${a + 1} + ${b + 1}`, () => {

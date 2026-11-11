@@ -222,3 +222,23 @@ def test_temoin_rec_sans_erreur(app):
     app.evaluate("nomadMidi([0x99, 36, 100])")
     app.wait_for_timeout(300)
     app.click("#tapLedBtn")
+
+
+def test_notes_du_looper_vers_mid(app):
+    app.evaluate("nomadMidi([0xB0, 64, 127]); nomadMidi([0xB0, 64, 0])")   # REC armé
+    for i, note in enumerate([36, 38, 36, 38]):
+        app.evaluate(f"nomadMidi([0x99, {note}, 100])")
+        app.wait_for_timeout(250)
+    app.evaluate("nomadMidi([0xB0, 64, 127]); nomadMidi([0xB0, 64, 0]); nomadMidi([0x99, 36, 100])")   # fermeture sur le temps
+    app.wait_for_function("nomadDbg.LP.layers.length === 1", timeout=5000)
+    n = app.evaluate("nomadDbg.LP.layers[0].notes.length")
+    assert n >= 3, n
+    app.click("#tab-loops")
+    with app.expect_download(timeout=20000) as dl:
+        app.click("#expMpc")
+    z = zipfile.ZipFile(dl.value.path())
+    mids = [x for x in z.namelist() if x.endswith(".mid")]
+    assert mids
+    data = z.read(mids[0])
+    assert data[:4] == b"MThd" and data.count(b"MTrk") == 2
+    assert bytes([0x99, 37]) in data   # pad 1 → note 37 (A01) sur le canal 10

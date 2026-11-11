@@ -108,6 +108,11 @@
   }
   // Une voix : échantillon transposé, ou synthèse maison
   function noteOn(note, vel) {
+    const v = noteOnRaw(note, vel);
+    if (v && ctx) v.log = logNote("key", note, vel, ctx.currentTime);
+    return v;
+  }
+  function noteOnRaw(note, vel) {
     if (!ctx || !instBus) return null;
     const t = ctx.currentTime, inst = allInsts().find(i => i.id === instCur);
     const amp = (0.2 + 0.8 * Math.pow(vel, 1.4)) * 0.5;
@@ -135,6 +140,7 @@
   }
   function voiceOff(v) {
     if (!v) return;
+    if (v.log && v.log.off === null) v.log.off = ctx.currentTime;
     const t = ctx.currentTime;
     v.g.gain.cancelScheduledValues(t); v.g.gain.setValueAtTime(v.g.gain.value, t); v.g.gain.setTargetAtTime(0, t, v.rel / 4);
     v.srcs.forEach(s => { try { s.stop(t + v.rel * 1.5); } catch (e) {} });

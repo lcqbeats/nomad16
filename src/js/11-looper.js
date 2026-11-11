@@ -120,7 +120,7 @@
       let beats = 1; while (60 * beats / loopLen() < 70) beats *= 2;
       LP.beats = beats;
       LP.playing = true;
-      addLayer(buf, 1, 0);
+      addLayer(buf, 1, 0, true, notesIn(sF, eF - sF));
     };
     finish();
   }
@@ -144,14 +144,14 @@
     if (capLatest >= eF) {
       const buf = extract(p.sF + p.comp, p.k * LP.Lf);
       LP.pending = null;
-      if (buf) addLayer(buf, p.k, p.m);
+      if (buf) addLayer(buf, p.k, p.m, true, notesIn(p.sF + p.comp, p.k * LP.Lf));
     }
   }
-  function addLayer(buf, k, m, hist = true) {
+  function addLayer(buf, k, m, hist = true, notes = null) {
     const idx = LP.layers.length;
     const gain = ctx.createGain();
     const an = ctx.createAnalyser(); an.fftSize = 256;
-    const l = { buf, k, m, gain, an, vol: knobVals.loops[idx] ?? 1, muted: false, src: null };
+    const l = { buf, k, m, gain, an, vol: knobVals.loops[idx] ?? 1, muted: false, src: null, notes: notes || [] };
     gain.gain.value = l.vol;
     gain.connect(loopBus);
     LP.layers.push(l);

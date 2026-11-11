@@ -26,6 +26,10 @@ Akai dans SCRATCH (pads tenus) : banque A — pad 1 arrière, pad 5 avant (vites
 Elle ne suit pas index.html et n'est mise à jour que sur demande. À ouvrir dans Web MIDI Browser : https://lcqbeats.github.io/nomad16/ios9.html
 Sous iOS 9, installer d'abord le certificat racine Let's Encrypt depuis Safari : http://x1.i.lencr.org/
 
+## Hors ligne, sauvegardes, export MPC
+
+L'app et les kits restent dans l'appareil (service worker) : NOMAD démarre sans réseau. La session s'enregistre toute seule (« SESSION AUTO ») et se reprend depuis l'accueil ; RÉGLAGES propose une sauvegarde complète en un fichier .nomad. L'export MULTIPISTE + MPC contient, pour chaque séquence, les WAV, un programme .xpm et un fichier .mid des notes jouées (pads sur le canal 10 avec les notes des pads de la MPC, clavier sur le canal 1).
+
 ## Pour modifier NOMAD
 
 Le code est rangé dans `src/` : `shell.html` (la page), `style.css`, et `js/` en morceaux numérotés, collés bout à bout dans l'ordre.
