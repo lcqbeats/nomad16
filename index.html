@@ -1702,9 +1702,30 @@ registerProcessor('nomad-scratch',Scr);`;
   function undo() { if (LP.pending) { LP.pending = null; return; } removeLayer(LP.layers.length - 1); }
   function toggleMute(i) {
     const l = LP.layers[i]; if (!l) return;
+    LP.solo = null;
     l.muted = !l.muted;
     l.gain.gain.setTargetAtTime(l.muted ? 0 : l.vol, ctx.currentTime, 0.01);
   }
+  // Commandes du looper aux pads : tout couper, tout rétablir, solo, arrêt en ralentissant, lecture
+  function setMute(l, m) { l.muted = m; l.gain.gain.setTargetAtTime(m ? 0 : l.vol, ctx.currentTime, 0.01); }
+  function muteAll(m) { if (!ctx) return; LP.solo = null; LP.layers.forEach(l => setMute(l, m)); lcd("lcdLoop", "BOUCLE", m ? "toutes les pistes coupées" : "toutes les pistes rétablies"); }
+  function soloLayer(i) {
+    if (!ctx || !LP.layers[i]) return;
+    if (LP.solo && LP.solo.i === i) { LP.layers.forEach((l, j) => setMute(l, LP.solo.saved[j] ?? false)); LP.solo = null; lcd("lcdLoop", "BOUCLE", "solo terminé"); return; }
+    const saved = LP.solo ? LP.solo.saved : LP.layers.map(l => l.muted);
+    LP.layers.forEach((l, j) => setMute(l, j !== i));
+    LP.solo = { i, saved };
+    lcd("lcdLoop", "BOUCLE", `solo piste ${i + 1}`);
+  }
+  function tapeStopAll() {
+    if (!ctx || !LP.playing) return;
+    const t = ctx.currentTime, dur = 0.9;
+    LP.layers.forEach(l => { if (!l.src) return; const r = l.src.playbackRate; r.cancelScheduledValues(t); r.setValueAtTime(r.value, t); r.exponentialRampToValueAtTime(0.02, t + dur); });
+    loopBus.gain.cancelScheduledValues(t); loopBus.gain.setValueAtTime(loopBus.gain.value, t + dur * 0.6); loopBus.gain.linearRampToValueAtTime(0, t + dur);
+    const vol = knobVals.loops[6];
+    setTimeout(() => { stopAll(); loopBus.gain.cancelScheduledValues(ctx.currentTime); loopBus.gain.setValueAtTime(vol, ctx.currentTime); lcd("lcdLoop", "BOUCLE", "arrêt (tape stop)"); }, dur * 1000 + 30);
+  }
+  function playLoops() { if (!ctx || LP.t0F === null) return; if (!LP.playing) playAll(); }
 
   $("btnRec").addEventListener("pointerdown", e => { e.preventDefault(); recPress(); });
   $("btnUndo").addEventListener("click", undo);
@@ -3535,7 +3556,8 @@ registerProcessor('nomad-scratch',Scr);`;
       sec("BOUTON CC (pads en CC, preset 3)", `<p class="glh">Banque A</p>${padGrid(["Play / stop looper", "Annuler", "Muet piste 1", "Muet piste 2", "Muet piste 3", "Muet piste 4", "Muet piste 5", "Muet piste 6"])}<p class="glh">Banque B</p>${padGrid(["Kit précédent", "Kit suivant", "Morceau ▶/■", "Séquence ◀", "Note repeat", "Séquence ▶", "Onglet suivant", "Guitare (onglet + entrée)"], 8)}`),
       sec("BOUTON PROG CHANGE (onglets et kits)", `<p>PROG CHANGE allumé, un pad, puis PROG CHANGE éteint pour rejouer.</p><p class="glh">Banque A : aller à l'onglet</p>${padGrid(["PADS", "LOOPER", "SONG", "FX", "SP", "DIGGING", "SCRATCH", "SONS"])}<p class="glh">Banque B : charger le kit</p>${padGrid(kits, 8)}<p>GUITARE : pad 16 en mode CC (allume l'entrée et ouvre l'onglet).</p>`),
       sec("PADS EN NOTES, SELON L'ONGLET", `<p><b>PADS, SONG, SP, GUITARE</b> : les 16 sons du kit (banque A = 1 à 8, banque B = 9 à 16).</p>
-        <p class="glh">LOOPER · banque A (la banque B joue le kit)</p>${padGrid(["Muet piste 1", "Muet piste 2", "Muet piste 3", "Kit (pad 4)", "Muet piste 4", "Muet piste 5", "Muet piste 6", "Kit (pad 8)"])}
+        <p class="glh">LOOPER · banque A</p>${padGrid(["Muet piste 1", "Muet piste 2", "Muet piste 3", "Tout couper", "Muet piste 4", "Muet piste 5", "Muet piste 6", "Tout rétablir"])}
+        <p class="glh">LOOPER · banque B</p>${padGrid(["Solo piste 1", "Solo piste 2", "Solo piste 3", "Tape stop", "Solo piste 4", "Solo piste 5", "Solo piste 6", "▶ Lecture"], 8)}
         <p class="glh">FX · banque A : motifs</p>${padGrid(fxA)}<p class="glh">FX · banque B : textures</p>${padGrid(fxB, 8)}
         <p><b>DIGGING</b> : avec CHOP LIVE et le disque qui tourne, chaque pad pose sa découpe ; sinon, le kit.</p>
         <p><b>SONS</b> en mode ACCORDS : pads 1 à 7 = les accords du style choisi, pad 8 = le premier à l'octave ; banque B = une octave plus haut.</p>
@@ -4831,8 +4853,18 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     }
     $("dial" + k).style.setProperty("--v", val);
   }
-  // LOOPER : pads 1, 2, 3 (rangée du bas) et 5, 6, 7 (rangée du haut) = couper / rétablir les pistes 1 à 6
-  const LOOP_MUTE_PADS = { 0: 0, 1: 1, 2: 2, 4: 3, 5: 4, 6: 5 };
+  // LOOPER : pads 1-2-3 et 5-6-7 = couper / rétablir les pistes 1 à 6 ; 4 = tout couper, 8 = tout rétablir ;
+  // banque B : 9-10-11 et 13-14-15 = solo des pistes 1 à 6, 12 = tape stop puis arrêt, 16 = lecture
+  const LOOP_MUTE_PADS = { 0: 0, 1: 1, 2: 2, 4: 3, 5: 4, 6: 5 }, LOOP_SOLO_PADS = { 8: 0, 9: 1, 10: 2, 12: 3, 13: 4, 14: 5 };
+  function loopPad(idx) {
+    if (LOOP_MUTE_PADS[idx] !== undefined) toggleMute(LOOP_MUTE_PADS[idx]);
+    else if (LOOP_SOLO_PADS[idx] !== undefined) soloLayer(LOOP_SOLO_PADS[idx]);
+    else if (idx === 3) muteAll(true);
+    else if (idx === 7) muteAll(false);
+    else if (idx === 11) tapeStopAll();
+    else if (idx === 15) playLoops();
+    flash(idx);
+  }
   function onMidi(e) {
     const [st, d1, d2] = e.data;
     const type = st & 0xf0, ch = (st & 0x0f) + 1;
@@ -4844,7 +4876,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       else if (isPad && idx >= 0 && idx < 16 && tab === "sample" && LC.on && ttSrc && liveChopHit(idx)) { flash(idx); drawDigPads(); }
       else if (isPad && idx >= 0 && idx < 16 && tab === "scratch") scrPad(idx, true, d2 / 127);
       else if (isPad && idx >= 0 && idx < 16 && tab === "fx") fxStart(idx);
-      else if (isPad && tab === "loops" && LOOP_MUTE_PADS[idx] !== undefined) { toggleMute(LOOP_MUTE_PADS[idx]); flash(idx); }
+      else if (isPad && idx >= 0 && idx < 16 && tab === "loops") loopPad(idx);
       else if (isPad && idx >= 0 && idx < 16) playPad(idx, d2 / 127);
       else if (!isPad && tab === "scratch") scrKey(d1);
       else if (!isPad) playKey(d1, d2 / 127);

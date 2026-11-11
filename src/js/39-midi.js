@@ -67,8 +67,18 @@
     }
     $("dial" + k).style.setProperty("--v", val);
   }
-  // LOOPER : pads 1, 2, 3 (rangée du bas) et 5, 6, 7 (rangée du haut) = couper / rétablir les pistes 1 à 6
-  const LOOP_MUTE_PADS = { 0: 0, 1: 1, 2: 2, 4: 3, 5: 4, 6: 5 };
+  // LOOPER : pads 1-2-3 et 5-6-7 = couper / rétablir les pistes 1 à 6 ; 4 = tout couper, 8 = tout rétablir ;
+  // banque B : 9-10-11 et 13-14-15 = solo des pistes 1 à 6, 12 = tape stop puis arrêt, 16 = lecture
+  const LOOP_MUTE_PADS = { 0: 0, 1: 1, 2: 2, 4: 3, 5: 4, 6: 5 }, LOOP_SOLO_PADS = { 8: 0, 9: 1, 10: 2, 12: 3, 13: 4, 14: 5 };
+  function loopPad(idx) {
+    if (LOOP_MUTE_PADS[idx] !== undefined) toggleMute(LOOP_MUTE_PADS[idx]);
+    else if (LOOP_SOLO_PADS[idx] !== undefined) soloLayer(LOOP_SOLO_PADS[idx]);
+    else if (idx === 3) muteAll(true);
+    else if (idx === 7) muteAll(false);
+    else if (idx === 11) tapeStopAll();
+    else if (idx === 15) playLoops();
+    flash(idx);
+  }
   function onMidi(e) {
     const [st, d1, d2] = e.data;
     const type = st & 0xf0, ch = (st & 0x0f) + 1;
@@ -80,7 +90,7 @@
       else if (isPad && idx >= 0 && idx < 16 && tab === "sample" && LC.on && ttSrc && liveChopHit(idx)) { flash(idx); drawDigPads(); }
       else if (isPad && idx >= 0 && idx < 16 && tab === "scratch") scrPad(idx, true, d2 / 127);
       else if (isPad && idx >= 0 && idx < 16 && tab === "fx") fxStart(idx);
-      else if (isPad && tab === "loops" && LOOP_MUTE_PADS[idx] !== undefined) { toggleMute(LOOP_MUTE_PADS[idx]); flash(idx); }
+      else if (isPad && idx >= 0 && idx < 16 && tab === "loops") loopPad(idx);
       else if (isPad && idx >= 0 && idx < 16) playPad(idx, d2 / 127);
       else if (!isPad && tab === "scratch") scrKey(d1);
       else if (!isPad) playKey(d1, d2 / 127);

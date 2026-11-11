@@ -309,3 +309,25 @@ def test_sons_accords_ranges_comme_les_pads(app):
     assert "pad 5" in cells[0] and "pad 1" in cells[4]
     app.click("#mFull")
     assert "on" in app.get_attribute("#mFull", "class")
+
+
+def test_looper_tout_couper_solo_tape_stop_lecture(app):
+    fake_loop(app)
+    for i in range(3):
+        app.evaluate(f"nomadDbg.addLayer(nomadDbg.buffers[{i}], 1, 0)")
+    app.click("#tab-loops")
+    mutes = lambda: app.evaluate("nomadDbg.LP.layers.map(l => l.muted)")
+    app.evaluate("nomadMidi([0x99, 39, 100])")       # pad 4 : tout couper
+    assert mutes() == [True, True, True]
+    app.evaluate("nomadMidi([0x99, 43, 100])")       # pad 8 : tout rétablir
+    assert mutes() == [False, False, False]
+    app.evaluate("nomadMidi([0x99, 45, 100])")       # pad 10 : solo piste 2
+    assert mutes() == [True, False, True]
+    app.evaluate("nomadMidi([0x99, 45, 100])")       # fin du solo
+    assert mutes() == [False, False, False]
+    app.evaluate("nomadMidi([0x99, 47, 100])")       # pad 12 : tape stop
+    app.wait_for_timeout(1300)
+    assert app.evaluate("nomadDbg.LP.playing") is False
+    app.evaluate("nomadMidi([0x99, 51, 100])")       # pad 16 : lecture
+    assert app.evaluate("nomadDbg.LP.playing") is True
+    assert max(loud(app, 100) for _ in range(6)) > 0.01

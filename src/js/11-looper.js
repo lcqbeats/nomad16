@@ -221,9 +221,30 @@
   function undo() { if (LP.pending) { LP.pending = null; return; } removeLayer(LP.layers.length - 1); }
   function toggleMute(i) {
     const l = LP.layers[i]; if (!l) return;
+    LP.solo = null;
     l.muted = !l.muted;
     l.gain.gain.setTargetAtTime(l.muted ? 0 : l.vol, ctx.currentTime, 0.01);
   }
+  // Commandes du looper aux pads : tout couper, tout rétablir, solo, arrêt en ralentissant, lecture
+  function setMute(l, m) { l.muted = m; l.gain.gain.setTargetAtTime(m ? 0 : l.vol, ctx.currentTime, 0.01); }
+  function muteAll(m) { if (!ctx) return; LP.solo = null; LP.layers.forEach(l => setMute(l, m)); lcd("lcdLoop", "BOUCLE", m ? "toutes les pistes coupées" : "toutes les pistes rétablies"); }
+  function soloLayer(i) {
+    if (!ctx || !LP.layers[i]) return;
+    if (LP.solo && LP.solo.i === i) { LP.layers.forEach((l, j) => setMute(l, LP.solo.saved[j] ?? false)); LP.solo = null; lcd("lcdLoop", "BOUCLE", "solo terminé"); return; }
+    const saved = LP.solo ? LP.solo.saved : LP.layers.map(l => l.muted);
+    LP.layers.forEach((l, j) => setMute(l, j !== i));
+    LP.solo = { i, saved };
+    lcd("lcdLoop", "BOUCLE", `solo piste ${i + 1}`);
+  }
+  function tapeStopAll() {
+    if (!ctx || !LP.playing) return;
+    const t = ctx.currentTime, dur = 0.9;
+    LP.layers.forEach(l => { if (!l.src) return; const r = l.src.playbackRate; r.cancelScheduledValues(t); r.setValueAtTime(r.value, t); r.exponentialRampToValueAtTime(0.02, t + dur); });
+    loopBus.gain.cancelScheduledValues(t); loopBus.gain.setValueAtTime(loopBus.gain.value, t + dur * 0.6); loopBus.gain.linearRampToValueAtTime(0, t + dur);
+    const vol = knobVals.loops[6];
+    setTimeout(() => { stopAll(); loopBus.gain.cancelScheduledValues(ctx.currentTime); loopBus.gain.setValueAtTime(vol, ctx.currentTime); lcd("lcdLoop", "BOUCLE", "arrêt (tape stop)"); }, dur * 1000 + 30);
+  }
+  function playLoops() { if (!ctx || LP.t0F === null) return; if (!LP.playing) playAll(); }
 
   $("btnRec").addEventListener("pointerdown", e => { e.preventDefault(); recPress(); });
   $("btnUndo").addEventListener("click", undo);

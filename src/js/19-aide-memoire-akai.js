@@ -15,7 +15,8 @@
       sec("BOUTON CC (pads en CC, preset 3)", `<p class="glh">Banque A</p>${padGrid(["Play / stop looper", "Annuler", "Muet piste 1", "Muet piste 2", "Muet piste 3", "Muet piste 4", "Muet piste 5", "Muet piste 6"])}<p class="glh">Banque B</p>${padGrid(["Kit précédent", "Kit suivant", "Morceau ▶/■", "Séquence ◀", "Note repeat", "Séquence ▶", "Onglet suivant", "Guitare (onglet + entrée)"], 8)}`),
       sec("BOUTON PROG CHANGE (onglets et kits)", `<p>PROG CHANGE allumé, un pad, puis PROG CHANGE éteint pour rejouer.</p><p class="glh">Banque A : aller à l'onglet</p>${padGrid(["PADS", "LOOPER", "SONG", "FX", "SP", "DIGGING", "SCRATCH", "SONS"])}<p class="glh">Banque B : charger le kit</p>${padGrid(kits, 8)}<p>GUITARE : pad 16 en mode CC (allume l'entrée et ouvre l'onglet).</p>`),
       sec("PADS EN NOTES, SELON L'ONGLET", `<p><b>PADS, SONG, SP, GUITARE</b> : les 16 sons du kit (banque A = 1 à 8, banque B = 9 à 16).</p>
-        <p class="glh">LOOPER · banque A (la banque B joue le kit)</p>${padGrid(["Muet piste 1", "Muet piste 2", "Muet piste 3", "Kit (pad 4)", "Muet piste 4", "Muet piste 5", "Muet piste 6", "Kit (pad 8)"])}
+        <p class="glh">LOOPER · banque A</p>${padGrid(["Muet piste 1", "Muet piste 2", "Muet piste 3", "Tout couper", "Muet piste 4", "Muet piste 5", "Muet piste 6", "Tout rétablir"])}
+        <p class="glh">LOOPER · banque B</p>${padGrid(["Solo piste 1", "Solo piste 2", "Solo piste 3", "Tape stop", "Solo piste 4", "Solo piste 5", "Solo piste 6", "▶ Lecture"], 8)}
         <p class="glh">FX · banque A : motifs</p>${padGrid(fxA)}<p class="glh">FX · banque B : textures</p>${padGrid(fxB, 8)}
         <p><b>DIGGING</b> : avec CHOP LIVE et le disque qui tourne, chaque pad pose sa découpe ; sinon, le kit.</p>
         <p><b>SONS</b> en mode ACCORDS : pads 1 à 7 = les accords du style choisi, pad 8 = le premier à l'octave ; banque B = une octave plus haut.</p>
