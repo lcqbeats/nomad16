@@ -336,7 +336,7 @@ def test_looper_tout_couper_solo_tape_stop_lecture(app):
 def test_sons_strum(app):
     app.click("#tab-sons")
     app.click("#mChords")
-    app.evaluate("nomadMidi([0xB0, 77, 100])")      # potard 8 : strum
+    app.evaluate("nomadMidi([0xB0, 77, 0]); nomadMidi([0xB0, 77, 100])")      # potard 8 : strum (reprise douce depuis 0)
     assert "ms" in app.inner_text("#lcdPad")
     app.evaluate("nomadMidi([0x99, 36, 100])")      # pad 1 : accord
     app.wait_for_timeout(600)
