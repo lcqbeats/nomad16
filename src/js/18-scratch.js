@@ -209,8 +209,11 @@
     if (other) v = SCRP.last * other; else if (SCRP.f) v = SCRP.f; else if (SCRP.b) v = -SCRP.b;
     SCR.node.port.postMessage({ type: "push", v: v * srr });
     if (down) onFirstNote(ctx.currentTime);
-    // main retirée un peu après le dernier pad : le moteur reprend s'il tourne
-    if (!SCRP.f && !SCRP.b) SCRP.rel = setTimeout(() => { if (!SCRP.f && !SCRP.b) SCR.node.port.postMessage({ type: "push", v: null }); }, 400);
+    // pad relâché : si le moteur tourne, le disque repart tout de suite ; sinon la main reste posée un instant
+    if (!SCRP.f && !SCRP.b) {
+      if (SCR.motor) SCR.node.port.postMessage({ type: "push", v: null });
+      else SCRP.rel = setTimeout(() => { if (!SCRP.f && !SCRP.b) SCR.node.port.postMessage({ type: "push", v: null }); }, 400);
+    }
   }
   // Potard MAIN : tourner le potard déplace le disque comme une main (course d'un demi-tour)
   const SCRK = { on: false, anchor: 0, t: 0, end: null };
@@ -251,13 +254,21 @@
   }
   function scrToCue() { if (!SCR.node || !SCR.N) return; const p = scrPosNow(), base = SCR.cue + Math.round((p - SCR.cue) / SCR.N) * SCR.N; SCR.node.port.postMessage({ type: "seek", pos: base }); SCR.rep = { pos: base, vel: SCR.rep.vel, t: performance.now() }; }
   // Pads de l'Akai dans SCRATCH (tous tenus) : 1 arrière, 5 avant, 2 ouvre, 3 coupe, 4-6-7-8 et 9-10 phrases
-  const SCR_PADPH = { 3: 0, 5: 1, 6: 2, 7: 3, 8: 4, 9: 5 };
+  // Pads de l'Akai dans SCRATCH (tenus) — banque A : 1 arrière, 5 avant, 2 ouvre, 3 coupe, 4 start/stop, 6-7-8 CUE 1 à 3 ;
+  // banque B : 9-10-11 et 13-14-15 phrases, 12 repère précédent, 16 repère suivant
+  const SCR_PADPH = { 8: 0, 9: 1, 10: 2, 12: 3, 13: 4, 14: 5 }, SCR_PADCUE = { 5: 0, 6: 1, 7: 2 };
   const scrPadT = {};
+  function scrCueStep(d) {
+    const set = SCR.cues.map((c, i) => c === null ? -1 : i).filter(i => i >= 0);
+    if (!set.length) { lcd("lcdPad", "REPÈRE", "aucun repère posé"); return; }
+    const k = set.indexOf(SCR.cueIdx), next = set[k < 0 ? (d > 0 ? 0 : set.length - 1) : (k + d + set.length) % set.length];
+    scrCueTap(next);
+  }
   function scrPad(i, down, vel) {
     if (!SCR.node) { if (down) scrInit(); return; }
-    if (i >= 12) {
-      // pads 13 à 16 = CUE 1 à 4 : frappe = poser / rappeler, tenu plus d'une demi-seconde = effacer
-      const c = i - 12;
+    if (SCR_PADCUE[i] !== undefined) {
+      // CUE : frappe = poser / rappeler, tenu plus d'une demi-seconde = effacer
+      const c = SCR_PADCUE[i];
       if (down) { scrPadT[c] = { long: false, t: setTimeout(() => { scrPadT[c].long = true; if (SCR.cues[c] !== null) scrCueClear(c); }, 650) }; }
       else if (scrPadT[c]) { clearTimeout(scrPadT[c].t); if (!scrPadT[c].long) scrCueTap(c); delete scrPadT[c]; }
       return;
@@ -267,8 +278,9 @@
     if (i === 2) { SCR.padCut = down; scrGate(); return; }
     if (i in SCR_PADPH) { if (down) scrPhrase(SCR_PADPH[i]); else scrPhraseStop(SCR_PADPH[i]); return; }
     if (!down) return;
-    if (i === 10) scrMotor();
-    else if (i === 11) scrToCue();
+    if (i === 3) scrMotor();
+    else if (i === 11) scrCueStep(-1);
+    else if (i === 15) scrCueStep(1);
   }
   function scrKnob(k) {
     const v = knobVals.scratch[k];

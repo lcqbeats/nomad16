@@ -721,7 +721,7 @@ html.flipped, html.flipped body { overflow: hidden; }
     </div>
     <input type="file" id="scrFile" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff" hidden>
     <div class="scrset" id="scrSet"></div>
-    <p class="note help">Posez le doigt sur le disque et tournez : en avant, en arrière, à la vitesse de votre main. Touchez l'écran vert pour enregistrer : le scratch est posé sur une nouvelle piste du looper, sur un tour de boucle complet (départ au début de la boucle suivante) ; sans boucle, c'est le REC du looper. Le son tourne en sillon fermé. START lance le moteur ; la main arrête le disque tant qu'elle est posée. Fader : la zone rouge coupe le son (HAMSTER inverse le côté). OUVRE, COUPE et les phrases agissent tant qu'on les tient (une phrase rejoue son geste en boucle, calée sur le tempo). CUE 1 à 4 : toucher un repère vide le pose là où est le disque ; toucher un repère posé y ramène le disque et en fait le repère actif (l'autocollant blanc) ; appui long pour l'effacer. PHRASES : REPÈRE fait partir les phrases du repère actif, PHRASES : ICI de là où se trouve le disque. Akai, banque A : pad 1 tire le disque en arrière, pad 5 le pousse en avant (plus on frappe fort, plus c'est rapide), pad 2 ouvre, pad 3 coupe, pads 4, 6, 7, 8 = baby, chirp, transform, flare ; banque B : 9 tear, 10 stab, 11 start/stop, 12 retour au repère, 13 à 16 = CUE 1 à 4 (frappe : poser ou rappeler ; tenu : effacer). Le clavier transpose le disque (scratch mélodique) ; potards : volume, pitch, filtre, démarrage, freinage, coupure, MAIN (déplace le disque comme une main, sur un demi-tour), fader. Tout passe dans le looper : REC / Sustain enregistre vos scratchs. Sons VOIX : Bibliothèque du Congrès (Citizen DJ), libres d'utilisation ; MES SONS : vos fichiers, gardés dans cet appareil.</p>
+    <p class="note help">Posez le doigt sur le disque et tournez : en avant, en arrière, à la vitesse de votre main. Touchez l'écran vert pour enregistrer : le scratch est posé sur une nouvelle piste du looper, sur un tour de boucle complet (départ au début de la boucle suivante) ; sans boucle, c'est le REC du looper. Le son tourne en sillon fermé. START lance le moteur ; la main arrête le disque tant qu'elle est posée. Fader : la zone rouge coupe le son (HAMSTER inverse le côté). OUVRE, COUPE et les phrases agissent tant qu'on les tient (une phrase rejoue son geste en boucle, calée sur le tempo). CUE 1 à 4 : toucher un repère vide le pose là où est le disque ; toucher un repère posé y ramène le disque et en fait le repère actif (l'autocollant blanc) ; appui long pour l'effacer. PHRASES : REPÈRE fait partir les phrases du repère actif, PHRASES : ICI de là où se trouve le disque. Akai, banque A : pad 1 tire le disque en arrière, pad 5 le pousse en avant (plus on frappe fort, plus c'est rapide ; si le moteur tourne, le disque repart dès qu'on lâche), pad 2 ouvre, pad 3 coupe, pad 4 start/stop, pads 6-7-8 = CUE 1 à 3 (frappe : poser ou rappeler ; tenu : effacer) ; banque B : pads 9-10-11 et 13-14-15 = phrases baby, chirp, transform, flare, tear, stab (tenues), 12 = repère précédent, 16 = repère suivant. Le clavier transpose le disque (scratch mélodique) ; potards : volume, pitch, filtre, démarrage, freinage, coupure, MAIN (déplace le disque comme une main, sur un demi-tour), fader. Tout passe dans le looper : REC / Sustain enregistre vos scratchs. Sons VOIX : Bibliothèque du Congrès (Citizen DJ), libres d'utilisation ; MES SONS : vos fichiers, gardés dans cet appareil.</p>
   </section>
 
   <section class="view stack" id="view-sons" hidden>
@@ -3266,8 +3266,11 @@ registerProcessor('nomad-scratch',Scr);`;
     if (other) v = SCRP.last * other; else if (SCRP.f) v = SCRP.f; else if (SCRP.b) v = -SCRP.b;
     SCR.node.port.postMessage({ type: "push", v: v * srr });
     if (down) onFirstNote(ctx.currentTime);
-    // main retirée un peu après le dernier pad : le moteur reprend s'il tourne
-    if (!SCRP.f && !SCRP.b) SCRP.rel = setTimeout(() => { if (!SCRP.f && !SCRP.b) SCR.node.port.postMessage({ type: "push", v: null }); }, 400);
+    // pad relâché : si le moteur tourne, le disque repart tout de suite ; sinon la main reste posée un instant
+    if (!SCRP.f && !SCRP.b) {
+      if (SCR.motor) SCR.node.port.postMessage({ type: "push", v: null });
+      else SCRP.rel = setTimeout(() => { if (!SCRP.f && !SCRP.b) SCR.node.port.postMessage({ type: "push", v: null }); }, 400);
+    }
   }
   // Potard MAIN : tourner le potard déplace le disque comme une main (course d'un demi-tour)
   const SCRK = { on: false, anchor: 0, t: 0, end: null };
@@ -3308,13 +3311,21 @@ registerProcessor('nomad-scratch',Scr);`;
   }
   function scrToCue() { if (!SCR.node || !SCR.N) return; const p = scrPosNow(), base = SCR.cue + Math.round((p - SCR.cue) / SCR.N) * SCR.N; SCR.node.port.postMessage({ type: "seek", pos: base }); SCR.rep = { pos: base, vel: SCR.rep.vel, t: performance.now() }; }
   // Pads de l'Akai dans SCRATCH (tous tenus) : 1 arrière, 5 avant, 2 ouvre, 3 coupe, 4-6-7-8 et 9-10 phrases
-  const SCR_PADPH = { 3: 0, 5: 1, 6: 2, 7: 3, 8: 4, 9: 5 };
+  // Pads de l'Akai dans SCRATCH (tenus) — banque A : 1 arrière, 5 avant, 2 ouvre, 3 coupe, 4 start/stop, 6-7-8 CUE 1 à 3 ;
+  // banque B : 9-10-11 et 13-14-15 phrases, 12 repère précédent, 16 repère suivant
+  const SCR_PADPH = { 8: 0, 9: 1, 10: 2, 12: 3, 13: 4, 14: 5 }, SCR_PADCUE = { 5: 0, 6: 1, 7: 2 };
   const scrPadT = {};
+  function scrCueStep(d) {
+    const set = SCR.cues.map((c, i) => c === null ? -1 : i).filter(i => i >= 0);
+    if (!set.length) { lcd("lcdPad", "REPÈRE", "aucun repère posé"); return; }
+    const k = set.indexOf(SCR.cueIdx), next = set[k < 0 ? (d > 0 ? 0 : set.length - 1) : (k + d + set.length) % set.length];
+    scrCueTap(next);
+  }
   function scrPad(i, down, vel) {
     if (!SCR.node) { if (down) scrInit(); return; }
-    if (i >= 12) {
-      // pads 13 à 16 = CUE 1 à 4 : frappe = poser / rappeler, tenu plus d'une demi-seconde = effacer
-      const c = i - 12;
+    if (SCR_PADCUE[i] !== undefined) {
+      // CUE : frappe = poser / rappeler, tenu plus d'une demi-seconde = effacer
+      const c = SCR_PADCUE[i];
       if (down) { scrPadT[c] = { long: false, t: setTimeout(() => { scrPadT[c].long = true; if (SCR.cues[c] !== null) scrCueClear(c); }, 650) }; }
       else if (scrPadT[c]) { clearTimeout(scrPadT[c].t); if (!scrPadT[c].long) scrCueTap(c); delete scrPadT[c]; }
       return;
@@ -3324,8 +3335,9 @@ registerProcessor('nomad-scratch',Scr);`;
     if (i === 2) { SCR.padCut = down; scrGate(); return; }
     if (i in SCR_PADPH) { if (down) scrPhrase(SCR_PADPH[i]); else scrPhraseStop(SCR_PADPH[i]); return; }
     if (!down) return;
-    if (i === 10) scrMotor();
-    else if (i === 11) scrToCue();
+    if (i === 3) scrMotor();
+    else if (i === 11) scrCueStep(-1);
+    else if (i === 15) scrCueStep(1);
   }
   function scrKnob(k) {
     const v = knobVals.scratch[k];
@@ -3564,8 +3576,8 @@ registerProcessor('nomad-scratch',Scr);`;
         <p class="glh">FX · banque A : motifs</p>${padGrid(fxA)}<p class="glh">FX · banque B : textures</p>${padGrid(fxB, 8)}
         <p><b>DIGGING</b> : avec CHOP LIVE et le disque qui tourne, chaque pad pose sa découpe ; sinon, le kit.</p>
         <p><b>SONS</b> en mode ACCORDS : pads 1 à 7 = les accords du style choisi, pad 8 = le premier à l'octave ; banque B = une octave plus haut.</p>
-        <p class="glh">SCRATCH · banque A (tenir)</p>${padGrid(["◀ Arrière", "Ouvre", "Coupe", "Baby", "▶ Avant", "Chirp", "Transform", "Flare"])}
-        <p class="glh">SCRATCH · banque B</p>${padGrid(["Tear", "Stab", "Start / stop", "Au repère", "CUE 1", "CUE 2", "CUE 3", "CUE 4"], 8)}`),
+        <p class="glh">SCRATCH · banque A</p>${padGrid(["◀ Arrière", "Ouvre", "Coupe", "Start / stop", "▶ Avant", "CUE 1", "CUE 2", "CUE 3"])}
+        <p class="glh">SCRATCH · banque B (phrases tenues)</p>${padGrid(["Baby", "Chirp", "Transform", "◀ Repère", "Flare", "Tear", "Stab", "Repère ▶"], 8)}`),
       sec("POTARDS, SELON L'ONGLET", [["PADS", "play"], ["LOOPER", "loops"], ["SONG", "song"], ["FX", "fx"], ["SP", "sp"], ["DIGGING", "sample"], ["SCRATCH", "scratch"], ["SONS", "sons"], ["GUITARE", "guitar"]].map(([n, t]) => `<p class="glh">${n}</p><div class="glknobs">${kn(t)}</div>`).join(""))
     ].join("");
   }

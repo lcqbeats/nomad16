@@ -129,12 +129,12 @@ def test_scratch_pads_avant_phrase_et_cue(app):
     app.evaluate("nomadMidi([0x89, 40, 0])")
     app.wait_for_timeout(100)
     assert app.evaluate("nomadDbg.SCR.rep.pos") > p0
-    app.evaluate("nomadMidi([0x99, 48, 100]); nomadMidi([0x89, 48, 0])")   # pad 13 : CUE 1
+    app.evaluate("nomadMidi([0x99, 41, 100]); nomadMidi([0x89, 41, 0])")   # pad 6 : CUE 1
     assert app.evaluate("nomadDbg.SCR.cues[0]") is not None
-    app.evaluate("nomadMidi([0x99, 39, 100])")          # pad 4 : baby, tenu
+    app.evaluate("nomadMidi([0x99, 44, 100])")          # pad 9 : baby, tenu
     app.wait_for_timeout(500)
     assert app.evaluate("nomadDbg.SCR.ph") == 0
-    app.evaluate("nomadMidi([0x89, 39, 0])")
+    app.evaluate("nomadMidi([0x89, 44, 0])")
     app.wait_for_timeout(100)
     assert app.evaluate("nomadDbg.SCR.ph") == -1
 
@@ -143,7 +143,7 @@ def test_aide_memoire(app):
     app.click("#gearBtn")
     assert app.query_selector_all("#glossary details").__len__() == 5
     app.click("#glossary details:nth-child(4) summary")
-    assert "CUE 4" in app.inner_text("#glossary")
+    assert "CUE 3" in app.inner_text("#glossary")
 
 
 def test_sauvegarde_auto_et_reprise(app):
@@ -341,3 +341,22 @@ def test_sons_strum(app):
     app.evaluate("nomadMidi([0x99, 36, 100])")      # pad 1 : accord
     app.wait_for_timeout(600)
     app.evaluate("nomadMidi([0x89, 36, 0])")
+
+
+def test_scratch_reprise_immediate_moteur(app):
+    app.click("#tab-scratch")
+    app.wait_for_function("nomadDbg.SCR.N > 0", timeout=10000)
+    app.evaluate("nomadMidi([0x99, 39, 100])")          # pad 4 : start
+    app.wait_for_timeout(400)
+    assert app.evaluate("nomadDbg.SCR.motor") is True
+    app.evaluate("nomadMidi([0x99, 36, 100])")          # pad 1 : arrière
+    app.wait_for_timeout(200)
+    app.evaluate("nomadMidi([0x89, 36, 0])")
+    app.wait_for_timeout(120)
+    assert app.evaluate("nomadDbg.SCR.rep.vel") > 0.5    # déjà reparti en avant
+    app.evaluate("nomadMidi([0x99, 41, 100]); nomadMidi([0x89, 41, 0])")   # CUE 1
+    app.evaluate("nomadMidi([0x99, 42, 100]); nomadMidi([0x89, 42, 0])")   # CUE 2
+    app.evaluate("nomadMidi([0x99, 47, 100])")          # pad 12 : repère précédent
+    assert app.evaluate("nomadDbg.SCR.cueIdx") == 0
+    app.evaluate("nomadMidi([0x99, 51, 100])")          # pad 16 : repère suivant
+    assert app.evaluate("nomadDbg.SCR.cueIdx") == 1
