@@ -1866,7 +1866,7 @@ registerProcessor('nomad-scratch',Scr);`;
             ring(x, y, r, 0, Math.PI * 2, "#34302c", lw);
             ring(x, y, r, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2, "#d92b2f", lw);
             text("REC", x, y - 6 * d, 20 * d, "#fff");
-            text(p.half ? "÷2" : "×" + p.k, x, y + 16 * d, 16 * d, "#ece3d3", "VT323, monospace");
+            if (p.half || p.k > 1) text(`${Math.min(p.half ? 1 : p.k, Math.floor((heard - p.sF) / LP.Lf) + 1)}/${p.half ? "½" : p.k}`, x, y + 16 * d, 16 * d, "#ece3d3", "VT323, monospace");
           }
         }
       } else {
@@ -3867,7 +3867,10 @@ registerProcessor('nomad-scratch',Scr);`;
     rg.clearRect(0, 0, W, H); rg.strokeStyle = lcdInk; rg.fillStyle = lcdInk; rg.lineCap = "butt";
     rg.globalAlpha = 0.2; rg.lineWidth = 3 * d; rg.beginPath(); rg.arc(cx, cy, R, 0, 7); rg.stroke(); rg.globalAlpha = 1;
     if (LP.t0F === null || !LP.playing || !LP.Lf) return;
-    const C = cycF(LP.layers), pos = ((ctx.currentTime * sr - LP.t0F) % C + C) % C, u = pos / C, beats = Math.round(LP.beats * C / LP.Lf);
+    // pendant un REC de piste, le cercle suit la piste en train d'être enregistrée : ×2 = un tour en deux fois plus de temps
+    const p = LP.pending, heard = ctx.currentTime * sr - (p && p.comp || 0), recL = p && p.type === "layer" && heard >= p.sF ? (p.half ? Math.floor(LP.Lf / 2) : p.k * LP.Lf) : 0;
+    const C = recL || cycF(LP.layers), pos = recL ? Math.min(recL - 1, heard - p.sF) : ((ctx.currentTime * sr - LP.t0F) % C + C) % C, u = pos / C, beats = Math.max(1, Math.round(LP.beats * C / LP.Lf));
+    if (recL) { rg.strokeStyle = rg.fillStyle = "#ff6b61"; }
     rg.lineWidth = 3 * d; rg.beginPath(); rg.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + u * 2 * Math.PI); rg.stroke();
     for (let k = 0; k < beats; k++) { const a = -Math.PI / 2 + k / beats * 2 * Math.PI, big = k % 4 === 0; rg.globalAlpha = big ? 1 : 0.6; rg.lineWidth = (big ? 2 : 1) * d; rg.beginPath(); rg.moveTo(cx + Math.cos(a) * (R - (big ? 7 : 4) * d), cy + Math.sin(a) * (R - (big ? 7 : 4) * d)); rg.lineTo(cx + Math.cos(a) * (R + 2 * d), cy + Math.sin(a) * (R + 2 * d)); rg.stroke(); }
     rg.globalAlpha = 1; const a = -Math.PI / 2 + u * 2 * Math.PI; rg.beginPath(); rg.arc(cx + Math.cos(a) * R, cy + Math.sin(a) * R, 3 * d, 0, 7); rg.fill();

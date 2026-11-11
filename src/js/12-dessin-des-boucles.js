@@ -74,7 +74,7 @@
             ring(x, y, r, 0, Math.PI * 2, "#34302c", lw);
             ring(x, y, r, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2, "#d92b2f", lw);
             text("REC", x, y - 6 * d, 20 * d, "#fff");
-            text(p.half ? "÷2" : "×" + p.k, x, y + 16 * d, 16 * d, "#ece3d3", "VT323, monospace");
+            if (p.half || p.k > 1) text(`${Math.min(p.half ? 1 : p.k, Math.floor((heard - p.sF) / LP.Lf) + 1)}/${p.half ? "½" : p.k}`, x, y + 16 * d, 16 * d, "#ece3d3", "VT323, monospace");
           }
         }
       } else {
