@@ -62,18 +62,20 @@
       b.innerHTML = `<b>${i.name}</b><span>${i.lic}</span>`;
       b.addEventListener("click", () => selectInst(i.id)); $("insts").appendChild(b);
     });
-    $("mNotes").classList.toggle("on", !chordMode); $("mChords").classList.toggle("on", chordMode); $("mBass").classList.toggle("on", addBass);
+    $("mNotes").classList.toggle("on", !chordMode); $("mChords").classList.toggle("on", chordMode); $("mBass").classList.toggle("on", addBass); $("mFull").classList.toggle("on", sonsFull);
     $("chordPanel").hidden = !chordMode;
     const st = STYLES[styleIdx];
     $("keyVal").textContent = NN[tonic] + (st.minor ? "m" : ""); $("keyMode").textContent = st.minor ? "mineur" : "majeur";
     $("styles").innerHTML = "";
     STYLES.forEach((s2, i) => { const b = document.createElement("button"); b.type = "button"; b.className = "stylebtn" + (i === styleIdx ? " on" : ""); b.textContent = s2.name; b.addEventListener("click", () => { styleIdx = i; store.set("style", i); drawSons(); }); $("styles").appendChild(b); });
     $("chords").innerHTML = "";
-    st.p.forEach((c, i) => {
-      const b = document.createElement("button"); b.type = "button"; b.className = "chord"; b.id = "ch" + i;
-      b.innerHTML = `<b>${NN[(tonic + c[0]) % 12]}${SYM[c[1]]}</b><span>${c[2]} · pad ${i + 1} · ${["DO", "RÉ", "MI", "FA", "SOL", "LA", "SI"][i]}</span>`;
-      b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture(e.pointerId); chordOn("screen" + i, i, 0.8, 0); });
-      ["pointerup", "pointercancel"].forEach(ev => b.addEventListener(ev, () => releaseKey("screen" + i)));
+    // rangés comme les pads de l'Akai : 5-6-7-8 en haut, 1-2-3-4 en bas (le pad 8 rejoue l'accord 1 à l'octave)
+    [4, 5, 6, 7, 0, 1, 2, 3].forEach(pad => {
+      const i = pad < 7 && pad < st.p.length ? pad : 0, oct = pad === 7 || pad >= st.p.length, c = st.p[i];
+      const b = document.createElement("button"); b.type = "button"; b.className = "chord"; if (!oct) b.id = "ch" + i;
+      b.innerHTML = `<b>${NN[(tonic + c[0]) % 12]}${SYM[c[1]]}${oct ? " ↑" : ""}</b><span>${oct ? "octave" : c[2]} · pad ${pad + 1}${oct ? "" : " · " + ["DO", "RÉ", "MI", "FA", "SOL", "LA", "SI"][i]}</span>`;
+      b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture(e.pointerId); chordOn("screen" + pad, i, 0.8, 0, oct ? 1 : 0); });
+      ["pointerup", "pointercancel"].forEach(ev => b.addEventListener(ev, () => releaseKey("screen" + pad)));
       $("chords").appendChild(b);
     });
     const ci = allInsts().find(i => i.id === instCur);
@@ -82,6 +84,7 @@
   $("mNotes").addEventListener("click", () => { chordMode = false; store.set("chordMode", false); drawSons(); });
   $("mChords").addEventListener("click", () => { chordMode = true; store.set("chordMode", true); drawSons(); });
   $("mBass").addEventListener("click", () => { addBass = !addBass; store.set("addBass", addBass); drawSons(); });
+  $("mFull").addEventListener("click", () => { sonsFull = !sonsFull; store.set("sonsFull", sonsFull); drawSons(); lcd("lcdPad", "SONS", sonsFull ? "FULL : toutes les notes à pleine force" : "FULL coupé : la force de frappe compte"); });
   function setOct(o) { octShift = Math.max(-2, Math.min(2, o)); knobVals.sons[4] = (octShift + 2) / 4; $("octVal").textContent = (octShift > 0 ? "+" : "") + octShift; if (tab === "sons") drawKnobs(); }
   $("octDown").addEventListener("click", () => setOct(octShift - 1));
   $("octUp").addEventListener("click", () => setOct(octShift + 1));
@@ -107,7 +110,9 @@
     return bufs;
   }
   // Une voix : échantillon transposé, ou synthèse maison
+  let sonsFull = store.get("sonsFull", false);
   function noteOn(note, vel) {
+    if (sonsFull) vel = 1;
     const v = noteOnRaw(note, vel);
     if (v && ctx) v.log = logNote("key", note, vel, ctx.currentTime);
     return v;

@@ -67,6 +67,8 @@
     }
     $("dial" + k).style.setProperty("--v", val);
   }
+  // LOOPER : pads 1, 2, 3 (rangée du bas) et 5, 6, 7 (rangée du haut) = couper / rétablir les pistes 1 à 6
+  const LOOP_MUTE_PADS = { 0: 0, 1: 1, 2: 2, 4: 3, 5: 4, 6: 5 };
   function onMidi(e) {
     const [st, d1, d2] = e.data;
     const type = st & 0xf0, ch = (st & 0x0f) + 1;
@@ -78,6 +80,7 @@
       else if (isPad && idx >= 0 && idx < 16 && tab === "sample" && LC.on && ttSrc && liveChopHit(idx)) { flash(idx); drawDigPads(); }
       else if (isPad && idx >= 0 && idx < 16 && tab === "scratch") scrPad(idx, true, d2 / 127);
       else if (isPad && idx >= 0 && idx < 16 && tab === "fx") fxStart(idx);
+      else if (isPad && tab === "loops" && LOOP_MUTE_PADS[idx] !== undefined) { toggleMute(LOOP_MUTE_PADS[idx]); flash(idx); }
       else if (isPad && idx >= 0 && idx < 16) playPad(idx, d2 / 127);
       else if (!isPad && tab === "scratch") scrKey(d1);
       else if (!isPad) playKey(d1, d2 / 127);

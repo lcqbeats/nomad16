@@ -296,7 +296,7 @@ button { font-family: var(--font-body); }
 .inst b { display: block; font-size: 10px; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inst span { display: block; font-size: 8px; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inst.on { background: var(--red); color: #fff; } .inst.on span { color: #ffd9d6; }
-.modebar { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 6px; }
+.modebar { display: grid; grid-template-columns: 1fr 1fr 1.2fr .8fr; gap: 6px; }
 .keybar { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .keybar .kv { font-family: var(--font-lcd); font-size: 24px; color: var(--lcd-ink); min-width: 4.5ch; text-align: center; }
 .keybar .btn { padding: 9px 12px; }
@@ -476,6 +476,13 @@ html.flipped, html.flipped body { overflow: hidden; }
 #flip { position: fixed; inset: 0; transform: rotate(180deg); }
 #flipScroll { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; justify-content: center; align-items: flex-start;
   padding: max(12px, env(safe-area-inset-bottom)) 12px max(12px, env(safe-area-inset-top)); box-sizing: border-box; }
+.trcol { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+#lcdRing { width: 34px; height: 34px; display: block; }
+.modebar .btn#mFull.on { background: var(--red); color: #fff; }
+.cat.on { background: var(--text); color: var(--ink); }
+.inst.on, :root[data-skin="clair"] .inst.on { background: var(--red); color: #fff; box-shadow: 0 0 0 2px var(--text); }
+.stylebtn.on, :root[data-skin="clair"] .stylebtn.on { background: var(--green); color: #fff; box-shadow: 0 0 0 2px var(--text); }
+:root[data-skin="clair"] .cat.on { background: #1e1e1e; color: #f4f2ee; }
 </style>
 </head>
 <body>
@@ -503,7 +510,7 @@ html.flipped, html.flipped body { overflow: hidden; }
     </div>
     <div class="wide" id="lcdPad"><span class="k">PAD&nbsp;</span>—</div>
     <div class="wide" id="lcdLoop"><span class="k">BOUCLE&nbsp;</span>vide · Sustain pour armer</div>
-    <div class="lcdstrip"><canvas id="lcdScope" aria-hidden="true"></canvas><div class="trow"><i class="beatled" id="beatLed"></i><span id="lcdTr">■ 1.1.1</span></div></div>
+    <div class="lcdstrip"><canvas id="lcdScope" aria-hidden="true"></canvas><div class="trcol"><canvas id="lcdRing" aria-hidden="true"></canvas><div class="trow"><i class="beatled" id="beatLed"></i><span id="lcdTr">■ 1.1.1</span></div></div></div>
   </div>
 
   <div class="tabs" role="tablist">
@@ -724,6 +731,7 @@ html.flipped, html.flipped body { overflow: hidden; }
       <button class="btn on" id="mNotes" type="button">NOTES</button>
       <button class="btn" id="mChords" type="button">ACCORDS</button>
       <button class="btn" id="mBass" type="button">+ BASSE</button>
+      <button class="btn" id="mFull" type="button">FULL</button>
     </div>
     <div id="chordPanel" class="stack" hidden>
       <div class="keybar">
@@ -2871,18 +2879,20 @@ registerProcessor('nomad-scratch',Scr);`;
       b.innerHTML = `<b>${i.name}</b><span>${i.lic}</span>`;
       b.addEventListener("click", () => selectInst(i.id)); $("insts").appendChild(b);
     });
-    $("mNotes").classList.toggle("on", !chordMode); $("mChords").classList.toggle("on", chordMode); $("mBass").classList.toggle("on", addBass);
+    $("mNotes").classList.toggle("on", !chordMode); $("mChords").classList.toggle("on", chordMode); $("mBass").classList.toggle("on", addBass); $("mFull").classList.toggle("on", sonsFull);
     $("chordPanel").hidden = !chordMode;
     const st = STYLES[styleIdx];
     $("keyVal").textContent = NN[tonic] + (st.minor ? "m" : ""); $("keyMode").textContent = st.minor ? "mineur" : "majeur";
     $("styles").innerHTML = "";
     STYLES.forEach((s2, i) => { const b = document.createElement("button"); b.type = "button"; b.className = "stylebtn" + (i === styleIdx ? " on" : ""); b.textContent = s2.name; b.addEventListener("click", () => { styleIdx = i; store.set("style", i); drawSons(); }); $("styles").appendChild(b); });
     $("chords").innerHTML = "";
-    st.p.forEach((c, i) => {
-      const b = document.createElement("button"); b.type = "button"; b.className = "chord"; b.id = "ch" + i;
-      b.innerHTML = `<b>${NN[(tonic + c[0]) % 12]}${SYM[c[1]]}</b><span>${c[2]} · pad ${i + 1} · ${["DO", "RÉ", "MI", "FA", "SOL", "LA", "SI"][i]}</span>`;
-      b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture(e.pointerId); chordOn("screen" + i, i, 0.8, 0); });
-      ["pointerup", "pointercancel"].forEach(ev => b.addEventListener(ev, () => releaseKey("screen" + i)));
+    // rangés comme les pads de l'Akai : 5-6-7-8 en haut, 1-2-3-4 en bas (le pad 8 rejoue l'accord 1 à l'octave)
+    [4, 5, 6, 7, 0, 1, 2, 3].forEach(pad => {
+      const i = pad < 7 && pad < st.p.length ? pad : 0, oct = pad === 7 || pad >= st.p.length, c = st.p[i];
+      const b = document.createElement("button"); b.type = "button"; b.className = "chord"; if (!oct) b.id = "ch" + i;
+      b.innerHTML = `<b>${NN[(tonic + c[0]) % 12]}${SYM[c[1]]}${oct ? " ↑" : ""}</b><span>${oct ? "octave" : c[2]} · pad ${pad + 1}${oct ? "" : " · " + ["DO", "RÉ", "MI", "FA", "SOL", "LA", "SI"][i]}</span>`;
+      b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture(e.pointerId); chordOn("screen" + pad, i, 0.8, 0, oct ? 1 : 0); });
+      ["pointerup", "pointercancel"].forEach(ev => b.addEventListener(ev, () => releaseKey("screen" + pad)));
       $("chords").appendChild(b);
     });
     const ci = allInsts().find(i => i.id === instCur);
@@ -2891,6 +2901,7 @@ registerProcessor('nomad-scratch',Scr);`;
   $("mNotes").addEventListener("click", () => { chordMode = false; store.set("chordMode", false); drawSons(); });
   $("mChords").addEventListener("click", () => { chordMode = true; store.set("chordMode", true); drawSons(); });
   $("mBass").addEventListener("click", () => { addBass = !addBass; store.set("addBass", addBass); drawSons(); });
+  $("mFull").addEventListener("click", () => { sonsFull = !sonsFull; store.set("sonsFull", sonsFull); drawSons(); lcd("lcdPad", "SONS", sonsFull ? "FULL : toutes les notes à pleine force" : "FULL coupé : la force de frappe compte"); });
   function setOct(o) { octShift = Math.max(-2, Math.min(2, o)); knobVals.sons[4] = (octShift + 2) / 4; $("octVal").textContent = (octShift > 0 ? "+" : "") + octShift; if (tab === "sons") drawKnobs(); }
   $("octDown").addEventListener("click", () => setOct(octShift - 1));
   $("octUp").addEventListener("click", () => setOct(octShift + 1));
@@ -2916,7 +2927,9 @@ registerProcessor('nomad-scratch',Scr);`;
     return bufs;
   }
   // Une voix : échantillon transposé, ou synthèse maison
+  let sonsFull = store.get("sonsFull", false);
   function noteOn(note, vel) {
+    if (sonsFull) vel = 1;
     const v = noteOnRaw(note, vel);
     if (v && ctx) v.log = logNote("key", note, vel, ctx.currentTime);
     return v;
@@ -3521,7 +3534,8 @@ registerProcessor('nomad-scratch',Scr);`;
       sec("PARTOUT", `<p><b>Pédale Sustain</b> : REC / superposition du looper.</p><p><b>Clavier</b> : joue l'instrument de SONS (ou le pad choisi, transposé) ; en mode ACCORDS, les touches graves jouent les accords ; dans SCRATCH, il transpose le disque.</p><p><b>Potards</b> : changent de rôle selon l'onglet (voir POTARDS).</p>`, true),
       sec("BOUTON CC (pads en CC, preset 3)", `<p class="glh">Banque A</p>${padGrid(["Play / stop looper", "Annuler", "Muet piste 1", "Muet piste 2", "Muet piste 3", "Muet piste 4", "Muet piste 5", "Muet piste 6"])}<p class="glh">Banque B</p>${padGrid(["Kit précédent", "Kit suivant", "Morceau ▶/■", "Séquence ◀", "Note repeat", "Séquence ▶", "Onglet suivant", "Guitare (onglet + entrée)"], 8)}`),
       sec("BOUTON PROG CHANGE (onglets et kits)", `<p>PROG CHANGE allumé, un pad, puis PROG CHANGE éteint pour rejouer.</p><p class="glh">Banque A : aller à l'onglet</p>${padGrid(["PADS", "LOOPER", "SONG", "FX", "SP", "DIGGING", "SCRATCH", "SONS"])}<p class="glh">Banque B : charger le kit</p>${padGrid(kits, 8)}<p>GUITARE : pad 16 en mode CC (allume l'entrée et ouvre l'onglet).</p>`),
-      sec("PADS EN NOTES, SELON L'ONGLET", `<p><b>PADS, LOOPER, SONG, SP, GUITARE</b> : les 16 sons du kit (banque A = 1 à 8, banque B = 9 à 16).</p>
+      sec("PADS EN NOTES, SELON L'ONGLET", `<p><b>PADS, SONG, SP, GUITARE</b> : les 16 sons du kit (banque A = 1 à 8, banque B = 9 à 16).</p>
+        <p class="glh">LOOPER · banque A (la banque B joue le kit)</p>${padGrid(["Muet piste 1", "Muet piste 2", "Muet piste 3", "Kit (pad 4)", "Muet piste 4", "Muet piste 5", "Muet piste 6", "Kit (pad 8)"])}
         <p class="glh">FX · banque A : motifs</p>${padGrid(fxA)}<p class="glh">FX · banque B : textures</p>${padGrid(fxB, 8)}
         <p><b>DIGGING</b> : avec CHOP LIVE et le disque qui tourne, chaque pad pose sa découpe ; sinon, le kit.</p>
         <p><b>SONS</b> en mode ACCORDS : pads 1 à 7 = les accords du style choisi, pad 8 = le premier à l'octave ; banque B = une octave plus haut.</p>
@@ -3756,7 +3770,21 @@ registerProcessor('nomad-scratch',Scr);`;
     }
     return { s: `■ ${SEQ_N[SQ.cur]} · ${Math.round(curBpm())} BPM`, on: false };
   }
+  // Cercle de la boucle : se remplit au fil du cycle, un trait par temps, repère du début en haut
+  const rcv = $("lcdRing"), rg = rcv.getContext("2d");
+  function drawRing() {
+    fitCanvas(rcv); const W = rcv.width, H = rcv.height; if (!W) return;
+    const d = window.devicePixelRatio || 1, cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 3 * d;
+    rg.clearRect(0, 0, W, H); rg.strokeStyle = lcdInk; rg.fillStyle = lcdInk; rg.lineCap = "butt";
+    rg.globalAlpha = 0.2; rg.lineWidth = 3 * d; rg.beginPath(); rg.arc(cx, cy, R, 0, 7); rg.stroke(); rg.globalAlpha = 1;
+    if (LP.t0F === null || !LP.playing || !LP.Lf) return;
+    const C = cycF(LP.layers), pos = ((ctx.currentTime * sr - LP.t0F) % C + C) % C, u = pos / C, beats = Math.round(LP.beats * C / LP.Lf);
+    rg.lineWidth = 3 * d; rg.beginPath(); rg.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + u * 2 * Math.PI); rg.stroke();
+    for (let k = 0; k < beats; k++) { const a = -Math.PI / 2 + k / beats * 2 * Math.PI, big = k % 4 === 0; rg.globalAlpha = big ? 1 : 0.6; rg.lineWidth = (big ? 2 : 1) * d; rg.beginPath(); rg.moveTo(cx + Math.cos(a) * (R - (big ? 7 : 4) * d), cy + Math.sin(a) * (R - (big ? 7 : 4) * d)); rg.lineTo(cx + Math.cos(a) * (R + 2 * d), cy + Math.sin(a) * (R + 2 * d)); rg.stroke(); }
+    rg.globalAlpha = 1; const a = -Math.PI / 2 + u * 2 * Math.PI; rg.beginPath(); rg.arc(cx + Math.cos(a) * R, cy + Math.sin(a) * R, 3 * d, 0, 7); rg.fill();
+  }
   function drawLcdStrip() {
+    drawRing();
     const tr = transport();
     if (tr.s !== lastTr) { lastTr = tr.s; $("lcdTr").textContent = tr.s; }
     $("beatLed").classList.toggle("on", tr.on);
@@ -4803,6 +4831,8 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     }
     $("dial" + k).style.setProperty("--v", val);
   }
+  // LOOPER : pads 1, 2, 3 (rangée du bas) et 5, 6, 7 (rangée du haut) = couper / rétablir les pistes 1 à 6
+  const LOOP_MUTE_PADS = { 0: 0, 1: 1, 2: 2, 4: 3, 5: 4, 6: 5 };
   function onMidi(e) {
     const [st, d1, d2] = e.data;
     const type = st & 0xf0, ch = (st & 0x0f) + 1;
@@ -4814,6 +4844,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       else if (isPad && idx >= 0 && idx < 16 && tab === "sample" && LC.on && ttSrc && liveChopHit(idx)) { flash(idx); drawDigPads(); }
       else if (isPad && idx >= 0 && idx < 16 && tab === "scratch") scrPad(idx, true, d2 / 127);
       else if (isPad && idx >= 0 && idx < 16 && tab === "fx") fxStart(idx);
+      else if (isPad && tab === "loops" && LOOP_MUTE_PADS[idx] !== undefined) { toggleMute(LOOP_MUTE_PADS[idx]); flash(idx); }
       else if (isPad && idx >= 0 && idx < 16) playPad(idx, d2 / 127);
       else if (!isPad && tab === "scratch") scrKey(d1);
       else if (!isPad) playKey(d1, d2 / 127);

@@ -282,7 +282,7 @@ button { font-family: var(--font-body); }
 .inst b { display: block; font-size: 10px; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inst span { display: block; font-size: 8px; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inst.on { background: var(--red); color: #fff; } .inst.on span { color: #ffd9d6; }
-.modebar { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 6px; }
+.modebar { display: grid; grid-template-columns: 1fr 1fr 1.2fr .8fr; gap: 6px; }
 .keybar { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .keybar .kv { font-family: var(--font-lcd); font-size: 24px; color: var(--lcd-ink); min-width: 4.5ch; text-align: center; }
 .keybar .btn { padding: 9px 12px; }
@@ -462,3 +462,10 @@ html.flipped, html.flipped body { overflow: hidden; }
 #flip { position: fixed; inset: 0; transform: rotate(180deg); }
 #flipScroll { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; justify-content: center; align-items: flex-start;
   padding: max(12px, env(safe-area-inset-bottom)) 12px max(12px, env(safe-area-inset-top)); box-sizing: border-box; }
+.trcol { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+#lcdRing { width: 34px; height: 34px; display: block; }
+.modebar .btn#mFull.on { background: var(--red); color: #fff; }
+.cat.on { background: var(--text); color: var(--ink); }
+.inst.on, :root[data-skin="clair"] .inst.on { background: var(--red); color: #fff; box-shadow: 0 0 0 2px var(--text); }
+.stylebtn.on, :root[data-skin="clair"] .stylebtn.on { background: var(--green); color: #fff; box-shadow: 0 0 0 2px var(--text); }
+:root[data-skin="clair"] .cat.on { background: #1e1e1e; color: #f4f2ee; }

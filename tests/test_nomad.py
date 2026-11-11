@@ -281,6 +281,7 @@ def test_ecran_retourne(app):
     # le fader de SCRATCH suit le doigt du bon côté
     app.click("#tab-scratch")
     app.wait_for_function("nomadDbg.SCR.N > 0", timeout=10000)
+    app.locator("#scrFader").scroll_into_view_if_needed()
     box = app.locator("#scrFader").bounding_box()
     # visuellement retourné : le côté gauche du fader est à droite de l'écran
     app.mouse.click(box["x"] + box["width"] - 20, box["y"] + box["height"] / 2)
@@ -288,3 +289,23 @@ def test_ecran_retourne(app):
     app.click("#gearBtn")
     app.click("#flipBtn")
     assert not app.evaluate("document.documentElement.classList.contains('flipped')")
+
+
+def test_looper_pads_coupent_les_pistes(app):
+    fake_loop(app)
+    for i in range(4):
+        app.evaluate(f"nomadDbg.addLayer(nomadDbg.buffers[{i}], 1, 0)")
+    app.click("#tab-loops")
+    app.evaluate("nomadMidi([0x99, 40, 100])")   # pad 5 → piste 4
+    assert app.evaluate("nomadDbg.LP.layers[3].muted") is True
+    app.evaluate("nomadMidi([0x99, 40, 100])")
+    assert app.evaluate("nomadDbg.LP.layers[3].muted") is False
+
+
+def test_sons_accords_ranges_comme_les_pads(app):
+    app.click("#tab-sons")
+    app.click("#mChords")
+    cells = app.locator("#chords .chord span").all_inner_texts()
+    assert "pad 5" in cells[0] and "pad 1" in cells[4]
+    app.click("#mFull")
+    assert "on" in app.get_attribute("#mFull", "class")

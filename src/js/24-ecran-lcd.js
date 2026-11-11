@@ -12,7 +12,21 @@
     }
     return { s: `■ ${SEQ_N[SQ.cur]} · ${Math.round(curBpm())} BPM`, on: false };
   }
+  // Cercle de la boucle : se remplit au fil du cycle, un trait par temps, repère du début en haut
+  const rcv = $("lcdRing"), rg = rcv.getContext("2d");
+  function drawRing() {
+    fitCanvas(rcv); const W = rcv.width, H = rcv.height; if (!W) return;
+    const d = window.devicePixelRatio || 1, cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 3 * d;
+    rg.clearRect(0, 0, W, H); rg.strokeStyle = lcdInk; rg.fillStyle = lcdInk; rg.lineCap = "butt";
+    rg.globalAlpha = 0.2; rg.lineWidth = 3 * d; rg.beginPath(); rg.arc(cx, cy, R, 0, 7); rg.stroke(); rg.globalAlpha = 1;
+    if (LP.t0F === null || !LP.playing || !LP.Lf) return;
+    const C = cycF(LP.layers), pos = ((ctx.currentTime * sr - LP.t0F) % C + C) % C, u = pos / C, beats = Math.round(LP.beats * C / LP.Lf);
+    rg.lineWidth = 3 * d; rg.beginPath(); rg.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + u * 2 * Math.PI); rg.stroke();
+    for (let k = 0; k < beats; k++) { const a = -Math.PI / 2 + k / beats * 2 * Math.PI, big = k % 4 === 0; rg.globalAlpha = big ? 1 : 0.6; rg.lineWidth = (big ? 2 : 1) * d; rg.beginPath(); rg.moveTo(cx + Math.cos(a) * (R - (big ? 7 : 4) * d), cy + Math.sin(a) * (R - (big ? 7 : 4) * d)); rg.lineTo(cx + Math.cos(a) * (R + 2 * d), cy + Math.sin(a) * (R + 2 * d)); rg.stroke(); }
+    rg.globalAlpha = 1; const a = -Math.PI / 2 + u * 2 * Math.PI; rg.beginPath(); rg.arc(cx + Math.cos(a) * R, cy + Math.sin(a) * R, 3 * d, 0, 7); rg.fill();
+  }
   function drawLcdStrip() {
+    drawRing();
     const tr = transport();
     if (tr.s !== lastTr) { lastTr = tr.s; $("lcdTr").textContent = tr.s; }
     $("beatLed").classList.toggle("on", tr.on);
