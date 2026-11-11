@@ -49,7 +49,7 @@
     ["Enregistrer en boucle", "La pédale Sustain fait REC : la première boucle part au premier son et se ferme au second appui, ce qui fixe le tempo. Chaque REC suivant ajoute une piste (6 par séquence). Huit séquences, A à H ; l'onglet SONG les enchaîne en morceau."],
     ["Trouver des sons", "DIGGING : un bac de disques libres de droits, à découper en chops. SCRATCH : une platine, au doigt ou aux pads. SONS : claviers et accords au clavier de l'Akai. GUITARE : un ampli et ses effets, via le micro ou une interface."],
     ["Transformer", "FX : des motifs rythmiques et des textures, joués aux pads. SP : la couleur du sampler de poche (vinyle, cassette, lo-fi) et le rééchantillonnage sur un pad. MIX : les volumes de chaque partie."],
-    ["Garder, et finir sur MPC", "La session s'enregistre toute seule et se reprend depuis l'accueil, même sans réseau. Dans RÉGLAGES, une sauvegarde complète va dans l'app Fichiers. EXPORT MULTIPISTE + MPC (LOOPER) prépare les sons, les pistes et un programme pour la MPC."]
+    ["Garder, et finir sur MPC", "La session s'enregistre toute seule et se reprend depuis l'accueil, même sans réseau. Dans RÉGLAGES, une sauvegarde complète va dans l'app Fichiers. EXPORT MULTIPISTE + MPC (LOOPER) prépare pour la MPC les sons, les pistes, un programme et les notes jouées (.mid)."]
   ];
   let tourI = 0;
   function drawTour() {
