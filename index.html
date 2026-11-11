@@ -155,6 +155,8 @@ button { font-family: var(--font-body); }
 .scrcuts, .scrph, .scrtools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .scrtools { grid-template-columns: repeat(4, 1fr); }
 .scrcuts .btn { padding: 16px 4px; font-size: 12px; touch-action: none; }
+#view-scratch .scrplay, #view-scratch .scrplay * { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#scrLcd { cursor: pointer; }
 .scrph .btn, .scrtools .btn { padding: 11px 2px; font-size: 10px; touch-action: manipulation; }
 .scrph .btn { box-shadow: 0 0 0 2px var(--pad-edge), inset 4px 0 0 var(--green); }
 .scrsrc { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
@@ -633,10 +635,10 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   </section>
 
   <section class="view stack" id="view-scratch" hidden>
-    <div>
+    <div class="scrplay">
       <canvas id="scrCanvas" aria-label="Platine : posez le doigt sur le disque et faites-le tourner, en avant ou en arrière"></canvas>
       <div class="scrplate">
-        <canvas id="scrLcd" aria-hidden="true"></canvas>
+        <canvas id="scrLcd" role="button" aria-label="Écran : enregistrer le scratch dans le looper"></canvas>
         <div class="scrbtns">
           <button class="btn rec" id="scrStart" type="button">▶ START</button>
           <div style="display:flex;gap:6px"><button class="scroval" id="scrSpeed" type="button">33</button><button class="scroval on" id="scrQuartz" type="button">QUARTZ</button></div>
@@ -645,14 +647,16 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
         <div class="scrbrand"><small>DIRECT DRIVE · SCRATCH</small><b>NOMAD</b></div>
       </div>
     </div>
+    <div class="scrplay" style="display:flex;flex-direction:column;gap:10px">
     <div class="xfader" id="scrFader" role="slider" aria-label="Fader de coupure" aria-valuemin="0" aria-valuemax="100"><div class="zone" id="scrZone"></div><div class="rail"></div><div class="cap" id="scrCap"></div><i class="led"></i></div>
     <div class="scrcuts">
       <button class="btn" id="scrOpen" type="button">OUVRE</button>
       <button class="btn" id="scrCut" type="button">COUPE</button>
       <button class="btn" id="scrHam" type="button">HAMSTER : NON</button>
     </div>
+    </div>
     <h4 class="sphead"><span>PHRASES</span></h4>
-    <div class="scrph" id="scrPh"></div>
+    <div class="scrph scrplay" id="scrPh"></div>
     <h4 class="sphead"><span>SUR LE DISQUE</span></h4>
     <div class="scrsrc" id="scrSrc"></div>
     <div class="scrnav"><button class="btn" id="scrPrev" type="button" aria-label="Son précédent">◀</button><span id="scrName">—</span><button class="btn" id="scrNext" type="button" aria-label="Son suivant">▶</button></div>
@@ -664,7 +668,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     </div>
     <input type="file" id="scrFile" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff" hidden>
     <div class="scrset" id="scrSet"></div>
-    <p class="note help">Posez le doigt sur le disque et tournez : en avant, en arrière, à la vitesse de votre main. Le son tourne en sillon fermé. START lance le moteur ; la main arrête le disque tant qu'elle est posée. Fader : la zone rouge coupe le son (HAMSTER inverse le côté). OUVRE et COUPE agissent tant qu'on les tient. Akai : pad 1 ouvre, pad 2 coupe, 3 start/stop, 4 retour au repère, 5 à 10 phrases (baby, chirp, transform, flare, tear, stab), 11 et 12 son précédent/suivant, 13 hamster, 14 33/45, 15 pitch à zéro, 16 note d'origine. Le clavier transpose le disque (scratch mélodique) ; potards : volume, pitch, filtre, démarrage, freinage, coupure, —, fader. Tout passe dans le looper : REC / Sustain enregistre vos scratchs. Sons VOIX : Bibliothèque du Congrès (Citizen DJ), libres d'utilisation ; MES SONS : vos fichiers, gardés dans cet appareil.</p>
+    <p class="note help">Posez le doigt sur le disque et tournez : en avant, en arrière, à la vitesse de votre main. Touchez l'écran vert pour enregistrer : le scratch est posé sur une nouvelle piste du looper, sur un tour de boucle complet (départ au début de la boucle suivante) ; sans boucle, c'est le REC du looper. Le son tourne en sillon fermé. START lance le moteur ; la main arrête le disque tant qu'elle est posée. Fader : la zone rouge coupe le son (HAMSTER inverse le côté). OUVRE et COUPE agissent tant qu'on les tient. Akai : pad 1 ouvre, pad 2 coupe, 3 start/stop, 4 retour au repère, 5 à 10 phrases (baby, chirp, transform, flare, tear, stab), 11 et 12 son précédent/suivant, 13 hamster, 14 33/45, 15 pitch à zéro, 16 note d'origine. Le clavier transpose le disque (scratch mélodique) ; potards : volume, pitch, filtre, démarrage, freinage, coupure, —, fader. Tout passe dans le looper : REC / Sustain enregistre vos scratchs. Sons VOIX : Bibliothèque du Congrès (Citizen DJ), libres d'utilisation ; MES SONS : vos fichiers, gardés dans cet appareil.</p>
   </section>
 
   <section class="view stack" id="view-sons" hidden>
@@ -1120,16 +1124,17 @@ out[c][s]=dry*(1-this.mix)+wet*this.mix;}}
 return true;}}
 registerProcessor('nomad-fx',Fx);
 class Scr extends AudioWorkletProcessor{constructor(){super();this.N=0;this.pos=0;this.vel=0;this.motor=false;this.rate=1;this.up=1e-4;this.dn=1e-4;this.hand=false;this.tp=0;this.tv=0;this.tl=0;this.g=0;this.gt=0;this.ph=null;this.pend=null;this.cnt=0;this.d=[0,0,0,0];
-this.port.onmessage=e=>{const m=e.data,t=m.type;if(t==='buf'){this.L=m.l;this.R=m.r;this.N=m.l.length;this.pos=m.cue;this.tp=m.cue;this.vel=0;this.ph=null;this.pend=null;}else if(t==='motor')this.motor=m.on;else if(t==='rate')this.rate=m.rate;else if(t==='times'){this.up=m.up;this.dn=m.dn;}else if(t==='hand'){this.hand=m.on;this.tp=this.pos;this.tv=0;this.tl=0;}else if(t==='tgt'){this.tp=m.pos;this.tv=m.vel;this.tl=m.hold|0;}else if(t==='gate')this.gt=m.open?1:0;else if(t==='seek'){this.pos=m.pos;this.tp=m.pos;}else if(t==='phrase')this.pend=m;else if(t==='stopph'){this.ph=null;this.pend=null;}};}
+this.r0=0;this.r1=0;this.rn=0;this.ri=0;this.ct=false;
+this.port.onmessage=e=>{const m=e.data,t=m.type;if(t==='buf'){this.L=m.l;this.R=m.r;this.N=m.l.length;this.pos=m.cue;this.tp=m.cue;this.vel=0;this.ph=null;this.pend=null;}else if(t==='motor')this.motor=m.on;else if(t==='rate')this.rate=m.rate;else if(t==='times'){this.up=m.up;this.dn=m.dn;}else if(t==='hand'){this.hand=m.on;this.tp=this.pos;this.rn=0;this.ri=0;if(!m.on)this.ct=true;}else if(t==='tgt'){this.r0=this.tp;this.r1=m.pos;this.rn=Math.max(1,m.dur|0);this.ri=0;}else if(t==='gate')this.gt=m.open?1:0;else if(t==='seek'){this.pos=m.pos;this.tp=m.pos;}else if(t==='phrase')this.pend=m;else if(t==='stopph'){this.ph=null;this.pend=null;}};}
 rd(b,x){const N=this.N;let i=Math.floor(x);const f=x-i;i=((i%N)+N)%N;const y0=b[(i-1+N)%N],y1=b[i],y2=b[(i+1)%N],y3=b[(i+2)%N];return y1+0.5*f*(y2-y0+f*(2*y0-5*y1+4*y2-y3+f*(3*(y1-y2)+y3-y0)));}
 process(inputs,outputs){const o=outputs[0],n=o[0].length,L=o[0],R=o[1];if(!this.N){L.fill(0);if(R)R.fill(0);return true;}let phEnd=false;
 for(let s=0;s<n;s++){const fr=currentFrame+s;if(this.pend&&fr>=this.pend.at){const p=this.pend;this.pend=null;this.ph={segs:p.segs,i:0,t:0,base:p.base};this.pos=p.base;this.vel=0;}
 let gate=this.gt;
 if(this.ph){const ph=this.ph,sg=ph.segs[ph.i],u=ph.t/sg.d,v=sg.a*Math.sin(Math.PI*u);this.vel=v;this.pos+=v;const g=sg.g;gate=typeof g==='string'?(g.charAt(Math.min(g.length-1,Math.floor(u*g.length)))==='1'?1:0):(g?1:0);
 if(++ph.t>=sg.d){ph.t=0;ph.i++;if(ph.i>=ph.segs.length){this.pos=ph.base;this.tp=ph.base;this.vel=0;this.ph=null;phEnd=true;}}}
-else if(this.hand){if(this.tl>0){this.tp+=this.tv;this.tl--;}const w=(this.tp-this.pos)*0.02;this.vel+=(w-this.vel)*0.3;this.pos+=this.vel;}
-else{const tg=this.motor?this.rate:0;if(this.vel<tg)this.vel=Math.min(tg,this.vel+this.up);else this.vel=Math.max(tg,this.vel-this.dn);this.pos+=this.vel;}
-this.g+=(gate-this.g)*0.04;
+else if(this.hand){if(this.ri<this.rn){this.ri++;this.tp=this.r0+(this.r1-this.r0)*this.ri/this.rn;}const w=(this.tp-this.pos)*0.008;this.vel+=(w-this.vel)*0.15;this.pos+=this.vel;}
+else{const tg=this.motor?this.rate:0;if(this.ct&&this.motor){const st=Math.abs(this.rate)/(0.012*sampleRate);if(this.vel<tg)this.vel=Math.min(tg,this.vel+st);else this.vel=Math.max(tg,this.vel-st);if(this.vel===tg)this.ct=false;}else{this.ct=false;if(this.vel<tg)this.vel=Math.min(tg,this.vel+this.up);else this.vel=Math.max(tg,this.vel-this.dn);}this.pos+=this.vel;}
+this.g+=(gate-this.g)*0.025;
 const a=this.rd(this.L,this.pos),b=this.rd(this.R,this.pos),d=this.d;const ya=a-d[0]+0.997*d[1];d[0]=a;d[1]=ya;const yb=b-d[2]+0.997*d[3];d[2]=b;d[3]=yb;L[s]=ya*this.g;if(R)R[s]=yb*this.g;}
 this.cnt+=n;if(this.cnt>=512||phEnd){this.cnt=0;this.port.postMessage({pos:this.pos,vel:this.vel,phEnd:phEnd});}return true;}}
 registerProcessor('nomad-scratch',Scr);`;
@@ -3149,8 +3154,9 @@ registerProcessor('nomad-scratch',Scr);`;
   (() => {
     const el = $("scrFader");
     const set = e => { const r = el.getBoundingClientRect(); SCR.fader = Math.max(0, Math.min(1, (e.clientX - r.left - 16) / (r.width - 32))); knobVals.scratch[7] = SCR.fader; scrGate(); };
-    el.addEventListener("pointerdown", async e => { e.preventDefault(); el.setPointerCapture(e.pointerId); await scrInit(); set(e); });
+    el.addEventListener("pointerdown", async e => { e.preventDefault(); el.setPointerCapture(e.pointerId); SCR.faderDrag = true; await scrInit(); set(e); });
     el.addEventListener("pointermove", e => { if (el.hasPointerCapture(e.pointerId)) set(e); });
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => el.addEventListener(ev, () => { SCR.faderDrag = false; }));
   })();
   // Le disque : la main posée arrête le disque et le fait tourner
   const scv = $("scrCanvas"), scg = scv.getContext("2d"), slc = $("scrLcd"), slg = slc.getContext("2d");
@@ -3162,19 +3168,19 @@ registerProcessor('nomad-scratch',Scr);`;
     if (Math.hypot(dx, dy) > r.width * 0.49) return;
     scv.setPointerCapture(e.pointerId);
     const p0 = scrPosNow(), a = scrAng(e, r);
-    SCR.hand = { id: e.pointerId, last: a, acc: 0, p0, pos: p0, t: performance.now(), v: 0, moved: performance.now() };
+    SCR.hand = { id: e.pointerId, last: a, acc: 0, ap: 0, p0, pos: p0, t: performance.now(), v: 0, moved: performance.now() };
     SCR.node.port.postMessage({ type: "hand", on: true });
-    SCR.node.port.postMessage({ type: "tgt", pos: p0, vel: 0, hold: 0 });
     onFirstNote(ctx.currentTime);
   });
   scv.addEventListener("pointermove", e => {
     const h = SCR.hand; if (!h || e.pointerId !== h.id) return;
     const r = scv.getBoundingClientRect(), evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
     (evs.length ? evs : [e]).forEach(ev => { const a = scrAng(ev, r); let d = a - h.last; if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; h.last = a; h.acc += d; });
-    const now = performance.now(), pos = h.p0 + h.acc / (2 * Math.PI) * SCR_REV * SCR.bsr, dt = Math.max(4, now - h.t);
-    const raw = (pos - h.pos) / (dt / 1000 * sr);
-    h.v = h.v * 0.35 + raw * 0.65; h.pos = pos; h.t = now; h.moved = now;
-    SCR.node.port.postMessage({ type: "tgt", pos, vel: h.v, hold: Math.round(Math.min(0.03, dt * 1.5 / 1000) * sr) });
+    // zone morte : le tremblement du doigt immobile ne fait pas grésiller le son
+    const DB = 0.004; if (h.acc - h.ap > DB) h.ap = h.acc - DB; else if (h.ap - h.acc > DB) h.ap = h.acc + DB; else return;
+    const now = performance.now(), pos = h.p0 + h.ap / (2 * Math.PI) * SCR_REV * SCR.bsr, dt = Math.max(4, now - h.t);
+    h.v = pos - h.pos; h.pos = pos; h.t = now; h.moved = now;
+    SCR.node.port.postMessage({ type: "tgt", pos, dur: Math.round(Math.min(0.025, dt / 1000) * sr) });
   });
   const scrRelease = e => {
     const h = SCR.hand; if (!h || e.pointerId !== h.id) return;
@@ -3183,6 +3189,38 @@ registerProcessor('nomad-scratch',Scr);`;
     SCR.hand = null;
   };
   ["pointerup", "pointercancel"].forEach(ev => scv.addEventListener(ev, scrRelease));
+  // Pendant le jeu, la page ne bouge pas : ni défilement, ni zoom, ni sélection, même avec deux doigts
+  const scrBusy = () => !!(SCR.hand || SCR.btnOpen || SCR.btnCut || SCR.faderDrag);
+  document.addEventListener("touchmove", e => { if (tab === "scratch" && (scrBusy() || (e.target.closest && e.target.closest(".scrplay")))) e.preventDefault(); }, { passive: false });
+  document.querySelectorAll("#view-scratch .scrplay").forEach(el => el.addEventListener("touchstart", e => { if (e.target.closest("#scrHam, #scrStart, #scrSpeed, #scrQuartz, #scrPitch")) return; e.preventDefault(); }, { passive: false }));
+  // L'écran vert enregistre le scratch : un cycle de la boucle, sur une nouvelle piste du looper
+  function scrRecTap() {
+    if (!ctx || !SCR.node) return;
+    if (LP.t0F === null || !LP.Lf) { recPress(); lcd("lcdPad", "SCRATCH", "REC du looper : la première boucle part au premier son"); return; }
+    if (SCR.rec) { SCR.rec = null; lcd("lcdPad", "SCRATCH", "enregistrement annulé"); return; }
+    if (LP.layers.length >= MAX_LAYERS) { lcd("lcdPad", "SCRATCH", "6 pistes : libérez-en une dans le LOOPER"); return; }
+    if (!SCR.cap) {
+      SCR.cap = new AudioWorkletNode(ctx, "nomad-cap", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: "explicit" });
+      SCR.cap.port.onmessage = e => scrCapIn(e.data);
+      const z = ctx.createGain(); z.gain.value = 0; SCR.out.connect(SCR.cap); SCR.cap.connect(z); z.connect(ctx.destination);
+    }
+    const nowF = Math.round(ctx.currentTime * sr), n = Math.ceil((nowF + 512 - LP.t0F) / LP.Lf);
+    SCR.rec = { sF: LP.t0F + n * LP.Lf + compF(), len: LP.Lf, chunks: [] };
+    lcd("lcdPad", "SCRATCH", "REC armé · départ au début de la boucle");
+  }
+  function scrCapIn(d) {
+    const r = SCR.rec; if (!r) return;
+    const n = d.l.length;
+    if (d.f + n <= r.sF) return;
+    r.chunks.push(d);
+    if (d.f + n < r.sF + r.len) return;
+    const b = ctx.createBuffer(2, r.len, sr), L = b.getChannelData(0), R = b.getChannelData(1);
+    r.chunks.forEach(c => { for (let i = 0; i < c.l.length; i++) { const j = c.f + i - r.sF; if (j >= 0 && j < r.len) { L[j] = c.l[i]; R[j] = c.r[i]; } } });
+    SCR.rec = null;
+    addLayer(b, 1, 0);
+    lcd("lcdPad", "SCRATCH", `scratch posé sur la piste ${LP.layers.length}`);
+  }
+  slc.addEventListener("pointerdown", async e => { e.preventDefault(); if (await scrInit()) scrRecTap(); });
   // Dessin : plateau alu à points stroboscopiques, vinyle, rond central, bras ; écran vert
   let scrStatic = null;
   function scrBuildStatic(W) {
@@ -3216,7 +3254,6 @@ registerProcessor('nomad-scratch',Scr);`;
     fitCanvas(scv); const W = scv.width; if (!W) return;
     if (!scrStatic || scrStatic.W !== W) { scrStatic = scrBuildStatic(W); scrStatic.W = W; }
     const h = SCR.hand;
-    if (h && performance.now() - h.moved > 40 && h.v !== 0) { h.v = 0; SCR.node.port.postMessage({ type: "tgt", pos: h.pos, vel: 0, hold: 0 }); }
     const pos = scrPosNow(), ang = pos / (SCR_REV * SCR.bsr) * 2 * Math.PI, cx = W / 2, R = W * 0.485;
     SCR.ang = ang;
     scg.drawImage(scrStatic.base, 0, 0);
@@ -3241,14 +3278,22 @@ registerProcessor('nomad-scratch',Scr);`;
     const g = slg; g.fillStyle = "#a8dd3a"; g.fillRect(0, 0, w, hh);
     const ink = "#1f2a10", s = hh / 58; g.fillStyle = ink; g.strokeStyle = ink; g.textBaseline = "alphabetic"; g.textAlign = "left";
     g.font = `700 ${Math.round(10 * s)}px Arimo, Arial, sans-serif`;
-    g.fillText(SCR.motor ? "▶" : "❚❚", 6 * s, 15 * s); g.fillText("PITCH", 40 * s, 14 * s); if (SCR.pitch === 0) g.fillText("Q", 6 * s, 50 * s);
+    g.fillText(SCR.motor ? "▶" : "❚❚", 6 * s, 15 * s); g.fillText("PITCH", 34 * s, 14 * s); if (SCR.pitch === 0) g.fillText("Q", 6 * s, 50 * s);
     g.font = `700 ${Math.round(12 * s)}px Arimo, Arial, sans-serif`; g.fillText(String(SCR.speed), 6 * s, 34 * s);
     g.font = `${Math.round(30 * s)}px VT323, monospace`; g.textAlign = "right";
     const pv = Math.abs(SCR.pitch).toFixed(1).padStart(4, "0");
     g.fillText((SCR.pitch < 0 ? "-" : SCR.pitch > 0 ? "+" : "") + pv, 122 * s, 48 * s);
     g.font = `700 ${Math.round(10 * s)}px Arimo, Arial, sans-serif`; g.fillText("%", 134 * s, 48 * s);
-    const rx = 132 * s, ry = 15 * s, rr = 9 * s, seg = Math.floor(((ang / (2 * Math.PI)) % 1 + 1) % 1 * 12);
-    for (let k = 0; k < 12; k++) { const a = k / 12 * 2 * Math.PI - Math.PI / 2; g.globalAlpha = (k - seg + 12) % 12 < 3 ? 1 : 0.15; g.lineWidth = 3 * s; g.beginPath(); g.arc(rx, ry, rr, a + 0.08, a + 2 * Math.PI / 12 - 0.08); g.stroke(); }
+    const rec = SCR.rec, pend = LP.pending, nowF = ctx ? ctx.currentTime * sr : 0;
+    let ringU = ((ang / (2 * Math.PI)) % 1 + 1) % 1, recTxt = "";
+    if (rec) { if (nowF < rec.sF) { recTxt = "ARM"; } else { recTxt = "REC"; ringU = Math.min(0.999, (nowF - rec.sF) / rec.len); } }
+    else if (pend && (pend.phase === "armed" || pend.phase === "rec" || pend.type === "layer")) recTxt = pend.phase === "armed" ? "ARM" : "REC";
+    g.textAlign = "left"; g.font = `700 ${Math.round(9 * s)}px Arimo, Arial, sans-serif`;
+    if (recTxt) { if (recTxt === "REC" || Math.floor(performance.now() / 300) % 2) { g.fillText("● " + recTxt, 78 * s, 14 * s); } }
+    else { g.globalAlpha = 0.45; g.fillText("○ REC", 80 * s, 14 * s); g.globalAlpha = 1; }
+    g.textAlign = "right";
+    const rx = 132 * s, ry = 15 * s, rr = 9 * s, seg = Math.floor(ringU * 12);
+    for (let k = 0; k < 12; k++) { const a = k / 12 * 2 * Math.PI - Math.PI / 2; g.globalAlpha = rec && nowF >= rec.sF ? (k <= seg ? 1 : 0.15) : (k - seg + 12) % 12 < 3 ? 1 : 0.15; g.lineWidth = 3 * s; g.beginPath(); g.arc(rx, ry, rr, a + 0.08, a + 2 * Math.PI / 12 - 0.08); g.stroke(); }
     g.globalAlpha = 1;
     if (SCR.semi !== null) { g.textAlign = "left"; g.font = `700 ${Math.round(9 * s)}px Arimo, Arial, sans-serif`; g.fillText("♪" + (SCR.semi > 0 ? "+" : "") + SCR.semi, 40 * s, 30 * s); }
   }
