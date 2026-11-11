@@ -472,6 +472,10 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
 .edsrc { display: grid; grid-template-columns: 70px 1fr; gap: 6px; align-items: center; font-size: 10px; color: var(--muted); margin-bottom: 8px; }
 .edsrc select { width: 100%; min-width: 0; background: #2b2825; color: var(--text); border: 0; border-radius: 6px; padding: 9px 8px; font-family: var(--font-body); font-size: 12px; }
 :root[data-skin="clair"] .edsrc select { background: #d8d5ce; color: #1e1e1e; }
+html.flipped, html.flipped body { overflow: hidden; }
+#flip { position: fixed; inset: 0; transform: rotate(180deg); }
+#flipScroll { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; justify-content: center; align-items: flex-start;
+  padding: max(12px, env(safe-area-inset-bottom)) 12px max(12px, env(safe-area-inset-top)); box-sizing: border-box; }
 </style>
 </head>
 <body>
@@ -799,6 +803,9 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     <h3>BATTERIE</h3>
     <div class="row"><button class="btn" id="hatsBtn" type="button" style="flex:1">CHARLEYS DISCRETS : OUI</button></div>
     <p class="help">Dans les kits fournis : hats, shakers et cymbales plus bas, plus courts, un peu étouffés, et très sensibles à la force de frappe (frappe légère = presque rien). Chaque pad reste réglable dans PADS.</p>
+    <h3>ÉCRAN</h3>
+    <div class="row"><button class="btn" id="flipBtn" type="button" style="flex:1">ÉCRAN : À L'ENDROIT</button></div>
+    <p class="help">RETOURNÉ : pour poser l'iPhone tête en bas sur un support, les prises vers le haut (iOS ne retourne pas l'écran tout seul sur les iPhone à encoche).</p>
     <h3>TEXTES D'AIDE</h3>
     <div class="row"><button class="btn" id="helpBtn" type="button" aria-pressed="false" style="flex:1">MASQUÉS</button></div>
     <h3>PROJETS</h3>
@@ -832,6 +839,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   <p>Touchez pour démarrer Nomad. Sur iPhone, coupez aussi le mode silencieux si vous n'entendez rien.</p>
   <button id="resumeBtn" class="resume" type="button" hidden></button>
   <button id="tourBtn" class="resume tourlink" type="button">DÉCOUVRIR NOMAD EN 6 ÉCRANS</button>
+  <button id="flipPower" class="resume tourlink" type="button">↻ RETOURNER L'ÉCRAN</button>
 </div>
 
 <div class="tour" id="tour" hidden role="dialog" aria-modal="true" aria-labelledby="tourTitle">
@@ -4926,6 +4934,45 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   $("tourPrev").addEventListener("click", () => { if (tourI > 0) { tourI--; drawTour(); } });
   $("tourNext").addEventListener("click", () => { if (tourI < TOUR.length - 1) { tourI++; drawTour(); } else $("tour").hidden = true; });
   $("tourClose").addEventListener("click", () => { $("tour").hidden = true; });
+  // ---------- ÉCRAN RETOURNÉ : l'iPhone posé tête en bas, prises vers le haut ----------
+  // iOS ne tourne pas l'écran à l'envers sur les iPhone à encoche : NOMAD retourne donc lui-même toute la page.
+  // Les coordonnées des doigts et des éléments sont remises à l'endroit, pour que tout le code de jeu reste inchangé.
+  const FLIP = { on: false, wrap: null, scroll: null };
+  (() => {
+    const W = () => window.innerWidth, H = () => window.innerHeight;
+    const gb = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = function () {
+      const r = gb.call(this);
+      return FLIP.on ? new DOMRect(W() - r.right, H() - r.bottom, r.width, r.height) : r;
+    };
+    [window.MouseEvent && MouseEvent.prototype, window.Touch && Touch.prototype].filter(Boolean).forEach(P => {
+      ["clientX", "clientY"].forEach(k => {
+        const d = Object.getOwnPropertyDescriptor(P, k); if (!d || !d.get) return;
+        Object.defineProperty(P, k, { configurable: true, enumerable: true, get() { const v = d.get.call(this); return FLIP.on ? (k === "clientX" ? W() : H()) - v : v; } });
+      });
+    });
+  })();
+  function setFlip(on) {
+    FLIP.on = on; store.set("flip", on);
+    if (on && !FLIP.wrap) {
+      FLIP.wrap = document.createElement("div"); FLIP.wrap.id = "flip";
+      FLIP.scroll = document.createElement("div"); FLIP.scroll.id = "flipScroll";
+      FLIP.wrap.appendChild(FLIP.scroll);
+      const kids = [...document.body.children].filter(el => el.tagName !== "SCRIPT");
+      document.body.insertBefore(FLIP.wrap, document.body.firstChild);
+      kids.forEach(el => (el.classList.contains("machine") ? FLIP.scroll : FLIP.wrap).appendChild(el));
+    } else if (!on && FLIP.wrap) {
+      const m = FLIP.scroll.querySelector(".machine");
+      [m, ...[...FLIP.wrap.children].filter(el => el !== FLIP.scroll)].forEach(el => document.body.insertBefore(el, FLIP.wrap));
+      FLIP.wrap.remove(); FLIP.wrap = FLIP.scroll = null;
+    }
+    document.documentElement.classList.toggle("flipped", on);
+    const b = $("flipBtn"); if (b) { b.textContent = "ÉCRAN : " + (on ? "RETOURNÉ" : "À L'ENDROIT"); b.classList.toggle("on", on); }
+    if (typeof resizeCanvas === "function") setTimeout(() => { try { resizeCanvas(); } catch (e) {} }, 50);
+  }
+  $("flipBtn").addEventListener("click", () => setFlip(!FLIP.on));
+  $("flipPower").addEventListener("click", () => setFlip(!FLIP.on));
+  setFlip(store.get("flip", false));
 })();
 </script>
 </body>

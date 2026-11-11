@@ -265,3 +265,26 @@ def test_remplacer_le_son_d_un_pad(app):
     assert name == app.evaluate(f"[...document.querySelectorAll('#edSrc option')].find(o => o.value === '{val}').textContent")
     app.click("#undoBtn")
     assert app.evaluate("nomadState().names[0]") == "Kick"
+
+
+def test_ecran_retourne(app):
+    app.click("#gearBtn")
+    app.click("#flipBtn")
+    app.click("#setClose")
+    assert app.evaluate("document.documentElement.classList.contains('flipped')")
+    # un pad touché à l'écran (retourné) joue bien ce pad
+    app.click("#tab-play")
+    pad = app.locator("#pads .pad").nth(5)
+    num = pad.locator(".n").inner_text()[:2]
+    pad.click()
+    assert num in app.inner_text("#lcdPad")
+    # le fader de SCRATCH suit le doigt du bon côté
+    app.click("#tab-scratch")
+    app.wait_for_function("nomadDbg.SCR.N > 0", timeout=10000)
+    box = app.locator("#scrFader").bounding_box()
+    # visuellement retourné : le côté gauche du fader est à droite de l'écran
+    app.mouse.click(box["x"] + box["width"] - 20, box["y"] + box["height"] / 2)
+    assert app.evaluate("nomadDbg.SCR.fader") < 0.1
+    app.click("#gearBtn")
+    app.click("#flipBtn")
+    assert not app.evaluate("document.documentElement.classList.contains('flipped')")
