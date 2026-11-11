@@ -7,7 +7,7 @@
     const out = ((ctx.outputLatency || 0) + (ctx.baseLatency || 0)) * 1000;
     $("latInfo").textContent = "Latence annoncée par l'appareil : " + (out ? Math.round(out) + " ms" : "inconnue");
   }
-  $("gearBtn").addEventListener("click", () => { updateLatInfo(); renderProjects(); renderGlossary(); drawBackupInfo(); offStatus(store.get("offFull", 0) ? `Tout est prêt hors ligne (le ${new Date(store.get("offFull")).toLocaleDateString()}).` : store.get("offKits", 0) ? "Kits prêts hors ligne. Instruments et sons de scratch : au fur et à mesure, ou bouton ci-dessus." : "Les kits se préparent tout seuls après le démarrage."); $("setSheet").hidden = false; });
+  $("gearBtn").addEventListener("click", () => { updateLatInfo(); renderProjects(); renderGlossary(); drawBackupInfo(); drawStoreInfo(); offStatus(store.get("offFull", 0) ? `Tout est prêt hors ligne (le ${new Date(store.get("offFull")).toLocaleDateString()}).` : store.get("offKits", 0) ? "Kits prêts hors ligne. Instruments et sons de scratch : au fur et à mesure, ou bouton ci-dessus." : "Les kits se préparent tout seuls après le démarrage."); $("setSheet").hidden = false; });
   $("setClose").addEventListener("click", () => { $("setSheet").hidden = true; });
   $("calBtn").addEventListener("click", () => {
     if (!ctx || calib) return;

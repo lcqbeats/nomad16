@@ -2,6 +2,20 @@
   if ("serviceWorker" in navigator && location.protocol !== "file:") { try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) {} }
   const OFF = { busy: false };
   function offStatus(txt) { if ($("offInfo")) $("offInfo").textContent = txt; }
+  async function drawStoreInfo() {
+    try {
+      const est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+      $("storeInfo").textContent = est ? `NOMAD occupe environ ${Math.round(est.usage / 1048576)} Mo dans cet appareil (sons gardés, projets, session auto).` : "";
+    } catch (e) {}
+  }
+  $("purgeBtn").addEventListener("click", async () => {
+    try {
+      const c = await caches.open("nomad16-media-v1");
+      for (const req of await c.keys()) { const u = new URL(req.url); if (u.origin !== location.origin || !u.pathname.includes("/kits/")) { if (!/fonts\.(googleapis|gstatic)/.test(u.hostname)) await c.delete(req); } }
+      store.set("offFull", 0); offStatus("Sons téléchargés effacés ; les kits restent prêts hors ligne.");
+    } catch (e) { offStatus("Rien à effacer."); }
+    drawStoreInfo();
+  });
   async function warmOffline(full) {
     if (OFF.busy || !navigator.onLine || !("serviceWorker" in navigator)) { if (full && !navigator.onLine) offStatus("Pas de réseau : réessayez une fois connecté."); return; }
     OFF.busy = true;
@@ -26,5 +40,6 @@
       offStatus(full ? `Prêt hors ligne : kits, instruments et sons de scratch (${n} fichiers${fail ? `, ${fail} manquants` : ""}).` : `Kits prêts hors ligne (${n} sons). Instruments et bac : téléchargés au fur et à mesure.`);
     } catch (e) { offStatus("Préparation interrompue (réseau ?)."); }
     OFF.busy = false;
+    drawStoreInfo();
   }
 

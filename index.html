@@ -807,6 +807,9 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     <p class="help">L'app et les kits sont gardés dans l'appareil pour jouer sans réseau. La session en cours est enregistrée toute seule (projet « SESSION AUTO ») et se reprend depuis l'écran d'accueil. iOS peut effacer les données d'un site : gardez une sauvegarde complète dans l'app Fichiers.</p>
     <div class="row"><button class="btn" id="offBtn" type="button" style="flex:1">TOUT PRÉPARER POUR LE HORS-LIGNE</button></div>
     <p id="offInfo">—</p>
+    <p id="storeInfo">—</p>
+    <div class="row"><button class="btn" id="purgeBtn" type="button" style="flex:1">LIBÉRER LA PLACE DES SONS TÉLÉCHARGÉS</button></div>
+    <p class="help">Efface les instruments et les sons du bac gardés pour le hors-ligne (ils se retéléchargent quand on s'en sert). Les kits, projets, kits perso et sons de scratch importés ne sont pas touchés.</p>
     <div class="row"><button class="btn rec" id="backupBtn" type="button" style="flex:1">SAUVEGARDE COMPLÈTE (.nomad)</button></div>
     <p id="backupInfo">—</p>
     <p class="help">La sauvegarde complète contient tous les projets, les kits perso et les sons de scratch importés. Pour la restaurer : IMPORTER UN PROJET.</p>
@@ -1430,7 +1433,7 @@ registerProcessor('nomad-scratch',Scr);`;
     const out = ((ctx.outputLatency || 0) + (ctx.baseLatency || 0)) * 1000;
     $("latInfo").textContent = "Latence annoncée par l'appareil : " + (out ? Math.round(out) + " ms" : "inconnue");
   }
-  $("gearBtn").addEventListener("click", () => { updateLatInfo(); renderProjects(); renderGlossary(); drawBackupInfo(); offStatus(store.get("offFull", 0) ? `Tout est prêt hors ligne (le ${new Date(store.get("offFull")).toLocaleDateString()}).` : store.get("offKits", 0) ? "Kits prêts hors ligne. Instruments et sons de scratch : au fur et à mesure, ou bouton ci-dessus." : "Les kits se préparent tout seuls après le démarrage."); $("setSheet").hidden = false; });
+  $("gearBtn").addEventListener("click", () => { updateLatInfo(); renderProjects(); renderGlossary(); drawBackupInfo(); drawStoreInfo(); offStatus(store.get("offFull", 0) ? `Tout est prêt hors ligne (le ${new Date(store.get("offFull")).toLocaleDateString()}).` : store.get("offKits", 0) ? "Kits prêts hors ligne. Instruments et sons de scratch : au fur et à mesure, ou bouton ci-dessus." : "Les kits se préparent tout seuls après le démarrage."); $("setSheet").hidden = false; });
   $("setClose").addEventListener("click", () => { $("setSheet").hidden = true; });
   $("calBtn").addEventListener("click", () => {
     if (!ctx || calib) return;
@@ -3519,6 +3522,20 @@ registerProcessor('nomad-scratch',Scr);`;
   if ("serviceWorker" in navigator && location.protocol !== "file:") { try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) {} }
   const OFF = { busy: false };
   function offStatus(txt) { if ($("offInfo")) $("offInfo").textContent = txt; }
+  async function drawStoreInfo() {
+    try {
+      const est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+      $("storeInfo").textContent = est ? `NOMAD occupe environ ${Math.round(est.usage / 1048576)} Mo dans cet appareil (sons gardés, projets, session auto).` : "";
+    } catch (e) {}
+  }
+  $("purgeBtn").addEventListener("click", async () => {
+    try {
+      const c = await caches.open("nomad16-media-v1");
+      for (const req of await c.keys()) { const u = new URL(req.url); if (u.origin !== location.origin || !u.pathname.includes("/kits/")) { if (!/fonts\.(googleapis|gstatic)/.test(u.hostname)) await c.delete(req); } }
+      store.set("offFull", 0); offStatus("Sons téléchargés effacés ; les kits restent prêts hors ligne.");
+    } catch (e) { offStatus("Rien à effacer."); }
+    drawStoreInfo();
+  });
   async function warmOffline(full) {
     if (OFF.busy || !navigator.onLine || !("serviceWorker" in navigator)) { if (full && !navigator.onLine) offStatus("Pas de réseau : réessayez une fois connecté."); return; }
     OFF.busy = true;
@@ -3543,6 +3560,7 @@ registerProcessor('nomad-scratch',Scr);`;
       offStatus(full ? `Prêt hors ligne : kits, instruments et sons de scratch (${n} fichiers${fail ? `, ${fail} manquants` : ""}).` : `Kits prêts hors ligne (${n} sons). Instruments et bac : téléchargés au fur et à mesure.`);
     } catch (e) { offStatus("Préparation interrompue (réseau ?)."); }
     OFF.busy = false;
+    drawStoreInfo();
   }
 
   // ---------- SAUVEGARDE AUTOMATIQUE de la session, et sauvegarde complète en un fichier ----------
