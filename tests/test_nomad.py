@@ -252,3 +252,16 @@ def test_prog_change_onglets_et_kits(app):
     app.evaluate("nomadMidi([0xC0, 8])")
     app.wait_for_timeout(500)
     assert app.evaluate("nomadState().kit") == "synth"
+
+
+def test_remplacer_le_son_d_un_pad(app):
+    app.click("#edBtn")
+    app.click("#edSrc")
+    app.wait_for_function("document.querySelectorAll('#edSrc optgroup').length >= 2", timeout=5000)
+    val = app.evaluate("[...document.querySelectorAll('#edSrc option')].find(o => o.value.startsWith('kit|')).value")
+    app.select_option("#edSrc", val)
+    app.wait_for_timeout(800)
+    name = app.evaluate("nomadState().names[0]")
+    assert name == app.evaluate(f"[...document.querySelectorAll('#edSrc option')].find(o => o.value === '{val}').textContent")
+    app.click("#undoBtn")
+    assert app.evaluate("nomadState().names[0]") == "Kick"

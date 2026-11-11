@@ -60,6 +60,7 @@
   <section class="view" id="view-play">
     <div class="padtools"><button class="btn" id="edBtn" type="button">ÉDITER LE PAD 01</button><button class="btn" id="allPadsBtn" type="button" aria-pressed="false">TOUS</button><button class="btn" id="fullBtn" type="button">FULL</button><button class="btn" id="nrBtn" type="button">REPEAT</button><button class="btn" id="nrRate" type="button">1/16</button></div>
     <div class="editor" id="editor" hidden>
+      <div class="edsrc"><label for="edSrc">SON</label><select id="edSrc" aria-label="Remplacer le son du pad"><option value="">— remplacer le son du pad par… —</option></select><input type="file" id="edFile" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff" hidden></div>
       <canvas id="edCanvas" aria-label="Début et fin du son : glissez les bords"></canvas>
       <div class="edrow">
         <button class="btn" id="edShot" type="button">ONE SHOT</button>

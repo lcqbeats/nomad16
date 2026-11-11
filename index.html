@@ -469,6 +469,9 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
 .tourdots { display: flex; gap: 6px; justify-content: center; margin-bottom: 12px; }
 .tourdots i { width: 7px; height: 7px; border-radius: 50%; background: #3a3734; } .tourdots i.on { background: var(--text); }
 .tournav { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.edsrc { display: grid; grid-template-columns: 70px 1fr; gap: 6px; align-items: center; font-size: 10px; color: var(--muted); margin-bottom: 8px; }
+.edsrc select { width: 100%; min-width: 0; background: #2b2825; color: var(--text); border: 0; border-radius: 6px; padding: 9px 8px; font-family: var(--font-body); font-size: 12px; }
+:root[data-skin="clair"] .edsrc select { background: #d8d5ce; color: #1e1e1e; }
 </style>
 </head>
 <body>
@@ -516,6 +519,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   <section class="view" id="view-play">
     <div class="padtools"><button class="btn" id="edBtn" type="button">ÉDITER LE PAD 01</button><button class="btn" id="allPadsBtn" type="button" aria-pressed="false">TOUS</button><button class="btn" id="fullBtn" type="button">FULL</button><button class="btn" id="nrBtn" type="button">REPEAT</button><button class="btn" id="nrRate" type="button">1/16</button></div>
     <div class="editor" id="editor" hidden>
+      <div class="edsrc"><label for="edSrc">SON</label><select id="edSrc" aria-label="Remplacer le son du pad"><option value="">— remplacer le son du pad par… —</option></select><input type="file" id="edFile" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff" hidden></div>
       <canvas id="edCanvas" aria-label="Début et fin du son : glissez les bords"></canvas>
       <div class="edrow">
         <button class="btn" id="edShot" type="button">ONE SHOT</button>
@@ -4569,6 +4573,54 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   });
   $("edReset").addEventListener("click", () => { kitEdit("réinitialiser le pad", () => { padParams[selected] = { ...PDEF }; }); drawEditor(); });
 
+  // Remplacer le son du pad : n'importe quel son des kits fournis, des kits perso, des chops, ou un fichier
+  const edSrcCache = new Map();
+  async function edSrcFill() {
+    const sel = $("edSrc"), keep = sel.value;
+    const groups = [];
+    groups.push({ label: "NOMAD SYNTH", items: SYNTH_NAMES.map((n, i) => ({ v: `synth|${i}`, n })) });
+    for (const k of kitIndex) {
+      if (k.id === "synth" || k.id === "chops" || k.user) continue;
+      try { if (!edSrcCache.has(k.id)) edSrcCache.set(k.id, await (await fetch(`kits/${k.id}/kit.json`)).json()); groups.push({ label: k.name, items: edSrcCache.get(k.id).pads.map((p, i) => ({ v: `kit|${k.id}|${i}`, n: p.name })) }); } catch (e) {}
+    }
+    if (chopKit.buffers.length) groups.push({ label: "MES CHOPS", items: chopKit.names.map((n, i) => ({ v: `chop|${i}`, n })) });
+    try { const mine = await DB.all("kits"); mine.forEach(k => groups.push({ label: k.name, items: k.names.map((n, i) => ({ v: `user|${k.id}|${i}`, n })) })); } catch (e) {}
+    sel.innerHTML = `<option value="">— remplacer le son du pad par… —</option><option value="file">un fichier de l'appareil…</option>` +
+      groups.map(g => `<optgroup label="${g.label.replace(/"/g, "")}">${g.items.map(it => `<option value="${it.v}">${(it.n || "—").replace(/</g, "")}</option>`).join("")}</optgroup>`).join("");
+    sel.value = keep && [...sel.options].some(o => o.value === keep) ? keep : "";
+  }
+  async function edSrcBuffer(v) {
+    const [kind, a, b] = v.split("|");
+    if (kind === "synth") return { buf: synthBuffers[+a], name: SYNTH_NAMES[+a], gain: 1 };
+    if (kind === "chop") return { buf: chopKit.buffers[+a], name: chopKit.names[+a], gain: 1 };
+    if (kind === "kit") { const kj = edSrcCache.get(a), p = kj.pads[+b], ab = await (await fetch(`kits/${a}/${p.file}`)).arrayBuffer(); return { buf: await new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)), name: p.name, gain: p.gain ?? 1 }; }
+    if (kind === "user") { const k = await DB.get("kits", a); return { buf: unpackBuf(k.bufs[+b]), name: k.names[+b], gain: k.gains ? k.gains[+b] : 1 }; }
+    return null;
+  }
+  function edSrcApply(r) {
+    if (!r || !r.buf) return;
+    const i = selected;
+    kitEdit(`son du pad ${i + 1}`, () => {
+      buffers[i] = r.buf; names[i] = r.name; gains[i] = r.gain;
+      padParams[i] = { ...PDEF };
+      const rule = hatsSoft && HAT_RULES.find(([re]) => re.test(r.name || "")); if (rule) Object.assign(padParams[i], rule[1]);
+    });
+    syncPlayKnobs(); drawEditor(); voice(i, 0.9, 1);
+    lcd("lcdPad", "PAD", `${String(i + 1).padStart(2, "0")} ← ${r.name}`);
+  }
+  $("edSrc").addEventListener("focus", edSrcFill);
+  $("edSrc").addEventListener("pointerdown", edSrcFill);
+  $("edSrc").addEventListener("change", async e => {
+    const v = e.target.value; e.target.value = "";
+    if (!v || !ctx) return;
+    if (v === "file") { $("edFile").click(); return; }
+    try { edSrcApply(await edSrcBuffer(v)); } catch (err) { lcd("lcdPad", "PAD", "son introuvable (hors ligne ?)"); }
+  });
+  $("edFile").addEventListener("change", async e => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f || !ctx) return;
+    try { const buf = await new Promise(async (res, rej) => ctx.decodeAudioData(await f.arrayBuffer(), res, rej)); edSrcApply({ buf, name: f.name.replace(/\.[^.]+$/, "").slice(0, 16), gain: 1 }); }
+    catch (err) { lcd("lcdPad", "PAD", "fichier illisible"); }
+  });
   // ---------- Glisser un pad sur un autre ----------
   let pm = null;
   function openPadMenu(a, b) { pm = { a, b }; $("padMenuT").firstChild.textContent = `PAD ${a + 1} → PAD ${b + 1} `; $("padMenu").hidden = false; }

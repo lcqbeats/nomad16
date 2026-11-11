@@ -455,3 +455,6 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
 .tourdots { display: flex; gap: 6px; justify-content: center; margin-bottom: 12px; }
 .tourdots i { width: 7px; height: 7px; border-radius: 50%; background: #3a3734; } .tourdots i.on { background: var(--text); }
 .tournav { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.edsrc { display: grid; grid-template-columns: 70px 1fr; gap: 6px; align-items: center; font-size: 10px; color: var(--muted); margin-bottom: 8px; }
+.edsrc select { width: 100%; min-width: 0; background: #2b2825; color: var(--text); border: 0; border-radius: 6px; padding: 9px 8px; font-family: var(--font-body); font-size: 12px; }
+:root[data-skin="clair"] .edsrc select { background: #d8d5ce; color: #1e1e1e; }
