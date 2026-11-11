@@ -133,6 +133,8 @@ button { font-family: var(--font-body); }
 .btn.rec.armed { animation: blink .5s steps(2) infinite; }
 .btn.holding, .btn.on { background: var(--text); color: var(--ink); }
 @keyframes blink { 50% { background: #5a1414; } }
+.power button.resume, :root[data-type="mpk"] .power button.resume { display: block; margin-top: 0; font-family: var(--font-body); box-shadow: none; background: transparent; color: var(--text); border: 1px solid var(--muted); border-radius: 8px; padding: 12px 14px; font-size: 11px; font-weight: 700; letter-spacing: .08em; cursor: pointer; }
+.power button.resume[hidden] { display: none; }
 .gl { border-top: 1px solid rgba(255,255,255,.08); }
 .gl summary { cursor: pointer; padding: 10px 2px; font-size: 11px; font-weight: 700; letter-spacing: .08em; list-style: none; }
 .gl summary::before { content: "▸ "; color: var(--muted); }
@@ -780,6 +782,13 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     <div class="saverow"><button class="btn" id="projImport" type="button" style="flex:1">IMPORTER UN PROJET (.nomad)</button><input type="file" id="projFile" accept=".nomad,.zip,application/zip,application/octet-stream" hidden></div>
     <p class="help">FICHIER enregistre un projet complet (sons, séquences, morceau, réglages) dans un fichier .nomad, à garder dans l'app Fichiers ou à passer sur un autre appareil.</p>
     <div id="projList"></div>
+    <h3>HORS LIGNE ET SAUVEGARDE</h3>
+    <p class="help">L'app et les kits sont gardés dans l'appareil pour jouer sans réseau. La session en cours est enregistrée toute seule (projet « SESSION AUTO ») et se reprend depuis l'écran d'accueil. iOS peut effacer les données d'un site : gardez une sauvegarde complète dans l'app Fichiers.</p>
+    <div class="row"><button class="btn" id="offBtn" type="button" style="flex:1">TOUT PRÉPARER POUR LE HORS-LIGNE</button></div>
+    <p id="offInfo">—</p>
+    <div class="row"><button class="btn rec" id="backupBtn" type="button" style="flex:1">SAUVEGARDE COMPLÈTE (.nomad)</button></div>
+    <p id="backupInfo">—</p>
+    <p class="help">La sauvegarde complète contient tous les projets, les kits perso et les sons de scratch importés. Pour la restaurer : IMPORTER UN PROJET.</p>
     <h3>COMPENSATION CASQUE</h3>
     <p class="help">Recale les couches du looper quand le son arrive en retard (casque Bluetooth). Revient à 0 ms à chaque lancement, pour ne jamais rester actif par erreur en filaire ou sur le haut-parleur.</p>
     <div class="row"><input type="range" id="latRange" min="0" max="400" step="1" value="0" aria-label="Compensation en millisecondes"><span id="latVal">0 ms</span></div>
@@ -793,6 +802,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   <div class="stripe" style="width:180px" aria-hidden="true"></div>
   <button id="powerBtn" type="button"><b class="bw">NOMAD</b><span class="b16">16</span><small class="btag">POCKET SAMPLER · LOOPER</small></button>
   <p>Touchez pour démarrer Nomad. Sur iPhone, coupez aussi le mode silencieux si vous n'entendez rien.</p>
+  <button id="resumeBtn" class="resume" type="button" hidden></button>
 </div>
 
 <script>
@@ -1285,6 +1295,7 @@ registerProcessor('nomad-scratch',Scr);`;
     const saved = store.get("kit", "boombap");
     loadKit(kitIndex.some(k => k.id === saved) ? saved : "synth");
     enterSons();
+    setTimeout(() => { if (Date.now() - store.get("offKits", 0) > 7 * 864e5) warmOffline(false); }, 5000);
   }
   $("powerBtn").addEventListener("click", () => powerOn().catch(e => { $("power").querySelector("p").textContent = "Le son n'a pas pu démarrer : " + e.message; }));
 
@@ -1372,7 +1383,7 @@ registerProcessor('nomad-scratch',Scr);`;
     const out = ((ctx.outputLatency || 0) + (ctx.baseLatency || 0)) * 1000;
     $("latInfo").textContent = "Latence annoncée par l'appareil : " + (out ? Math.round(out) + " ms" : "inconnue");
   }
-  $("gearBtn").addEventListener("click", () => { updateLatInfo(); renderProjects(); renderGlossary(); $("setSheet").hidden = false; });
+  $("gearBtn").addEventListener("click", () => { updateLatInfo(); renderProjects(); renderGlossary(); drawBackupInfo(); offStatus(store.get("offFull", 0) ? `Tout est prêt hors ligne (le ${new Date(store.get("offFull")).toLocaleDateString()}).` : store.get("offKits", 0) ? "Kits prêts hors ligne. Instruments et sons de scratch : au fur et à mesure, ou bouton ci-dessus." : "Les kits se préparent tout seuls après le démarrage."); $("setSheet").hidden = false; });
   $("setClose").addEventListener("click", () => { $("setSheet").hidden = true; });
   $("calBtn").addEventListener("click", () => {
     if (!ctx || calib) return;
@@ -3450,6 +3461,81 @@ registerProcessor('nomad-scratch',Scr);`;
       sec("POTARDS, SELON L'ONGLET", [["PADS", "play"], ["LOOPER", "loops"], ["SONG", "song"], ["FX", "fx"], ["SP", "sp"], ["DIGGING", "sample"], ["SCRATCH", "scratch"], ["SONS", "sons"], ["GUITARE", "guitar"]].map(([n, t]) => `<p class="glh">${n}</p><div class="glknobs">${kn(t)}</div>`).join(""))
     ].join("");
   }
+  // ---------- HORS LIGNE : l'app et ses sons gardés dans l'appareil ----------
+  if ("serviceWorker" in navigator && location.protocol !== "file:") { try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) {} }
+  const OFF = { busy: false };
+  function offStatus(txt) { if ($("offInfo")) $("offInfo").textContent = txt; }
+  async function warmOffline(full) {
+    if (OFF.busy || !navigator.onLine || !("serviceWorker" in navigator)) { if (full && !navigator.onLine) offStatus("Pas de réseau : réessayez une fois connecté."); return; }
+    OFF.busy = true;
+    const get = u => fetch(u).then(r => { if (!r.ok) throw new Error(r.status); return r; });
+    let n = 0, fail = 0;
+    try {
+      const idx = await (await get("kits/index.json")).json();
+      for (const k of idx.kits) {
+        offStatus(`Préparation : kit ${k.name}…`);
+        try { const kj = await (await get(`kits/${k.id}/kit.json`)).json(); for (const p of kj.pads) { try { await (await get(`kits/${k.id}/${p.file}`)).arrayBuffer(); n++; } catch (e) { fail++; } } } catch (e) { fail++; }
+      }
+      if (full) {
+        const inst = await (await get("sons/instruments.json")).json();
+        for (const i of inst.instruments.filter(x => x.regions)) {
+          offStatus(`Préparation : ${i.name}…`);
+          for (const r of i.regions) { try { await (await get(i.base + r[0].split("/").map(encodeURIComponent).join("/") + ".m4a")).arrayBuffer(); n++; } catch (e) { fail++; } }
+        }
+        const cr = await (await get("crate/crate.json")).json();
+        for (const [cid, title, ci] of SCR_LOC) { const c = cr.collections.find(x => x.id === cid), it = c && c.items.find(x => x.t === title); if (it && it.c[ci]) { try { await (await get(cr.base + cid + "/" + it.c[ci][0] + ".wav")).arrayBuffer(); n++; } catch (e) { fail++; } } }
+      }
+      store.set(full ? "offFull" : "offKits", Date.now());
+      offStatus(full ? `Prêt hors ligne : kits, instruments et sons de scratch (${n} fichiers${fail ? `, ${fail} manquants` : ""}).` : `Kits prêts hors ligne (${n} sons). Instruments et bac : téléchargés au fur et à mesure.`);
+    } catch (e) { offStatus("Préparation interrompue (réseau ?)."); }
+    OFF.busy = false;
+  }
+
+  // ---------- SAUVEGARDE AUTOMATIQUE de la session, et sauvegarde complète en un fichier ----------
+  const AUTO_ID = "proj-auto";
+  let autoSig = "", autoBusy = false;
+  const sessionSig = () => [SQ.list.map(a => a.length).join(","), HIST.i, HIST.stack.length, kitCur, JSON.stringify(SONG.steps), padParams.map(p => p.level + p.tune + p.decay).join(",")].join("|");
+  async function autoSave(force) {
+    if (!ctx || autoBusy || SQ.list.every(a => !a.length) && !force) return;
+    const sig = sessionSig(); if (sig === autoSig && !force) return;
+    autoBusy = true;
+    try { await saveProject("SESSION AUTO", AUTO_ID); autoSig = sig; store.set("autoAt", Date.now()); } catch (e) {}
+    autoBusy = false;
+  }
+  setInterval(() => autoSave(false), 45000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") autoSave(false); });
+  // Reprendre la dernière session depuis l'écran d'accueil
+  (async () => {
+    try {
+      const p = await DB.get("projects", AUTO_ID); if (!p) return;
+      const d = new Date(p.created), b = $("resumeBtn");
+      b.textContent = `REPRENDRE LA SESSION DU ${d.toLocaleDateString("fr-FR")} À ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+      b.hidden = false;
+      b.addEventListener("click", async () => { try { await powerOn(); await loadProject(AUTO_ID); } catch (e) { $("power").querySelector("p").textContent = "Le son n'a pas pu démarrer : " + e.message; } });
+    } catch (e) {}
+  })();
+  async function exportBackup() {
+    const files = [], projects = await DB.all("projects"), kits = await DB.all("kits");
+    let scr = []; try { scr = await DB.all("scratch"); } catch (e) {}
+    const meta = packAudio({ projects, kits, scratch: scr }, files);
+    files.unshift({ name: "projet.json", data: JSON.stringify({ format: "nomad16-sauvegarde", version: 1, data: meta }) });
+    const d = new Date();
+    await deliver(makeZip(files), `NOMAD16-sauvegarde-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}.nomad`, "application/zip");
+    store.set("backupAt", Date.now()); drawBackupInfo();
+  }
+  async function restoreBackup(j, files) {
+    const d = unpackAudio(j.data, files);
+    for (const p of d.projects || []) await DB.put("projects", p);
+    for (const k of d.kits || []) await DB.put("kits", k);
+    for (const s of d.scratch || []) await DB.put("scratch", s);
+    await refreshUserKits(); await renderProjects();
+    lcd("lcdPad", "SAUVEGARDE", `restaurée : ${(d.projects || []).length} projet(s), ${(d.kits || []).length} kit(s), ${(d.scratch || []).length} son(s)`);
+  }
+  function drawBackupInfo() {
+    const t = store.get("backupAt", 0), el = $("backupInfo"); if (!el) return;
+    el.textContent = t ? `Dernière sauvegarde complète : ${new Date(t).toLocaleDateString()}.` : "Aucune sauvegarde complète pour l'instant.";
+  }
+  drawBackupInfo();
   // ---------- NOTE REPEAT (PADS) : un pad tenu se répète, calé sur la boucle quand elle existe ----------
   const NR_DIVS = [4, 8, 16, 32, 12, 24], NR_NAMES = ["1/4", "1/8", "1/16", "1/32", "1/8T", "1/16T"];
   const NR = { on: false, idx: 2, held: new Map() };
@@ -4175,6 +4261,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   async function importProjectFile(file) {
     try {
       const files = readZip(new Uint8Array(await file.arrayBuffer())), j = JSON.parse(new TextDecoder().decode(files["projet.json"]));
+      if (j.format === "nomad16-sauvegarde") { await restoreBackup(j, files); $("setSheet").hidden = true; return; }
       if (j.format !== "nomad16") throw new Error("format");
       const p = unpackAudio(j.project, files); p.id = "proj-" + Date.now().toString(36);
       await DB.put("projects", p); await renderProjects(); await loadProject(p.id);
@@ -4417,8 +4504,8 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   setType(store.get("type", "mpk"));
 
   // ---------- Projets ----------
-  async function saveProject(name) {
-    const id = "proj-" + Date.now().toString(36);
+  async function saveProject(name, fixedId) {
+    const id = fixedId || "proj-" + Date.now().toString(36);
     const p = {
       id, name: name.toUpperCase().slice(0, 40), created: Date.now(),
       kit: kitCur, kitEmbed: (kitCur === "chops") ? { names: names.slice(), gains: gains.slice(), bufs: buffers.map(packBuf) } : null,
@@ -4475,6 +4562,8 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       row.appendChild(b); row.appendChild(fb); row.appendChild(del); $("projList").appendChild(row);
     });
   }
+  $("offBtn").addEventListener("click", () => warmOffline(true));
+  $("backupBtn").addEventListener("click", async () => { $("backupBtn").textContent = "…"; try { await exportBackup(); } catch (e) { lcd("lcdPad", "SAUVEGARDE", "impossible : " + e.message); } $("backupBtn").textContent = "SAUVEGARDE COMPLÈTE (.nomad)"; });
   $("projSave").addEventListener("click", async () => {
     if (!ctx) return;
     const n = $("projName").value.trim() || ("PROJET " + new Date().toLocaleDateString());
@@ -4601,7 +4690,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   initMidi();
   try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi) { $("btBox").hidden = false; $("btPair").addEventListener("click", () => window.webkit.messageHandlers.nomadMidi.postMessage({ type: "btpair" })); } } catch (e) {}
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
-  window.nomadDbg = { SCR, scrPhrase, scrInit, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
+  window.nomadDbg = { SCR, scrPhrase, scrInit, autoSave, exportBackup, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
   let probe = null;
   window.nomadProbe = () => { if (!probe) { probe = ctx.createAnalyser(); probe.fftSize = 2048; fxMaster.connect(probe); } const a = new Float32Array(2048); probe.getFloatTimeDomainData(a); let m = 0; for (const v of a) m = Math.max(m, Math.abs(v)); return +m.toFixed(3); };
   window.nomadState = () => ({ kit: kitCur, kits: kitIndex.length, bufs: buffers.filter(Boolean).length, names: names.slice(0, 4), t0F: LP.t0F, Lf: LP.Lf, layers: LP.layers.map(l => ({ k: l.k, m: l.m })), pending: LP.pending && { ...LP.pending }, latMs, guitar: { amp: G.amp, preset: G.preset, fx: [...G.fx], on: G.on }, cap: capLatest, now: ctx && ctx.currentTime });
