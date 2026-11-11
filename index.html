@@ -3503,12 +3503,12 @@ registerProcessor('nomad-scratch',Scr);`;
     const el = $("glossary"); if (!el) return;
     const fxA = FX_PATTERNS.slice(0, 8).map(f => f.name), fxB = FX_PATTERNS.slice(8, 16).map(f => f.name);
     const kn = t => KNOB_LABELS[t].map((l, i) => `<span><b>${i + 1}</b>${l}</span>`).join("");
-    const kits = kitIndex.slice(0, 16).map((k, i) => `<span><b>${i + 1}</b>${k.name}</span>`).join("");
+    const kits = kitIndex.slice(0, 8).map(k => k.name);
     const sec = (title, body, open) => `<details class="gl"${open ? " open" : ""}><summary>${title}</summary><div>${body}</div></details>`;
     el.innerHTML = [
       sec("PARTOUT", `<p><b>Pédale Sustain</b> : REC / superposition du looper.</p><p><b>Clavier</b> : joue l'instrument de SONS (ou le pad choisi, transposé) ; en mode ACCORDS, les touches graves jouent les accords ; dans SCRATCH, il transpose le disque.</p><p><b>Potards</b> : changent de rôle selon l'onglet (voir POTARDS).</p>`, true),
-      sec("BOUTON CC (pads en CC, preset 3)", `<p class="glh">Banque A</p>${padGrid(["Play / stop looper", "Annuler", "Muet piste 1", "Muet piste 2", "Muet piste 3", "Muet piste 4", "Muet piste 5", "Muet piste 6"])}<p class="glh">Banque B</p>${padGrid(["Kit précédent", "Kit suivant", "Morceau ▶/■", "Séquence ◀", "Note repeat", "Séquence ▶", "Onglet suivant", "Entrée guitare"], 8)}`),
-      sec("BOUTON PROG CHANGE (charge un kit)", `<p>PROG CHANGE puis le pad n° : charge le kit n°.</p><div class="gllist">${kits}</div>`),
+      sec("BOUTON CC (pads en CC, preset 3)", `<p class="glh">Banque A</p>${padGrid(["Play / stop looper", "Annuler", "Muet piste 1", "Muet piste 2", "Muet piste 3", "Muet piste 4", "Muet piste 5", "Muet piste 6"])}<p class="glh">Banque B</p>${padGrid(["Kit précédent", "Kit suivant", "Morceau ▶/■", "Séquence ◀", "Note repeat", "Séquence ▶", "Onglet suivant", "Guitare (onglet + entrée)"], 8)}`),
+      sec("BOUTON PROG CHANGE (onglets et kits)", `<p>PROG CHANGE allumé, un pad, puis PROG CHANGE éteint pour rejouer.</p><p class="glh">Banque A : aller à l'onglet</p>${padGrid(["PADS", "LOOPER", "SONG", "FX", "SP", "DIGGING", "SCRATCH", "SONS"])}<p class="glh">Banque B : charger le kit</p>${padGrid(kits, 8)}<p>GUITARE : pad 16 en mode CC (allume l'entrée et ouvre l'onglet).</p>`),
       sec("PADS EN NOTES, SELON L'ONGLET", `<p><b>PADS, LOOPER, SONG, SP, GUITARE</b> : les 16 sons du kit (banque A = 1 à 8, banque B = 9 à 16).</p>
         <p class="glh">FX · banque A : motifs</p>${padGrid(fxA)}<p class="glh">FX · banque B : textures</p>${padGrid(fxB, 8)}
         <p><b>DIGGING</b> : avec CHOP LIVE et le disque qui tourne, chaque pad pose sa découpe ; sinon, le kit.</p>
@@ -4690,7 +4690,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       20: togglePlay, 21: undo, 22: () => toggleMute(0), 23: () => toggleMute(1), 24: () => toggleMute(2), 25: () => toggleMute(3), 26: () => toggleMute(4), 27: () => toggleMute(5),
       28: () => stepKit(-1), 29: () => stepKit(1), 30: () => SONG.playing ? (songStop(), stopAll()) : songPlay(), 31: () => selectSeq((SQ.cur + 7) % 8),
       32: () => setNR(!NR.on), 33: () => selectSeq((SQ.cur + 1) % 8),
-      34: () => setTab(TABS[(TABS.indexOf(tab) + 1) % TABS.length]), 35: () => { if (G.on) stopInput(); else startInput(); }
+      34: () => setTab(TABS[(TABS.indexOf(tab) + 1) % TABS.length]), 35: () => { if (G.on) stopInput(); else { startInput(); setTab("guitar"); } }
     };
     if (map[n]) map[n]();
   }
@@ -4765,7 +4765,10 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     } else if (type === 0xb0) {
       onCC(d1, d2);
     } else if (type === 0xc0) {
-      if (d1 < kitIndex.length) loadKit(kitIndex[d1].id);
+      // PROG CHANGE : banque A = un onglet par pad (rangés comme à l'écran), banque B = kits 1 à 8
+      const PC_TABS = ["play", "loops", "song", "fx", "sp", "sample", "scratch", "sons"];
+      if (d1 < 8) { setTab(PC_TABS[d1]); lcd("lcdPad", "ONGLET", $("tab-" + PC_TABS[d1]).textContent); }
+      else if (d1 < 16 && d1 - 8 < kitIndex.length) loadKit(kitIndex[d1 - 8].id);
     }
   }
   async function initMidi() {
@@ -4853,7 +4856,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   // ---------- PRÉSENTATION (facultative, depuis l'écran d'accueil) ----------
   const TOUR = [
     ["NOMAD se joue au MPK", "L'écran sert à trouver ses marques ; le jeu se fait à l'Akai MPK mini, les yeux libres. Tout ce que font les pads, les potards et les boutons CC / PROG CHANGE est rangé dans RÉGLAGES → AIDE-MÉMOIRE AKAI."],
-    ["Les pads", "Les 16 pads jouent le kit (banque A : 1 à 8, banque B : 9 à 16). PROG CHANGE puis un pad charge un autre kit. Dans PADS, les potards règlent le pad choisi : filtre, écho, saleté, attaque, hauteur, durée, panoramique, niveau."],
+    ["Les pads", "Les 16 pads jouent le kit (banque A : 1 à 8, banque B : 9 à 16). PROG CHANGE puis un pad : banque A = aller à un onglet, banque B = charger un kit. Dans PADS, les potards règlent le pad choisi : filtre, écho, saleté, attaque, hauteur, durée, panoramique, niveau."],
     ["Enregistrer en boucle", "La pédale Sustain fait REC : la première boucle part au premier son et se ferme au second appui, ce qui fixe le tempo. Chaque REC suivant ajoute une piste (6 par séquence). Huit séquences, A à H ; l'onglet SONG les enchaîne en morceau."],
     ["Trouver des sons", "DIGGING : un bac de disques libres de droits, à découper en chops. SCRATCH : une platine, au doigt ou aux pads. SONS : claviers et accords au clavier de l'Akai. GUITARE : un ampli et ses effets, via le micro ou une interface."],
     ["Transformer", "FX : des motifs rythmiques et des textures, joués aux pads. SP : la couleur du sampler de poche (vinyle, cassette, lo-fi) et le rééchantillonnage sur un pad. MIX : les volumes de chaque partie."],

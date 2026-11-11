@@ -12,7 +12,8 @@ Instruments de l'onglet SONS : échantillons libres (VCSL CC0, Splendid Grand Pi
 ## Contrôles Akai (preset 3)
 
 - Bank 1 (CC 20–27) : play/stop du looper, undo, mute des pistes 1 à 6.
-- Bank 2 (CC 28–35) : kit précédent, kit suivant, lecture/arrêt du morceau (SONG), séquence précédente, note repeat, séquence suivante, onglet suivant, entrée guitare.
+- Bank 2 (CC 28–35) : kit précédent, kit suivant, lecture/arrêt du morceau (SONG), séquence précédente, note repeat, séquence suivante, onglet suivant, entrée guitare (ouvre aussi l'onglet GUITARE).
+- PROG CHANGE : banque A = onglets (1 PADS, 2 LOOPER, 3 SONG, 4 FX, 5 SP, 6 DIGGING, 7 SCRATCH, 8 SONS), banque B = kits 1 à 8.
 
 ## Onglet SCRATCH
 

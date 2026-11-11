@@ -242,3 +242,13 @@ def test_notes_du_looper_vers_mid(app):
     data = z.read(mids[0])
     assert data[:4] == b"MThd" and data.count(b"MTrk") == 2
     assert bytes([0x99, 37]) in data   # pad 1 → note 37 (A01) sur le canal 10
+
+
+def test_prog_change_onglets_et_kits(app):
+    app.evaluate("nomadMidi([0xC0, 6])")
+    assert app.get_attribute("#tab-scratch", "aria-selected") == "true"
+    app.evaluate("nomadMidi([0xC0, 0])")
+    assert app.get_attribute("#tab-play", "aria-selected") == "true"
+    app.evaluate("nomadMidi([0xC0, 8])")
+    app.wait_for_timeout(500)
+    assert app.evaluate("nomadState().kit") == "synth"

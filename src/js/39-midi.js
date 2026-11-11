@@ -14,7 +14,7 @@
       20: togglePlay, 21: undo, 22: () => toggleMute(0), 23: () => toggleMute(1), 24: () => toggleMute(2), 25: () => toggleMute(3), 26: () => toggleMute(4), 27: () => toggleMute(5),
       28: () => stepKit(-1), 29: () => stepKit(1), 30: () => SONG.playing ? (songStop(), stopAll()) : songPlay(), 31: () => selectSeq((SQ.cur + 7) % 8),
       32: () => setNR(!NR.on), 33: () => selectSeq((SQ.cur + 1) % 8),
-      34: () => setTab(TABS[(TABS.indexOf(tab) + 1) % TABS.length]), 35: () => { if (G.on) stopInput(); else startInput(); }
+      34: () => setTab(TABS[(TABS.indexOf(tab) + 1) % TABS.length]), 35: () => { if (G.on) stopInput(); else { startInput(); setTab("guitar"); } }
     };
     if (map[n]) map[n]();
   }
@@ -89,7 +89,10 @@
     } else if (type === 0xb0) {
       onCC(d1, d2);
     } else if (type === 0xc0) {
-      if (d1 < kitIndex.length) loadKit(kitIndex[d1].id);
+      // PROG CHANGE : banque A = un onglet par pad (rangés comme à l'écran), banque B = kits 1 à 8
+      const PC_TABS = ["play", "loops", "song", "fx", "sp", "sample", "scratch", "sons"];
+      if (d1 < 8) { setTab(PC_TABS[d1]); lcd("lcdPad", "ONGLET", $("tab-" + PC_TABS[d1]).textContent); }
+      else if (d1 < 16 && d1 - 8 < kitIndex.length) loadKit(kitIndex[d1 - 8].id);
     }
   }
   async function initMidi() {
