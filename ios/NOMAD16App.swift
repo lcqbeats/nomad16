@@ -1,10 +1,12 @@
-// NOMAD-16 pour iPhone — VERSION 3 (corrigée pour Xcode 16) : une app qui ouvre NOMAD et lui donne le MIDI de l'iPhone (Akai MPK mini), sans MIDIWeb.
+// NOMAD-16 pour iPhone — VERSION 4 (Xcode 16, appairage Bluetooth MIDI) : une app qui ouvre NOMAD et lui donne le MIDI de l'iPhone (Akai MPK mini), sans MIDIWeb.
 // À coller à la place du contenu de NOMAD16App.swift dans un projet Xcode « App » (SwiftUI, Swift).
-// Supprimer ContentView.swift. Ajouter dans l'onglet Info de la cible : « Privacy - Microphone Usage Description ».
+// Supprimer ContentView.swift. Ajouter dans l'onglet Info de la cible : « Privacy - Microphone Usage Description »
+// et « Privacy - Bluetooth Always Usage Description » (contrôleurs MIDI sans fil).
 
 import SwiftUI
 import WebKit
 import CoreMIDI
+import CoreAudioKit
 import AVFoundation
 
 // Adresse de NOMAD (toujours la dernière version en ligne)
@@ -92,9 +94,23 @@ final class NomadCoordinator: NSObject, WKScriptMessageHandler, WKUIDelegate, WK
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let body = message.body as? [String: Any], let type = body["type"] as? String else { return }
         if type == "init" { midi.rescan() }
+        if type == "btpair" { presentBluetoothPairing() }
         if type == "send", let id = body["id"] as? String, let data = body["data"] as? [Int] {
             midi.send(to: id, bytes: data.map { UInt8(truncatingIfNeeded: $0) })
         }
+    }
+
+    // contrôleurs MIDI Bluetooth (DDJ-200, Mix Ultra, WIDI…) : fenêtre d'appairage d'Apple
+    private func presentBluetoothPairing() {
+        guard let root = webView?.window?.rootViewController else { return }
+        let vc = CABTMIDICentralViewController()
+        vc.title = "MIDI Bluetooth"
+        let nav = UINavigationController(rootViewController: vc)
+        vc.navigationItem.rightBarButtonItem = UIBarButtonItem(systemItem: .done, primaryAction: UIAction { [weak self, weak nav] _ in
+            nav?.dismiss(animated: true)
+            self?.midi.rescan()
+        })
+        root.present(nav, animated: true)
     }
 
     // micro / iRig : autorisé sans redemander à chaque fois
