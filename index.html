@@ -133,6 +133,21 @@ button { font-family: var(--font-body); }
 .btn.rec.armed { animation: blink .5s steps(2) infinite; }
 .btn.holding, .btn.on { background: var(--text); color: var(--ink); }
 @keyframes blink { 50% { background: #5a1414; } }
+.gl { border-top: 1px solid rgba(255,255,255,.08); }
+.gl summary { cursor: pointer; padding: 10px 2px; font-size: 11px; font-weight: 700; letter-spacing: .08em; list-style: none; }
+.gl summary::before { content: "▸ "; color: var(--muted); }
+.gl[open] summary::before { content: "▾ "; }
+.gl > div { padding: 0 2px 10px; font-family: var(--font-body, Arimo, Arial, sans-serif); font-size: 12px; line-height: 1.45; }
+.gl summary { font-family: var(--font-body, Arimo, Arial, sans-serif); }
+.gl p { margin: 4px 0; font-size: 12px; line-height: 1.4; text-shadow: none; }
+.gl .glh { margin: 8px 0 4px; font-size: 9px; letter-spacing: .12em; color: var(--muted); font-weight: 700; }
+.glgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+.glgrid span, .glknobs span, .gllist span { background: #2b2825; border-radius: 4px; padding: 4px 4px 5px; font-size: 9.5px; line-height: 1.2; min-height: 30px; }
+.glgrid b, .glknobs b, .gllist b { display: block; font-size: 8px; color: var(--muted); }
+.glknobs, .gllist { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+.gllist { grid-template-columns: repeat(2, 1fr); }
+.gllist span { min-height: 0; }
+:root[data-skin="clair"] .glgrid span, :root[data-skin="clair"] .glknobs span, :root[data-skin="clair"] .gllist span { background: #d8d5ce; }
 /* ---------- SCRATCH : platine tactile ---------- */
 #scrCanvas { width: 100%; aspect-ratio: 1; display: block; touch-action: none; border-radius: 14px 14px 0 0; background: #b9bcc0; }
 .scrplate { margin-top: -10px; background: linear-gradient(180deg, #c3c6ca, #a9acb1); border-radius: 0 0 14px 14px; padding: 10px 10px 12px; display: grid; grid-template-columns: auto 1fr; gap: 8px 10px; align-items: center; color: #2a2a2c; box-shadow: inset 0 -3px 0 rgba(0,0,0,.25); }
@@ -736,6 +751,8 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
 <div class="sheet" id="setSheet" hidden>
   <div class="sheet-in">
     <h2>RÉGLAGES <button type="button" id="setClose">FERMER</button></h2>
+    <h3>AIDE-MÉMOIRE AKAI</h3>
+    <div id="glossary"></div>
     <p>STYLE</p>
     <div class="skins">
       <button class="skin" type="button" data-skin="" style="background:#1b1a18;color:#ece3d3;box-shadow:inset 0 -4px 0 #d92b2f">NOMAD</button>
@@ -752,6 +769,9 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
       <div class="row"><button class="btn" id="btPair" type="button" style="flex:1">APPAIRER UN CONTRÔLEUR BLUETOOTH MIDI</button></div>
       <p class="help">Allumez le contrôleur, touchez son nom dans la liste, puis OK. Il apparaît ensuite comme l'Akai.</p>
     </div>
+    <h3>BATTERIE</h3>
+    <div class="row"><button class="btn" id="hatsBtn" type="button" style="flex:1">CHARLEYS DISCRETS : OUI</button></div>
+    <p class="help">Dans les kits fournis : hats, shakers et cymbales plus bas, plus courts, un peu étouffés, et très sensibles à la force de frappe (frappe légère = presque rien). Chaque pad reste réglable dans PADS.</p>
     <h3>TEXTES D'AIDE</h3>
     <div class="row"><button class="btn" id="helpBtn" type="button" aria-pressed="false" style="flex:1">MASQUÉS</button></div>
     <h3>PROJETS</h3>
@@ -834,7 +854,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
   let kitIndex = [{ id: "synth", name: "NOMAD SYNTH", style: "Synthèse", desc: "Les sons de départ, synthétisés" }];
   let kitCur = "synth";
   let selected = 0, openHatSrc = null, kitChoke = false;
-  const PDEF = { tune: 0, decay: 1, pan: 0, level: 1, start: 0, end: 1, oneshot: true, rev: false, loop: false, att: 0, rel: 0.05, tone: 0.5, choke: 0, fit: 1, fitBeats: 0, echo: 0, dirt: 0, fitMode: 0, eqL: 0, eqM: 0, eqH: 0 };
+  const PDEF = { tune: 0, decay: 1, pan: 0, level: 1, start: 0, end: 1, oneshot: true, rev: false, loop: false, att: 0, rel: 0.05, tone: 0.5, choke: 0, fit: 1, fitBeats: 0, echo: 0, dirt: 0, fitMode: 0, eqL: 0, eqM: 0, eqH: 0, vc: 1 };
   const newParams = () => Array.from({ length: 16 }, () => ({ ...PDEF }));
   const fixParams = arr => Array.from({ length: 16 }, (_, i) => ({ ...PDEF, ...((arr && arr[i]) || {}) }));
   let padParams = newParams();
@@ -1043,6 +1063,7 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     }
     if (ticket !== kitLoading) return;
     padParams = (meta.user && userParams) ? fixParams(userParams) : newParams(); userParams = null;
+    if (!meta.user && meta.id !== "chops") softHats();
     kitChoke = meta.id === "chops" || !!(meta.user && userChoke); userChoke = false;
     select(selected);
     kitCur = meta.id; store.set("kit", kitCur);
@@ -1050,6 +1071,26 @@ select.dev { background: #262421; color: var(--text); border: 0; border-radius: 
     drawPads();
     lcd("lcdPad", "PAD", meta.style.toUpperCase() + " · " + meta.desc);
   }
+  // Charleys discrets : hats, shakers et cymbales plus bas, plus courts, un peu étouffés et très sensibles à la frappe,
+  // pour accompagner le dialogue kick / caisse claire sans l'écraser (kits fournis seulement ; réglable pad par pad)
+  let hatsSoft = store.get("softHats", true);
+  const HAT_RULES = [
+    [/^(hat|hh|pédale hh|charley|closed)/i, { level: 0.6, decay: 0.6, tone: 0.42, vc: 1.7 }],
+    [/open hat|^oh\b/i, { level: 0.55, decay: 0.75, tone: 0.42, vc: 1.6 }],
+    [/shaker|tamb|cabasa|maracas/i, { level: 0.6, decay: 0.7, tone: 0.44, vc: 1.6 }],
+    [/ride|cymbale|crash|triangle/i, { level: 0.65, tone: 0.44, vc: 1.4 }]
+  ];
+  function softHats() {
+    if (!hatsSoft) return;
+    names.forEach((n, i) => { const r = HAT_RULES.find(([re]) => re.test(n || "")); if (r) Object.assign(padParams[i], r[1]); });
+  }
+  function drawHatsBtn() { $("hatsBtn").textContent = "CHARLEYS DISCRETS : " + (hatsSoft ? "OUI" : "NON"); $("hatsBtn").classList.toggle("on", hatsSoft); }
+  drawHatsBtn();
+  $("hatsBtn").addEventListener("click", () => {
+    hatsSoft = !hatsSoft; store.set("softHats", hatsSoft); drawHatsBtn();
+    const meta = kitIndex.find(k => k.id === kitCur);
+    if (meta && !meta.user && meta.id !== "chops") { names.forEach((n, i) => { if (HAT_RULES.some(([re]) => re.test(n || ""))) { const p = padParams[i]; ["level", "decay", "tone", "vc"].forEach(k => p[k] = PDEF[k]); } }); softHats(); syncPlayKnobs(); }
+  });
   function stepKit(d) { const i = kitIndex.findIndex(k => k.id === kitCur); loadKit(kitIndex[(i + d + kitIndex.length) % kitIndex.length].id); }
   $("kitPrev").addEventListener("click", () => stepKit(-1));
   $("kitNext").addEventListener("click", () => stepKit(1));
@@ -1271,7 +1312,7 @@ registerProcessor('nomad-scratch',Scr);`;
     if (ts) { buf = ts; s0 = 0; s1 = ts.duration; }
     const src = ctx.createBufferSource();
     src.buffer = buf; src.playbackRate.value = rate * Math.pow(2, pp.tune / 12) * (ts ? 1 : (pp.fit || 1));
-    const g = ctx.createGain(), lvl = (0.15 + 0.85 * vel) * (gains[i] ?? 1) * pp.level;
+    const g = ctx.createGain(), lvl = (pp.vc > 1 ? 0.06 + 0.94 * Math.pow(vel, pp.vc) : 0.15 + 0.85 * vel) * (gains[i] ?? 1) * pp.level;
     let head = g;
     src.connect(g);
     if (Math.abs(pp.tone - 0.5) > 0.03) { const f = ctx.createBiquadFilter(); if (pp.tone < 0.5) { f.type = "lowpass"; f.frequency.value = 150 * Math.pow(18000 / 150, pp.tone / 0.5); } else { f.type = "highpass"; f.frequency.value = 20 * Math.pow(5000 / 20, (pp.tone - 0.5) / 0.5); } g.connect(f); head = f; }
@@ -1331,7 +1372,7 @@ registerProcessor('nomad-scratch',Scr);`;
     const out = ((ctx.outputLatency || 0) + (ctx.baseLatency || 0)) * 1000;
     $("latInfo").textContent = "Latence annoncée par l'appareil : " + (out ? Math.round(out) + " ms" : "inconnue");
   }
-  $("gearBtn").addEventListener("click", () => { updateLatInfo(); renderProjects(); $("setSheet").hidden = false; });
+  $("gearBtn").addEventListener("click", () => { updateLatInfo(); renderProjects(); renderGlossary(); $("setSheet").hidden = false; });
   $("setClose").addEventListener("click", () => { $("setSheet").hidden = true; });
   $("calBtn").addEventListener("click", () => {
     if (!ctx || calib) return;
@@ -3384,6 +3425,31 @@ registerProcessor('nomad-scratch',Scr);`;
     if (ctx) scrInit();
   }
 
+  // ---------- AIDE-MÉMOIRE AKAI (RÉGLAGES) : toutes les assignations, repliées par thème ----------
+  function padGrid(labels, off = 0) {
+    // disposition du MPK : 5-8 en haut, 1-4 en bas
+    const cell = i => `<span><b>${i + 1 + off}</b>${labels[i] || "—"}</span>`;
+    return `<div class="glgrid">${[4, 5, 6, 7, 0, 1, 2, 3].map(cell).join("")}</div>`;
+  }
+  function renderGlossary() {
+    const el = $("glossary"); if (!el) return;
+    const fxA = FX_PATTERNS.slice(0, 8).map(f => f.name), fxB = FX_PATTERNS.slice(8, 16).map(f => f.name);
+    const kn = t => KNOB_LABELS[t].map((l, i) => `<span><b>${i + 1}</b>${l}</span>`).join("");
+    const kits = kitIndex.slice(0, 16).map((k, i) => `<span><b>${i + 1}</b>${k.name}</span>`).join("");
+    const sec = (title, body, open) => `<details class="gl"${open ? " open" : ""}><summary>${title}</summary><div>${body}</div></details>`;
+    el.innerHTML = [
+      sec("PARTOUT", `<p><b>Pédale Sustain</b> : REC / superposition du looper.</p><p><b>Clavier</b> : joue l'instrument de SONS (ou le pad choisi, transposé) ; en mode ACCORDS, les touches graves jouent les accords ; dans SCRATCH, il transpose le disque.</p><p><b>Potards</b> : changent de rôle selon l'onglet (voir POTARDS).</p>`, true),
+      sec("BOUTON CC (pads en CC, preset 3)", `<p class="glh">Banque A</p>${padGrid(["Play / stop looper", "Annuler", "Muet piste 1", "Muet piste 2", "Muet piste 3", "Muet piste 4", "Muet piste 5", "Muet piste 6"])}<p class="glh">Banque B</p>${padGrid(["Kit précédent", "Kit suivant", "Morceau ▶/■", "Séquence ◀", "Note repeat", "Séquence ▶", "Onglet suivant", "Entrée guitare"], 8)}`),
+      sec("BOUTON PROG CHANGE (charge un kit)", `<p>PROG CHANGE puis le pad n° : charge le kit n°.</p><div class="gllist">${kits}</div>`),
+      sec("PADS EN NOTES, SELON L'ONGLET", `<p><b>PADS, LOOPER, SONG, SP, GUITARE</b> : les 16 sons du kit (banque A = 1 à 8, banque B = 9 à 16).</p>
+        <p class="glh">FX · banque A : motifs</p>${padGrid(fxA)}<p class="glh">FX · banque B : textures</p>${padGrid(fxB, 8)}
+        <p><b>DIGGING</b> : avec CHOP LIVE et le disque qui tourne, chaque pad pose sa découpe ; sinon, le kit.</p>
+        <p><b>SONS</b> en mode ACCORDS : pads 1 à 7 = les accords du style choisi, pad 8 = le premier à l'octave ; banque B = une octave plus haut.</p>
+        <p class="glh">SCRATCH · banque A (tenir)</p>${padGrid(["◀ Arrière", "Ouvre", "Coupe", "Baby", "▶ Avant", "Chirp", "Transform", "Flare"])}
+        <p class="glh">SCRATCH · banque B</p>${padGrid(["Tear", "Stab", "Start / stop", "Au repère", "CUE 1", "CUE 2", "CUE 3", "CUE 4"], 8)}`),
+      sec("POTARDS, SELON L'ONGLET", [["PADS", "play"], ["LOOPER", "loops"], ["SONG", "song"], ["FX", "fx"], ["SP", "sp"], ["DIGGING", "sample"], ["SCRATCH", "scratch"], ["SONS", "sons"], ["GUITARE", "guitar"]].map(([n, t]) => `<p class="glh">${n}</p><div class="glknobs">${kn(t)}</div>`).join(""))
+    ].join("");
+  }
   // ---------- NOTE REPEAT (PADS) : un pad tenu se répète, calé sur la boucle quand elle existe ----------
   const NR_DIVS = [4, 8, 16, 32, 12, 24], NR_NAMES = ["1/4", "1/8", "1/16", "1/32", "1/8T", "1/16T"];
   const NR = { on: false, idx: 2, held: new Map() };
