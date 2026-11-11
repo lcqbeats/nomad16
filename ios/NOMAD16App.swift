@@ -1,7 +1,8 @@
-// NOMAD-16 pour iPhone — VERSION 4 (Xcode 16, appairage Bluetooth MIDI) : une app qui ouvre NOMAD et lui donne le MIDI de l'iPhone (Akai MPK mini), sans MIDIWeb.
+// NOMAD-16 pour iPhone — VERSION 5 (Xcode 16, appairage Bluetooth MIDI, hors ligne) : une app qui ouvre NOMAD et lui donne le MIDI de l'iPhone (Akai MPK mini), sans MIDIWeb.
 // À coller à la place du contenu de NOMAD16App.swift dans un projet Xcode « App » (SwiftUI, Swift).
 // Supprimer ContentView.swift. Ajouter dans l'onglet Info de la cible : « Privacy - Microphone Usage Description »
 // et « Privacy - Bluetooth Always Usage Description » (contrôleurs MIDI sans fil).
+// Hors ligne : le fichier NOMAD16-Info.plist (WKAppBoundDomains = lcqbeats.github.io) active le service worker dans l'app.
 
 import SwiftUI
 import WebKit
@@ -42,6 +43,7 @@ struct NomadWebView: UIViewRepresentable {
         let cfg = WKWebViewConfiguration()
         cfg.allowsInlineMediaPlayback = true
         cfg.mediaTypesRequiringUserActionForPlayback = []
+        cfg.limitsNavigationsToAppBoundDomains = true // nécessaire pour le mode hors ligne (service worker)
         let uc = WKUserContentController()
         uc.addUserScript(WKUserScript(source: webMIDIPolyfill, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         uc.add(context.coordinator, name: "nomadMidi")

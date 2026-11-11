@@ -9,3 +9,7 @@
 6. Brancher l'iPhone, le choisir en haut de la fenêtre, puis ▶ (Run).
    Première fois : sur l'iPhone, Réglages > Général > VPN et gestion de l'appareil > ton identifiant > Faire confiance.
 7. Avec un compte gratuit, l'app fonctionne 7 jours : rebrancher l'iPhone et refaire ▶.
+
+## Version 5 : hors ligne
+
+Ajouter le fichier `NOMAD16-Info.plist` à côté du dossier du projet Xcode et, dans les réglages de la cible (Build Settings), mettre « Info.plist File » = `NOMAD16-Info.plist`. Il déclare `lcqbeats.github.io` comme domaine de l'app (WKAppBoundDomains), ce qui autorise le service worker : NOMAD démarre alors sans réseau.
