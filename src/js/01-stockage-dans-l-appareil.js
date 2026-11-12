@@ -18,5 +18,7 @@
   };
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
   const packBuf = b => b ? { sr: b.sampleRate, ch: Array.from({ length: b.numberOfChannels }, (_, c) => b.getChannelData(c).slice()) } : null;
-  const unpackBuf = o => { if (!o) return null; const b = ctx.createBuffer(o.ch.length, o.ch[0].length, o.sr); o.ch.forEach((d, c) => b.copyToChannel(d, c)); return b; };
+  // version compacte (16 bits, moitié moins de place) pour les kits de chops gardés automatiquement
+  const packBuf16 = b => b ? { sr: b.sampleRate, q: 1, ch: Array.from({ length: b.numberOfChannels }, (_, c) => { const d = b.getChannelData(c), o = new Int16Array(d.length); for (let i = 0; i < d.length; i++) o[i] = Math.max(-32767, Math.min(32767, Math.round(d[i] * 32767))); return o; }) } : null;
+  const unpackBuf = o => { if (!o) return null; const b = ctx.createBuffer(o.ch.length, o.ch[0].length, o.sr); o.ch.forEach((d, c) => b.copyToChannel(o.q ? Float32Array.from(d, v => v / 32767) : d, c)); return b; };
 

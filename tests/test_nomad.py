@@ -604,6 +604,24 @@ def test_fx_sur_piste_apres_sp(app):
     assert lv() < open_ * 0.5
 
 
+def test_kit_de_chops_garde_et_nomme(app):
+    app.click("#tab-sample")
+    app.evaluate("""() => { const c = nomadDbg.sp.in.context, sr = c.sampleRate, n = sr * 2, b = c.createBuffer(2, n, sr);
+      for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let k = 0; k < 4; k++) { const s0 = Math.floor((0.1 + k * 0.45) * sr); for (let i = 0; i < sr * 0.2; i++) d[s0 + i] = Math.sin(i / 9) * 0.5 * Math.exp(-i / (sr * 0.05)); } }
+      nomadDbg.setClip(b, "Black and white · extrait 2"); }""")
+    app.click("#chEq8"); app.click("#toPads")
+    app.wait_for_function("/CHOPS · BLACK AND WHITE 2/.test(document.getElementById('kitName').textContent)", timeout=8000)
+    app.evaluate("nomadMidi([0xC0, 13])")      # PROG CHANGE : un autre kit
+    app.wait_for_function("!/CHOPS/.test(document.getElementById('kitName').textContent)", timeout=8000)
+    assert app.evaluate("nomadState().bufs") > 0
+    ids = app.evaluate("(async () => (await new Promise(r => { const q = indexedDB.open('nomad16'); q.onsuccess = () => { const t = q.result.transaction('kits').objectStore('kits').getAll(); t.onsuccess = () => r(t.result.map(k => k.name)); }; })))()")
+    assert "CHOPS · BLACK AND WHITE 2" in ids, ids
+    # on y revient : les chops sont bien là
+    app.evaluate("nomadDbg.loadKit(nomadDbg.kitIndex.find(k => /BLACK AND WHITE/.test(k.name)).id)")
+    app.wait_for_function("/CHOPS · BLACK AND WHITE 2/.test(document.getElementById('kitName').textContent) && nomadDbg.buffers[0]", timeout=8000)
+    assert app.evaluate("Math.max(...nomadDbg.buffers[0].getChannelData(0))") > 0.3
+
+
 def test_famille_20syl(app):
     app.click("#tab-sons")
     app.locator("#cats .cat", has_text="20SYL").click()

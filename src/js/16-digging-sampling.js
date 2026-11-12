@@ -480,12 +480,30 @@
       chopKit.buffers.push(sliceBuf(a, b, rate)); chopKit.names.push("Chop " + (i + 1));
     });
     while (chopKit.buffers.length < 16) { chopKit.buffers.push(null); chopKit.names.push("—"); }
-    if (!kitIndex.some(k => k.id === "chops")) kitIndex.splice(1, 0, { id: "chops", name: "MES CHOPS", style: "Sampling", desc: "" });
-    const meta = kitIndex.find(k => k.id === "chops");
-    meta.desc = (clip.title || "").slice(0, 60);
-    loadKit("chops");
-    lcd("lcdPad", "PADS", `${Math.min(16, chops.length)} découpes envoyées · kit MES CHOPS`);
+    persistChops(true).then(name => lcd("lcdPad", "PADS", `${Math.min(16, chops.length)} découpes · kit ${name} (gardé dans l'appareil)`));
   });
+  // Kits de chops gardés automatiquement, nommés d'après le disque : on peut changer de kit et y revenir quand on veut.
+  // Un kit par extrait (renvoyer le même extrait met le kit à jour) ; les 6 plus récents sont gardés, en 16 bits.
+  const CHOP_KEEP = 6;
+  function chopKitName() {
+    const t = (clip && clip.title) || "CHOPS", m = t.match(/^(.*) · extrait (\d+)$/), base = (m ? m[1] : t).replace(/\.[a-z0-9]{2,4}$/i, "").trim();
+    const tail = m ? " " + m[2] : "";
+    return ("CHOPS · " + base.toUpperCase()).slice(0, 30 - tail.length) + tail;
+  }
+  async function persistChops(load) {
+    if (!clip || !chopKit.buffers.some(Boolean)) return "";
+    const t = clip.title || "chops"; let h = 7; for (const ch of t) h = (h * 31 + ch.charCodeAt(0)) | 0;
+    const id = "chops-" + (h >>> 0).toString(36), name = chopKitName();
+    try {
+      const prev = await DB.get("kits", id);
+      await DB.put("kits", { id, name, names: chopKit.names.slice(), gains: new Array(16).fill(1), chokeAll: true, bufs: chopKit.buffers.map(packBuf16), created: prev ? prev.created : Date.now(), used: Date.now(), auto: true, desc: t.slice(0, 60) });
+      const autos = (await DB.all("kits")).filter(k => k.auto).sort((a, b) => (b.used || 0) - (a.used || 0));
+      for (const k of autos.slice(CHOP_KEEP)) if (k.id !== kitCur) await DB.del("kits", k.id);
+      await refreshUserKits();
+      if (load) await loadKit(id);
+    } catch (e) { if (load) loadKit("chops"); }
+    return name;
+  }
   // Import de fichier et enregistrement micro
   $("fileBtn").addEventListener("click", () => $("fileIn").click());
   $("fileIn").addEventListener("change", async e => {
@@ -546,7 +564,7 @@
     const b = digPadEls[i]; b.classList.add("hit"); clearTimeout(b._t); b._t = setTimeout(() => b.classList.remove("hit"), 110);
     drawDigPads();
   }
-  function drawDigPads() { digPadEls.forEach((b, i) => b.classList.toggle("has", LC.on ? LC.marks[i] !== undefined : kitCur === "chops" && !!buffers[i])); }
+  function drawDigPads() { digPadEls.forEach((b, i) => b.classList.toggle("has", LC.on ? LC.marks[i] !== undefined : String(kitCur).startsWith("chops") && !!buffers[i])); }
   function ttPos() { return ttSrc ? Math.floor(ttOff + (ctx.currentTime - ttStart) * Math.pow(2, pitchSemi / 12) * sr) : -1; }
   function sliceBuf(a, b, rate) {
     const len = Math.max(32, Math.floor((b - a) / rate)), out = ctx.createBuffer(clip.buf.numberOfChannels, len, sr);
@@ -594,7 +612,7 @@
     });
     chops = starts; drawWave();
     if (!kitIndex.some(k => k.id === "chops")) kitIndex.splice(1, 0, { id: "chops", name: "MES CHOPS", style: "Sampling", desc: "" });
-    kitIndex.find(k => k.id === "chops").desc = (clip.title || "").slice(0, 60) + " · chop live";
+    const cm = kitIndex.find(k => k.id === "chops"); cm.name = chopKitName() + " · LIVE"; cm.desc = (clip.title || "").slice(0, 60) + " · chop live";
     if (kitCur !== "chops") loadKit("chops"); else { buffers = chopKit.buffers.slice(); names = chopKit.names.slice(); drawPads(); }
     $("lcUndo").disabled = !LC.hist.length; $("lcRestart").disabled = !Object.keys(LC.marks).length && !LC.hist.length;
     drawDigPads();

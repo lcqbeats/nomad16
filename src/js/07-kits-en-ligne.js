@@ -12,7 +12,7 @@
     try {
       const mine = await DB.all("kits");
       kitIndex = kitIndex.filter(k => !k.user);
-      mine.sort((a, b) => a.created - b.created).forEach(k => kitIndex.push({ id: k.id, name: k.name, style: "Perso", desc: "kit enregistré dans cet appareil", user: true }));
+      mine.sort((a, b) => a.created - b.created).forEach(k => kitIndex.push({ id: k.id, name: k.name, style: k.auto ? "Chops" : "Perso", desc: k.auto ? (k.desc || "chops gardés automatiquement") : "kit enregistré dans cet appareil", user: true }));
     } catch (e) {}
   }
   async function saveCurrentKit(name) {
@@ -50,6 +50,7 @@
   let kitLoading = 0, userParams = null, userChoke = false;
   async function loadKit(id) {
     if (!ctx) return;
+    if (kitCur === "chops" && id !== "chops" && typeof persistChops === "function") persistChops(false);
     const ticket = ++kitLoading;
     const meta = kitIndex.find(k => k.id === id) || kitIndex[0];
     $("kitName").textContent = meta.name + (meta.id === "synth" ? "" : " …");
