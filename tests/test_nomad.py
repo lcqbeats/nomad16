@@ -397,3 +397,17 @@ def test_prochaine_piste_demi_boucle(app):
     app.evaluate("nomadMidi([0xB0, 64, 127]); nomadMidi([0xB0, 64, 0])")
     app.wait_for_function("nomadDbg.LP.layers.length === 2", timeout=8000)
     assert app.evaluate("nomadDbg.LP.layers[1].buf.length === nomadDbg.LP.Lf && nomadDbg.LP.layers[1].k === 1")
+
+
+def test_sons_effets(app):
+    app.click("#tab-sons")
+    app.wait_for_function("document.querySelectorAll('#sonsFx .fxpre').length >= 14", timeout=5000)
+    for i in range(1, 15):
+        app.locator("#sonsFx .fxpre").nth(i).click()
+        app.evaluate("nomadMidi([0x90, 60, 100])")
+        app.wait_for_timeout(80)
+        app.evaluate("nomadMidi([0x80, 60, 0])")
+    app.locator("#sonsFx .fxpre").nth(1).click()
+    assert "DREAMY" in app.inner_text("#lcdPad")
+    app.evaluate("nomadMidi([0x90, 64, 110])")
+    assert max(loud(app, 80) for _ in range(5)) > 0.005

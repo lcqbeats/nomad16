@@ -46,6 +46,7 @@
       instFilt = ctx.createBiquadFilter(); instFilt.type = "lowpass"; instFilt.frequency.value = 20000;
       instRev = ctx.createConvolver(); instRev.buffer = impulse(2.4, 2.5, 0.3); instRevSend = ctx.createGain(); instRevSend.gain.value = knobVals.sons[3] * 0.6;
       instBus.connect(instFilt); instFilt.connect(chSons); instFilt.connect(instRevSend); instRevSend.connect(instRev); instRev.connect(chSons);
+      applySonsFx(SFX.id);
     }
     const cur = allInsts().find(i => i.id === instCur);
     if (cur) instCat = cur.cat;
@@ -64,6 +65,7 @@
     });
     $("mNotes").classList.toggle("on", !chordMode); $("mChords").classList.toggle("on", chordMode); $("mBass").classList.toggle("on", addBass); $("mFull").classList.toggle("on", sonsFull);
     $("chordPanel").hidden = !chordMode;
+    drawSonsFx();
     const st = STYLES[styleIdx];
     $("keyVal").textContent = NN[tonic] + (st.minor ? "m" : ""); $("keyMode").textContent = st.minor ? "mineur" : "majeur";
     $("styles").innerHTML = "";
