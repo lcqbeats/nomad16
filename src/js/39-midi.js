@@ -51,7 +51,7 @@
     if (tab === "scratch") { knobVals.scratch[k] = val; scrKnob(k); $("dial" + k).style.setProperty("--v", val); return; }
     if (tab === "sample") { sampleKnob(k, v); $("dial" + k).style.setProperty("--v", val); return; }
     if (tab === "guitar") return;
-    if (tab === "sp") { knobVals.sp[k] = val; $("dial" + k).style.setProperty("--v", val); applySp(k); return; }
+    if (tab === "sp") { knobVals.sp[k] = val; $("dial" + k).style.setProperty("--v", val); applySp(k); return; }   // 7 = découpe, 8 = tout couper / rétablir
     if (tab === "song") {
       knobVals.song[k] = val; $("dial" + k).style.setProperty("--v", val);
       if (k === 7) { lcd("lcdPad", "MÉTRONOME", "volume " + Math.round(val * 100) + " %"); return; }

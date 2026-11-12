@@ -73,7 +73,7 @@
     { const dl = ctx.createDelay(0.05), mix = G(0.6), inp = G(1); dl.delayTime.value = 0.02; inp.connect(mix); inp.connect(dl); dl.connect(mix);
       x = unit("chorus", inp, mix); x.l = LFO(0.6, 0.004, dl.delayTime); }
     // SLICER : gain haché au tempo
-    { const g = G(1), sq = ctx.createOscillator(); sq.type = "square"; const d = G(0); sq.connect(d); d.connect(g.gain); sq.start(); x = unit("slice", g, g); Object.assign(x, { g, sq, d }); }
+    { const g = G(1), d = G(0); d.connect(g.gain); x = unit("slice", g, g); Object.assign(x, { g, d, sq: null, key: "" }); }
     // LOOPER DJ (worklet)
     if (hasWorklet) { const w = new AudioWorkletNode(ctx, "nomad-djloop", { outputChannelCount: [2] }); x = unit("loop", w, w); x.node = w; }
     else { const g = G(1); x = unit("loop", g, g); }
@@ -99,6 +99,29 @@
   }
   // réglages d'un effet (a, b entre 0 et 1)
   const spDrive = (d, amt, t) => { d.pg.gain.setTargetAtTime(1 + amt * 12, t, 0.03); d.po.gain.setTargetAtTime(1 / (1 + amt * 2.4), t, 0.03); };
+  // DÉCOUPE (potard 7) : rythme droit, triolet, pointé ou swing pour ÉCHO, SLICER et LOOPER DJ
+  const SP_FEEL = [["DROIT", 1, 0.5], ["TRIOLET", 2 / 3, 0.5], ["POINTÉ", 1.5, 0.5], ["SWING 54 %", 1, 0.54], ["SWING 58 %", 1, 0.58], ["SWING 62 %", 1, 0.62], ["SWING 66 %", 1, 0.66]];
+  const spFeel = () => SP_FEEL[Math.min(SP_FEEL.length - 1, Math.floor(knobVals.sp[6] * SP_FEEL.length))];
+  // forme du SLICER : deux coups par période, le second décalé par le swing ; adoucie pour ne pas claquer
+  const sliceWaves = new Map();
+  function sliceWave(s) {
+    if (sliceWaves.has(s)) return sliceWaves.get(s);
+    const N = 2048, H = 40, w = new Float32Array(N);
+    for (let k = 0; k < N; k++) { const x = k / N; w[k] = (x < 0.25 || (x >= s && x < s + 0.25)) ? 1 : -1; }
+    const re = new Float32Array(H + 1), im = new Float32Array(H + 1);
+    for (let n = 1; n <= H; n++) { let a = 0, b = 0; for (let k = 0; k < N; k++) { const ph = 2 * Math.PI * n * k / N; a += w[k] * Math.cos(ph); b += w[k] * Math.sin(ph); } const sig = Math.sin(Math.PI * n / (H + 1)) / (Math.PI * n / (H + 1)); re[n] = 2 * a / N * sig; im[n] = 2 * b / N * sig; }
+    const pw = ctx.createPeriodicWave(re, im, { disableNormalization: true }); sliceWaves.set(s, pw); return pw;
+  }
+  // l'oscillateur du SLICER repart pile sur la grille de la boucle (sinon le swing tomberait à côté)
+  function sliceOsc(u, step) {
+    const [, mult, s] = spFeel(), P = 2 * step * mult, key = P.toFixed(5) + "|" + s;
+    if (u.key === key && u.sq) return;
+    u.key = key;
+    const now = ctx.currentTime, o0 = LP.t0F !== null ? LP.t0F / sr : now, T = o0 + Math.ceil((now + 0.03 - o0) / P) * P;
+    const o = ctx.createOscillator(); o.setPeriodicWave(sliceWave(s)); o.frequency.value = 1 / P; o.connect(u.d); o.start(T);
+    if (u.sq) { try { u.sq.stop(T); } catch (e) {} const old = u.sq; setTimeout(() => { try { old.disconnect(); } catch (e) {} }, (T - now) * 1000 + 100); }
+    u.sq = o;
+  }
   function spParams(i) {
     if (!sp) return;
     const f = SP_FX[i], u = sp.u[f.id], a = f.a, b = f.b, t = ctx.currentTime, set = (p, v) => p.setTargetAtTime(v, t, 0.03), beat = spBeat();
@@ -114,9 +137,10 @@
     if (f.id === "khigh") u.f.forEach(x => set(x.frequency, 300 * Math.pow(20, 1 - a)));
     if (f.id === "flang") { set(u.l.o.frequency, 0.05 + a * a * 4); set(u.l.g.gain, 0.0005 + b * 0.0028); set(u.fb.gain, 0.3 + b * 0.55); }
     if (f.id === "chorus") { set(u.l.o.frequency, 0.1 + a * 3); set(u.l.g.gain, 0.0005 + b * 0.008); }
-    if (f.id === "slice") { const div = [2, 4, 8, 16, 32][Math.min(4, Math.floor(a * 5))]; set(u.sq.frequency, div / 4 / beat * 2); set(u.d.gain, f.on ? b * 0.5 : 0); set(u.g.gain, f.on ? 1 - b * 0.5 : 1); }
-    if (f.id === "loop") { if (u.node) u.node.port.postMessage({ len: Math.round(beat * [1, 0.5, 0.25, 0.125, 0.0625][Math.min(4, Math.floor(a * 5))] * ctx.sampleRate), rate: b < 0.45 ? 0.5 + b / 0.45 * 0.5 : b > 0.55 ? 1 + (b - 0.55) / 0.45 : 1 }); }
-    if (f.id === "echo") { set(u.dl.delayTime, Math.min(3.9, beat * [0.25, 0.375, 0.5, 0.75, 1][Math.min(4, Math.floor(a * 5))])); set(u.fb.gain, b * 0.85); }
+    const feel = spFeel();
+    if (f.id === "slice") { const div = [4, 8, 16, 32][Math.min(3, Math.floor(a * 4))]; if (f.on) sliceOsc(u, beat * 4 / div); set(u.d.gain, f.on ? b * 0.5 : 0); set(u.g.gain, f.on ? 1 - b * 0.5 : 1); }
+    if (f.id === "loop") { if (u.node) u.node.port.postMessage({ len: Math.round(beat * feel[1] * [1, 0.5, 0.25, 0.125, 0.0625][Math.min(4, Math.floor(a * 5))] * ctx.sampleRate), rate: b < 0.45 ? 0.5 + b / 0.45 * 0.5 : b > 0.55 ? 1 + (b - 0.55) / 0.45 : 1 }); }
+    if (f.id === "echo") { set(u.dl.delayTime, Math.min(3.9, beat * feel[1] * feel[2] * 2 * [0.25, 0.375, 0.5, 0.75, 1][Math.min(4, Math.floor(a * 5))])); set(u.fb.gain, b * 0.85); }
     if (f.id === "verb") { const s = 0.8 + a * 3.5; if (Math.abs(s - u.size) > 0.25) { u.size = s; u.cv.buffer = impulse(s, 2.4, 0.4); } set(u.lp.frequency, 1500 * Math.pow(8, b)); }
     spMix(i);
   }
@@ -129,7 +153,7 @@
     u.wet.gain.setTargetAtTime(on ? m : 0, t, 0.015);
     u.dry.gain.setTargetAtTime(on && !u.send ? 1 - m : 1, t, 0.015);
     if (f.id === "loop" && u.node) u.node.port.postMessage({ on });
-    if (f.id === "slice") { u.d.gain.setTargetAtTime(on ? f.b * 0.5 : 0, t, 0.01); u.g.gain.setTargetAtTime(on ? 1 - f.b * 0.5 : 1, t, 0.01); }
+    if (f.id === "slice") { if (on) { if (!u.sq) sliceOsc(u, spBeat() * 4 / [4, 8, 16, 32][Math.min(3, Math.floor(f.a * 4))]); } else { if (u.sq) { try { u.sq.stop(t + 0.05); } catch (e) {} u.sq = null; u.key = ""; } } u.d.gain.setTargetAtTime(on ? f.b * 0.5 : 0, t, 0.01); u.g.gain.setTargetAtTime(on ? 1 - f.b * 0.5 : 1, t, 0.01); }
   }
   // potards : 1 = réglage 1, 2 = réglage 2, 3 = dosage de l'effet choisi ; 4-6 isolateur ; 7 sortie
   function applySp(k) {
@@ -139,7 +163,12 @@
     if (k <= 2) { if (k === 0) f.a = x; if (k === 1) { if (f.p[1] === "—") return; f.b = x; } if (k === 2) f.m = x; spParams(SPX.cur); spSave();
       if (tab === "sp") { lcd("lcdPad", "SP", `${f.name} · ${k === 2 ? "dosage" : f.p[k].toLowerCase()} ${Math.round(x * 100)} %`); spSeg("F" + String(SPX.cur + 1).padStart(2, "0"), f.name); } return; }
     if (k >= 3 && k <= 5) { sp.iso[k - 3].gain.setTargetAtTime(SPX.on ? isoDb(x) : 0, t, 0.02); if (tab === "sp") lcd("lcdPad", "SP", `${["graves", "médiums", "aigus"][k - 3]} ${isoDb(x) > 0 ? "+" : ""}${isoDb(x).toFixed(0)} dB`); }
-    if (k === 6) { sp.out.gain.setTargetAtTime(x * 1.25, t, 0.02); if (tab === "sp") lcd("lcdPad", "SP", `sortie ${Math.round(x * 100)} %`); }
+    if (k === 6) { ["echo", "slice", "loop"].forEach(id => spParams(SP_FX.findIndex(f => f.id === id))); if (tab === "sp") { lcd("lcdPad", "SP", `découpe : ${spFeel()[0].toLowerCase()} (écho, slicer, looper DJ)`); spSeg("RYT", spFeel()[0]); } }
+    // potard 8 : tout couper en le tournant à gauche, tout rétablir en le ramenant à droite
+    if (k === 7) {
+      if (x < 0.25 && !SPX.killed) { SPX.killed = SP_FX.map((f, i) => f.on ? i : -1).filter(i => i >= 0); SP_FX.forEach((f, i) => { f.on = false; spMix(i); }); drawSpFx(); if (tab === "sp") { lcd("lcdPad", "SP", "effets coupés · tourne à droite pour les rétablir"); spSeg("OFF", "TOUT COUPÉ"); } }
+      else if (x > 0.75 && SPX.killed) { const back = SPX.killed; SPX.killed = null; back.forEach(i => { SP_FX[i].on = true; spParams(i); }); drawSpFx(); if (tab === "sp") { lcd("lcdPad", "SP", back.length ? `${back.length} effet(s) rétabli(s)` : "rien à rétablir"); spSeg("ON", "RÉTABLI"); } }
+    }
   }
   function spSelect(i) {
     SPX.cur = i; const f = SP_FX[i];
@@ -152,7 +181,7 @@
   function spPad(i, down) {
     const f = SP_FX[i]; if (!f) return;
     if (down) {
-      spDown[i] = { t: performance.now(), was: f.on };
+      spDown[i] = { t: performance.now(), was: f.on }; SPX.killed = null;
       f.on = true; spSelect(i); spParams(i); drawSpFx();
       spSeg("F" + String(i + 1).padStart(2, "0"), f.name); lcd("lcdPad", "SP", `${f.name} · ${f.sub}`);
     } else {
@@ -236,7 +265,7 @@
     drawSpTargets();
   }
   $("spPrint").addEventListener("click", spPrintToggle);
-  function spAllOff() { SP_FX.forEach((f, i) => { f.on = false; spMix(i); }); drawSpFx(); lcd("lcdPad", "SP", "tous les effets coupés"); }
+  function spAllOff() { SPX.killed = null; SP_FX.forEach((f, i) => { f.on = false; spMix(i); }); drawSpFx(); lcd("lcdPad", "SP", "tous les effets coupés"); }
   const spFxEls = [];
   [12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3].forEach(i => {
     const b = document.createElement("button"); b.type = "button"; b.className = "spfx"; b.innerHTML = `<i></i><b>${SP_FX[i].name}</b><span>${i + 1}</span>`;

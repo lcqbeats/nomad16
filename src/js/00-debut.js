@@ -5,7 +5,7 @@
   const SYNTH_NAMES = ["Kick","Snare","Hat","Open hat","Clap","Rim","Shaker","Snap","Tom bas","Tom haut","Conga","Cloche","Ride","Basse 808","Stab","Blip"];
   const KNOB_LABELS = {
     play: ["Filtre", "Écho", "Saleté", "Attaque", "Tune", "Decay", "Pan", "Niveau"],
-    sp: ["Écrasement", "Pompe", "Dosage", "Graves", "Médiums", "Aigus", "Sortie SP", "—"],
+    sp: ["Écrasement", "Pompe", "Dosage", "Graves", "Médiums", "Aigus", "Découpe", "Tout couper"],
     song: ["Piste 1", "Piste 2", "Piste 3", "Piste 4", "Piste 5", "Piste 6", "Boucles", "Métronome"],
     loops: ["Piste 1", "Piste 2", "Piste 3", "Piste 4", "Piste 5", "Piste 6", "Boucles", "Longueur"],
     guitar: ["Gain", "Basses", "Médiums", "Aigus", "Présence", "Réverbe", "Master", "Écho"],
@@ -16,7 +16,7 @@
   };
   // PROG CHANGE banque B de l'Akai : les 8 kits rangés sur les pads 9 à 16
   const PC_KITS = ["dilla", "rza", "peterock", "damu", "lofi", "boombap", "dub", "acoustic"];
-  const knobVals = { play: [0.5, 0, 0, 0, 0.5, 1, 0.5, 0.8], loops: [1, 1, 1, 1, 1, 1, 0.9, 0], guitar: [0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.6, 0.3], fx: [0.5, 0.2, 0, 0.5, 0.55, 0, 0, 0.85], sample: [0.5, 0.5, 0.5, 0.5, 0, 0, 0, 0.9], sons: [0.8, 0.35, 1, 0.25, 0.5, 1, 0, 0], song: [1, 1, 1, 1, 1, 1, 0.9, 0.6], sp: [0.65, 0.5, 1, 0.5, 0.5, 0.5, 0.8, 0], scratch: [0.85, 0.5, 0.5, 0.2, 0.3, 0.3, 0, 0.2] };
+  const knobVals = { play: [0.5, 0, 0, 0, 0.5, 1, 0.5, 0.8], loops: [1, 1, 1, 1, 1, 1, 0.9, 0], guitar: [0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.6, 0.3], fx: [0.5, 0.2, 0, 0.5, 0.55, 0, 0, 0.85], sample: [0.5, 0.5, 0.5, 0.5, 0, 0, 0, 0.9], sons: [0.8, 0.35, 1, 0.25, 0.5, 1, 0, 0], song: [1, 1, 1, 1, 1, 1, 0.9, 0.6], sp: [0.65, 0.5, 1, 0.5, 0.5, 0.5, 0, 1], scratch: [0.85, 0.5, 0.5, 0.2, 0.3, 0.3, 0, 0.2] };
   let tab = "play";
 
   let chPads, chSons, chGtr, chMaster, spIn, mixOut, ctx, sr, echoIn, liveIn, filter, drive, delay, delayFb, delayWet, padOut, liveBus, loopBus, master, fxOut;

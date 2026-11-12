@@ -482,6 +482,16 @@ def test_sp_station_effets(app):
     assert 0.0005 < lv < 2.5, lv
     app.click("#spAllOff")
     assert app.locator("#spFxGrid .spfx.on").count() == 0
+    # potard 8 : à gauche tout coupe, à droite tout revient
+    app.evaluate("nomadMidi([0x99, 36, 100]); nomadMidi([0x89, 36, 0]); nomadMidi([0x99, 47, 100]); nomadMidi([0x89, 47, 0])")
+    assert app.locator("#spFxGrid .spfx.on").count() == 2
+    app.evaluate("nomadMidi([0xB0, 77, 127]); nomadMidi([0xB0, 77, 0])")
+    assert app.locator("#spFxGrid .spfx.on").count() == 0
+    app.evaluate("nomadMidi([0xB0, 77, 127])")
+    assert app.locator("#spFxGrid .spfx.on").count() == 2
+    # potard 7 : découpe en swing, le slicer suit sans erreur
+    app.evaluate("nomadMidi([0xB0, 76, 0]); nomadMidi([0xB0, 76, 110])")
+    assert "swing" in app.inner_text("#lcdPad").lower()
 
 
 def test_sp_imprime_sur_une_piste(app):

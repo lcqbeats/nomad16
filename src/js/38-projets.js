@@ -4,7 +4,7 @@
     const p = {
       id, name: name.toUpperCase().slice(0, 40), created: Date.now(),
       kit: kitCur, kitEmbed: (kitCur === "chops") ? { names: names.slice(), gains: gains.slice(), bufs: buffers.map(packBuf) } : null,
-      knobs: JSON.parse(JSON.stringify(knobVals)), knobsV: 2, manualBpm, padParams: padParams.map(p => ({ ...p })), fxTarget,
+      knobs: JSON.parse(JSON.stringify(knobVals)), knobsV: 3, manualBpm, padParams: padParams.map(p => ({ ...p })), fxTarget,
       song: { steps: SONG.steps, loop: SONG.loop, cur: SQ.cur, nr: NR.idx },
       guitar: { amp: G.amp, fx: [...G.fx], preset: G.preset },
       loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, notes: l.notes || [], buf: packBuf(l.buf) }))) }
@@ -15,6 +15,7 @@
     const p = await DB.get("projects", id); if (!p || !ctx) return;
     Object.keys(p.knobs).forEach(t => { if (knobVals[t]) knobVals[t] = p.knobs[t].slice(); });
     if (!p.knobsV) { knobVals.sons[5] = 1; knobVals.sons[6] = 0; }
+    if (!p.knobsV || p.knobsV < 3) { knobVals.sp[6] = 0; knobVals.sp[7] = 1; }   // anciens potards SP : sortie et rien
     if (typeof sonsFxDose === "function") sonsFxDose(true);
     { const f = SP_FX[SPX.cur]; knobVals.sp[0] = f.a; knobVals.sp[1] = f.b; knobVals.sp[2] = f.m; }   // les effets SP gardent leurs propres réglages
     manualBpm = p.manualBpm || 90;
