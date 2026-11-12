@@ -20,9 +20,29 @@
    "gain": 0.5
   },
   {
+   "name": "Cloche",
+   "file": "15.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Tom bas",
+   "file": "09.wav",
+   "gain": 0.8
+  },
+  {
+   "name": "Rim",
+   "file": "08.wav",
+   "gain": 0.8
+  },
+  {
    "name": "Open hat",
    "file": "04.wav",
    "gain": 0.45
+  },
+  {
+   "name": "Tom haut",
+   "file": "10.wav",
+   "gain": 0.8
   },
   {
    "name": "Kick 2",
@@ -40,33 +60,8 @@
    "gain": 0.5
   },
   {
-   "name": "Rim",
-   "file": "08.wav",
-   "gain": 0.8
-  },
-  {
-   "name": "Tom bas",
-   "file": "09.wav",
-   "gain": 0.8
-  },
-  {
-   "name": "Tom haut",
-   "file": "10.wav",
-   "gain": 0.8
-  },
-  {
-   "name": "Crash",
-   "file": "11.wav",
-   "gain": 0.45
-  },
-  {
    "name": "Gong",
    "file": "12.wav",
-   "gain": 0.55
-  },
-  {
-   "name": "Épée",
-   "file": "13.wav",
    "gain": 0.55
   },
   {
@@ -75,9 +70,14 @@
    "gain": 0.85
   },
   {
-   "name": "Cloche",
-   "file": "15.wav",
-   "gain": 0.5
+   "name": "Épée",
+   "file": "13.wav",
+   "gain": 0.55
+  },
+  {
+   "name": "Crash",
+   "file": "11.wav",
+   "gain": 0.45
   },
   {
    "name": "Vinyle",

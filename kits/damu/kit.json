@@ -25,9 +25,9 @@
    "gain": 0.45
   },
   {
-   "name": "Kick 2",
-   "file": "05.wav",
-   "gain": 1.0
+   "name": "Tom bas",
+   "file": "13.wav",
+   "gain": 0.75
   },
   {
    "name": "Balai",
@@ -40,9 +40,14 @@
    "gain": 0.45
   },
   {
-   "name": "Rim",
-   "file": "08.wav",
-   "gain": 0.75
+   "name": "Vinyle",
+   "file": "16.wav",
+   "gain": 0.55
+  },
+  {
+   "name": "Kick 2",
+   "file": "05.wav",
+   "gain": 1.0
   },
   {
    "name": "Snare feutrée",
@@ -50,24 +55,14 @@
    "gain": 0.75
   },
   {
-   "name": "Cloche ride",
-   "file": "10.wav",
-   "gain": 0.4
-  },
-  {
-   "name": "Shaker",
-   "file": "11.wav",
-   "gain": 0.42
-  },
-  {
    "name": "Pédale HH",
    "file": "12.wav",
    "gain": 0.45
   },
   {
-   "name": "Tom bas",
-   "file": "13.wav",
-   "gain": 0.75
+   "name": "Cloche ride",
+   "file": "10.wav",
+   "gain": 0.4
   },
   {
    "name": "Tom haut",
@@ -75,14 +70,19 @@
    "gain": 0.75
   },
   {
+   "name": "Rim",
+   "file": "08.wav",
+   "gain": 0.75
+  },
+  {
+   "name": "Shaker",
+   "file": "11.wav",
+   "gain": 0.42
+  },
+  {
    "name": "Triangle",
    "file": "15.wav",
    "gain": 0.35
-  },
-  {
-   "name": "Vinyle",
-   "file": "16.wav",
-   "gain": 0.55
   }
  ]
 }

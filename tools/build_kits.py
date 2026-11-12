@@ -393,6 +393,81 @@ def damu():
         ("Tom bas", jz(mic("lofi", "ltom_center")), 0.75), ("Tom haut", jz(mic("lofi", "htom_center")), 0.75), ("Triangle", jz(perc("triangle")), 0.35), ("Vinyle", tape(s_vinylhit(), 0, 7000, 1.2), 0.55),
     ]
 
+BANK_LAYOUT = {
+ "dilla": [
+  "Kick",
+  "Snare",
+  "Hat",
+  "Open hat",
+  "Kick 2",
+  "Snare+clap",
+  "Shaker",
+  "Rim",
+  "Kick sourd",
+  "Snare mat",
+  "Tamb",
+  "Vinyle",
+  "Tom",
+  "Clap",
+  "Ride",
+  "Snap"
+ ],
+ "rza": [
+  "Kick",
+  "Snare",
+  "Hat",
+  "Cloche",
+  "Tom bas",
+  "Rim",
+  "Open hat",
+  "Tom haut",
+  "Kick 2",
+  "Snare sale",
+  "Tamb",
+  "Gong",
+  "Coup",
+  "Épée",
+  "Crash",
+  "Vinyle"
+ ],
+ "peterock": [
+  "Kick",
+  "Snare",
+  "Hat",
+  "Open hat",
+  "Tom",
+  "Rim",
+  "Tamb",
+  "Vinyle",
+  "Kick 2",
+  "Snare 2",
+  "Shaker",
+  "Cuivres",
+  "Basse",
+  "Conga",
+  "Ride",
+  "Cuivres 2"
+ ],
+ "damu": [
+  "Kick",
+  "Snare",
+  "Hat",
+  "Open hat",
+  "Tom bas",
+  "Balai",
+  "Ride",
+  "Vinyle",
+  "Kick 2",
+  "Snare feutrée",
+  "Pédale HH",
+  "Cloche ride",
+  "Tom haut",
+  "Rim",
+  "Shaker",
+  "Triangle"
+ ]
+}
+
 KITS = [
     ("boombap", "BOOM BAP 93", "Boom bap", "Batterie acoustique passée au 12 bits, façon sampler années 90", boombap),
     ("lofi", "LO-FI CASSETTE", "Lo-fi", "Prise lo-fi, cassette, poussière de vinyle", lofi),
@@ -420,6 +495,10 @@ def main():
         # Disposition habituelle : 2e kick en pad 5, snare/rim en 2 et 6
         if kid != "percus":
             items[4], items[7] = items[7], items[4]
+        # Banque B jouable tout de suite : colonne 1 (pads 9/13) kicks, colonne 2 (10/14) caisses claires, colonne 3 (11/15) charleys
+        if kid in BANK_LAYOUT:
+            byname = {it[0]: it for it in items}
+            items = [byname[n] for n in BANK_LAYOUT[kid]]
         for i, (pname, x, gain) in enumerate(items):
             x = norm(trim(np.asarray(x, dtype=np.float64), maxlen=2.5), 0.89)
             path = f"{i + 1:02d}.wav"

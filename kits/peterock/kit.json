@@ -25,6 +25,26 @@
    "gain": 0.5
   },
   {
+   "name": "Tom",
+   "file": "15.wav",
+   "gain": 0.8
+  },
+  {
+   "name": "Rim",
+   "file": "08.wav",
+   "gain": 0.8
+  },
+  {
+   "name": "Tamb",
+   "file": "07.wav",
+   "gain": 0.6
+  },
+  {
+   "name": "Vinyle",
+   "file": "16.wav",
+   "gain": 0.5
+  },
+  {
    "name": "Kick 2",
    "file": "05.wav",
    "gain": 1.0
@@ -35,34 +55,14 @@
    "gain": 0.9
   },
   {
-   "name": "Tamb",
-   "file": "07.wav",
-   "gain": 0.6
-  },
-  {
-   "name": "Rim",
-   "file": "08.wav",
-   "gain": 0.8
-  },
-  {
-   "name": "Cuivres",
-   "file": "09.wav",
-   "gain": 0.6
-  },
-  {
-   "name": "Cuivres 2",
-   "file": "10.wav",
-   "gain": 0.6
-  },
-  {
    "name": "Shaker",
    "file": "11.wav",
    "gain": 0.5
   },
   {
-   "name": "Ride",
-   "file": "12.wav",
-   "gain": 0.45
+   "name": "Cuivres",
+   "file": "09.wav",
+   "gain": 0.6
   },
   {
    "name": "Basse",
@@ -75,14 +75,14 @@
    "gain": 0.65
   },
   {
-   "name": "Tom",
-   "file": "15.wav",
-   "gain": 0.8
+   "name": "Ride",
+   "file": "12.wav",
+   "gain": 0.45
   },
   {
-   "name": "Vinyle",
-   "file": "16.wav",
-   "gain": 0.5
+   "name": "Cuivres 2",
+   "file": "10.wav",
+   "gain": 0.6
   }
  ]
 }
