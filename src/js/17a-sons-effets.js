@@ -106,9 +106,18 @@
     SFX.inN.disconnect(); SFX.lfos.forEach(o => { try { o.stop(); } catch (e) {} }); SFX.lfos = [];
     SFX.nodes.forEach(n => { try { n.o.disconnect(); } catch (e) {} });
     const chain = buildSonsFx(id); SFX.nodes = chain;
-    let prev = SFX.inN; chain.forEach(n => { prev.connect(n.i); prev = n.o; }); prev.connect(SFX.outN);
+    if (!SFX.dry) { SFX.dry = ctx.createGain(); SFX.wet = ctx.createGain(); SFX.dry.connect(SFX.outN); SFX.wet.connect(SFX.outN); }
+    let prev = SFX.inN; chain.forEach(n => { prev.connect(n.i); prev = n.o; }); prev.connect(SFX.wet); SFX.inN.connect(SFX.dry);
+    sonsFxDose(true);
     drawSonsFx();
     const p = SONS_FX.find(x => x[0] === id); if (p) lcd("lcdPad", "EFFET", `${p[1]} · ${p[2]}`);
+  }
+  // potard Effet : à fond = effet plein, en dessous on mélange avec le son sans effet, sans jamais le couper net
+  function sonsFxDose(now) {
+    if (!SFX.dry || !ctx) return;
+    const a = Math.max(0, Math.min(1, knobVals.sons[5])), t = ctx.currentTime;
+    if (now) { SFX.wet.gain.value = a; SFX.dry.gain.value = 1 - a; return; }
+    SFX.wet.gain.setTargetAtTime(a, t, 0.03); SFX.dry.gain.setTargetAtTime(1 - a, t, 0.03);
   }
   function drawSonsFx() {
     const el = $("sonsFx"); if (!el) return;

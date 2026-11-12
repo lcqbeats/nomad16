@@ -55,6 +55,14 @@
   document.querySelectorAll(".fxt").forEach(b => b.addEventListener("click", () => setFxTarget(b.dataset.t)));
   // Cible des effets : tout le morceau, le jeu en direct, ou une seule piste du looper
   let fxDry = null;
+  // Clavier de l'Akai dans FX : les 8 premières touches blanches (do à do) = TOUT, LIVE, P1 à P6 ; les noires ne font rien
+  const FX_KEY_T = ["all", "live", "1", "2", "3", "4", "5", "6"];
+  function fxKey(note) {
+    const r = note - 48, pc = ((r % 12) + 12) % 12, wi = [0, 2, 4, 5, 7, 9, 11].indexOf(pc);
+    if (wi < 0) return;
+    const w = (((Math.floor(r / 12) * 7 + wi) % 14) + 14) % 14;
+    if (w < 8) setFxTarget(FX_KEY_T[w]);
+  }
   function setFxTarget(t) { fxTarget = t; routeFx(); drawFxPads(); lcd("lcdPad", "FX", "cible : " + (t === "all" ? "tout le morceau" : t === "live" ? "jeu en direct" : "piste " + t)); }
   function routeFx() {
     if (!fxDry) return;

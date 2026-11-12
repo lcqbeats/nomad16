@@ -13,4 +13,6 @@
     if (t === "song") { for (let k = 0; k < 7; k++) knobVals.song[k] = knobVals.loops[k]; drawKnobs(); drawSong(true); }
   }
   TABS.forEach(x => $("tab-" + x).addEventListener("click", () => setTab(x)));
+  // pad PROG CHANGE de l'Akai qui ouvre l'onglet (banque A 1 à 8, SONG = banque B pad 1)
+  TABS.filter(t => t !== "song").forEach((t, i) => { $("tab-" + t).dataset.pc = i + 1; }); $("tab-song").dataset.pc = "B1";
 

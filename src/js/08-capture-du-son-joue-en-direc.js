@@ -78,7 +78,19 @@ else{const tg=this.motor?this.rate:0;if(this.ct&&this.motor){const st=Math.abs(t
 this.g+=(gate-this.g)*0.025;
 const a=this.rd(this.L,this.pos),b=this.rd(this.R,this.pos),d=this.d;const ya=a-d[0]+0.997*d[1];d[0]=a;d[1]=ya;const yb=b-d[2]+0.997*d[3];d[2]=b;d[3]=yb;L[s]=ya*this.g;if(R)R[s]=yb*this.g;}
 if(this.pe){this.pe=false;phEnd=true;}this.cnt+=n;if(this.cnt>=512||phEnd){this.cnt=0;this.port.postMessage({pos:this.pos,vel:this.vel,phEnd:phEnd});}return true;}}
-registerProcessor('nomad-scratch',Scr);`;
+registerProcessor('nomad-scratch',Scr);
+class Duck extends AudioWorkletProcessor{constructor(){super();this.env=0;this.pk=1e-3;this.armed=true;this.refr=0;this.d=0;this.atk=0;this.depth=0;this.relDec=Math.exp(-3/(0.3*sampleRate));
+this.aE=1-Math.exp(-1/(0.0015*sampleRate));this.rE=Math.exp(-1/(0.03*sampleRate));this.pkD=Math.exp(-1/(1.5*sampleRate));this.aN=(0.004*sampleRate)|0;this.hits=0;
+this.port.onmessage=e=>{const m=e.data;if(m.depth!==undefined)this.depth=m.depth;if(m.rel)this.relDec=Math.exp(-3/(m.rel*sampleRate));};}
+process(inputs,outputs){const i=inputs[0],k=inputs[1],o=outputs[0];const n=o[0].length;
+for(let s=0;s<n;s++){let kv=0;if(k&&k[0])for(let c=0;c<k.length;c++)kv=Math.max(kv,Math.abs(k[c][s]));
+this.env=kv>this.env?this.env+(kv-this.env)*this.aE:this.env*this.rE;this.pk=Math.max(this.env,this.pk*this.pkD);if(this.refr>0)this.refr--;
+if(this.env<0.3*this.pk)this.armed=true;
+if(this.armed&&this.refr<=0&&this.env>0.004&&this.env>0.6*this.pk){this.armed=false;this.refr=(0.07*sampleRate)|0;this.atk=this.aN;this.hits++;}
+if(this.atk>0){this.atk--;this.d+=(1-this.d)*0.02;}else this.d*=this.relDec;
+const g=1-this.depth*this.d;for(let c=0;c<o.length;c++){const x=i&&i.length?(i[c]||i[0]):null;o[c][s]=x?x[s]*g:0;}}
+return true;}}
+registerProcessor('nomad-duck',Duck);`;
   let hasWorklet = false;
   async function setupCapture() {
     ringN = Math.floor(sr * CAP_SECONDS);

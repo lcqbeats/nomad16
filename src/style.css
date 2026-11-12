@@ -528,3 +528,8 @@ html.flipped, html.flipped body { overflow: hidden; }
 :root.desk .fxpad, :root.desk .fxpad.other { display: flex; aspect-ratio: 1; border-radius: 6px; background: linear-gradient(170deg, #343434, #1f1f1f 70%); box-shadow: 0 0 0 2px #050505, inset 0 1px 0 #4a4a4a, 0 6px 10px rgba(0,0,0,.6); color: #cfcfcb; padding: 8px 9px; }
 :root.desk .fxpad.on { background: radial-gradient(circle, #5df08f, var(--green) 70%); color: #06150c; }
 :root.desk #fxSet { display: none; }
+.duckbar { display: flex; justify-content: center; }
+.duckbar .btn { min-width: 50%; }
+.duckbar .btn.on { background: var(--red); color: #fff; }
+/* téléphone : numéro du pad PROG CHANGE sous chaque onglet */
+:root:not(.desk) .tabs .tab[data-pc]::after { content: attr(data-pc); display: block; font-size: 8px; line-height: 1; margin-top: 2px; opacity: .55; font-weight: 500; }

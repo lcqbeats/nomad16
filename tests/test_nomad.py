@@ -245,11 +245,11 @@ def test_notes_du_looper_vers_mid(app):
 
 
 def test_prog_change_onglets_et_kits(app):
-    app.evaluate("nomadMidi([0xC0, 6])")
+    app.evaluate("nomadMidi([0xC0, 4])")
     assert app.get_attribute("#tab-scratch", "aria-selected") == "true"
     app.evaluate("nomadMidi([0xC0, 0])")
     assert app.get_attribute("#tab-play", "aria-selected") == "true"
-    app.evaluate("nomadMidi([0xC0, 8])")
+    app.evaluate("nomadMidi([0xC0, 9])")      # banque B pad 2 = premier kit
     app.wait_for_timeout(500)
     assert app.evaluate("nomadState().kit") == "synth"
 
@@ -413,6 +413,50 @@ def test_sons_effets(app):
     assert max(loud(app, 80) for _ in range(5)) > 0.005
 
 
+def test_sons_dose_attaque_sidechain(app):
+    app.click("#tab-sons")
+    labels = app.evaluate("[...document.querySelectorAll('#knobs .knob span, #knobs label')].map(e => e.textContent).join(' ')")
+    assert "Effet" in labels and "Attaque" in labels
+    app.locator("#sonsFx .fxpre").nth(1).click()
+    app.evaluate("nomadMidi([0xB0, 75, 127]); nomadMidi([0xB0, 75, 64])")     # potard 6 : dose de l'effet
+    assert "dosé" in app.inner_text("#lcdPad")
+    app.evaluate("nomadMidi([0xB0, 76, 0]); nomadMidi([0xB0, 76, 90])")       # potard 7 : attaque
+    assert "montée" in app.inner_text("#lcdPad")
+    app.evaluate("nomadMidi([0xB0, 76, 0]); nomadMidi([0xB0, 75, 127])")
+    app.click("#mDuck"); app.click("#mDuck")
+    assert "FORT" in app.inner_text("#mDuck")
+    app.locator("#cats .cat", has_text="20SYL").click()
+    app.locator("#insts .inst").nth(4).click()        # nappe tenue
+    assert app.evaluate("!!nomadDbg.duck")
+    # une note tenue, des kicks sur les pads : la sortie de SONS se creuse puis remonte
+    app.evaluate("""() => { const d = nomadDbg.duck, c = d.context, an = c.createAnalyser(); an.fftSize = 512; d.connect(an);
+      window._duckLv = []; const buf = new Float32Array(512);
+      window._duckT = setInterval(() => { an.getFloatTimeDomainData(buf); let m = 0; for (const v of buf) m = Math.max(m, Math.abs(v)); _duckLv.push(m); }, 10); }""")
+    app.evaluate("nomadMidi([0x90, 60, 120])")
+    app.wait_for_timeout(500)
+    for _ in range(3):
+        app.evaluate("nomadMidi([0x99, 36, 127])"); app.wait_for_timeout(60); app.evaluate("nomadMidi([0x89, 36, 0])"); app.wait_for_timeout(500)
+    lv = app.evaluate("clearInterval(_duckT), _duckLv")
+    app.evaluate("nomadMidi([0x80, 60, 0])")
+    steady = sorted(lv[20:])[len(lv[20:]) * 3 // 4]
+    assert steady > 0.01 and min(lv[45:]) < steady * 0.5, (steady, min(lv[45:]))
+    app.click("#mDuck")
+    assert "LÉGER" not in app.inner_text("#mDuck") and "FORT" not in app.inner_text("#mDuck")
+
+
+def test_fx_clavier_et_prog_change(app):
+    app.click("#tab-fx")
+    app.evaluate("nomadMidi([0x90, 52, 100]); nomadMidi([0x80, 52, 0])")     # MI = P1
+    assert app.get_attribute(".fxt[data-t='1']", "class").endswith("on")
+    app.evaluate("nomadMidi([0x90, 72, 100]); nomadMidi([0x80, 72, 0])")     # DO aigu = TOUT
+    assert "on" in app.get_attribute(".fxt[data-t='all']", "class")
+    app.evaluate("nomadMidi([0xC0, 2])")            # PROG CHANGE pad 3 = SONS
+    assert app.get_attribute("#tab-sons", "aria-selected") == "true"
+    app.evaluate("nomadMidi([0xC0, 8])")            # banque B pad 1 = SONG
+    assert app.get_attribute("#tab-song", "aria-selected") == "true"
+    assert app.get_attribute("#tab-sons", "data-pc") == "3"
+
+
 def test_famille_20syl(app):
     app.click("#tab-sons")
     app.locator("#cats .cat", has_text="20SYL").click()
@@ -422,7 +466,7 @@ def test_famille_20syl(app):
         insts.nth(i).click()
         app.evaluate("nomadMidi([0x90, 48, 110])")
         peak = max(loud(app, 40) for _ in range(4))
-        app.evaluate("nomadMidi([0x80, 48, 0])")
+        app.evaluate("nomadMidi([0x80, 60, 0])")
         assert peak > 0.003, (i, peak)
 
 

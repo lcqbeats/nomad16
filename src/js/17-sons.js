@@ -47,6 +47,7 @@
       instRev = ctx.createConvolver(); instRev.buffer = impulse(2.4, 2.5, 0.3); instRevSend = ctx.createGain(); instRevSend.gain.value = knobVals.sons[3] * 0.6;
       instBus.connect(instFilt); instFilt.connect(chSons); instFilt.connect(instRevSend); instRevSend.connect(instRev); instRev.connect(chSons);
       applySonsFx(SFX.id);
+      duckInit();
     }
     const cur = allInsts().find(i => i.id === instCur);
     if (cur) instCat = cur.cat;
@@ -123,7 +124,8 @@
     if (!ctx || !instBus) return null;
     const t = Math.max(ctx.currentTime, when || 0), inst = allInsts().find(i => i.id === instCur);
     const amp = (0.2 + 0.8 * Math.pow(vel, 1.4)) * 0.5;
-    const g = ctx.createGain(); g.connect(instBus);
+    const g = ctx.createGain(), atk = attackTime();
+    if (atk) { const ag = ctx.createGain(); ag.gain.setValueAtTime(0, t); ag.gain.linearRampToValueAtTime(1, t + atk); g.connect(ag); ag.connect(instBus); } else g.connect(instBus);
     if (inst && inst.regions) {
       const bufs = instCache.get(inst.id); if (!bufs) return null;
       let ri = inst.regions.findIndex(r => note >= r[1] && note <= r[2]);
@@ -184,6 +186,8 @@
     const b = $("ch" + (idx % st.p.length)); if (b) { b.classList.add("hit"); b.dataset.k = key; }
     lcd("lcdPad", "ACCORD", `${NN[root % 12]}${SYM[c[1]]} · ${notes.map(n => NN[n % 12]).join(" ")}`);
   }
+  // potard Attaque : montée progressive de chaque note (0 = immédiate, à fond = 2 s)
+  const attackTime = () => { const v = knobVals.sons[6]; return v < 0.02 ? 0 : v * v * 2; };
   const strumGap = () => { const v = knobVals.sons[7]; return v < 0.02 ? 0 : v * v * 0.15; };
   function scaleSnap(note) {
     const st = STYLES[styleIdx], sc = st.minor ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11];
@@ -206,6 +210,29 @@
     lcd("lcdPad", "SON", `${inst ? inst.name : ""} · ${NN[n % 12]}${Math.floor(n / 12) - 1}`);
   }
   function keyOff(note) { if (instCur !== "pad") releaseKey("k" + note); }
+  // SIDECHAIN façon « mother ducker » : SONS se creuse à chaque kick de la boucle ou des pads, puis remonte en rythme
+  const DUCK_LV = [["off", "SIDECHAIN", 0], ["leger", "SIDECHAIN · LÉGER", 0.5], ["fort", "SIDECHAIN · FORT", 0.85]];
+  let duckMode = store.get("sonsDuck", "off"), duckNode = null;
+  function duckInit() {
+    if (duckNode || !hasWorklet || !ctx) return;
+    try {
+      duckNode = new AudioWorkletNode(ctx, "nomad-duck", { numberOfInputs: 2, numberOfOutputs: 1, outputChannelCount: [2] });
+      const key = ctx.createBiquadFilter(); key.type = "lowpass"; key.frequency.value = 140; key.Q.value = 0.7;
+      loopBus.connect(key); chPads.connect(key); key.connect(duckNode, 0, 1);
+      chSons.disconnect(liveBus); chSons.connect(duckNode, 0, 0); duckNode.connect(liveBus);
+      duckSend();
+      setInterval(() => { if (duckMode !== "off") duckSend(); }, 2000);
+    } catch (e) { duckNode = null; }
+  }
+  // remontée sur un peu plus d'une croche : ça « pompe » au tempo de la boucle
+  function duckSend() { if (duckNode) duckNode.port.postMessage({ depth: DUCK_LV.find(x => x[0] === duckMode)[2], rel: Math.min(0.6, Math.max(0.12, 0.6 * 60 / curBpm())) }); }
+  function setDuck(m) {
+    duckMode = m; store.set("sonsDuck", m); duckSend(); drawDuck();
+    lcd("lcdPad", "SIDECHAIN", m === "off" ? "coupé" : (m === "fort" ? "fort" : "léger") + " · SONS s'efface sous le kick");
+  }
+  function drawDuck() { const b = $("mDuck"); if (!b) return; const l = DUCK_LV.find(x => x[0] === duckMode); b.textContent = l[1]; b.classList.toggle("on", duckMode !== "off"); }
+  $("mDuck").addEventListener("click", () => { const i = DUCK_LV.findIndex(x => x[0] === duckMode); setDuck(DUCK_LV[(i + 1) % 3][0]); });
+  drawDuck();
   function sonsKnob(k, val) {
     knobVals.sons[k] = val;
     if (!ctx) return;
@@ -215,8 +242,8 @@
     if (k === 2 && instFilt) instFilt.frequency.setTargetAtTime(150 * Math.pow(20000 / 150, val), t, 0.02);
     if (k === 3 && instRevSend) instRevSend.gain.setTargetAtTime(val * 0.8, t, 0.02);
     if (k === 4) { octShift = Math.round((val - 0.5) * 4); $("octVal").textContent = (octShift > 0 ? "+" : "") + octShift; lcd("lcdPad", "SON", "octave " + (octShift > 0 ? "+" : "") + octShift); }
-    if (k === 5) { const nt = Math.min(11, Math.floor(val * 12)); if (nt !== tonic) { tonic = nt; store.set("tonic", tonic); drawSons(); } }
-    if (k === 6) { const ns = Math.min(STYLES.length - 1, Math.floor(val * STYLES.length)); if (ns !== styleIdx) { styleIdx = ns; store.set("style", ns); drawSons(); } }
+    if (k === 5) { sonsFxDose(); const p = SONS_FX.find(x => x[0] === SFX.id); lcd("lcdPad", "EFFET", (p ? p[1] : "") + " · dosé à " + Math.round(val * 100) + " %"); }
+    if (k === 6) { const a = attackTime(); lcd("lcdPad", "ATTAQUE", a ? (a < 1 ? Math.round(a * 1000) + " ms" : a.toFixed(1) + " s") + " de montée" : "immédiate"); }
     if (k === 7) { const g = strumGap(); lcd("lcdPad", "STRUM", g ? `${Math.round(g * 1000)} ms entre les notes` : "accords plaqués"); }
   }
 

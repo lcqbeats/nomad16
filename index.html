@@ -542,6 +542,11 @@ html.flipped, html.flipped body { overflow: hidden; }
 :root.desk .fxpad, :root.desk .fxpad.other { display: flex; aspect-ratio: 1; border-radius: 6px; background: linear-gradient(170deg, #343434, #1f1f1f 70%); box-shadow: 0 0 0 2px #050505, inset 0 1px 0 #4a4a4a, 0 6px 10px rgba(0,0,0,.6); color: #cfcfcb; padding: 8px 9px; }
 :root.desk .fxpad.on { background: radial-gradient(circle, #5df08f, var(--green) 70%); color: #06150c; }
 :root.desk #fxSet { display: none; }
+.duckbar { display: flex; justify-content: center; }
+.duckbar .btn { min-width: 50%; }
+.duckbar .btn.on { background: var(--red); color: #fff; }
+/* téléphone : numéro du pad PROG CHANGE sous chaque onglet */
+:root:not(.desk) .tabs .tab[data-pc]::after { content: attr(data-pc); display: block; font-size: 8px; line-height: 1; margin-top: 2px; opacity: .55; font-weight: 500; }
 </style>
 </head>
 <body>
@@ -802,6 +807,7 @@ html.flipped, html.flipped body { overflow: hidden; }
     <h4 class="sphead"><span>EFFETS</span></h4>
     <div class="styles" id="sonsFx"></div>
     <p class="note" id="sonsFxInfo" style="margin:-4px 0 0;text-align:center"></p>
+    <div class="duckbar"><button class="btn" id="mDuck" type="button">SIDECHAIN</button></div>
     <div class="modebar">
       <button class="btn on" id="mNotes" type="button">NOTES</button>
       <button class="btn" id="mChords" type="button">ACCORDS</button>
@@ -961,10 +967,10 @@ html.flipped, html.flipped body { overflow: hidden; }
     guitar: ["Gain", "Basses", "Médiums", "Aigus", "Présence", "Réverbe", "Master", "Écho"],
     fx: ["Filtre", "Réso", "Envoi écho", "Temps", "Retour", "Ressort", "Bitcrush", "Master"],
     sample: ["Bac ↻", "Pitch", "Sensib.", "Découpes", "—", "—", "—", "Volume"],
-    sons: ["Volume", "Relâche", "Filtre", "Réverbe", "Octave", "Tonalité", "Style", "Strum"],
+    sons: ["Volume", "Relâche", "Filtre", "Réverbe", "Octave", "Effet", "Attaque", "Strum"],
     scratch: ["Volume", "Pitch", "Filtre", "Démarrage", "Freinage", "Coupure", "Main", "Fader"]
   };
-  const knobVals = { play: [0.5, 0, 0, 0, 0.5, 1, 0.5, 0.8], loops: [1, 1, 1, 1, 1, 1, 0.9, 0], guitar: [0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.6, 0.3], fx: [0.5, 0.2, 0, 0.5, 0.55, 0, 0, 0.85], sample: [0.5, 0.5, 0.5, 0.5, 0, 0, 0, 0.9], sons: [0.8, 0.35, 1, 0.25, 0.5, 0, 0, 0], song: [1, 1, 1, 1, 1, 1, 0.9, 0.6], sp: [0, 0, 0, 0.5, 0.5, 0.5, 0.8, 0], scratch: [0.85, 0.5, 0.5, 0.2, 0.3, 0.3, 0, 0.2] };
+  const knobVals = { play: [0.5, 0, 0, 0, 0.5, 1, 0.5, 0.8], loops: [1, 1, 1, 1, 1, 1, 0.9, 0], guitar: [0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.6, 0.3], fx: [0.5, 0.2, 0, 0.5, 0.55, 0, 0, 0.85], sample: [0.5, 0.5, 0.5, 0.5, 0, 0, 0, 0.9], sons: [0.8, 0.35, 1, 0.25, 0.5, 1, 0, 0], song: [1, 1, 1, 1, 1, 1, 0.9, 0.6], sp: [0, 0, 0, 0.5, 0.5, 0.5, 0.8, 0], scratch: [0.85, 0.5, 0.5, 0.2, 0.3, 0.3, 0, 0.2] };
   let tab = "play";
 
   let chPads, chSons, chGtr, chMaster, spIn, mixOut, ctx, sr, echoIn, liveIn, filter, drive, delay, delayFb, delayWet, padOut, liveBus, loopBus, master, fxOut;
@@ -1099,6 +1105,8 @@ html.flipped, html.flipped body { overflow: hidden; }
     if (t === "song") { for (let k = 0; k < 7; k++) knobVals.song[k] = knobVals.loops[k]; drawKnobs(); drawSong(true); }
   }
   TABS.forEach(x => $("tab-" + x).addEventListener("click", () => setTab(x)));
+  // pad PROG CHANGE de l'Akai qui ouvre l'onglet (banque A 1 à 8, SONG = banque B pad 1)
+  TABS.filter(t => t !== "song").forEach((t, i) => { $("tab-" + t).dataset.pc = i + 1; }); $("tab-song").dataset.pc = "B1";
 
   // ---------- Sons synthétisés (kit de départ) ----------
   function render(sr) {
@@ -1335,7 +1343,19 @@ else{const tg=this.motor?this.rate:0;if(this.ct&&this.motor){const st=Math.abs(t
 this.g+=(gate-this.g)*0.025;
 const a=this.rd(this.L,this.pos),b=this.rd(this.R,this.pos),d=this.d;const ya=a-d[0]+0.997*d[1];d[0]=a;d[1]=ya;const yb=b-d[2]+0.997*d[3];d[2]=b;d[3]=yb;L[s]=ya*this.g;if(R)R[s]=yb*this.g;}
 if(this.pe){this.pe=false;phEnd=true;}this.cnt+=n;if(this.cnt>=512||phEnd){this.cnt=0;this.port.postMessage({pos:this.pos,vel:this.vel,phEnd:phEnd});}return true;}}
-registerProcessor('nomad-scratch',Scr);`;
+registerProcessor('nomad-scratch',Scr);
+class Duck extends AudioWorkletProcessor{constructor(){super();this.env=0;this.pk=1e-3;this.armed=true;this.refr=0;this.d=0;this.atk=0;this.depth=0;this.relDec=Math.exp(-3/(0.3*sampleRate));
+this.aE=1-Math.exp(-1/(0.0015*sampleRate));this.rE=Math.exp(-1/(0.03*sampleRate));this.pkD=Math.exp(-1/(1.5*sampleRate));this.aN=(0.004*sampleRate)|0;this.hits=0;
+this.port.onmessage=e=>{const m=e.data;if(m.depth!==undefined)this.depth=m.depth;if(m.rel)this.relDec=Math.exp(-3/(m.rel*sampleRate));};}
+process(inputs,outputs){const i=inputs[0],k=inputs[1],o=outputs[0];const n=o[0].length;
+for(let s=0;s<n;s++){let kv=0;if(k&&k[0])for(let c=0;c<k.length;c++)kv=Math.max(kv,Math.abs(k[c][s]));
+this.env=kv>this.env?this.env+(kv-this.env)*this.aE:this.env*this.rE;this.pk=Math.max(this.env,this.pk*this.pkD);if(this.refr>0)this.refr--;
+if(this.env<0.3*this.pk)this.armed=true;
+if(this.armed&&this.refr<=0&&this.env>0.004&&this.env>0.6*this.pk){this.armed=false;this.refr=(0.07*sampleRate)|0;this.atk=this.aN;this.hits++;}
+if(this.atk>0){this.atk--;this.d+=(1-this.d)*0.02;}else this.d*=this.relDec;
+const g=1-this.depth*this.d;for(let c=0;c<o.length;c++){const x=i&&i.length?(i[c]||i[0]):null;o[c][s]=x?x[s]*g:0;}}
+return true;}}
+registerProcessor('nomad-duck',Duck);`;
   let hasWorklet = false;
   async function setupCapture() {
     ringN = Math.floor(sr * CAP_SECONDS);
@@ -2099,6 +2119,14 @@ registerProcessor('nomad-scratch',Scr);`;
   document.querySelectorAll(".fxt").forEach(b => b.addEventListener("click", () => setFxTarget(b.dataset.t)));
   // Cible des effets : tout le morceau, le jeu en direct, ou une seule piste du looper
   let fxDry = null;
+  // Clavier de l'Akai dans FX : les 8 premières touches blanches (do à do) = TOUT, LIVE, P1 à P6 ; les noires ne font rien
+  const FX_KEY_T = ["all", "live", "1", "2", "3", "4", "5", "6"];
+  function fxKey(note) {
+    const r = note - 48, pc = ((r % 12) + 12) % 12, wi = [0, 2, 4, 5, 7, 9, 11].indexOf(pc);
+    if (wi < 0) return;
+    const w = (((Math.floor(r / 12) * 7 + wi) % 14) + 14) % 14;
+    if (w < 8) setFxTarget(FX_KEY_T[w]);
+  }
   function setFxTarget(t) { fxTarget = t; routeFx(); drawFxPads(); lcd("lcdPad", "FX", "cible : " + (t === "all" ? "tout le morceau" : t === "live" ? "jeu en direct" : "piste " + t)); }
   function routeFx() {
     if (!fxDry) return;
@@ -3017,6 +3045,7 @@ registerProcessor('nomad-scratch',Scr);`;
       instRev = ctx.createConvolver(); instRev.buffer = impulse(2.4, 2.5, 0.3); instRevSend = ctx.createGain(); instRevSend.gain.value = knobVals.sons[3] * 0.6;
       instBus.connect(instFilt); instFilt.connect(chSons); instFilt.connect(instRevSend); instRevSend.connect(instRev); instRev.connect(chSons);
       applySonsFx(SFX.id);
+      duckInit();
     }
     const cur = allInsts().find(i => i.id === instCur);
     if (cur) instCat = cur.cat;
@@ -3093,7 +3122,8 @@ registerProcessor('nomad-scratch',Scr);`;
     if (!ctx || !instBus) return null;
     const t = Math.max(ctx.currentTime, when || 0), inst = allInsts().find(i => i.id === instCur);
     const amp = (0.2 + 0.8 * Math.pow(vel, 1.4)) * 0.5;
-    const g = ctx.createGain(); g.connect(instBus);
+    const g = ctx.createGain(), atk = attackTime();
+    if (atk) { const ag = ctx.createGain(); ag.gain.setValueAtTime(0, t); ag.gain.linearRampToValueAtTime(1, t + atk); g.connect(ag); ag.connect(instBus); } else g.connect(instBus);
     if (inst && inst.regions) {
       const bufs = instCache.get(inst.id); if (!bufs) return null;
       let ri = inst.regions.findIndex(r => note >= r[1] && note <= r[2]);
@@ -3154,6 +3184,8 @@ registerProcessor('nomad-scratch',Scr);`;
     const b = $("ch" + (idx % st.p.length)); if (b) { b.classList.add("hit"); b.dataset.k = key; }
     lcd("lcdPad", "ACCORD", `${NN[root % 12]}${SYM[c[1]]} · ${notes.map(n => NN[n % 12]).join(" ")}`);
   }
+  // potard Attaque : montée progressive de chaque note (0 = immédiate, à fond = 2 s)
+  const attackTime = () => { const v = knobVals.sons[6]; return v < 0.02 ? 0 : v * v * 2; };
   const strumGap = () => { const v = knobVals.sons[7]; return v < 0.02 ? 0 : v * v * 0.15; };
   function scaleSnap(note) {
     const st = STYLES[styleIdx], sc = st.minor ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11];
@@ -3176,6 +3208,29 @@ registerProcessor('nomad-scratch',Scr);`;
     lcd("lcdPad", "SON", `${inst ? inst.name : ""} · ${NN[n % 12]}${Math.floor(n / 12) - 1}`);
   }
   function keyOff(note) { if (instCur !== "pad") releaseKey("k" + note); }
+  // SIDECHAIN façon « mother ducker » : SONS se creuse à chaque kick de la boucle ou des pads, puis remonte en rythme
+  const DUCK_LV = [["off", "SIDECHAIN", 0], ["leger", "SIDECHAIN · LÉGER", 0.5], ["fort", "SIDECHAIN · FORT", 0.85]];
+  let duckMode = store.get("sonsDuck", "off"), duckNode = null;
+  function duckInit() {
+    if (duckNode || !hasWorklet || !ctx) return;
+    try {
+      duckNode = new AudioWorkletNode(ctx, "nomad-duck", { numberOfInputs: 2, numberOfOutputs: 1, outputChannelCount: [2] });
+      const key = ctx.createBiquadFilter(); key.type = "lowpass"; key.frequency.value = 140; key.Q.value = 0.7;
+      loopBus.connect(key); chPads.connect(key); key.connect(duckNode, 0, 1);
+      chSons.disconnect(liveBus); chSons.connect(duckNode, 0, 0); duckNode.connect(liveBus);
+      duckSend();
+      setInterval(() => { if (duckMode !== "off") duckSend(); }, 2000);
+    } catch (e) { duckNode = null; }
+  }
+  // remontée sur un peu plus d'une croche : ça « pompe » au tempo de la boucle
+  function duckSend() { if (duckNode) duckNode.port.postMessage({ depth: DUCK_LV.find(x => x[0] === duckMode)[2], rel: Math.min(0.6, Math.max(0.12, 0.6 * 60 / curBpm())) }); }
+  function setDuck(m) {
+    duckMode = m; store.set("sonsDuck", m); duckSend(); drawDuck();
+    lcd("lcdPad", "SIDECHAIN", m === "off" ? "coupé" : (m === "fort" ? "fort" : "léger") + " · SONS s'efface sous le kick");
+  }
+  function drawDuck() { const b = $("mDuck"); if (!b) return; const l = DUCK_LV.find(x => x[0] === duckMode); b.textContent = l[1]; b.classList.toggle("on", duckMode !== "off"); }
+  $("mDuck").addEventListener("click", () => { const i = DUCK_LV.findIndex(x => x[0] === duckMode); setDuck(DUCK_LV[(i + 1) % 3][0]); });
+  drawDuck();
   function sonsKnob(k, val) {
     knobVals.sons[k] = val;
     if (!ctx) return;
@@ -3185,8 +3240,8 @@ registerProcessor('nomad-scratch',Scr);`;
     if (k === 2 && instFilt) instFilt.frequency.setTargetAtTime(150 * Math.pow(20000 / 150, val), t, 0.02);
     if (k === 3 && instRevSend) instRevSend.gain.setTargetAtTime(val * 0.8, t, 0.02);
     if (k === 4) { octShift = Math.round((val - 0.5) * 4); $("octVal").textContent = (octShift > 0 ? "+" : "") + octShift; lcd("lcdPad", "SON", "octave " + (octShift > 0 ? "+" : "") + octShift); }
-    if (k === 5) { const nt = Math.min(11, Math.floor(val * 12)); if (nt !== tonic) { tonic = nt; store.set("tonic", tonic); drawSons(); } }
-    if (k === 6) { const ns = Math.min(STYLES.length - 1, Math.floor(val * STYLES.length)); if (ns !== styleIdx) { styleIdx = ns; store.set("style", ns); drawSons(); } }
+    if (k === 5) { sonsFxDose(); const p = SONS_FX.find(x => x[0] === SFX.id); lcd("lcdPad", "EFFET", (p ? p[1] : "") + " · dosé à " + Math.round(val * 100) + " %"); }
+    if (k === 6) { const a = attackTime(); lcd("lcdPad", "ATTAQUE", a ? (a < 1 ? Math.round(a * 1000) + " ms" : a.toFixed(1) + " s") + " de montée" : "immédiate"); }
     if (k === 7) { const g = strumGap(); lcd("lcdPad", "STRUM", g ? `${Math.round(g * 1000)} ms entre les notes` : "accords plaqués"); }
   }
 
@@ -3298,9 +3353,18 @@ registerProcessor('nomad-scratch',Scr);`;
     SFX.inN.disconnect(); SFX.lfos.forEach(o => { try { o.stop(); } catch (e) {} }); SFX.lfos = [];
     SFX.nodes.forEach(n => { try { n.o.disconnect(); } catch (e) {} });
     const chain = buildSonsFx(id); SFX.nodes = chain;
-    let prev = SFX.inN; chain.forEach(n => { prev.connect(n.i); prev = n.o; }); prev.connect(SFX.outN);
+    if (!SFX.dry) { SFX.dry = ctx.createGain(); SFX.wet = ctx.createGain(); SFX.dry.connect(SFX.outN); SFX.wet.connect(SFX.outN); }
+    let prev = SFX.inN; chain.forEach(n => { prev.connect(n.i); prev = n.o; }); prev.connect(SFX.wet); SFX.inN.connect(SFX.dry);
+    sonsFxDose(true);
     drawSonsFx();
     const p = SONS_FX.find(x => x[0] === id); if (p) lcd("lcdPad", "EFFET", `${p[1]} · ${p[2]}`);
+  }
+  // potard Effet : à fond = effet plein, en dessous on mélange avec le son sans effet, sans jamais le couper net
+  function sonsFxDose(now) {
+    if (!SFX.dry || !ctx) return;
+    const a = Math.max(0, Math.min(1, knobVals.sons[5])), t = ctx.currentTime;
+    if (now) { SFX.wet.gain.value = a; SFX.dry.gain.value = 1 - a; return; }
+    SFX.wet.gain.setTargetAtTime(a, t, 0.03); SFX.dry.gain.setTargetAtTime(1 - a, t, 0.03);
   }
   function drawSonsFx() {
     const el = $("sonsFx"); if (!el) return;
@@ -3932,12 +3996,12 @@ registerProcessor('nomad-scratch',Scr);`;
     const el = $("glossary"); if (!el) return;
     const fxA = FX_PATTERNS.slice(0, 8).map(f => f.name), fxB = FX_PATTERNS.slice(8, 16).map(f => f.name);
     const kn = t => KNOB_LABELS[t].map((l, i) => `<span><b>${i + 1}</b>${l}</span>`).join("");
-    const kits = kitIndex.slice(0, 8).map(k => k.name);
+    const kits = ["SONG"].concat(kitIndex.slice(0, 7).map(k => k.name));
     const sec = (title, body, open) => `<details class="gl"${open ? " open" : ""}><summary>${title}</summary><div>${body}</div></details>`;
     el.innerHTML = [
-      sec("PARTOUT", `<p><b>Pédale Sustain</b> : REC / superposition du looper.</p><p><b>Clavier</b> : joue l'instrument de SONS (ou le pad choisi, transposé) ; en mode ACCORDS, les touches graves jouent les accords ; dans SCRATCH, il transpose le disque.</p><p><b>Potards</b> : changent de rôle selon l'onglet (voir POTARDS).</p><p><b>Sur ordinateur</b> : touches & é " ' ( § è ! ç (ou F1 à F9) = onglets (PADS, LOOPER, SONS / DIGGING, SCRATCH, GUITARE / FX, SP, SONG, dans l'ordre de la grille), Espace = REC, Retour arrière = annuler.</p>`, true),
+      sec("PARTOUT", `<p><b>Pédale Sustain</b> : REC / superposition du looper.</p><p><b>Clavier</b> : joue l'instrument de SONS (ou le pad choisi, transposé) ; en mode ACCORDS, les touches graves jouent les accords ; dans SCRATCH, il transpose le disque ; dans FX, les 8 premières touches blanches (do à do) choisissent la cible : TOUT, LIVE, P1 à P6.</p><p><b>Potards</b> : changent de rôle selon l'onglet (voir POTARDS).</p><p><b>Sur ordinateur</b> : touches & é " ' ( § è ! ç (ou F1 à F9) = onglets (PADS, LOOPER, SONS / DIGGING, SCRATCH, GUITARE / FX, SP, SONG, dans l'ordre de la grille), Espace = REC, Retour arrière = annuler.</p>`, true),
       sec("BOUTON CC (pads en CC, preset 3)", `<p class="glh">Banque A</p>${padGrid(["Play / stop looper", "Annuler", "Muet piste 1", "Muet piste 2", "Muet piste 3", "Muet piste 4", "Muet piste 5", "Muet piste 6"])}<p class="glh">Banque B</p>${padGrid(["Kit précédent", "Kit suivant", "Morceau ▶/■", "Séquence ◀", "Note repeat", "Séquence ▶", "Onglet suivant", "Guitare (onglet + entrée)"], 8)}`),
-      sec("BOUTON PROG CHANGE (onglets et kits)", `<p>PROG CHANGE allumé, un pad, puis PROG CHANGE éteint pour rejouer.</p><p class="glh">Banque A : aller à l'onglet</p>${padGrid(["PADS", "LOOPER", "SONG", "FX", "SP", "DIGGING", "SCRATCH", "SONS"])}<p class="glh">Banque B : charger le kit</p>${padGrid(kits, 8)}<p>GUITARE : pad 16 en mode CC (allume l'entrée et ouvre l'onglet).</p>`),
+      sec("BOUTON PROG CHANGE (onglets et kits)", `<p>PROG CHANGE allumé, un pad, puis PROG CHANGE éteint pour rejouer.</p><p>Les numéros sous les onglets de l'iPhone rappellent le pad.</p><p class="glh">Banque A : aller à l'onglet</p>${padGrid(["PADS", "LOOPER", "SONS", "DIGGING", "SCRATCH", "GUITARE", "FX", "SP"])}<p class="glh">Banque B : SONG puis charger le kit</p>${padGrid(kits, 8)}<p>Pad 16 en mode CC : allume l'entrée guitare et ouvre l'onglet.</p>`),
       sec("PADS EN NOTES, SELON L'ONGLET", `<p><b>PADS, SONG, SP, GUITARE</b> : les 16 sons du kit (banque A = 1 à 8, banque B = 9 à 16).</p>
         <p class="glh">LOOPER · banque A</p>${padGrid(["Muet piste 1", "Muet piste 2", "Muet piste 3", "Tout couper", "Muet piste 4", "Muet piste 5", "Muet piste 6", "Tout rétablir"])}
         <p class="glh">LOOPER · banque B</p>${padGrid(["Solo piste 1", "Solo piste 2", "Solo piste 3", "Tape stop", "Solo piste 4", "Solo piste 5", "Solo piste 6", "▶ Lecture"], 8)}
@@ -5234,7 +5298,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     const p = {
       id, name: name.toUpperCase().slice(0, 40), created: Date.now(),
       kit: kitCur, kitEmbed: (kitCur === "chops") ? { names: names.slice(), gains: gains.slice(), bufs: buffers.map(packBuf) } : null,
-      knobs: JSON.parse(JSON.stringify(knobVals)), manualBpm, padParams: padParams.map(p => ({ ...p })), fxTarget,
+      knobs: JSON.parse(JSON.stringify(knobVals)), knobsV: 2, manualBpm, padParams: padParams.map(p => ({ ...p })), fxTarget,
       song: { steps: SONG.steps, loop: SONG.loop, cur: SQ.cur, nr: NR.idx },
       guitar: { amp: G.amp, fx: [...G.fx], preset: G.preset },
       loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, notes: l.notes || [], buf: packBuf(l.buf) }))) }
@@ -5244,6 +5308,8 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   async function loadProject(id) {
     const p = await DB.get("projects", id); if (!p || !ctx) return;
     Object.keys(p.knobs).forEach(t => { if (knobVals[t]) knobVals[t] = p.knobs[t].slice(); });
+    if (!p.knobsV) { knobVals.sons[5] = 1; knobVals.sons[6] = 0; }
+    if (typeof sonsFxDose === "function") sonsFxDose(true);
     manualBpm = p.manualBpm || 90;
     for (let k = 0; k < 8; k++) applyFxKnob(k);
     G.amp = p.guitar.amp; G.fx = new Set(p.guitar.fx); G.preset = p.guitar.preset; applyGuitar();
@@ -5392,6 +5458,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       else if (isPad && idx >= 0 && idx < 16 && tab === "loops") loopPad(idx);
       else if (isPad && idx >= 0 && idx < 16) playPad(idx, d2 / 127);
       else if (!isPad && tab === "scratch") scrKey(d1);
+      else if (!isPad && tab === "fx") fxKey(d1);
       else if (!isPad) playKey(d1, d2 / 127);
     } else if (type === 0x80 || (type === 0x90 && d2 === 0)) {
       const idx = d1 - BASE_NOTE;
@@ -5401,10 +5468,10 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     } else if (type === 0xb0) {
       onCC(d1, d2);
     } else if (type === 0xc0) {
-      // PROG CHANGE : banque A = un onglet par pad (rangés comme à l'écran), banque B = kits 1 à 8
-      const PC_TABS = ["play", "loops", "song", "fx", "sp", "sample", "scratch", "sons"];
-      if (d1 < 8) { setTab(PC_TABS[d1]); lcd("lcdPad", "ONGLET", $("tab-" + PC_TABS[d1]).textContent); }
-      else if (d1 < 16 && d1 - 8 < kitIndex.length) loadKit(kitIndex[d1 - 8].id);
+      // PROG CHANGE dans l'ordre des onglets : banque A = PADS … SP, banque B pad 1 = SONG, pads 2 à 8 = kits 1 à 7
+      const PC_TABS = TABS.filter(t => t !== "song").concat("song");
+      if (d1 < 9) { setTab(PC_TABS[d1]); lcd("lcdPad", "ONGLET", $("tab-" + PC_TABS[d1]).textContent); }
+      else if (d1 < 16 && d1 - 9 < kitIndex.length) loadKit(kitIndex[d1 - 9].id);
     }
   }
   async function initMidi() {
@@ -5432,7 +5499,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   initMidi();
   try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi) { $("btBox").hidden = false; $("btPair").addEventListener("click", () => window.webkit.messageHandlers.nomadMidi.postMessage({ type: "btpair" })); } } catch (e) {}
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
-  window.nomadDbg = { SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
+  window.nomadDbg = { get duck() { return duckNode; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
   let probe = null;
   window.nomadProbe = () => { if (!probe) { probe = ctx.createAnalyser(); probe.fftSize = 2048; fxMaster.connect(probe); } const a = new Float32Array(2048); probe.getFloatTimeDomainData(a); let m = 0; for (const v of a) m = Math.max(m, Math.abs(v)); return +m.toFixed(3); };
   window.nomadState = () => ({ kit: kitCur, kits: kitIndex.length, bufs: buffers.filter(Boolean).length, names: names.slice(0, 4), t0F: LP.t0F, Lf: LP.Lf, layers: LP.layers.map(l => ({ k: l.k, m: l.m })), pending: LP.pending && { ...LP.pending }, latMs, guitar: { amp: G.amp, preset: G.preset, fx: [...G.fx], on: G.on }, cap: capLatest, now: ctx && ctx.currentTime });
