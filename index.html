@@ -555,6 +555,29 @@ html.flipped, html.flipped body { overflow: hidden; }
 .digload i { display: block; height: 100%; width: 0; background: var(--green); transition: width .15s; }
 .digload.wait i { width: 35% !important; animation: digwait 1.1s ease-in-out infinite; }
 @keyframes digwait { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
+/* SP : façade de sampler de poche (boîtier anthracite, afficheur rouge, pads en caoutchouc gris, petites LED) */
+#view-sp { background: linear-gradient(180deg, #2f3033, #232427); border-radius: 12px; padding: 12px; box-shadow: inset 0 1px 0 #4a4b4f, inset 0 0 0 1px #151517, 0 6px 16px rgba(0,0,0,.45); }
+#view-sp .spface { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#view-sp .spdisp { display: flex; align-items: baseline; gap: 8px; background: #120606; border-radius: 4px; padding: 6px 10px; box-shadow: inset 0 2px 6px #000, 0 0 0 2px #0a0a0b; min-width: 46%; }
+#view-sp .spdisp b { font: 700 24px/1 var(--font-lcd, monospace); color: #ff3b2a; letter-spacing: .12em; text-shadow: 0 0 6px rgba(255,59,42,.7); }
+#view-sp .spdisp span { font: 600 10px/1 var(--font-lcd, monospace); color: #ff7a52; opacity: .85; letter-spacing: .08em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#view-sp .spbrand { text-align: right; font: italic 800 17px/1 var(--font-display, sans-serif); color: #d9d9d4; letter-spacing: .04em; }
+#view-sp .spbrand small { display: block; font: 600 7px/1.4 var(--font-lcd, monospace); font-style: normal; letter-spacing: .3em; color: #f08a2c; }
+#view-sp .sphead { color: #a3a39d; }
+#view-sp .dpad { background: linear-gradient(180deg, #8d8e8f, #6d6e70); color: #2a2a2b; border-radius: 5px; box-shadow: inset 0 1px 0 #b3b4b5, inset 0 -2px 0 #565759, 0 2px 0 #111; font-weight: 700; position: relative; }
+#view-sp .dpad::before { content: ""; position: absolute; top: 5px; left: 50%; width: 6px; height: 3px; margin-left: -3px; border-radius: 2px; background: #3e3f40; }
+#view-sp .dpad.has::before { background: #f08a2c; box-shadow: 0 0 4px #f08a2c; }
+#view-sp .dpad.target { background: linear-gradient(180deg, #e8e8e4, #b9bab6); color: #141414; box-shadow: inset 0 1px 0 #fff, 0 0 0 2px #ff3b2a, 0 0 10px rgba(255,59,42,.45); }
+#view-sp .dpad.hit { background: #ff3b2a; color: #fff; }
+#view-sp .songhead .btn, #view-sp .sppresets .btn { background: linear-gradient(180deg, #4a4b4e, #38393c); color: #e8e8e4; border-radius: 4px; box-shadow: inset 0 1px 0 #5d5e62, 0 2px 0 #111; position: relative; }
+#view-sp .sppresets .btn { padding-top: 14px; }
+#view-sp .sppresets .btn::before { content: ""; position: absolute; top: 5px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: #3a2414; }
+#view-sp .sppresets .btn.on::before { background: #ff8a2a; box-shadow: 0 0 6px #ff8a2a; }
+#view-sp #spRec { background: radial-gradient(circle at 50% 40%, #e2493a, #a52619); color: #fff; }
+#view-sp #spRec.on { box-shadow: 0 0 0 2px #ff3b2a, 0 0 12px rgba(255,59,42,.6); }
+#view-sp .songinfo, #view-sp .note { color: #a3a39d; }
+:root.desk #view-sp .dpads { grid-template-columns: repeat(8, 1fr); gap: 8px; }
+:root.desk #view-sp .dpad { height: 64px; }
 </style>
 </head>
 <body>
@@ -681,6 +704,7 @@ html.flipped, html.flipped body { overflow: hidden; }
   </section>
 
   <section class="view stack" id="view-sp" hidden>
+    <div class="spface"><div class="spdisp" aria-live="polite"><b id="spSeg">P01</b><span id="spSegSub">RÉÉCH.</span></div><div class="spbrand">NOMAD<small>SAMPLING STATION</small></div></div>
     <h4 class="sphead"><span>RÉÉCHANTILLONNAGE</span></h4>
     <div class="dpads" id="spPads" aria-label="Pad de destination"></div>
     <div class="songhead">
@@ -979,6 +1003,8 @@ html.flipped, html.flipped body { overflow: hidden; }
     sons: ["Volume", "Relâche", "Filtre", "Réverbe", "Octave", "Effet", "Attaque", "Strum"],
     scratch: ["Volume", "Pitch", "Filtre", "Démarrage", "Freinage", "Coupure", "Main", "Fader"]
   };
+  // PROG CHANGE banque B de l'Akai : les 8 kits rangés sur les pads 9 à 16
+  const PC_KITS = ["dilla", "rza", "peterock", "damu", "lofi", "boombap", "dub", "acoustic"];
   const knobVals = { play: [0.5, 0, 0, 0, 0.5, 1, 0.5, 0.8], loops: [1, 1, 1, 1, 1, 1, 0.9, 0], guitar: [0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.6, 0.3], fx: [0.5, 0.2, 0, 0.5, 0.55, 0, 0, 0.85], sample: [0.5, 0.5, 0.5, 0.5, 0, 0, 0, 0.9], sons: [0.8, 0.35, 1, 0.25, 0.5, 1, 0, 0], song: [1, 1, 1, 1, 1, 1, 0.9, 0.6], sp: [0, 0, 0, 0.5, 0.5, 0.5, 0.8, 0], scratch: [0.85, 0.5, 0.5, 0.2, 0.3, 0.3, 0, 0.2] };
   let tab = "play";
 
@@ -1114,8 +1140,8 @@ html.flipped, html.flipped body { overflow: hidden; }
     if (t === "song") { for (let k = 0; k < 7; k++) knobVals.song[k] = knobVals.loops[k]; drawKnobs(); drawSong(true); }
   }
   TABS.forEach(x => $("tab-" + x).addEventListener("click", () => setTab(x)));
-  // pad PROG CHANGE de l'Akai qui ouvre l'onglet (banque A 1 à 8, SONG = banque B pad 1)
-  TABS.filter(t => t !== "song").forEach((t, i) => { $("tab-" + t).dataset.pc = i + 1; }); $("tab-song").dataset.pc = "B1";
+  // pad PROG CHANGE de l'Akai qui ouvre l'onglet (banque A 1 à 8 ; SONG n'en a pas)
+  TABS.filter(t => t !== "song").forEach((t, i) => { $("tab-" + t).dataset.pc = i + 1; });
 
   // ---------- Sons synthétisés (kit de départ) ----------
   function render(sr) {
@@ -4132,12 +4158,12 @@ registerProcessor('nomad-duck',Duck);`;
     const el = $("glossary"); if (!el) return;
     const fxA = FX_PATTERNS.slice(0, 8).map(f => f.name), fxB = FX_PATTERNS.slice(8, 16).map(f => f.name);
     const kn = t => KNOB_LABELS[t].map((l, i) => `<span><b>${i + 1}</b>${l}</span>`).join("");
-    const kits = ["SONG"].concat(kitIndex.slice(0, 7).map(k => k.name));
+    const kits = PC_KITS.map(id => (kitIndex.find(k => k.id === id) || { name: id }).name);
     const sec = (title, body, open) => `<details class="gl"${open ? " open" : ""}><summary>${title}</summary><div>${body}</div></details>`;
     el.innerHTML = [
       sec("PARTOUT", `<p><b>Pédale Sustain</b> : REC / superposition du looper.</p><p><b>Clavier</b> : joue l'instrument de SONS (ou le pad choisi, transposé) ; en mode ACCORDS, les touches graves jouent les accords ; dans SCRATCH, il transpose le disque ; dans FX, les 8 premières touches blanches (do à do) choisissent la cible : TOUT, LIVE, P1 à P6.</p><p><b>Potards</b> : changent de rôle selon l'onglet (voir POTARDS).</p><p><b>Sur ordinateur</b> : touches & é " ' ( § è ! ç (ou F1 à F9) = onglets (PADS, LOOPER, SONS / DIGGING, SCRATCH, GUITARE / FX, SP, SONG, dans l'ordre de la grille), Espace = REC, Retour arrière = annuler.</p>`, true),
       sec("BOUTON CC (pads en CC, preset 3)", `<p class="glh">Banque A</p>${padGrid(["Play / stop looper", "Annuler", "Muet piste 1", "Muet piste 2", "Muet piste 3", "Muet piste 4", "Muet piste 5", "Muet piste 6"])}<p class="glh">Banque B</p>${padGrid(["Kit précédent", "Kit suivant", "Morceau ▶/■", "Séquence ◀", "Note repeat", "Séquence ▶", "Onglet suivant", "Guitare (onglet + entrée)"], 8)}`),
-      sec("BOUTON PROG CHANGE (onglets et kits)", `<p>PROG CHANGE allumé, un pad, puis PROG CHANGE éteint pour rejouer.</p><p>Les numéros sous les onglets de l'iPhone rappellent le pad.</p><p class="glh">Banque A : aller à l'onglet</p>${padGrid(["PADS", "LOOPER", "SONS", "DIGGING", "SCRATCH", "GUITARE", "FX", "SP"])}<p class="glh">Banque B : SONG puis charger le kit</p>${padGrid(kits, 8)}<p>Pad 16 en mode CC : allume l'entrée guitare et ouvre l'onglet.</p>`),
+      sec("BOUTON PROG CHANGE (onglets et kits)", `<p>PROG CHANGE allumé, un pad, puis PROG CHANGE éteint pour rejouer.</p><p>Les numéros sous les onglets de l'iPhone rappellent le pad.</p><p class="glh">Banque A : aller à l'onglet</p>${padGrid(["PADS", "LOOPER", "SONS", "DIGGING", "SCRATCH", "GUITARE", "FX", "SP"])}<p class="glh">Banque B : charger le kit</p>${padGrid(kits, 8)}<p>Pad 16 en mode CC : allume l'entrée guitare et ouvre l'onglet.</p>`),
       sec("PADS EN NOTES, SELON L'ONGLET", `<p><b>PADS, SONG, SP, GUITARE</b> : les 16 sons du kit (banque A = 1 à 8, banque B = 9 à 16).</p>
         <p class="glh">LOOPER · banque A</p>${padGrid(["Muet piste 1", "Muet piste 2", "Muet piste 3", "Tout couper", "Muet piste 4", "Muet piste 5", "Muet piste 6", "Tout rétablir"])}
         <p class="glh">LOOPER · banque B</p>${padGrid(["Solo piste 1", "Solo piste 2", "Solo piste 3", "Tape stop", "Solo piste 4", "Solo piste 5", "Solo piste 6", "▶ Lecture"], 8)}
@@ -4985,9 +5011,9 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   }
   const SP_PRESETS = [["NEUTRE", [0, 0, 0, 0.5, 0.5, 0.5]], ["VINYLE 45T", [0.55, 0, 0.15, 0.55, 0.5, 0.42]], ["CASSETTE", [0.1, 0.6, 0, 0.55, 0.5, 0.4]], ["LO-FI 12 BITS", [0.2, 0.15, 0.55, 0.55, 0.5, 0.45]],
     ["RADIO", [0, 0, 0.3, 0.05, 0.6, 0.15]], ["SANS BASSES", [0, 0, 0, 0.08, 0.5, 0.5]], ["SANS AIGUS", [0, 0, 0, 0.5, 0.5, 0.06]], ["POUSSIÈRE", [0.85, 0.35, 0.25, 0.5, 0.45, 0.35]]];
-  SP_PRESETS.forEach(([name, vals]) => {
+  SP_PRESETS.forEach(([name, vals], pi) => {
     const b = document.createElement("button"); b.className = "btn"; b.type = "button"; b.textContent = name;
-    b.addEventListener("click", () => { vals.forEach((x, k) => { knobVals.sp[k] = x; applySp(k); }); if (tab === "sp") drawKnobs(); lcd("lcdPad", "SP", name); });
+    b.addEventListener("click", () => { vals.forEach((x, k) => { knobVals.sp[k] = x; applySp(k); }); if (tab === "sp") drawKnobs(); lcd("lcdPad", "SP", name); [...$("spPresets").children].forEach((x, j) => x.classList.toggle("on", j === pi)); spSeg("F-" + (pi + 1), name); });
     $("spPresets").appendChild(b);
   });
   $("spBypass").addEventListener("click", () => { SPX.on = !SPX.on; for (let k = 0; k < 7; k++) applySp(k); $("spBypass").textContent = "EFFETS SP : " + (SPX.on ? "OUI" : "NON"); $("spBypass").classList.toggle("on", !SPX.on); });
@@ -5000,7 +5026,10 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     b.addEventListener("pointerdown", e => { e.preventDefault(); RS.target = i; drawSpPads(); playPad(i, 0.9); });
     $("spPads").appendChild(b); spPadEls[i] = b;
   }
+  // petit afficheur rouge à segments de la façade SP
+  function spSeg(big, small) { $("spSeg").textContent = big; $("spSegSub").textContent = small; }
   function drawSpPads() {
+    if (!RS.rec) spSeg("P" + String(RS.target + 1).padStart(2, "0"), "RÉÉCH.");
     spPadEls.forEach((b, i) => { b.classList.toggle("target", i === RS.target); b.classList.toggle("has", !!buffers[i]); });
     if (!RS.rec) $("spInfo").textContent = `Destination : pad ${RS.target + 1}` + (names[RS.target] ? ` (remplace « ${names[RS.target]} »)` : "");
   }
@@ -5016,7 +5045,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (sync) { const C = cycF(LP.layers), nowF = ctx.currentTime * sr; rec.startF = LP.t0F + Math.ceil((nowF + 0.05 * sr - LP.t0F) / C) * C; rec.endF = rec.startF + C; }
     node.port.onmessage = e => { rec.chunks.push([e.data.f, e.data.l, e.data.r]); if (rec.endF && e.data.f + e.data.l.length >= rec.endF) rsStop(); else if (rec.chunks.length * 1024 > sr * 60) rsStop(); };
     RS.rec = rec;
-    $("spRec").textContent = "■ STOP"; $("spRec").classList.add("on");
+    $("spRec").textContent = "■ STOP"; $("spRec").classList.add("on"); spSeg("REC", sync ? "CALÉ" : "LIBRE");
     $("spInfo").textContent = sync ? `En attente du début de la séquence ${SEQ_N[SQ.cur]}… (un cycle)` : "Enregistrement… appuyez pour arrêter (60 s max)";
     lcd("lcdPad", "RÉÉCH.", sync ? "calé sur la boucle" : "enregistrement");
   }
@@ -5604,10 +5633,10 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     } else if (type === 0xb0) {
       onCC(d1, d2);
     } else if (type === 0xc0) {
-      // PROG CHANGE dans l'ordre des onglets : banque A = PADS … SP, banque B pad 1 = SONG, pads 2 à 8 = kits 1 à 7
-      const PC_TABS = TABS.filter(t => t !== "song").concat("song");
-      if (d1 < 9) { setTab(PC_TABS[d1]); lcd("lcdPad", "ONGLET", $("tab-" + PC_TABS[d1]).textContent); }
-      else if (d1 < 16 && d1 - 9 < kitIndex.length) loadKit(kitIndex[d1 - 9].id);
+      // PROG CHANGE : banque A = onglets PADS … SP (dans l'ordre), banque B = 8 kits
+      const PC_TABS = TABS.filter(t => t !== "song");
+      if (d1 < 8) { setTab(PC_TABS[d1]); lcd("lcdPad", "ONGLET", $("tab-" + PC_TABS[d1]).textContent); }
+      else if (d1 < 16) { const k = kitIndex.find(x => x.id === PC_KITS[d1 - 8]); if (k) loadKit(k.id); }
     }
   }
   async function initMidi() {
@@ -5762,7 +5791,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (typeof drawSpPads === "function" && tab === "sp") drawSpPads();
   }
   // grille 3×3 : jouer (PADS LOOPER SONS), matière (DIGGING SCRATCH GUITARE), finition (FX SP SONG), même ordre que sur téléphone
-  TABS.forEach((t, i) => { const el = $("tab-" + t); if (el) el.dataset.f = ["&", "é", "\"", "'", "(", "§", "è", "!", "ç"][i] + "  ·  F" + (i + 1); });
+  TABS.forEach((t, i) => { const el = $("tab-" + t); if (el) el.dataset.f = i + 1; });
   if (DESK_Q) { try { DESK_Q.addEventListener("change", applyDesk); } catch (e) { DESK_Q.addListener && DESK_Q.addListener(applyDesk); } }
   $("layoutBtn").addEventListener("click", () => { deskMode = { auto: "desk", desk: "phone", phone: "auto" }[deskMode]; store.set("layout", deskMode); applyDesk(); });
   // rangée du haut d'un clavier AZERTY (Mac) sans Maj : & é " ' ( § è ! ç = onglets 1 à 9 ; F1 à F9 marchent aussi

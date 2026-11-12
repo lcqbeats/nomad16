@@ -41,9 +41,9 @@
   }
   const SP_PRESETS = [["NEUTRE", [0, 0, 0, 0.5, 0.5, 0.5]], ["VINYLE 45T", [0.55, 0, 0.15, 0.55, 0.5, 0.42]], ["CASSETTE", [0.1, 0.6, 0, 0.55, 0.5, 0.4]], ["LO-FI 12 BITS", [0.2, 0.15, 0.55, 0.55, 0.5, 0.45]],
     ["RADIO", [0, 0, 0.3, 0.05, 0.6, 0.15]], ["SANS BASSES", [0, 0, 0, 0.08, 0.5, 0.5]], ["SANS AIGUS", [0, 0, 0, 0.5, 0.5, 0.06]], ["POUSSIÈRE", [0.85, 0.35, 0.25, 0.5, 0.45, 0.35]]];
-  SP_PRESETS.forEach(([name, vals]) => {
+  SP_PRESETS.forEach(([name, vals], pi) => {
     const b = document.createElement("button"); b.className = "btn"; b.type = "button"; b.textContent = name;
-    b.addEventListener("click", () => { vals.forEach((x, k) => { knobVals.sp[k] = x; applySp(k); }); if (tab === "sp") drawKnobs(); lcd("lcdPad", "SP", name); });
+    b.addEventListener("click", () => { vals.forEach((x, k) => { knobVals.sp[k] = x; applySp(k); }); if (tab === "sp") drawKnobs(); lcd("lcdPad", "SP", name); [...$("spPresets").children].forEach((x, j) => x.classList.toggle("on", j === pi)); spSeg("F-" + (pi + 1), name); });
     $("spPresets").appendChild(b);
   });
   $("spBypass").addEventListener("click", () => { SPX.on = !SPX.on; for (let k = 0; k < 7; k++) applySp(k); $("spBypass").textContent = "EFFETS SP : " + (SPX.on ? "OUI" : "NON"); $("spBypass").classList.toggle("on", !SPX.on); });
@@ -56,7 +56,10 @@
     b.addEventListener("pointerdown", e => { e.preventDefault(); RS.target = i; drawSpPads(); playPad(i, 0.9); });
     $("spPads").appendChild(b); spPadEls[i] = b;
   }
+  // petit afficheur rouge à segments de la façade SP
+  function spSeg(big, small) { $("spSeg").textContent = big; $("spSegSub").textContent = small; }
   function drawSpPads() {
+    if (!RS.rec) spSeg("P" + String(RS.target + 1).padStart(2, "0"), "RÉÉCH.");
     spPadEls.forEach((b, i) => { b.classList.toggle("target", i === RS.target); b.classList.toggle("has", !!buffers[i]); });
     if (!RS.rec) $("spInfo").textContent = `Destination : pad ${RS.target + 1}` + (names[RS.target] ? ` (remplace « ${names[RS.target]} »)` : "");
   }
@@ -72,7 +75,7 @@
     if (sync) { const C = cycF(LP.layers), nowF = ctx.currentTime * sr; rec.startF = LP.t0F + Math.ceil((nowF + 0.05 * sr - LP.t0F) / C) * C; rec.endF = rec.startF + C; }
     node.port.onmessage = e => { rec.chunks.push([e.data.f, e.data.l, e.data.r]); if (rec.endF && e.data.f + e.data.l.length >= rec.endF) rsStop(); else if (rec.chunks.length * 1024 > sr * 60) rsStop(); };
     RS.rec = rec;
-    $("spRec").textContent = "■ STOP"; $("spRec").classList.add("on");
+    $("spRec").textContent = "■ STOP"; $("spRec").classList.add("on"); spSeg("REC", sync ? "CALÉ" : "LIBRE");
     $("spInfo").textContent = sync ? `En attente du début de la séquence ${SEQ_N[SQ.cur]}… (un cycle)` : "Enregistrement… appuyez pour arrêter (60 s max)";
     lcd("lcdPad", "RÉÉCH.", sync ? "calé sur la boucle" : "enregistrement");
   }

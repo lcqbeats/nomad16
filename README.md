@@ -13,7 +13,7 @@ Instruments de l'onglet SONS : échantillons libres (VCSL CC0, Splendid Grand Pi
 
 - Bank 1 (CC 20–27) : play/stop du looper, undo, mute des pistes 1 à 6.
 - Bank 2 (CC 28–35) : kit précédent, kit suivant, lecture/arrêt du morceau (SONG), séquence précédente, note repeat, séquence suivante, onglet suivant, entrée guitare (ouvre aussi l'onglet GUITARE).
-- PROG CHANGE, dans l'ordre des onglets (le numéro est écrit sous chaque onglet sur iPhone) : banque A = 1 PADS, 2 LOOPER, 3 SONS, 4 DIGGING, 5 SCRATCH, 6 GUITARE, 7 FX, 8 SP ; banque B = pad 1 SONG, pads 2 à 8 = kits 1 à 7.
+- PROG CHANGE, dans l'ordre des onglets (le numéro est écrit sous chaque onglet sur iPhone) : banque A = 1 PADS, 2 LOOPER, 3 SONS, 4 DIGGING, 5 SCRATCH, 6 GUITARE, 7 FX, 8 SP ; banque B = kits J DILLA, RZA, PETE ROCK, DAMU THE FUDGEMUNK, LO-FI CASSETTE, BOOM BAP 93, DUB STATION, ACOUSTIQUE (SONG n'a pas de raccourci).
 - FX : les 8 premières touches blanches du clavier (do à do) choisissent la cible : TOUT, LIVE, P1 à P6.
 - SONS : potard 6 = dose de l'effet (à fond = effet plein), potard 7 = attaque, potard 8 = strum ; la tonalité et le style se règlent en mode ACCORDS. SIDECHAIN (léger / fort) creuse SONS à chaque kick de la boucle ou des pads, comme le Mother Ducker de la MPC.
 

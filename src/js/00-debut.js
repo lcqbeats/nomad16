@@ -14,6 +14,8 @@
     sons: ["Volume", "Relâche", "Filtre", "Réverbe", "Octave", "Effet", "Attaque", "Strum"],
     scratch: ["Volume", "Pitch", "Filtre", "Démarrage", "Freinage", "Coupure", "Main", "Fader"]
   };
+  // PROG CHANGE banque B de l'Akai : les 8 kits rangés sur les pads 9 à 16
+  const PC_KITS = ["dilla", "rza", "peterock", "damu", "lofi", "boombap", "dub", "acoustic"];
   const knobVals = { play: [0.5, 0, 0, 0, 0.5, 1, 0.5, 0.8], loops: [1, 1, 1, 1, 1, 1, 0.9, 0], guitar: [0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.6, 0.3], fx: [0.5, 0.2, 0, 0.5, 0.55, 0, 0, 0.85], sample: [0.5, 0.5, 0.5, 0.5, 0, 0, 0, 0.9], sons: [0.8, 0.35, 1, 0.25, 0.5, 1, 0, 0], song: [1, 1, 1, 1, 1, 1, 0.9, 0.6], sp: [0, 0, 0, 0.5, 0.5, 0.5, 0.8, 0], scratch: [0.85, 0.5, 0.5, 0.2, 0.3, 0.3, 0, 0.2] };
   let tab = "play";
 

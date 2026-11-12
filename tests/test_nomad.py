@@ -249,9 +249,9 @@ def test_prog_change_onglets_et_kits(app):
     assert app.get_attribute("#tab-scratch", "aria-selected") == "true"
     app.evaluate("nomadMidi([0xC0, 0])")
     assert app.get_attribute("#tab-play", "aria-selected") == "true"
-    app.evaluate("nomadMidi([0xC0, 9])")      # banque B pad 2 = premier kit
-    app.wait_for_timeout(500)
-    assert app.evaluate("nomadState().kit") == "synth"
+    app.evaluate("nomadMidi([0xC0, 9])")      # banque B pad 2 = RZA
+    app.wait_for_timeout(800)
+    assert app.evaluate("nomadState().kit") == "rza"
 
 
 def test_remplacer_le_son_d_un_pad(app):
@@ -458,8 +458,7 @@ def test_fx_clavier_et_prog_change(app):
     assert "on" in app.get_attribute(".fxt[data-t='all']", "class")
     app.evaluate("nomadMidi([0xC0, 2])")            # PROG CHANGE pad 3 = SONS
     assert app.get_attribute("#tab-sons", "aria-selected") == "true"
-    app.evaluate("nomadMidi([0xC0, 8])")            # banque B pad 1 = SONG
-    assert app.get_attribute("#tab-song", "aria-selected") == "true"
+    assert app.get_attribute("#tab-song", "data-pc") is None
     assert app.get_attribute("#tab-sons", "data-pc") == "3"
 
 

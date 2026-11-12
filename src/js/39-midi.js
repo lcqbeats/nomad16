@@ -103,10 +103,10 @@
     } else if (type === 0xb0) {
       onCC(d1, d2);
     } else if (type === 0xc0) {
-      // PROG CHANGE dans l'ordre des onglets : banque A = PADS … SP, banque B pad 1 = SONG, pads 2 à 8 = kits 1 à 7
-      const PC_TABS = TABS.filter(t => t !== "song").concat("song");
-      if (d1 < 9) { setTab(PC_TABS[d1]); lcd("lcdPad", "ONGLET", $("tab-" + PC_TABS[d1]).textContent); }
-      else if (d1 < 16 && d1 - 9 < kitIndex.length) loadKit(kitIndex[d1 - 9].id);
+      // PROG CHANGE : banque A = onglets PADS … SP (dans l'ordre), banque B = 8 kits
+      const PC_TABS = TABS.filter(t => t !== "song");
+      if (d1 < 8) { setTab(PC_TABS[d1]); lcd("lcdPad", "ONGLET", $("tab-" + PC_TABS[d1]).textContent); }
+      else if (d1 < 16) { const k = kitIndex.find(x => x.id === PC_KITS[d1 - 8]); if (k) loadKit(k.id); }
     }
   }
   async function initMidi() {

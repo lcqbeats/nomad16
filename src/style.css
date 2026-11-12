@@ -541,3 +541,26 @@ html.flipped, html.flipped body { overflow: hidden; }
 .digload i { display: block; height: 100%; width: 0; background: var(--green); transition: width .15s; }
 .digload.wait i { width: 35% !important; animation: digwait 1.1s ease-in-out infinite; }
 @keyframes digwait { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
+/* SP : façade de sampler de poche (boîtier anthracite, afficheur rouge, pads en caoutchouc gris, petites LED) */
+#view-sp { background: linear-gradient(180deg, #2f3033, #232427); border-radius: 12px; padding: 12px; box-shadow: inset 0 1px 0 #4a4b4f, inset 0 0 0 1px #151517, 0 6px 16px rgba(0,0,0,.45); }
+#view-sp .spface { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#view-sp .spdisp { display: flex; align-items: baseline; gap: 8px; background: #120606; border-radius: 4px; padding: 6px 10px; box-shadow: inset 0 2px 6px #000, 0 0 0 2px #0a0a0b; min-width: 46%; }
+#view-sp .spdisp b { font: 700 24px/1 var(--font-lcd, monospace); color: #ff3b2a; letter-spacing: .12em; text-shadow: 0 0 6px rgba(255,59,42,.7); }
+#view-sp .spdisp span { font: 600 10px/1 var(--font-lcd, monospace); color: #ff7a52; opacity: .85; letter-spacing: .08em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#view-sp .spbrand { text-align: right; font: italic 800 17px/1 var(--font-display, sans-serif); color: #d9d9d4; letter-spacing: .04em; }
+#view-sp .spbrand small { display: block; font: 600 7px/1.4 var(--font-lcd, monospace); font-style: normal; letter-spacing: .3em; color: #f08a2c; }
+#view-sp .sphead { color: #a3a39d; }
+#view-sp .dpad { background: linear-gradient(180deg, #8d8e8f, #6d6e70); color: #2a2a2b; border-radius: 5px; box-shadow: inset 0 1px 0 #b3b4b5, inset 0 -2px 0 #565759, 0 2px 0 #111; font-weight: 700; position: relative; }
+#view-sp .dpad::before { content: ""; position: absolute; top: 5px; left: 50%; width: 6px; height: 3px; margin-left: -3px; border-radius: 2px; background: #3e3f40; }
+#view-sp .dpad.has::before { background: #f08a2c; box-shadow: 0 0 4px #f08a2c; }
+#view-sp .dpad.target { background: linear-gradient(180deg, #e8e8e4, #b9bab6); color: #141414; box-shadow: inset 0 1px 0 #fff, 0 0 0 2px #ff3b2a, 0 0 10px rgba(255,59,42,.45); }
+#view-sp .dpad.hit { background: #ff3b2a; color: #fff; }
+#view-sp .songhead .btn, #view-sp .sppresets .btn { background: linear-gradient(180deg, #4a4b4e, #38393c); color: #e8e8e4; border-radius: 4px; box-shadow: inset 0 1px 0 #5d5e62, 0 2px 0 #111; position: relative; }
+#view-sp .sppresets .btn { padding-top: 14px; }
+#view-sp .sppresets .btn::before { content: ""; position: absolute; top: 5px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: #3a2414; }
+#view-sp .sppresets .btn.on::before { background: #ff8a2a; box-shadow: 0 0 6px #ff8a2a; }
+#view-sp #spRec { background: radial-gradient(circle at 50% 40%, #e2493a, #a52619); color: #fff; }
+#view-sp #spRec.on { box-shadow: 0 0 0 2px #ff3b2a, 0 0 12px rgba(255,59,42,.6); }
+#view-sp .songinfo, #view-sp .note { color: #a3a39d; }
+:root.desk #view-sp .dpads { grid-template-columns: repeat(8, 1fr); gap: 8px; }
+:root.desk #view-sp .dpad { height: 64px; }
