@@ -223,16 +223,28 @@
       </div>
     </div>
     <canvas id="waveCanvas" aria-label="Forme d'onde et découpes"></canvas>
+    <div class="wavebar">
+      <button class="btn" id="wzOut" type="button" aria-label="Dézoomer">−</button><span class="kv" id="wzVal">×1</span><button class="btn" id="wzIn" type="button" aria-label="Zoomer">+</button>
+      <input type="range" id="wStart" min="0" max="1000" step="1" value="0" aria-label="Départ de la lecture"><span class="wst" id="wStartVal">0:00.0</span>
+    </div>
     <div class="dpads" id="digPads" aria-label="Pads"></div>
     <div class="chopbar" style="grid-template-columns:1fr 1fr">
       <button class="btn" id="lcUndo" type="button" disabled>↶ ANNULER LE CHOP</button>
       <button class="btn" id="lcRestart" type="button" disabled>RECOMMENCER</button>
     </div>
-    <div class="chopbar">
+    <div class="chopbar chop6">
       <button class="btn on" id="chAuto" type="button">AUTO</button>
+      <button class="btn" id="chCrest" type="button">CRÊTES</button>
       <button class="btn" id="chEq8" type="button">ÉGAL 8</button>
       <button class="btn" id="chEq16" type="button">ÉGAL 16</button>
       <button class="btn" id="chMan" type="button">MANUEL</button>
+      <button class="btn" id="chClear" type="button">EFFACER</button>
+    </div>
+    <div class="chopbar">
+      <button class="btn" id="clNorm" type="button">NORMALISER</button>
+      <button class="btn" id="clHiss" type="button">− SOUFFLE</button>
+      <button class="btn" id="clClick" type="button">− CRAQUEMENTS</button>
+      <button class="btn" id="clOrig" type="button">ORIGINAL</button>
     </div>
     <div class="srcbar">
       <button class="btn rec" id="toPads" type="button">→ PADS</button>
@@ -240,7 +252,7 @@
       <button class="btn" id="micBtn" type="button">● MICRO</button>
     </div>
     <input type="file" id="fileIn" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff" hidden>
-    <p class="note help">Feuilletez le bac (glissez, flèches, ou potard 1 de l'Akai), posez un disque sur la platine, choisissez un extrait. Touchez la forme d'onde pour écouter une découpe ; en MANUEL, touchez pour ajouter une coupe, appui long pour l'enlever. → PADS envoie les découpes dans le kit « MES CHOPS ». Sons : Bibliothèque du Congrès, Citizen DJ, libres d'utilisation.</p>
+    <p class="note help">Feuilletez le bac (glissez, flèches, ou potard 1 de l'Akai), posez un disque sur la platine, choisissez un extrait. Touchez la forme d'onde pour écouter une découpe ; appui long = départ de la lecture (trait jaune, aussi réglable avec la glissière ; − / + zooment autour). En MANUEL, touchez pour ajouter une coupe, appui long pour l'enlever ; EFFACER retire toutes les coupes. CRÊTES coupe juste avant les sons les plus forts (potard 3 = sensibilité). NORMALISER met le son au maximum sans saturer ; − SOUFFLE et − CRAQUEMENTS nettoient l'extrait (à refaire pour aller plus loin) ; ORIGINAL revient au son de départ. → PADS envoie les découpes dans le kit « MES CHOPS ». Sons : Bibliothèque du Congrès, Citizen DJ, libres d'utilisation.</p>
   </section>
 
   <section class="view stack" id="view-scratch" hidden>

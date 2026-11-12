@@ -555,6 +555,34 @@ def test_fx_imprime_et_clavier_joue_sons(app):
     app.evaluate("nomadMidi([0x80, 64, 0])")
 
 
+def test_digging_zoom_cretes_nettoyage(app):
+    app.click("#tab-sample")
+    app.evaluate("""() => { const c = nomadDbg.sp.in.context, sr = c.sampleRate, n = sr * 4, b = c.createBuffer(2, n, sr);
+      for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * 0.02; for (let k = 0; k < 6; k++) { const s0 = Math.floor((0.3 + k * 0.6) * sr); for (let i = 0; i < sr * 0.25; i++) d[s0 + i] += Math.sin(i / 9) * 0.4 * Math.exp(-i / (sr * 0.08)); } for (let k = 0; k < 20; k++) d[Math.floor(sr * (0.15 + k * 0.19))] += 0.6; }
+      nomadDbg.setClip(b, "test"); }""")
+    app.click("#chCrest")
+    n = app.evaluate("nomadDbg.chops.length")
+    assert 4 <= n <= 16, n
+    app.click("#chClear")
+    assert app.evaluate("nomadDbg.chops.length") == 1
+    app.click("#wzIn"); app.click("#wzIn")
+    assert app.inner_text("#wzVal") == "×4"
+    app.fill("#wStart", "500")
+    assert app.inner_text("#wStartVal").startswith("0:02")
+    quiet = "(() => { const d = nomadDbg.clip.buf.getChannelData(0), sr = nomadDbg.sr; let s = 0; for (let i = Math.floor(sr * 3.95); i < sr * 4 - 10; i++) s += d[i] * d[i]; return Math.sqrt(s / (sr * 0.05)); })()"
+    q0 = app.evaluate(quiet)
+    app.click("#clClick"); app.wait_for_function("document.getElementById('digLoad').hidden", timeout=8000)
+    assert "craquements enlevés" in app.inner_text("#lcdPad")
+    app.click("#clHiss"); app.wait_for_function("document.getElementById('digLoad').hidden && /souffle/.test(document.getElementById('lcdPad').textContent)", timeout=15000)
+    assert app.evaluate(quiet) < q0 * 0.6
+    app.click("#clNorm")
+    app.wait_for_function("/normalisé/.test(document.getElementById('lcdPad').textContent)", timeout=5000)
+    pk = app.evaluate("(() => { let m = 0; for (const v of nomadDbg.clip.buf.getChannelData(0)) m = Math.max(m, Math.abs(v)); return m; })()")
+    assert 0.9 < pk <= 0.95
+    app.click("#clOrig")
+    assert app.evaluate("nomadDbg.clip.buf === nomadDbg.clip.orig")
+
+
 def test_famille_20syl(app):
     app.click("#tab-sons")
     app.locator("#cats .cat", has_text="20SYL").click()

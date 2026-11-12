@@ -597,3 +597,10 @@ html.flipped, html.flipped body { overflow: hidden; }
 #view-fx .fxtargets { margin-top: 0; }
 :root.desk #view-fx .fxprint { order: -1; margin: 0 0 12px; }
 :root.desk #view-fx .fxtargets { order: -2; }
+/* DIGGING : zoom, départ de lecture, découpes et nettoyage */
+.wavebar { display: grid; grid-template-columns: 36px 40px 36px 1fr auto; gap: 6px; align-items: center; margin: 6px 0 2px; }
+.wavebar .btn { padding: 6px 0; font-size: 14px; }
+.wavebar .kv { text-align: center; font-size: 12px; }
+.wavebar input[type=range] { width: 100%; accent-color: #f6c945; }
+.wavebar .wst { font: 600 11px/1 var(--font-lcd, monospace); color: #f6c945; min-width: 52px; text-align: right; }
+.chopbar.chop6 { grid-template-columns: repeat(3, 1fr); }

@@ -5,6 +5,7 @@
   let clip = null;          // { buf, title, peaks }
   let chops = [];           // positions de départ (en échantillons)
   let chopMode = "auto", sens = 0.5, eqN = 8, pitchSemi = 0, sampleVol = 0.9;
+  let wz = 1, wStart = 0, ttOff = 0;   // zoom de la forme d'onde, départ de la lecture (échantillons)
   let ttSrc = null, ttStart = 0, ttAngle = 0, previewSrc = null, previewInfo = null;
   const dcv = $("digCanvas"), dg = dcv.getContext("2d");
   const tcv = $("ttCanvas"), tg = tcv.getContext("2d");
@@ -324,7 +325,8 @@
     $("ttMsg").textContent = Math.round(buf.duration) + " s";
   }
   function setClip(buf, item, title) {
-    clip = { buf, item, title, peaks: null };
+    clip = { buf, item, title, peaks: null, orig: buf };
+    wz = 1; wStart = 0; drawWaveBar();
     computePeaks(); rechop();
     lcd("lcdPad", "PLATINE", title);
   }
@@ -344,7 +346,8 @@
       ciTimers.push(setTimeout(() => lcd("lcdPad", "CHOP LIVE", "décompte · " + (countIn - k) + " … préparez-vous"), Math.max(0, (t - ctx.currentTime) * 1000)));
     }
     if (countIn) ciTimers.push(setTimeout(() => lcd("lcdPad", "CHOP LIVE", "GO · frappez les pads"), Math.max(0, (t0 - ctx.currentTime) * 1000)));
-    s.start(t0); ttSrc = s; ttStart = t0; $("ttPlay").textContent = "■ STOP";
+    ttOff = Math.min(wStart, clip.buf.length - 1);
+    s.start(t0, ttOff / sr); ttSrc = s; ttStart = t0; $("ttPlay").textContent = "■ STOP";
   }
   $("ttPlay").addEventListener("click", () => { if (ttSrc) stopTT(); else ttStartPlay(0); });
   function setPitch(v) { pitchSemi = v; $("pitchSl").value = v; $("pitchVal").textContent = (v > 0 ? "+" : "") + v; if (ttSrc) ttSrc.playbackRate.value = Math.pow(2, v / 12); }
@@ -365,46 +368,81 @@
     const keep = []; peaks.sort((a, b) => b[1] - a[1]).forEach(p => { if (keep.length < 16 && keep.every(k => Math.abs(k - p[0]) >= minGap)) keep.push(p[0]); });
     return keep.sort((a, b) => a - b).map(i => Math.max(0, i * hop - 256));
   }
+  // CRÊTES : coupe juste avant les sons les plus forts (les plus hautes crêtes de la forme d'onde)
+  function detectCrests() {
+    const x = clip.mono, hop = 256, n = Math.floor(x.length / hop), env = new Float32Array(n);
+    for (let i = 0; i < n; i++) { let m = 0; for (let j = 0; j < hop; j++) m = Math.max(m, Math.abs(x[i * hop + j])); env[i] = m; }
+    let mx = 0; env.forEach(v => mx = Math.max(mx, v)); if (!mx) return [0];
+    const th = mx * (0.85 - sens * 0.7), gap = Math.floor(0.15 * sr / hop), pk = [];
+    for (let i = 1; i < n - 1; i++) if (env[i] >= th && env[i] >= env[i - 1] && env[i] > env[i + 1]) pk.push(i);
+    const keep = []; pk.sort((a, b) => env[b] - env[a]).forEach(i => { if (keep.length < 16 && keep.every(k => Math.abs(k - i) >= gap)) keep.push(i); });
+    // on recule jusqu'au pied de la montée pour garder l'attaque
+    return keep.sort((a, b) => a - b).map(i => { let j = i; const lim = Math.max(0, i - Math.floor(0.08 * sr / hop)); while (j > lim && env[j - 1] > env[i] * 0.35) j--; return Math.max(0, j * hop - 64); });
+  }
   function rechop() {
     if (!clip) return;
     const L = clip.buf.length;
     if (chopMode === "auto") chops = detectOnsets();
     else if (chopMode === "eq") chops = Array.from({ length: eqN }, (_, i) => Math.floor(i * L / eqN));
+    else if (chopMode === "crest") chops = detectCrests();
     if (!chops.length) chops = [0];
     drawWave();
   }
   function setChopMode(m, n) {
     chopMode = m; if (n) eqN = n;
-    ["chAuto", "chEq8", "chEq16", "chMan"].forEach(id => $(id).classList.remove("on"));
-    $(m === "auto" ? "chAuto" : m === "man" ? "chMan" : eqN === 8 ? "chEq8" : "chEq16").classList.add("on");
+    ["chAuto", "chCrest", "chEq8", "chEq16", "chMan"].forEach(id => $(id).classList.remove("on"));
+    $(m === "auto" ? "chAuto" : m === "crest" ? "chCrest" : m === "man" ? "chMan" : eqN === 8 ? "chEq8" : "chEq16").classList.add("on");
     if (m !== "man") rechop();
   }
   $("chAuto").addEventListener("click", () => setChopMode("auto"));
+  $("chCrest").addEventListener("click", () => { setChopMode("crest"); lcd("lcdPad", "CHOP", `crêtes : ${chops.length} découpes (potard 3 = sensibilité)`); });
+  // EFFACER : plus aucune coupe, on passe en MANUEL pour poser les siennes
+  $("chClear").addEventListener("click", () => { if (!clip) return; setChopMode("man"); chops = [0]; drawWave(); lcd("lcdPad", "CHOP", "découpes effacées · touchez la forme d'onde pour couper"); });
   $("chEq8").addEventListener("click", () => setChopMode("eq", 8));
   $("chEq16").addEventListener("click", () => setChopMode("eq", 16));
   $("chMan").addEventListener("click", () => setChopMode("man"));
   function chopRange(i) { const L = clip.buf.length; return [chops[i], i + 1 < chops.length ? chops[i + 1] : L]; }
+  // fenêtre visible : au zoom ×1 tout l'extrait ; plus on zoome, plus on voit autour du départ de lecture
+  function wView() { const L = clip.buf.length, span = Math.max(256, Math.floor(L / wz)); const v0 = Math.max(0, Math.min(L - span, Math.floor(wStart - span * 0.25))); return [v0, span]; }
   function drawWave() {
     fitCanvas(wcv);
     const g = wg, W = wcv.width, H = wcv.height, d = window.devicePixelRatio || 1;
     g.clearRect(0, 0, W, H);
     if (!clip) { g.fillStyle = "#5d574f"; g.font = `${12 * d}px IBM Plex Mono, monospace`; g.textAlign = "center"; g.fillText("posez un disque ou importez un son", W / 2, H / 2); return; }
-    const x = clip.mono, L = x.length, mid = H / 2;
-    chops.forEach((c, i) => { const [a, b] = chopRange(i); g.fillStyle = i % 2 ? "rgba(34,163,90,.10)" : "rgba(217,43,47,.10)"; g.fillRect(a / L * W, 0, (b - a) / L * W, H); });
+    const x = clip.mono, L = x.length, mid = H / 2, [v0, span] = wView(), X = s => (s - v0) / span * W;
+    chops.forEach((c, i) => { const [a, b] = chopRange(i); if (b < v0 || a > v0 + span) return; g.fillStyle = i % 2 ? "rgba(34,163,90,.10)" : "rgba(217,43,47,.10)"; g.fillRect(X(a), 0, (b - a) / span * W, H); });
     g.fillStyle = "#cfc6b6";
-    if (!clip.pk || clip.pk.W !== W) {
-      const mnA = new Float32Array(W), mxA = new Float32Array(W);
-      for (let px = 0; px < W; px++) { const s0 = Math.floor(px / W * L), e0 = Math.floor((px + 1) / W * L); let mn = 0, mx = 0; for (let i = s0; i < e0; i += 2) { const v = x[i]; if (v < mn) mn = v; if (v > mx) mx = v; } mnA[px] = mn; mxA[px] = mx; }
-      clip.pk = { W, mnA, mxA };
+    if (!clip.pk || clip.pk.W !== W || clip.pk.v0 !== v0 || clip.pk.span !== span || clip.pk.x !== x) {
+      const mnA = new Float32Array(W), mxA = new Float32Array(W), stp = Math.max(1, Math.floor(span / W / 64));
+      for (let px = 0; px < W; px++) { const s0 = v0 + Math.floor(px / W * span), e0 = Math.max(s0 + 1, v0 + Math.floor((px + 1) / W * span)); let mn = 0, mx = 0; for (let k = s0; k < e0; k += stp) { const v = x[k]; if (v < mn) mn = v; if (v > mx) mx = v; } mnA[px] = mn; mxA[px] = mx; }
+      clip.pk = { W, v0, span, x, mnA, mxA };
     }
     for (let px = 0; px < W; px++) g.fillRect(px, mid - clip.pk.mxA[px] * mid * 0.95, 1, Math.max(1, (clip.pk.mxA[px] - clip.pk.mnA[px]) * mid * 0.95));
     chops.forEach((c, i) => {
-      const xx = c / L * W; g.fillStyle = i < 8 ? "#d92b2f" : "#22a35a"; g.fillRect(xx, 0, 2 * d, H);
+      if (c < v0 || c > v0 + span) return;
+      const xx = X(c); g.fillStyle = i < 8 ? "#d92b2f" : "#22a35a"; g.fillRect(xx, 0, 2 * d, H);
       g.font = `600 ${10 * d}px IBM Plex Mono, monospace`; g.textAlign = "left"; g.fillText(String(i + 1), xx + 3 * d, 11 * d);
     });
-    if (previewInfo && ctx) { const t = (ctx.currentTime - previewInfo.t0) * Math.pow(2, pitchSemi / 12) * sr + previewInfo.a; if (t < previewInfo.b) { g.fillStyle = "#fff"; g.fillRect(t / L * W, 0, 1.5 * d, H); } }
-    if (ttSrc && ctx) { const t = (ctx.currentTime - ttStart) * Math.pow(2, pitchSemi / 12) * sr; g.fillStyle = "#7dffa6"; g.fillRect(t / L * W, 0, 1.5 * d, H); }
+    // départ de la lecture (jaune)
+    g.fillStyle = "#f6c945"; g.fillRect(X(wStart) - d, 0, 2 * d, H); g.beginPath(); g.moveTo(X(wStart) - 5 * d, H); g.lineTo(X(wStart) + 5 * d, H); g.lineTo(X(wStart), H - 7 * d); g.fill();
+    if (previewInfo && ctx) { const t = (ctx.currentTime - previewInfo.t0) * Math.pow(2, pitchSemi / 12) * sr + previewInfo.a; if (t < previewInfo.b) { g.fillStyle = "#fff"; g.fillRect(X(t), 0, 1.5 * d, H); } }
+    if (ttSrc && ctx) { const t = ttPos(); g.fillStyle = "#7dffa6"; g.fillRect(X(t), 0, 1.5 * d, H); }
   }
+  function fmtT(n) { const s = n / sr; return Math.floor(s / 60) + ":" + (s % 60).toFixed(1).padStart(4, "0"); }
+  function drawWaveBar() {
+    $("wzVal").textContent = "×" + wz;
+    $("wStart").value = clip ? Math.round(wStart / Math.max(1, clip.buf.length) * 1000) : 0;
+    $("wStartVal").textContent = clip ? fmtT(wStart) : "0:00.0";
+  }
+  function setZoom(z) { wz = Math.max(1, Math.min(32, z)); drawWaveBar(); drawWave(); lcd("lcdPad", "EXTRAIT", `zoom ×${wz}`); }
+  $("wzIn").addEventListener("click", () => setZoom(wz * 2));
+  $("wzOut").addEventListener("click", () => setZoom(wz / 2));
+  function setStart(s, restart) {
+    if (!clip) return;
+    wStart = Math.max(0, Math.min(clip.buf.length - 1, Math.floor(s))); drawWaveBar(); drawWave();
+    if (restart && ttSrc && !LC.on) { stopTT(); ttStartPlay(0); }
+  }
+  $("wStart").addEventListener("input", e => setStart(+e.target.value / 1000 * (clip ? clip.buf.length : 0), true));
   function previewChop(i) {
     if (!clip || !ctx) return;
     const [a, b] = chopRange(i);
@@ -417,8 +455,9 @@
   let wPress = null;
   wcv.addEventListener("pointerdown", e => {
     if (!clip) return;
-    const r = wcv.getBoundingClientRect(), pos = Math.floor((e.clientX - r.left) / r.width * clip.buf.length);
+    const r = wcv.getBoundingClientRect(), [v0, span] = wView(), pos = Math.floor(v0 + (e.clientX - r.left) / r.width * span);
     wPress = { pos, t: setTimeout(() => {
+      if (chopMode !== "man") { setStart(pos, true); lcd("lcdPad", "EXTRAIT", "départ de la lecture : " + fmtT(pos)); wPress = null; return; }
       if (chopMode === "man" && chops.length > 1) { let bi = 0, bd = Infinity; chops.forEach((c, i) => { const d = Math.abs(c - pos); if (d < bd) { bd = d; bi = i; } }); chops.splice(bi, 1); drawWave(); }
       wPress = null;
     }, 550) };
@@ -508,7 +547,7 @@
     drawDigPads();
   }
   function drawDigPads() { digPadEls.forEach((b, i) => b.classList.toggle("has", LC.on ? LC.marks[i] !== undefined : kitCur === "chops" && !!buffers[i])); }
-  function ttPos() { return ttSrc ? Math.floor((ctx.currentTime - ttStart) * Math.pow(2, pitchSemi / 12) * sr) : -1; }
+  function ttPos() { return ttSrc ? Math.floor(ttOff + (ctx.currentTime - ttStart) * Math.pow(2, pitchSemi / 12) * sr) : -1; }
   function sliceBuf(a, b, rate) {
     const len = Math.max(32, Math.floor((b - a) / rate)), out = ctx.createBuffer(clip.buf.numberOfChannels, len, sr);
     const fade = Math.min(Math.floor(sr * 0.004), Math.floor(len / 4));
@@ -565,8 +604,93 @@
     knobVals.sample[k] = val;
     if (k === 0) { if (!crate) return; const n = curItems().length; const target = Math.round(val * (n - 1)); if (target !== recIdx) { const d = target > recIdx ? 1 : -1; recIdx = target; showRecord(d); } }
     if (k === 1) setPitch(Math.round((val - 0.5) * 24));
-    if (k === 2) { sens = val; if (chopMode === "auto") rechop(); }
+    if (k === 2) { sens = val; if (chopMode === "auto" || chopMode === "crest") rechop(); }
     if (k === 3) { const n = [4, 8, 12, 16][Math.min(3, Math.floor(val * 4))]; if (n !== eqN || chopMode !== "eq") setChopMode("eq", n); }
     if (k === 7) sampleVol = val;
   }
 
+  // ---------- Nettoyage de l'extrait : normaliser, réduire le souffle, enlever les craquements ----------
+  // Tout se calcule dans l'appareil, par petits morceaux pour ne pas figer l'écran ; ORIGINAL revient au son de départ.
+  const yieldUI = () => new Promise(r => setTimeout(r, 0));
+  let cleaning = false;
+  async function cleanClip(kind) {
+    if (!clip || !ctx || cleaning) return;
+    cleaning = true; stopTT();
+    const src = clip.buf, nc = src.numberOfChannels, L = src.length, out = ctx.createBuffer(nc, L, src.sampleRate);
+    let msg = "";
+    try {
+      digLoad(0);
+      if (kind === "norm") {
+        let pk = 0; for (let c = 0; c < nc; c++) { const d = src.getChannelData(c); for (let i = 0; i < L; i++) pk = Math.max(pk, Math.abs(d[i])); }
+        const g = pk > 1e-4 ? 0.944 / pk : 1;
+        for (let c = 0; c < nc; c++) { const d = src.getChannelData(c), o = out.getChannelData(c); for (let i = 0; i < L; i++) o[i] = d[i] * g; }
+        msg = `normalisé · ${g >= 1 ? "+" : ""}${(20 * Math.log10(g)).toFixed(1)} dB`;
+      } else if (kind === "click") {
+        let n = 0;
+        for (let c = 0; c < nc; c++) {
+          const x = src.getChannelData(c), o = out.getChannelData(c); o.set(x);
+          const W = 512; let acc = 0; const dd = new Float32Array(L);
+          for (let i = 1; i < L; i++) dd[i] = Math.abs(x[i] - x[i - 1]);
+          for (let i = 0; i < Math.min(W, L); i++) acc += dd[i];
+          for (let i = 1; i < L - 1; i++) {
+            if (i + W / 2 < L) acc += dd[i + W / 2]; if (i - W / 2 >= 0) acc -= dd[i - W / 2];
+            const avg = Math.max(1e-5, acc / W);
+            if (dd[i] > 7 * avg && dd[i] > 0.02) {
+              let a = Math.max(1, i - 4), b = i; while (b < L - 2 && b - i < 48 && dd[b + 1] > 2.5 * avg) b++; b = Math.min(L - 2, b + 6);
+              const y0 = o[a - 1], y1 = o[b + 1];
+              for (let k = a; k <= b; k++) o[k] = y0 + (y1 - y0) * (k - a + 1) / (b - a + 2);
+              n++; i = b + 1;
+            }
+            if ((i & 65535) === 0) { digLoad((c + i / L) / nc); await yieldUI(); }
+          }
+        }
+        msg = n ? `${Math.round(n / nc)} craquements enlevés` : "aucun craquement trouvé";
+      } else if (kind === "hiss") {
+        // réduction de souffle par bandes de fréquences : on mesure le bruit dans les passages les plus calmes, puis on l'ôte partout
+        const N = 2048, H = N / 2, B = N / 2 + 1, win = new Float32Array(N);
+        for (let i = 0; i < N; i++) win[i] = Math.sqrt(0.5 - 0.5 * Math.cos(2 * Math.PI * i / N));
+        const F = Math.max(1, Math.ceil((L - N) / H) + 1);
+        const re = new Float32Array(N), im = new Float32Array(N);
+        for (let c = 0; c < nc; c++) {
+          const x = src.getChannelData(c), o = out.getChannelData(c);
+          const mags = [], en = new Float32Array(F);
+          for (let f = 0; f < F; f++) {
+            const p = f * H; for (let i = 0; i < N; i++) { re[i] = (x[p + i] || 0) * win[i]; im[i] = 0; } fft(re, im, false);
+            const m = new Float32Array(B); let e = 0; for (let k = 0; k < B; k++) { m[k] = Math.hypot(re[k], im[k]); e += m[k]; } mags.push(m); en[f] = e;
+            if (f % 80 === 0) { digLoad((c + f / F * 0.4) / nc); await yieldUI(); }
+          }
+          const ord = Array.from(en.keys()).sort((a, b) => en[a] - en[b]), q = ord.slice(0, Math.max(3, Math.floor(F * 0.12)));
+          const noise = new Float32Array(B); q.forEach(f => { for (let k = 0; k < B; k++) noise[k] += mags[f][k] / q.length; });
+          let gPrev = new Float32Array(B).fill(1);
+          for (let f = 0; f < F; f++) {
+            const p = f * H; for (let i = 0; i < N; i++) { re[i] = (x[p + i] || 0) * win[i]; im[i] = 0; } fft(re, im, false);
+            const gNow = new Float32Array(B);
+            for (let k = 0; k < B; k++) { const g = Math.max(0.12, 1 - 2 * noise[k] / Math.max(1e-9, mags[f][k])); gNow[k] = 0.6 * g + 0.4 * gPrev[k]; }
+            for (let k = 0; k < B; k++) { re[k] *= gNow[k]; im[k] *= gNow[k]; if (k > 0 && k < N / 2) { re[N - k] = re[k]; im[N - k] = -im[k]; } }
+            fft(re, im, true);
+            for (let i = 0; i < N && p + i < L; i++) o[p + i] += re[i] * win[i];
+            gPrev = gNow;
+            if (f % 80 === 0) { digLoad((c + 0.4 + f / F * 0.6) / nc); await yieldUI(); }
+          }
+        }
+        msg = "souffle réduit";
+      }
+      clip.buf = out; computePeaks(); clip.pk = null; drawWave();
+      lcd("lcdPad", "NETTOYAGE", msg + " · ORIGINAL pour revenir");
+    } catch (e) { lcd("lcdPad", "NETTOYAGE", "impossible sur cet extrait"); }
+    digLoad(null); cleaning = false;
+  }
+  // FFT en place (radix 2) ; inv = inverse normalisée
+  function fft(re, im, inv) {
+    const n = re.length;
+    for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+    for (let len = 2; len <= n; len <<= 1) {
+      const ang = 2 * Math.PI / len * (inv ? 1 : -1), wr = Math.cos(ang), wi = Math.sin(ang);
+      for (let i = 0; i < n; i += len) { let cr = 1, ci = 0; for (let k = 0; k < len / 2; k++) { const a = i + k, b = a + len / 2, tr = re[b] * cr - im[b] * ci, ti = re[b] * ci + im[b] * cr; re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti; const nr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nr; } }
+    }
+    if (inv) for (let i = 0; i < n; i++) { re[i] /= n; im[i] /= n; }
+  }
+  $("clNorm").addEventListener("click", () => cleanClip("norm"));
+  $("clHiss").addEventListener("click", () => cleanClip("hiss"));
+  $("clClick").addEventListener("click", () => cleanClip("click"));
+  $("clOrig").addEventListener("click", () => { if (!clip || cleaning || clip.buf === clip.orig) return; stopTT(); clip.buf = clip.orig; computePeaks(); clip.pk = null; drawWave(); lcd("lcdPad", "NETTOYAGE", "retour au son d'origine"); });
