@@ -142,6 +142,7 @@
     if (instCur === "synorg") { [1, 2, 3, 4, 6, 8].forEach((h, i) => osc("sine", f * h, 0, [0.5, 0.4, 0.25, 0.2, 0.12, 0.1][i])); filt.frequency.value = 6000; g.gain.linearRampToValueAtTime(amp * 0.7, t + 0.01); return { g, srcs, rel: 0.06 + relTime * 0.2 }; }
     if (instCur === "synsub") { osc("sine", f, 0, 0.9); osc("triangle", f, 0, 0.15); filt.frequency.value = 900; g.gain.linearRampToValueAtTime(amp * 1.2, t + 0.008); return { g, srcs, rel: 0.15 + relTime * 0.5 }; }
     if (instCur === "synlead") { osc("square", f, 0, 0.3); osc("sawtooth", f, 7, 0.3); filt.frequency.value = 3200; filt.Q.value = 3; g.gain.linearRampToValueAtTime(amp * 0.7, t + 0.01); return { g, srcs, rel: 0.12 + relTime * 0.4 }; }
+    if (instCur.startsWith("syl")) { filt.disconnect(); return sylVoice(instCur, f, t, amp, g); }
     if (instCur === "synbrass") { osc("sawtooth", f, -6, 0.35); osc("sawtooth", f, 6, 0.35); filt.frequency.setValueAtTime(300, t); filt.frequency.linearRampToValueAtTime(2600, t + 0.12); filt.frequency.linearRampToValueAtTime(1600, t + 0.5); g.gain.linearRampToValueAtTime(amp * 0.8, t + 0.05); return { g, srcs, rel: 0.2 + relTime * 0.4 }; }
     return null;
   }

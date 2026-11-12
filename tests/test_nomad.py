@@ -411,3 +411,16 @@ def test_sons_effets(app):
     assert "DREAMY" in app.inner_text("#lcdPad")
     app.evaluate("nomadMidi([0x90, 64, 110])")
     assert max(loud(app, 80) for _ in range(5)) > 0.005
+
+
+def test_famille_20syl(app):
+    app.click("#tab-sons")
+    app.locator("#cats .cat", has_text="20SYL").click()
+    insts = app.locator("#insts .inst")
+    assert insts.count() == 12
+    for i in range(12):
+        insts.nth(i).click()
+        app.evaluate("nomadMidi([0x90, 48, 110])")
+        peak = max(loud(app, 40) for _ in range(4))
+        app.evaluate("nomadMidi([0x80, 48, 0])")
+        assert peak > 0.003, (i, peak)
