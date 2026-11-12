@@ -7,10 +7,8 @@
     const b = $("layoutBtn"); if (b) b.textContent = "AFFICHAGE : " + { auto: "AUTOMATIQUE", phone: "TÉLÉPHONE", desk: "ORDINATEUR" }[deskMode];
     if (typeof drawSpPads === "function" && tab === "sp") drawSpPads();
   }
-  // ordre de la grille 3×3 sur ordinateur : jouer (PADS LOOPER SONS), matière (DIGGING SCRATCH GUITARE), finition (FX SP SONG) ;
-  // la version téléphone garde son ordre
-  const DESK_TABS = ["play", "loops", "sons", "sample", "scratch", "guitar", "fx", "sp", "song"];
-  DESK_TABS.forEach((t, i) => { const el = $("tab-" + t); if (el) { el.dataset.f = ["&", "é", "\"", "'", "(", "§", "è", "!", "ç"][i] + "  ·  F" + (i + 1); el.style.setProperty("--dord", i); } });
+  // grille 3×3 : jouer (PADS LOOPER SONS), matière (DIGGING SCRATCH GUITARE), finition (FX SP SONG), même ordre que sur téléphone
+  TABS.forEach((t, i) => { const el = $("tab-" + t); if (el) el.dataset.f = ["&", "é", "\"", "'", "(", "§", "è", "!", "ç"][i] + "  ·  F" + (i + 1); });
   if (DESK_Q) { try { DESK_Q.addEventListener("change", applyDesk); } catch (e) { DESK_Q.addListener && DESK_Q.addListener(applyDesk); } }
   $("layoutBtn").addEventListener("click", () => { deskMode = { auto: "desk", desk: "phone", phone: "auto" }[deskMode]; store.set("layout", deskMode); applyDesk(); });
   // rangée du haut d'un clavier AZERTY (Mac) sans Maj : & é " ' ( § è ! ç = onglets 1 à 9 ; F1 à F9 marchent aussi
@@ -19,7 +17,7 @@
     if (e.metaKey || e.ctrlKey || e.altKey || e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") return;
     const m = /^F([1-9])$/.exec(e.key), a = AZ_TABS.indexOf(e.key);
     if (!m && a < 0) return;
-    const t = DESK_TABS[m ? +m[1] - 1 : a]; if (!t) return;
+    const t = TABS[m ? +m[1] - 1 : a]; if (!t) return;
     e.preventDefault(); setTab(t); lcd("lcdPad", "ONGLET", $("tab-" + t).textContent);
   });
   applyDesk();

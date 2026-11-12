@@ -1,5 +1,5 @@
   // ---------- Onglets ----------
-  const TABS = ["play", "loops", "song", "fx", "sp", "sample", "scratch", "sons", "guitar"];
+  const TABS = ["play", "loops", "sons", "sample", "scratch", "guitar", "fx", "sp", "song"]; // même ordre sur téléphone et ordinateur : jouer, matière, finition
   function setTab(t) {
     tab = t;
     TABS.forEach(x => { $("tab-" + x).setAttribute("aria-selected", x === t); $("view-" + x).hidden = x !== t; });

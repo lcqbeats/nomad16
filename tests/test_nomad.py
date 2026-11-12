@@ -464,6 +464,9 @@ def test_ordinateur_paysage_et_touches_f(browser, server):
     # la grille suit l'ordre jouer / matière / finition
     xs = page.evaluate("['play','loops','sons','sample','scratch','guitar','fx','sp','song'].map(t => { const r = document.getElementById('tab-' + t).getBoundingClientRect(); return [Math.round(r.top), Math.round(r.left)]; })")
     assert xs == sorted(xs), xs
+    # FX : les 16 pads s'affichent d'un coup sur ordinateur
+    page.keyboard.press("F7")
+    assert page.evaluate("[...document.querySelectorAll('.fxpad')].filter(e => e.offsetParent).length") == 16
     page.evaluate("window.dispatchEvent(new KeyboardEvent('keydown', { key: '&' }))")
     assert page.get_attribute("#tab-play", "aria-selected") == "true"
     page.keyboard.press("F2")

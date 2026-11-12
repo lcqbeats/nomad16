@@ -30,19 +30,19 @@
   let fxActive = -1, fxQuant = true, manualBpm = 90, fxTrig = store.get("fxTrig", "hold"), fxTarget = "all", fxOneT = null;
   const FXS = FX_PATTERNS;
   const fxEls = [];
-  // Rangée du bas = pads 1 à 4 de la Bank 2, comme sur l'Akai.
-  // 8 pads à l'écran (pad 1 en bas à gauche, comme sur l'Akai) pour la banque choisie ; les 16 pads de l'Akai jouent les 16 motifs
-  [4, 5, 6, 7, 0, 1, 2, 3].forEach(i => {
+  // 16 pads dans la disposition de l'onglet PADS (pad 1 en bas à gauche, comme sur l'Akai).
+  // Téléphone : seuls les 8 pads de la banque choisie s'affichent ; ordinateur : les 16 d'un coup.
+  [12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3].forEach(i => {
     const b = document.createElement("button");
     b.type = "button"; b.className = "fxpad"; b.id = "fx" + i;
-    b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture(e.pointerId); fxStart(fxBank * 8 + i); });
-    ["pointerup", "pointercancel"].forEach(ev => b.addEventListener(ev, () => fxStop(fxBank * 8 + i)));
+    b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture(e.pointerId); fxStart(i); });
+    ["pointerup", "pointercancel"].forEach(ev => b.addEventListener(ev, () => fxStop(i)));
     $("fxgrid").appendChild(b); fxEls[i] = b;
   });
-  const fxEl = i => (i >> 3) === fxBank ? fxEls[i & 7] : null;
+  const fxEl = i => fxEls[i] || null;
   function setFxBank(b) { if (b === fxBank) return; fxBank = b; store.set("fxBank", b); drawFxPads(); }
   function drawFxPads() {
-    for (let i = 0; i < 8; i++) { const f = FXS[fxBank * 8 + i]; fxEls[i].innerHTML = `<span>BANK ${fxBank + 1} · PAD ${fxBank * 8 + i + 1}</span><b>${f.name}</b><span>${f.sub}</span>`; fxEls[i].classList.toggle("on", fxActive === fxBank * 8 + i); fxEls[i].classList.toggle("hold", fxTrig === "hold"); }
+    for (let i = 0; i < 16; i++) { const f = FXS[i], b = fxEls[i]; b.innerHTML = `<span>BANK ${(i >> 3) + 1} · PAD ${i + 1}</span><b>${f.name}</b><span>${f.sub}</span>`; b.classList.toggle("on", fxActive === i); b.classList.toggle("hold", fxTrig === "hold"); b.classList.toggle("other", (i >> 3) !== fxBank); }
     $("fxSet").textContent = "BANK " + (fxBank + 1) + (fxBank ? " · TEXTURES" : " · RYTHMES");
     $("fxTrig").textContent = { hold: "MAINTIEN", one: "1 MESURE", latch: "VERROU" }[fxTrig];
     document.querySelectorAll(".fxt").forEach(b => b.classList.toggle("on", b.dataset.t === fxTarget));

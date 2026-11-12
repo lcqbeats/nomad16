@@ -507,7 +507,6 @@ html.flipped, html.flipped body { overflow: hidden; }
 :root.desk .tabs { grid-template-columns: repeat(3, 1fr); gap: 8px; }
 :root.desk .tabs .tab { grid-column: auto; padding: 12px 4px 16px; font-size: 11px; letter-spacing: .08em; background: linear-gradient(180deg, #3a3a3a, #262626); color: #e6e6e2; border-radius: 4px; box-shadow: 0 2px 0 #000, inset 0 1px 0 #555; position: relative; }
 :root.desk .tabs .tab:nth-child(6) { grid-column: auto; }
-:root.desk .tabs .tab { order: var(--dord, 0); }
 :root.desk .tabs .tab::after { content: attr(data-f); position: absolute; left: 0; right: 0; bottom: 3px; font-size: 8px; color: #8a8a86; letter-spacing: .1em; }
 :root.desk .tabs .tab[aria-selected="true"] { background: linear-gradient(180deg, #e9e9e6, #c9c9c5); color: #111; }
 :root.desk .tabs .tab[aria-selected="true"]::after { color: #555; }
@@ -531,6 +530,18 @@ html.flipped, html.flipped body { overflow: hidden; }
 :root.desk body { padding-top: 14px; padding-bottom: 14px; }
 :root.desk .machine { padding-top: 16px; padding-bottom: 18px; row-gap: 10px; }
 :root.desk .pads { max-width: max(340px, min(640px, calc(100vh - 205px))); gap: 12px; }
+/* FX : téléphone = 8 pads de la banque choisie ; ordinateur = les 16 pads comme l'onglet PADS, cibles au-dessus */
+.fxpad.other { display: none; }
+:root.desk #view-fx { --fxw: max(340px, min(640px, calc(100vh - 270px))); }
+:root.desk #view-fx:not([hidden]) { display: grid; grid-template-columns: max-content 1fr; column-gap: 10px; width: var(--fxw); justify-self: center; align-content: start; }
+:root.desk #view-fx > * { grid-column: 1 / -1; }
+:root.desk #view-fx .fxtargets { order: -1; margin: 0 0 12px; }
+:root.desk #view-fx .fxgrid { gap: 12px; }
+:root.desk #view-fx > .fxbar { grid-column: auto; margin-top: 14px; }
+:root.desk #view-fx > .fxbar:last-of-type { justify-content: flex-end; }
+:root.desk .fxpad, :root.desk .fxpad.other { display: flex; aspect-ratio: 1; border-radius: 6px; background: linear-gradient(170deg, #343434, #1f1f1f 70%); box-shadow: 0 0 0 2px #050505, inset 0 1px 0 #4a4a4a, 0 6px 10px rgba(0,0,0,.6); color: #cfcfcb; padding: 8px 9px; }
+:root.desk .fxpad.on { background: radial-gradient(circle, #5df08f, var(--green) 70%); color: #06150c; }
+:root.desk #fxSet { display: none; }
 </style>
 </head>
 <body>
@@ -564,13 +575,13 @@ html.flipped, html.flipped body { overflow: hidden; }
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" id="tab-play" aria-selected="true" type="button">PADS</button>
     <button class="tab" role="tab" id="tab-loops" aria-selected="false" type="button">LOOPER</button>
-    <button class="tab" role="tab" id="tab-song" aria-selected="false" type="button">SONG</button>
-    <button class="tab" role="tab" id="tab-fx" aria-selected="false" type="button">FX</button>
-    <button class="tab" role="tab" id="tab-sp" aria-selected="false" type="button">SP</button>
+    <button class="tab" role="tab" id="tab-sons" aria-selected="false" type="button">SONS</button>
     <button class="tab" role="tab" id="tab-sample" aria-selected="false" type="button">DIGGING</button>
     <button class="tab" role="tab" id="tab-scratch" aria-selected="false" type="button">SCRATCH</button>
-    <button class="tab" role="tab" id="tab-sons" aria-selected="false" type="button">SONS</button>
     <button class="tab" role="tab" id="tab-guitar" aria-selected="false" type="button">GUITARE</button>
+    <button class="tab" role="tab" id="tab-fx" aria-selected="false" type="button">FX</button>
+    <button class="tab" role="tab" id="tab-sp" aria-selected="false" type="button">SP</button>
+    <button class="tab" role="tab" id="tab-song" aria-selected="false" type="button">SONG</button>
   </div>
 
   <div class="knobs" id="knobs"></div>
@@ -1074,7 +1085,7 @@ html.flipped, html.flipped body { overflow: hidden; }
   drawKnobs();
 
   // ---------- Onglets ----------
-  const TABS = ["play", "loops", "song", "fx", "sp", "sample", "scratch", "sons", "guitar"];
+  const TABS = ["play", "loops", "sons", "sample", "scratch", "guitar", "fx", "sp", "song"]; // même ordre sur téléphone et ordinateur : jouer, matière, finition
   function setTab(t) {
     tab = t;
     TABS.forEach(x => { $("tab-" + x).setAttribute("aria-selected", x === t); $("view-" + x).hidden = x !== t; });
@@ -2063,19 +2074,19 @@ registerProcessor('nomad-scratch',Scr);`;
   let fxActive = -1, fxQuant = true, manualBpm = 90, fxTrig = store.get("fxTrig", "hold"), fxTarget = "all", fxOneT = null;
   const FXS = FX_PATTERNS;
   const fxEls = [];
-  // Rangée du bas = pads 1 à 4 de la Bank 2, comme sur l'Akai.
-  // 8 pads à l'écran (pad 1 en bas à gauche, comme sur l'Akai) pour la banque choisie ; les 16 pads de l'Akai jouent les 16 motifs
-  [4, 5, 6, 7, 0, 1, 2, 3].forEach(i => {
+  // 16 pads dans la disposition de l'onglet PADS (pad 1 en bas à gauche, comme sur l'Akai).
+  // Téléphone : seuls les 8 pads de la banque choisie s'affichent ; ordinateur : les 16 d'un coup.
+  [12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3].forEach(i => {
     const b = document.createElement("button");
     b.type = "button"; b.className = "fxpad"; b.id = "fx" + i;
-    b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture(e.pointerId); fxStart(fxBank * 8 + i); });
-    ["pointerup", "pointercancel"].forEach(ev => b.addEventListener(ev, () => fxStop(fxBank * 8 + i)));
+    b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture(e.pointerId); fxStart(i); });
+    ["pointerup", "pointercancel"].forEach(ev => b.addEventListener(ev, () => fxStop(i)));
     $("fxgrid").appendChild(b); fxEls[i] = b;
   });
-  const fxEl = i => (i >> 3) === fxBank ? fxEls[i & 7] : null;
+  const fxEl = i => fxEls[i] || null;
   function setFxBank(b) { if (b === fxBank) return; fxBank = b; store.set("fxBank", b); drawFxPads(); }
   function drawFxPads() {
-    for (let i = 0; i < 8; i++) { const f = FXS[fxBank * 8 + i]; fxEls[i].innerHTML = `<span>BANK ${fxBank + 1} · PAD ${fxBank * 8 + i + 1}</span><b>${f.name}</b><span>${f.sub}</span>`; fxEls[i].classList.toggle("on", fxActive === fxBank * 8 + i); fxEls[i].classList.toggle("hold", fxTrig === "hold"); }
+    for (let i = 0; i < 16; i++) { const f = FXS[i], b = fxEls[i]; b.innerHTML = `<span>BANK ${(i >> 3) + 1} · PAD ${i + 1}</span><b>${f.name}</b><span>${f.sub}</span>`; b.classList.toggle("on", fxActive === i); b.classList.toggle("hold", fxTrig === "hold"); b.classList.toggle("other", (i >> 3) !== fxBank); }
     $("fxSet").textContent = "BANK " + (fxBank + 1) + (fxBank ? " · TEXTURES" : " · RYTHMES");
     $("fxTrig").textContent = { hold: "MAINTIEN", one: "1 MESURE", latch: "VERROU" }[fxTrig];
     document.querySelectorAll(".fxt").forEach(b => b.classList.toggle("on", b.dataset.t === fxTarget));
@@ -5547,10 +5558,8 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     const b = $("layoutBtn"); if (b) b.textContent = "AFFICHAGE : " + { auto: "AUTOMATIQUE", phone: "TÉLÉPHONE", desk: "ORDINATEUR" }[deskMode];
     if (typeof drawSpPads === "function" && tab === "sp") drawSpPads();
   }
-  // ordre de la grille 3×3 sur ordinateur : jouer (PADS LOOPER SONS), matière (DIGGING SCRATCH GUITARE), finition (FX SP SONG) ;
-  // la version téléphone garde son ordre
-  const DESK_TABS = ["play", "loops", "sons", "sample", "scratch", "guitar", "fx", "sp", "song"];
-  DESK_TABS.forEach((t, i) => { const el = $("tab-" + t); if (el) { el.dataset.f = ["&", "é", "\"", "'", "(", "§", "è", "!", "ç"][i] + "  ·  F" + (i + 1); el.style.setProperty("--dord", i); } });
+  // grille 3×3 : jouer (PADS LOOPER SONS), matière (DIGGING SCRATCH GUITARE), finition (FX SP SONG), même ordre que sur téléphone
+  TABS.forEach((t, i) => { const el = $("tab-" + t); if (el) el.dataset.f = ["&", "é", "\"", "'", "(", "§", "è", "!", "ç"][i] + "  ·  F" + (i + 1); });
   if (DESK_Q) { try { DESK_Q.addEventListener("change", applyDesk); } catch (e) { DESK_Q.addListener && DESK_Q.addListener(applyDesk); } }
   $("layoutBtn").addEventListener("click", () => { deskMode = { auto: "desk", desk: "phone", phone: "auto" }[deskMode]; store.set("layout", deskMode); applyDesk(); });
   // rangée du haut d'un clavier AZERTY (Mac) sans Maj : & é " ' ( § è ! ç = onglets 1 à 9 ; F1 à F9 marchent aussi
@@ -5559,7 +5568,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (e.metaKey || e.ctrlKey || e.altKey || e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") return;
     const m = /^F([1-9])$/.exec(e.key), a = AZ_TABS.indexOf(e.key);
     if (!m && a < 0) return;
-    const t = DESK_TABS[m ? +m[1] - 1 : a]; if (!t) return;
+    const t = TABS[m ? +m[1] - 1 : a]; if (!t) return;
     e.preventDefault(); setTab(t); lcd("lcdPad", "ONGLET", $("tab-" + t).textContent);
   });
   applyDesk();
