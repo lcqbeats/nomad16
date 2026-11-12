@@ -208,7 +208,7 @@
   <section class="view stack" id="view-sample" hidden>
     <div class="crates" id="crates" role="tablist" aria-label="Caisses"></div>
     <canvas id="digCanvas" aria-label="Bac à disques : glissez ou utilisez les flèches pour feuilleter"></canvas>
-    <div class="diginfo"><b id="digTitle">—</b><span id="digYear"></span><span id="digArtist"></span><span id="digCount"></span><a id="digLink" href="#" target="_blank" rel="noopener">fiche à la Bibliothèque du Congrès</a></div>
+    <div class="diginfo"><b id="digTitle">—</b><span id="digYear"></span><span id="digArtist"></span><span id="digCount"></span><span id="digKey"></span><a id="digLink" href="#" target="_blank" rel="noopener">fiche à la Bibliothèque du Congrès</a></div>
     <div class="digbar">
       <button class="btn" id="digPrev" type="button">◀</button>
       <button class="btn" id="digNext" type="button">▶</button>
@@ -323,6 +323,11 @@
       <p class="note help">Pads de l'Akai : Bank 1, pads 1 à 7 = accords 1 à 7, pad 8 = accord 1 à l'octave ; Bank 2 = les mêmes une octave plus haut. Clavier : l'octave basse du clavier de l'Akai joue la progression : touches blanches DO, RÉ, MI, FA, SOL, LA, SI = accords 1 à 7 (touches noires = même accord, renversé plus haut). L'octave haute joue des notes simples, dans la tonalité. + BASSE ajoute la fondamentale une octave en dessous.</p>
     </div>
     <p class="note" id="instCredit"></p>
+    <button class="btn" id="pianoBtn" type="button">PIANO À L'ÉCRAN</button>
+    <div class="piano" id="piano" hidden aria-label="Piano à l'écran">
+      <div class="pbar"><button class="btn" id="pOctDown" type="button">◀ OCTAVE</button><span class="kv" id="pOct">C3</span><button class="btn" id="pOctUp" type="button">OCTAVE ▶</button><button class="btn" id="pClose" type="button" aria-label="Fermer le piano">✕</button></div>
+      <div class="pkeys" id="pKeys"></div>
+    </div>
   </section>
 
   <div class="legend help" id="legend">

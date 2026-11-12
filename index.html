@@ -632,6 +632,19 @@ html.flipped, html.flipped body { overflow: hidden; }
 #view-fx .note { color: #9fb0c8; }
 :root.desk #view-fx .fxpad { height: 76px; }
 :root.desk #view-fx .fxpad b { font-size: 12px; }
+/* SONS : piano à l'écran, collé en bas pendant qu'on fait défiler */
+#pianoBtn { width: 100%; }
+.piano { position: sticky; bottom: 0; z-index: 6; background: #141312; border-radius: 10px 10px 0 0; padding: 8px 8px 10px; box-shadow: 0 -6px 18px rgba(0,0,0,.55); }
+.piano .pbar { display: grid; grid-template-columns: 1fr auto 1fr 40px; gap: 6px; align-items: center; margin-bottom: 8px; }
+.piano .pbar .btn { padding: 8px 4px; font-size: 10px; }
+.piano .pbar .kv { min-width: 40px; text-align: center; }
+.pkeys { position: relative; height: 130px; touch-action: none; user-select: none; -webkit-user-select: none; }
+:root.desk .pkeys { height: 150px; }
+.pk { position: absolute; top: 0; box-sizing: border-box; }
+.pk.w { height: 100%; background: linear-gradient(180deg, #f4f1ea, #dcd7cc); border: 1px solid #5d574f; border-radius: 0 0 5px 5px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 5px; font: 600 8px/1 var(--font-lcd, monospace); color: #8a8378; }
+.pk.b { height: 60%; background: linear-gradient(180deg, #2a2826, #0d0c0b); border-radius: 0 0 4px 4px; z-index: 2; box-shadow: 0 2px 3px rgba(0,0,0,.6); }
+.pk.w.on { background: linear-gradient(180deg, #ffd8c8, #f08a6b); }
+.pk.b.on { background: linear-gradient(180deg, #d92b2f, #8a1518); }
 </style>
 </head>
 <body>
@@ -827,7 +840,7 @@ html.flipped, html.flipped body { overflow: hidden; }
   <section class="view stack" id="view-sample" hidden>
     <div class="crates" id="crates" role="tablist" aria-label="Caisses"></div>
     <canvas id="digCanvas" aria-label="Bac à disques : glissez ou utilisez les flèches pour feuilleter"></canvas>
-    <div class="diginfo"><b id="digTitle">—</b><span id="digYear"></span><span id="digArtist"></span><span id="digCount"></span><a id="digLink" href="#" target="_blank" rel="noopener">fiche à la Bibliothèque du Congrès</a></div>
+    <div class="diginfo"><b id="digTitle">—</b><span id="digYear"></span><span id="digArtist"></span><span id="digCount"></span><span id="digKey"></span><a id="digLink" href="#" target="_blank" rel="noopener">fiche à la Bibliothèque du Congrès</a></div>
     <div class="digbar">
       <button class="btn" id="digPrev" type="button">◀</button>
       <button class="btn" id="digNext" type="button">▶</button>
@@ -942,6 +955,11 @@ html.flipped, html.flipped body { overflow: hidden; }
       <p class="note help">Pads de l'Akai : Bank 1, pads 1 à 7 = accords 1 à 7, pad 8 = accord 1 à l'octave ; Bank 2 = les mêmes une octave plus haut. Clavier : l'octave basse du clavier de l'Akai joue la progression : touches blanches DO, RÉ, MI, FA, SOL, LA, SI = accords 1 à 7 (touches noires = même accord, renversé plus haut). L'octave haute joue des notes simples, dans la tonalité. + BASSE ajoute la fondamentale une octave en dessous.</p>
     </div>
     <p class="note" id="instCredit"></p>
+    <button class="btn" id="pianoBtn" type="button">PIANO À L'ÉCRAN</button>
+    <div class="piano" id="piano" hidden aria-label="Piano à l'écran">
+      <div class="pbar"><button class="btn" id="pOctDown" type="button">◀ OCTAVE</button><span class="kv" id="pOct">C3</span><button class="btn" id="pOctUp" type="button">OCTAVE ▶</button><button class="btn" id="pClose" type="button" aria-label="Fermer le piano">✕</button></div>
+      <div class="pkeys" id="pKeys"></div>
+    </div>
   </section>
 
   <div class="legend help" id="legend">
@@ -1774,6 +1792,7 @@ registerProcessor('nomad-djloop',DjLoop);`;
   function drawSeqSel() {
     try { drawLenBar(); } catch (e) {}
     try { spRoute(); drawSpTargets(); } catch (e) {}
+    try { scheduleKey(); } catch (e) {}
     for (let i = 0; i < 8; i++) {
       const b = $("sq" + i); if (!b) return;
       b.classList.toggle("on", i === SQ.cur); b.classList.toggle("has", SQ.list[i].length > 0);
@@ -3033,6 +3052,8 @@ registerProcessor('nomad-djloop',DjLoop);`;
     clip = { buf, item, title, peaks: null, orig: buf };
     wz = 1; wStart = 0; drawWaveBar();
     computePeaks(); rechop();
+    $("digKey").textContent = "";
+    setTimeout(() => { if (!clip || clip.buf !== buf) return; const k = keyOfChroma(chromaOf(buf)); $("digKey").textContent = k ? "tonalité : " + k.name : "tonalité : incertaine"; if (k) lcd("lcdPad", "PLATINE", `${title} · ${k.name}`); }, 30);
     lcd("lcdPad", "PLATINE", title);
   }
   let ciTimers = [];
@@ -3908,6 +3929,48 @@ registerProcessor('nomad-djloop',DjLoop);`;
     }
     return null;
   }
+  // ---------- Piano à l'écran (onglet SONS) : des notes seules, sans le MPK, avec glissé d'une touche à l'autre ----------
+  let pBase = store.get("pianoBase", 48), pianoOpen = store.get("piano", false);
+  const pDown = new Map();   // pointeur → note tenue
+  function pianoKeys() {
+    const wrap = $("pKeys"); wrap.innerHTML = "";
+    const oct = document.documentElement.classList.contains("desk") ? 3 : 2, whites = [], blacks = [];
+    for (let n = pBase; n <= pBase + oct * 12; n++) { const pc = n % 12; ([1, 3, 6, 8, 10].includes(pc) ? blacks : whites).push(n); }
+    const W = whites.length;
+    whites.forEach((n, i) => { const k = document.createElement("div"); k.className = "pk w" + (n % 12 === 0 ? " c" : ""); k.dataset.n = n; k.style.left = (i / W * 100) + "%"; k.style.width = (100 / W) + "%"; if (n % 12 === 0) k.textContent = "C" + (Math.floor(n / 12) - 1); wrap.appendChild(k); });
+    blacks.forEach(n => { const i = whites.indexOf(n - 1); const k = document.createElement("div"); k.className = "pk b"; k.dataset.n = n; k.style.left = ((i + 1) / W * 100 - 100 / W * 0.32) + "%"; k.style.width = (100 / W * 0.64) + "%"; wrap.appendChild(k); });
+    $("pOct").textContent = "C" + (Math.floor(pBase / 12) - 1);
+  }
+  function pianoOn(n, id) {
+    if (!ctx) return;
+    const el = document.querySelector(`.pk[data-n="${n}"]`); if (el) el.classList.add("on");
+    if (instCur === "pad") { playKey(n, 0.85); return; }
+    if (!instBus) enterSons();
+    releaseKey("s" + id);
+    const v = noteOn(n, 0.85); if (v) activeKeys.set("s" + id, [v]);
+    onFirstNote(ctx.currentTime);
+    lcd("lcdPad", "PIANO", NN[n % 12] + (Math.floor(n / 12) - 1));
+  }
+  function pianoOff(n, id) { const el = document.querySelector(`.pk[data-n="${n}"]`); if (el) el.classList.remove("on"); if (instCur !== "pad") releaseKey("s" + id); }
+  const keyAt = (x, y) => { const e = document.elementFromPoint(x, y); return e && e.classList && e.classList.contains("pk") ? +e.dataset.n : null; };
+  $("pKeys").addEventListener("pointerdown", e => {
+    const n = keyAt(e.clientX, e.clientY); if (n === null) return;
+    e.preventDefault(); $("pKeys").setPointerCapture(e.pointerId);
+    pDown.set(e.pointerId, n); pianoOn(n, e.pointerId);
+  });
+  $("pKeys").addEventListener("pointermove", e => {
+    if (!pDown.has(e.pointerId)) return;
+    const n = keyAt(e.clientX, e.clientY), was = pDown.get(e.pointerId);
+    if (n === null || n === was) return;
+    pianoOff(was, e.pointerId); pDown.set(e.pointerId, n); pianoOn(n, e.pointerId);
+  });
+  ["pointerup", "pointercancel"].forEach(ev => $("pKeys").addEventListener(ev, e => { if (!pDown.has(e.pointerId)) return; pianoOff(pDown.get(e.pointerId), e.pointerId); pDown.delete(e.pointerId); }));
+  function setPiano(open) { pianoOpen = open; store.set("piano", open); $("piano").hidden = !open; $("pianoBtn").hidden = open; if (open) pianoKeys(); }
+  $("pianoBtn").addEventListener("click", () => setPiano(true));
+  $("pClose").addEventListener("click", () => setPiano(false));
+  $("pOctDown").addEventListener("click", () => { pBase = Math.max(24, pBase - 12); store.set("pianoBase", pBase); pianoKeys(); });
+  $("pOctUp").addEventListener("click", () => { pBase = Math.min(84, pBase + 12); store.set("pianoBase", pBase); pianoKeys(); });
+  setPiano(pianoOpen);
   // ---------- SCRATCH : platine tactile, fader de coupure, phrases, sillon fermé ----------
   const SCR = { node: null, src: "bank", idx: 0, name: "—", N: 0, bsr: 48000, cue: 0, motor: false, speed: 33, pitch: 0, semi: null, hand: null, rep: { pos: 0, vel: 0, t: 0 }, fader: 0.2, ham: false, padOpen: false, padCut: false, btnOpen: false, btnCut: false, gate: null, bank: null, voix: null, mine: [], ph: -1, raf: 0, loading: 0 };
   const SCR_REV = 1.8; // secondes de son par tour de disque (33 tours)
@@ -4657,9 +4720,9 @@ registerProcessor('nomad-djloop',DjLoop);`;
     if (LP.t0F !== null && LP.playing) {
       const C = cycF(LP.layers), pos = ((ctx.currentTime * sr - LP.t0F) % C + C) % C, bl = LP.Lf / LP.beats, beat = Math.floor(pos / bl);
       const nx = SQ.sw ? SQ.sw.i : SQ.next, tag = SONG.playing ? `♫${SONG.idx + 1} ` : "";
-      return { s: `${tag}${SEQ_N[SQ.cur]}${nx >= 0 ? "→" + SEQ_N[nx] : ""} ${Math.floor(beat / 4) + 1}.${beat % 4 + 1}.${Math.floor((pos % bl) / bl * 4) + 1}`, on: (pos % bl) / bl < 0.25 };
+      return { s: `${tag}${SEQ_N[SQ.cur]}${nx >= 0 ? "→" + SEQ_N[nx] : ""} ${Math.floor(beat / 4) + 1}.${beat % 4 + 1}.${Math.floor((pos % bl) / bl * 4) + 1}${keyTag()}`, on: (pos % bl) / bl < 0.25 };
     }
-    return { s: `■ ${SEQ_N[SQ.cur]} · ${Math.round(curBpm())} BPM`, on: false };
+    return { s: `■ ${SEQ_N[SQ.cur]} · ${Math.round(curBpm())} BPM${keyTag()}`, on: false };
   }
   // Cercle de la boucle : se remplit au fil du cycle, un trait par temps, repère du début en haut
   const rcv = $("lcdRing"), rg = rcv.getContext("2d");
@@ -4709,6 +4772,50 @@ registerProcessor('nomad-djloop',DjLoop);`;
     lg.globalAlpha = 1;
   }
 
+  // ---------- Tonalité : détectée sur les boucles du looper (et sur l'extrait de DIGGING), affichée sur l'écran ----------
+  // Méthode : on additionne l'énergie de chaque note (do, do#, ré…) puis on compare aux profils majeur / mineur (Krumhansl).
+  const KEY_MAJ = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+  const KEY_MIN = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+  const KEY_NN = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+  const chromaCache = new WeakMap();
+  function chromaOf(buf) {
+    if (chromaCache.has(buf)) return chromaCache.get(buf);
+    const N = 4096, L = buf.length, out = new Float32Array(12);
+    if (L < N) { chromaCache.set(buf, out); return out; }
+    const nf = Math.min(120, Math.floor(L / N)), step = Math.floor((L - N) / Math.max(1, nf - 1));
+    const re = new Float32Array(N), im = new Float32Array(N), d0 = buf.getChannelData(0), d1 = buf.getChannelData(buf.numberOfChannels > 1 ? 1 : 0);
+    const r = buf.sampleRate, lo = Math.ceil(60 * N / r), hi = Math.floor(2000 * N / r), pcOf = new Int8Array(hi + 1);
+    for (let k = lo; k <= hi; k++) pcOf[k] = ((Math.round(12 * Math.log2(k * r / N / 440)) + 69) % 12 + 12) % 12;
+    for (let f = 0; f < nf; f++) {
+      const p = f * step;
+      for (let i = 0; i < N; i++) { re[i] = (d0[p + i] + d1[p + i]) * 0.5 * (0.5 - 0.5 * Math.cos(2 * Math.PI * i / N)); im[i] = 0; }
+      fft(re, im, false);
+      for (let k = lo; k <= hi; k++) out[pcOf[k]] += Math.sqrt(Math.hypot(re[k], im[k]));
+    }
+    chromaCache.set(buf, out); return out;
+  }
+  function keyOfChroma(c) {
+    let sum = 0; c.forEach(v => sum += v); if (sum <= 0) return null;
+    const corr = (prof, t) => { let mx = 0, my = 0; for (let i = 0; i < 12; i++) { mx += c[i]; my += prof[i]; } mx /= 12; my /= 12; let num = 0, dx = 0, dy = 0; for (let i = 0; i < 12; i++) { const x = c[(i + t) % 12] - mx, y = prof[i] - my; num += x * y; dx += x * x; dy += y * y; } return num / Math.sqrt(dx * dy || 1); };
+    let best = { r: -2 };
+    for (let t = 0; t < 12; t++) { const a = corr(KEY_MAJ, t), b = corr(KEY_MIN, t); if (a > best.r) best = { r: a, t, m: false }; if (b > best.r) best = { r: b, t, m: true }; }
+    return best.r < 0.5 ? null : { name: KEY_NN[best.t] + (best.m ? "m" : ""), tonic: best.t, minor: best.m, r: best.r };
+  }
+  // boucles du looper : recalcul discret quand les pistes changent
+  const TONAL = { loop: null, sig: "", t: null };
+  function scheduleKey() {
+    clearTimeout(TONAL.t);
+    TONAL.t = setTimeout(() => {
+      const ls = LP.layers.filter(l => !l.muted && l.buf), sig = ls.map(l => l.buf.length + ":" + l.vol).join("|") + "#" + ls.length;
+      if (sig === TONAL.sig && ls.every(l => chromaCache.has(l.buf))) return;
+      TONAL.sig = sig;
+      const c = new Float32Array(12);
+      ls.forEach(l => { const x = chromaOf(l.buf); let s = 0; x.forEach(v => s += v); if (s > 0) for (let i = 0; i < 12; i++) c[i] += x[i] / s * (l.vol || 1); });
+      TONAL.loop = ls.length ? keyOfChroma(c) : null;
+      if (TONAL.loop && tab === "loops") lcd("lcdLoop", "TONALITÉ", `${TONAL.loop.name} (estimée sur les boucles)`);
+    }, 1200);
+  }
+  const keyTag = () => TONAL.loop ? " · " + TONAL.loop.name : "";
   // ---------- Export WAV ----------
   function wavBlob(chs, rate) {
     const n = chs[0].length, nc = chs.length, buf = new ArrayBuffer(44 + n * nc * 2), v = new DataView(buf);

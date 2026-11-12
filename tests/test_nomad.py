@@ -622,6 +622,27 @@ def test_kit_de_chops_garde_et_nomme(app):
     assert app.evaluate("Math.max(...nomadDbg.buffers[0].getChannelData(0))") > 0.3
 
 
+def test_tonalite_et_piano(app):
+    fake_loop(app, 2.0)
+    app.evaluate("""() => { const c = nomadDbg.sp.in.context, n = nomadDbg.LP.Lf, sr = c.sampleRate, b = c.createBuffer(2, n, sr);
+      const f = m => 440 * Math.pow(2, (m - 69) / 12), notes = [[48, 1], [60, .8], [64, .7], [67, .7], [72, .4], [55, .5]];
+      for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < n; i++) { let v = 0; notes.forEach(([m, a]) => v += Math.sin(2 * Math.PI * f(m) * i / sr) * a); d[i] = v * 0.08; } }
+      nomadDbg.addLayer(b, 1, 0); }""")
+    app.wait_for_function("/· C( |$)/.test(document.getElementById('lcdTr').textContent)", timeout=6000)
+    app.click("#tab-sons")
+    app.click("#pianoBtn")
+    assert app.is_visible("#pKeys")
+    box = app.locator(".pk.w >> nth=2").bounding_box()
+    app.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] - 10)
+    app.mouse.down()
+    assert app.locator(".pk.on").count() == 1
+    assert max(loud(app, 60) for _ in range(5)) > 0.003
+    app.mouse.up()
+    assert app.locator(".pk.on").count() == 0
+    app.click("#pClose")
+    assert not app.is_visible("#pKeys")
+
+
 def test_famille_20syl(app):
     app.click("#tab-sons")
     app.locator("#cats .cat", has_text="20SYL").click()

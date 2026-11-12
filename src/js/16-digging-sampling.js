@@ -328,6 +328,8 @@
     clip = { buf, item, title, peaks: null, orig: buf };
     wz = 1; wStart = 0; drawWaveBar();
     computePeaks(); rechop();
+    $("digKey").textContent = "";
+    setTimeout(() => { if (!clip || clip.buf !== buf) return; const k = keyOfChroma(chromaOf(buf)); $("digKey").textContent = k ? "tonalité : " + k.name : "tonalité : incertaine"; if (k) lcd("lcdPad", "PLATINE", `${title} · ${k.name}`); }, 30);
     lcd("lcdPad", "PLATINE", title);
   }
   let ciTimers = [];
