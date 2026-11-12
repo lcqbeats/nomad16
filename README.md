@@ -58,7 +58,7 @@ Ils tournent aussi tout seuls sur GitHub à chaque envoi (onglet Actions).
 
 ### Projets
 
-SAVE (en haut, à côté de MIX ; Cmd/Ctrl+S sur ordinateur) enregistre le projet en cours à sa place : celui qu'on a ouvert, importé (.nomad) ou enregistré. Sans projet en cours, SAVE en crée un, daté. RÉGLAGES → ENREGISTRER SOUS crée une copie sous un autre nom ; FICHIER exporte le .nomad. La sauvegarde automatique (SESSION AUTO, toutes les 45 s et quand on quitte l'app) reste à part et se reprend depuis l'écran d'accueil. Un kit de chops ou un kit perso est emporté dans le projet.
+SAVE (en haut, à côté de MIX ; Cmd/Ctrl+S sur ordinateur) enregistre le projet en cours à sa place : celui qu'on a ouvert, importé (.nomad) ou enregistré. Sans projet en cours, SAVE en crée un, daté. RÉGLAGES → ENREGISTRER SOUS crée une copie sous un autre nom ; FICHIER exporte le .nomad. Passer de l'iPhone au Mac (et inversement) : FICHIER, puis AirDrop ou iCloud Drive, puis IMPORTER UN PROJET de l'autre côté ; le projet garde son identité, la version importée remplace l'ancienne au lieu de créer un doublon. La sauvegarde automatique (SESSION AUTO, toutes les 45 s et quand on quitte l'app) reste à part et se reprend depuis l'écran d'accueil. Un kit de chops ou un kit perso est emporté dans le projet.
 
 ### SP : station de couleur
 

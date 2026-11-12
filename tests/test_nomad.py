@@ -216,12 +216,12 @@ def test_presentation_depuis_l_accueil(browser, server):
 
 def test_temoin_rec_sans_erreur(app):
     app.click("#gearBtn")
-    app.click("#tapLedBtn")
-    assert "OUI" in app.inner_text("#tapLedBtn")
+    assert app.locator("#tapLedBtn").count() == 0       # témoin TAP TEMPO retiré
+    app.click("#padLedBtn")
     app.evaluate("nomadMidi([0xB0, 64, 127])")   # Sustain : REC armé
     app.evaluate("nomadMidi([0x99, 36, 100])")
     app.wait_for_timeout(300)
-    app.click("#tapLedBtn")
+    app.click("#padLedBtn")
 
 
 def test_notes_du_looper_vers_mid(app):

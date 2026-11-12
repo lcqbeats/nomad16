@@ -47,7 +47,8 @@
       const files = readZip(new Uint8Array(await file.arrayBuffer())), j = JSON.parse(new TextDecoder().decode(files["projet.json"]));
       if (j.format === "nomad16-sauvegarde") { await restoreBackup(j, files); $("setSheet").hidden = true; return; }
       if (j.format !== "nomad16") throw new Error("format");
-      const p = unpackAudio(j.project, files); p.id = "proj-" + Date.now().toString(36);
+      // même projet que dans l'autre appareil : on garde son identité, la version importée remplace l'ancienne ici
+      const p = unpackAudio(j.project, files); if (!p.id || p.id === "proj-auto") p.id = "proj-" + Date.now().toString(36);
       await DB.put("projects", p); await renderProjects(); await loadProject(p.id);
       $("setSheet").hidden = true;
       lcd("lcdPad", "PROJET", `« ${p.name} » importé`);
