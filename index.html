@@ -2617,7 +2617,7 @@ registerProcessor('nomad-duck',Duck);`;
   async function wcList(c) {
     const strip = h => String(h || "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim(), drop = c.drop ? new RegExp(c.drop, "i") : null;
     const okLic = l => /^(CC0|Public domain|PD|CC BY(-SA)?)/i.test(l) && !/NC|ND/.test(l);
-    const res = await Promise.all(c.terms.map(term => fetch("https://commons.wikimedia.org/w/api.php?format=json&origin=*&" + new URLSearchParams({ action: "query", generator: "search", gsrsearch: term + " filetype:audio", gsrnamespace: 6, gsrlimit: 40, prop: "videoinfo", viprop: "url|mime|derivatives|extmetadata", viextmetadatafilter: "LicenseShortName|Artist|DateTimeOriginal|ObjectName|Categories" }), { cache: "no-store" }).then(r => r.json()).catch(() => ({}))));
+    const res = await Promise.all(c.terms.map(term => fetch("https://commons.wikimedia.org/w/api.php?format=json&origin=*&" + new URLSearchParams({ action: "query", generator: "search", gsrsearch: term + " filetype:audio", gsrnamespace: 6, gsrlimit: 40, prop: "videoinfo", viprop: "url|mime|size|derivatives|extmetadata", viextmetadatafilter: "LicenseShortName|Artist|DateTimeOriginal|ObjectName|Categories" }), { cache: "no-store" }).then(r => r.json()).catch(() => ({}))));
     const out = [], seen = new Set();
     res.forEach(j => { if (!j.query) return; Object.values(j.query.pages).sort((a, b) => a.index - b.index).forEach(p => {
       const vi = p.videoinfo && p.videoinfo[0]; if (!vi) return;
