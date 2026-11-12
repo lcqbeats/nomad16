@@ -632,3 +632,9 @@ html.flipped, html.flipped body { overflow: hidden; }
 .pk.w.on { background: linear-gradient(180deg, #ffd8c8, #f08a6b); }
 .pk.b.on { background: linear-gradient(180deg, #d92b2f, #8a1518); }
 #keyFromLoop { width: 100%; font-size: 11px; padding: 9px 4px; }
+/* SAVE : enregistre le projet en cours à sa place */
+.gear.save { background: #3a1d1c; color: #ffb4a6; }
+.gear.save.busy { opacity: .6; }
+.gear.save.done { background: var(--green); color: #fff; }
+@media (max-width: 430px) { .top .gear { padding: 7px 7px; letter-spacing: .04em; } .top > span { gap: 4px !important; } }
+@media (max-width: 380px) { .top .histbtn { width: 26px; padding: 0; } .top .gear { padding: 7px 5px; font-size: 10px; } }

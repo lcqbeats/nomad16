@@ -646,6 +646,12 @@ html.flipped, html.flipped body { overflow: hidden; }
 .pk.w.on { background: linear-gradient(180deg, #ffd8c8, #f08a6b); }
 .pk.b.on { background: linear-gradient(180deg, #d92b2f, #8a1518); }
 #keyFromLoop { width: 100%; font-size: 11px; padding: 9px 4px; }
+/* SAVE : enregistre le projet en cours à sa place */
+.gear.save { background: #3a1d1c; color: #ffb4a6; }
+.gear.save.busy { opacity: .6; }
+.gear.save.done { background: var(--green); color: #fff; }
+@media (max-width: 430px) { .top .gear { padding: 7px 7px; letter-spacing: .04em; } .top > span { gap: 4px !important; } }
+@media (max-width: 380px) { .top .histbtn { width: 26px; padding: 0; } .top .gear { padding: 7px 5px; font-size: 10px; } }
 </style>
 </head>
 <body>
@@ -654,7 +660,7 @@ html.flipped, html.flipped body { overflow: hidden; }
   <div class="top">
     <div class="brand"><b class="bw">NOMAD</b><span><i>-</i>16</span><small class="btag">POCKET SAMPLER · LOOPER</small></div>
     <span style="display:flex;gap:6px"><button class="histbtn" id="undoBtn" type="button" aria-label="Annuler" disabled>↶</button><button class="histbtn" id="redoBtn" type="button" aria-label="Rétablir" disabled>↷</button>
-    <button class="gear" id="mixBtn" type="button">MIX</button><button class="gear" id="gearBtn" type="button">RÉGLAGES</button></span>
+    <button class="gear save" id="saveBtn" type="button">SAVE</button><button class="gear" id="mixBtn" type="button">MIX</button><button class="gear" id="gearBtn" type="button">RÉGLAGES</button></span>
   </div>
 
   <div class="lcd" aria-live="polite">
@@ -1042,7 +1048,8 @@ html.flipped, html.flipped body { overflow: hidden; }
     <div class="row"><button class="btn" id="helpBtn" type="button" aria-pressed="false" style="flex:1">MASQUÉS</button></div>
     <h3>PROJETS</h3>
     <p class="help">Un projet garde le kit, les boucles, l'ampli, les effets et les potards. Il est enregistré dans cet appareil.</p>
-    <div class="saverow"><input id="projName" type="text" maxlength="40" placeholder="nom du projet" aria-label="Nom du projet"><button class="btn rec" id="projSave" type="button">ENREGISTRER</button></div>
+    <p class="note" id="curProj"></p>
+    <div class="saverow"><input id="projName" type="text" maxlength="40" placeholder="nom du projet" aria-label="Nom du projet"><button class="btn rec" id="projSave" type="button">ENREGISTRER SOUS</button></div>
     <div class="saverow"><button class="btn" id="projImport" type="button" style="flex:1">IMPORTER UN PROJET (.nomad)</button><input type="file" id="projFile" accept=".nomad,.zip,application/zip,application/octet-stream" hidden></div>
     <p class="help">FICHIER enregistre un projet complet (sons, séquences, morceau, réglages) dans un fichier .nomad, à garder dans l'app Fichiers ou à passer sur un autre appareil.</p>
     <div id="projList"></div>
@@ -5738,6 +5745,12 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
         obj.ch.forEach((c, k) => data.set(new Uint8Array(c.buffer, c.byteOffset, n * 4), k * n * 4));
         files.push({ name: id, data }); return { __audio: id, sr: obj.sr, nch: obj.ch.length, n };
       }
+      // son compact 16 bits (kits de chops gardés automatiquement)
+      if (obj.ch && Array.isArray(obj.ch) && obj.ch[0] instanceof Int16Array) {
+        const id = "audio/a" + String(files.length).padStart(4, "0") + ".i16", n = obj.ch[0].length, data = new Uint8Array(n * 2 * obj.ch.length);
+        obj.ch.forEach((c, k) => data.set(new Uint8Array(c.buffer, c.byteOffset, n * 2), k * n * 2));
+        files.push({ name: id, data }); return { __audio: id, sr: obj.sr, nch: obj.ch.length, n, q: 1 };
+      }
       if (Array.isArray(obj)) return obj.map(x => packAudio(x, files));
       const o = {}; Object.keys(obj).forEach(k => { o[k] = packAudio(obj[k], files); }); return o;
     }
@@ -5745,6 +5758,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   }
   function unpackAudio(obj, files) {
     if (obj && typeof obj === "object") {
+      if (obj.__audio && obj.q) { const raw = files[obj.__audio], f = new Int16Array(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength)); return { sr: obj.sr, q: 1, ch: Array.from({ length: obj.nch }, (_, k) => f.slice(k * obj.n, (k + 1) * obj.n)) }; }
       if (obj.__audio) { const raw = files[obj.__audio], f = new Float32Array(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength)); return { sr: obj.sr, ch: Array.from({ length: obj.nch }, (_, k) => f.slice(k * obj.n, (k + 1) * obj.n)) }; }
       if (Array.isArray(obj)) return obj.map(x => unpackAudio(x, files));
       const o = {}; Object.keys(obj).forEach(k => { o[k] = unpackAudio(obj[k], files); }); return o;
@@ -6102,18 +6116,44 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   setType(store.get("type", "mpk"));
 
   // ---------- Projets ----------
+  // projet en cours : SAVE (en haut de l'écran, ou Cmd/Ctrl+S) l'enregistre à sa place, au fur et à mesure
+  let CUR = store.get("curProj", null);
+  function setCur(id, name) { CUR = id ? { id, name } : null; store.set("curProj", CUR); drawCur(); }
+  function drawCur() {
+    const b = $("saveBtn"); if (b) b.title = CUR ? `Enregistrer « ${CUR.name} »` : "Enregistrer un nouveau projet";
+    const c = $("curProj"); if (c) c.textContent = CUR ? `Projet en cours : ${CUR.name} · SAVE l'enregistre à sa place` : "Pas de projet en cours : SAVE en crée un";
+  }
   async function saveProject(name, fixedId) {
     const id = fixedId || "proj-" + Date.now().toString(36);
+    const km = kitIndex.find(k => k.id === kitCur) || {};
     const p = {
-      id, name: name.toUpperCase().slice(0, 40), created: Date.now(),
-      kit: kitCur, kitEmbed: (kitCur === "chops") ? { names: names.slice(), gains: gains.slice(), bufs: buffers.map(packBuf) } : null,
+      id, name: name.toUpperCase().slice(0, 40), created: Date.now(), origin: fixedId === "proj-auto" ? CUR : null,
+      // kit de chops ou kit perso : on l'emporte dans le projet (pour qu'un .nomad ouvert ailleurs ait ses sons)
+      kit: kitCur, kitEmbed: (kitCur === "chops" || km.user) ? { names: names.slice(), gains: gains.slice(), bufs: buffers.map(packBuf16) } : null,
       knobs: JSON.parse(JSON.stringify(knobVals)), knobsV: 3, manualBpm, padParams: padParams.map(p => ({ ...p })), fxTarget,
       song: { steps: SONG.steps, loop: SONG.loop, cur: SQ.cur, nr: NR.idx },
       guitar: { amp: G.amp, fx: [...G.fx], preset: G.preset },
       loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, notes: l.notes || [], buf: packBuf(l.buf) }))) }
     };
     await DB.put("projects", p);
+    return id;
   }
+  let saving = false;
+  async function quickSave() {
+    if (!ctx || saving) return;
+    saving = true; const b = $("saveBtn"); b.classList.add("busy");
+    try {
+      let ok = CUR && await DB.get("projects", CUR.id);
+      if (ok) await saveProject(CUR.name, CUR.id);
+      else { const d = new Date(), n = `PROJET ${d.toLocaleDateString("fr-FR")} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`; setCur(await saveProject(n), n.toUpperCase()); }
+      lcd("lcdPad", "SAVE", `« ${CUR.name} » enregistré à ${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`);
+      b.classList.add("done"); setTimeout(() => b.classList.remove("done"), 900);
+      if (!$("setSheet").hidden) renderProjects();
+    } catch (e) { lcd("lcdPad", "SAVE", "enregistrement impossible : " + (e.name || e.message)); }
+    b.classList.remove("busy"); saving = false;
+  }
+  $("saveBtn").addEventListener("click", quickSave);
+  window.addEventListener("keydown", e => { if ((e.metaKey || e.ctrlKey) && (e.key === "s" || e.key === "S")) { e.preventDefault(); quickSave(); } });
   async function loadProject(id) {
     const p = await DB.get("projects", id); if (!p || !ctx) return;
     Object.keys(p.knobs).forEach(t => { if (knobVals[t]) knobVals[t] = p.knobs[t].slice(); });
@@ -6145,6 +6185,8 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     } else if (p.loop) lcd("lcdLoop", "BOUCLE", "boucles enregistrées à une autre fréquence, non chargées");
     drawSong(true);
     drawKnobs();
+    if (id === "proj-auto") { if (p.origin && await DB.get("projects", p.origin.id)) setCur(p.origin.id, p.origin.name); else setCur(null); }
+    else setCur(p.id, p.name);
     lcd("lcdPad", "PROJET", p.name + " chargé");
   }
   async function renderProjects() {
@@ -6158,20 +6200,21 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       b.innerHTML = `${p.name}<small>${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · ${p.loop ? (p.loop.seqs ? p.loop.seqs.filter(x => x.length).length + " séquence(s)" : p.loop.layers.length + " piste(s)") : "sans boucle"}</small>`;
       b.addEventListener("click", async () => { $("setSheet").hidden = true; await loadProject(p.id); });
       const del = document.createElement("button"); del.type = "button"; del.className = "mini"; del.textContent = "SUPPR.";
-      del.addEventListener("click", async () => { if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "SÛR ?"; return; } await DB.del("projects", p.id); renderProjects(); });
+      del.addEventListener("click", async () => { if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "SÛR ?"; return; } await DB.del("projects", p.id); if (CUR && CUR.id === p.id) setCur(null); renderProjects(); });
       const fb = document.createElement("button"); fb.type = "button"; fb.className = "mini"; fb.textContent = "FICHIER";
       fb.addEventListener("click", () => exportProjectFile(p.id));
       row.appendChild(b); row.appendChild(fb); row.appendChild(del); $("projList").appendChild(row);
     });
   }
+  drawCur();
   $("offBtn").addEventListener("click", () => warmOffline(true));
   $("backupBtn").addEventListener("click", async () => { $("backupBtn").textContent = "…"; try { await exportBackup(); } catch (e) { lcd("lcdPad", "SAUVEGARDE", "impossible : " + e.message); } $("backupBtn").textContent = "SAUVEGARDE COMPLÈTE (.nomad)"; });
   $("projSave").addEventListener("click", async () => {
     if (!ctx) return;
     const n = $("projName").value.trim() || ("PROJET " + new Date().toLocaleDateString());
     $("projSave").textContent = "…";
-    try { await saveProject(n); $("projName").value = ""; await renderProjects(); } catch (e) { lcd("lcdPad", "PROJET", "enregistrement impossible : " + e.name); }
-    $("projSave").textContent = "ENREGISTRER";
+    try { setCur(await saveProject(n), n.toUpperCase().slice(0, 40)); $("projName").value = ""; await renderProjects(); } catch (e) { lcd("lcdPad", "PROJET", "enregistrement impossible : " + e.name); }
+    $("projSave").textContent = "ENREGISTRER SOUS";
   });
 
   // ---------- MIDI ----------

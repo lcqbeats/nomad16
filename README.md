@@ -56,6 +56,10 @@ Après une modification : `python3 tools/build.py` reconstruit `index.html` (la 
 Tests dans un navigateur : `pip install pytest playwright && python -m playwright install chromium`, puis `python -m pytest tests -q`.
 Ils tournent aussi tout seuls sur GitHub à chaque envoi (onglet Actions).
 
+### Projets
+
+SAVE (en haut, à côté de MIX ; Cmd/Ctrl+S sur ordinateur) enregistre le projet en cours à sa place : celui qu'on a ouvert, importé (.nomad) ou enregistré. Sans projet en cours, SAVE en crée un, daté. RÉGLAGES → ENREGISTRER SOUS crée une copie sous un autre nom ; FICHIER exporte le .nomad. La sauvegarde automatique (SESSION AUTO, toutes les 45 s et quand on quitte l'app) reste à part et se reprend depuis l'écran d'accueil. Un kit de chops ou un kit perso est emporté dans le projet.
+
 ### SP : station de couleur
 
 L'onglet SP colore toute la sortie, façon sampler de poche. 16 effets sur les 16 pads (à l'écran et sur l'Akai) : banque A = SP COMP, VINYL SIM, CASSETTE, LO-FI, FILTRE + DRIVE, PASSE-HAUT, RADIO, SATURATION ; banque B = LOOPER DJ, ÉCHO, RÉVERBE, SLICER, KILL BASSES, KILL AIGUS, FLANGER, DÉSACCORD. Appui court = l'effet reste allumé, appui long = seulement tant qu'on tient ; plusieurs effets peuvent tourner ensemble. Potards : 1 et 2 règlent l'effet touché en dernier, 3 le dosage de toute la couleur SP (mélange avec le son d'origine, c'est aussi ce qui s'imprime), 4 à 6 l'isolateur, 7 la découpe des effets au tempo (droit, triolet, pointé, swing 54 à 66 %), 8 coupe tous les effets tourné à gauche et les rétablit ramené à droite. Les réglages de chaque effet sont gardés. Cible : TOUT (toute la sortie) ou P1 à P6 (une seule piste du looper ; touches blanches DO à LA). Dans SP, Sustain (ou ● IMPRIMER) grave les effets sur la piste choisie pendant un tour complet, en temps réel : un effet joué sur un seul temps ne reste que là. Ensuite les effets se remettent à zéro ; Retour arrière annule. Le rééchantillonnage vers un pad reste disponible, replié en bas : ENVOYER SUR UN PAD.

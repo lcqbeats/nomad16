@@ -21,7 +21,7 @@
   <div class="top">
     <div class="brand"><b class="bw">NOMAD</b><span><i>-</i>16</span><small class="btag">POCKET SAMPLER · LOOPER</small></div>
     <span style="display:flex;gap:6px"><button class="histbtn" id="undoBtn" type="button" aria-label="Annuler" disabled>↶</button><button class="histbtn" id="redoBtn" type="button" aria-label="Rétablir" disabled>↷</button>
-    <button class="gear" id="mixBtn" type="button">MIX</button><button class="gear" id="gearBtn" type="button">RÉGLAGES</button></span>
+    <button class="gear save" id="saveBtn" type="button">SAVE</button><button class="gear" id="mixBtn" type="button">MIX</button><button class="gear" id="gearBtn" type="button">RÉGLAGES</button></span>
   </div>
 
   <div class="lcd" aria-live="polite">
@@ -409,7 +409,8 @@
     <div class="row"><button class="btn" id="helpBtn" type="button" aria-pressed="false" style="flex:1">MASQUÉS</button></div>
     <h3>PROJETS</h3>
     <p class="help">Un projet garde le kit, les boucles, l'ampli, les effets et les potards. Il est enregistré dans cet appareil.</p>
-    <div class="saverow"><input id="projName" type="text" maxlength="40" placeholder="nom du projet" aria-label="Nom du projet"><button class="btn rec" id="projSave" type="button">ENREGISTRER</button></div>
+    <p class="note" id="curProj"></p>
+    <div class="saverow"><input id="projName" type="text" maxlength="40" placeholder="nom du projet" aria-label="Nom du projet"><button class="btn rec" id="projSave" type="button">ENREGISTRER SOUS</button></div>
     <div class="saverow"><button class="btn" id="projImport" type="button" style="flex:1">IMPORTER UN PROJET (.nomad)</button><input type="file" id="projFile" accept=".nomad,.zip,application/zip,application/octet-stream" hidden></div>
     <p class="help">FICHIER enregistre un projet complet (sons, séquences, morceau, réglages) dans un fichier .nomad, à garder dans l'app Fichiers ou à passer sur un autre appareil.</p>
     <div id="projList"></div>

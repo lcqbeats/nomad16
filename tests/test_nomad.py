@@ -648,6 +648,19 @@ def test_tonalite_et_piano(app):
     assert not app.is_visible("#pKeys")
 
 
+def test_save_du_projet_en_cours(app):
+    fake_loop(app, 0.5)
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[0], 1, 0)")
+    app.click("#saveBtn")
+    app.wait_for_function("/enregistré/.test(document.getElementById('lcdPad').textContent)", timeout=8000)
+    n1 = app.evaluate("new Promise(r => { const q = indexedDB.open('nomad16'); q.onsuccess = () => { const t = q.result.transaction('projects').objectStore('projects').getAll(); t.onsuccess = () => r(t.result.filter(p => p.id !== 'proj-auto').length); }; })")
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[1], 1, 0)")
+    app.keyboard.press("Control+s")
+    app.wait_for_timeout(1500)
+    projs = app.evaluate("new Promise(r => { const q = indexedDB.open('nomad16'); q.onsuccess = () => { const t = q.result.transaction('projects').objectStore('projects').getAll(); t.onsuccess = () => r(t.result.filter(p => p.id !== 'proj-auto').map(p => p.loop.seqs[0].length)); }; })")
+    assert len(projs) == n1 and max(projs) == 2, projs     # même projet, mis à jour (2 pistes), pas un nouveau
+
+
 def test_famille_20syl(app):
     app.click("#tab-sons")
     app.locator("#cats .cat", has_text="20SYL").click()

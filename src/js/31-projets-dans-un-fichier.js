@@ -6,6 +6,12 @@
         obj.ch.forEach((c, k) => data.set(new Uint8Array(c.buffer, c.byteOffset, n * 4), k * n * 4));
         files.push({ name: id, data }); return { __audio: id, sr: obj.sr, nch: obj.ch.length, n };
       }
+      // son compact 16 bits (kits de chops gardés automatiquement)
+      if (obj.ch && Array.isArray(obj.ch) && obj.ch[0] instanceof Int16Array) {
+        const id = "audio/a" + String(files.length).padStart(4, "0") + ".i16", n = obj.ch[0].length, data = new Uint8Array(n * 2 * obj.ch.length);
+        obj.ch.forEach((c, k) => data.set(new Uint8Array(c.buffer, c.byteOffset, n * 2), k * n * 2));
+        files.push({ name: id, data }); return { __audio: id, sr: obj.sr, nch: obj.ch.length, n, q: 1 };
+      }
       if (Array.isArray(obj)) return obj.map(x => packAudio(x, files));
       const o = {}; Object.keys(obj).forEach(k => { o[k] = packAudio(obj[k], files); }); return o;
     }
@@ -13,6 +19,7 @@
   }
   function unpackAudio(obj, files) {
     if (obj && typeof obj === "object") {
+      if (obj.__audio && obj.q) { const raw = files[obj.__audio], f = new Int16Array(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength)); return { sr: obj.sr, q: 1, ch: Array.from({ length: obj.nch }, (_, k) => f.slice(k * obj.n, (k + 1) * obj.n)) }; }
       if (obj.__audio) { const raw = files[obj.__audio], f = new Float32Array(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength)); return { sr: obj.sr, ch: Array.from({ length: obj.nch }, (_, k) => f.slice(k * obj.n, (k + 1) * obj.n)) }; }
       if (Array.isArray(obj)) return obj.map(x => unpackAudio(x, files));
       const o = {}; Object.keys(obj).forEach(k => { o[k] = unpackAudio(obj[k], files); }); return o;
