@@ -526,6 +526,10 @@ html.flipped, html.flipped body { overflow: hidden; }
 :root.desk .mini, :root.desk .saverow input { background: rgba(255,255,255,.35); border-color: rgba(15,34,48,.35); }
 :root.desk .sheet-in h2 button { border-color: rgba(15,34,48,.4); }
 :root.desk #scrCanvas, :root.desk .scrplay { max-width: 470px; }
+/* ordinateur : la grille de pads tient dans la hauteur de la fenêtre (Chrome sur un portable 13 pouces) */
+:root.desk body { padding-top: 14px; padding-bottom: 14px; }
+:root.desk .machine { padding-top: 16px; padding-bottom: 18px; row-gap: 10px; }
+:root.desk .pads { max-width: max(340px, min(640px, calc(100vh - 205px))); gap: 12px; }
 </style>
 </head>
 <body>
