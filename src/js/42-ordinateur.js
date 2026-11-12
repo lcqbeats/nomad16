@@ -7,12 +7,16 @@
     const b = $("layoutBtn"); if (b) b.textContent = "AFFICHAGE : " + { auto: "AUTOMATIQUE", phone: "TÉLÉPHONE", desk: "ORDINATEUR" }[deskMode];
     if (typeof drawSpPads === "function" && tab === "sp") drawSpPads();
   }
-  TABS.forEach((t, i) => { const el = $("tab-" + t); if (el) el.dataset.f = "F" + (i + 1); });
+  TABS.forEach((t, i) => { const el = $("tab-" + t); if (el) el.dataset.f = ["&", "é", "\"", "'", "(", "§", "è", "!", "ç"][i] + "  ·  F" + (i + 1); });
   if (DESK_Q) { try { DESK_Q.addEventListener("change", applyDesk); } catch (e) { DESK_Q.addListener && DESK_Q.addListener(applyDesk); } }
   $("layoutBtn").addEventListener("click", () => { deskMode = { auto: "desk", desk: "phone", phone: "auto" }[deskMode]; store.set("layout", deskMode); applyDesk(); });
+  // rangée du haut d'un clavier AZERTY (Mac) sans Maj : & é " ' ( § è ! ç = onglets 1 à 9 ; F1 à F9 marchent aussi
+  const AZ_TABS = ["&", "é", "\"", "'", "(", "§", "è", "!", "ç"];
   window.addEventListener("keydown", e => {
-    const m = /^F([1-9])$/.exec(e.key); if (!m) return;
-    const t = TABS[+m[1] - 1]; if (!t) return;
+    if (e.metaKey || e.ctrlKey || e.altKey || e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") return;
+    const m = /^F([1-9])$/.exec(e.key), a = AZ_TABS.indexOf(e.key);
+    if (!m && a < 0) return;
+    const t = TABS[m ? +m[1] - 1 : a]; if (!t) return;
     e.preventDefault(); setTab(t); lcd("lcdPad", "ONGLET", $("tab-" + t).textContent);
   });
   applyDesk();

@@ -457,6 +457,10 @@ def test_ordinateur_paysage_et_touches_f(browser, server):
     page.wait_for_function("window.nomadState && nomadState().bufs > 0", timeout=15000)
     page.keyboard.press("F8")
     assert page.get_attribute("#tab-sons", "aria-selected") == "true"
+    page.evaluate("window.dispatchEvent(new KeyboardEvent('keydown', { key: 'è' }))")
+    assert page.get_attribute("#tab-scratch", "aria-selected") == "true"
+    page.evaluate("window.dispatchEvent(new KeyboardEvent('keydown', { key: '&' }))")
+    assert page.get_attribute("#tab-play", "aria-selected") == "true"
     page.keyboard.press("F2")
     assert page.get_attribute("#tab-loops", "aria-selected") == "true"
     # la grille de pads est à droite de l'écran
