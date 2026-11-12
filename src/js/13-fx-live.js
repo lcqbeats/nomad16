@@ -42,7 +42,7 @@
   const fxEl = i => fxEls[i] || null;
   function setFxBank(b) { if (b === fxBank) return; fxBank = b; store.set("fxBank", b); drawFxPads(); }
   function drawFxPads() {
-    for (let i = 0; i < 16; i++) { const f = FXS[i], b = fxEls[i]; b.innerHTML = `<span>BANK ${(i >> 3) + 1} · PAD ${i + 1}</span><b>${f.name}</b><span>${f.sub}</span>`; b.classList.toggle("on", fxActive === i); b.classList.toggle("hold", fxTrig === "hold"); b.classList.toggle("other", (i >> 3) !== fxBank); }
+    for (let i = 0; i < 16; i++) { const f = FXS[i], b = fxEls[i]; b.innerHTML = `<i></i><b>${f.name}</b><span>${i + 1}</span>`; b.title = f.sub; b.classList.toggle("on", fxActive === i); b.classList.toggle("hold", fxTrig === "hold"); }
     $("fxSet").textContent = "BANK " + (fxBank + 1) + (fxBank ? " · TEXTURES" : " · RYTHMES");
     $("fxTrig").textContent = { hold: "MAINTIEN", one: "1 MESURE", latch: "VERROU" }[fxTrig];
     document.querySelectorAll(".fxt").forEach(b => b.classList.toggle("on", b.dataset.t === fxTarget));
@@ -63,7 +63,10 @@
     if (w < 0) return false;
     setFxTarget(FX_KEY_T[w]); return true;
   }
-  function setFxTarget(t) { if (LPR.rec) return; fxTarget = t; drawFxPrint(); routeFx(); drawFxPads(); lcd("lcdPad", "FX", "cible : " + (t === "all" ? "tout le morceau" : t === "live" ? "jeu en direct" : "piste " + t)); }
+  function setFxTarget(t) { if (LPR.rec) return; fxTarget = t;
+    // une piste ne peut être dans les effets SP et FX à la fois : FX la reprend
+    if (/^\d$/.test(t) && typeof SPX !== "undefined" && SPX.target === t) { SPX.target = "all"; spRoute(); drawSpTargets(); }
+    drawFxPrint(); fxDisp(t === "all" ? "FX" : t === "live" ? "LIV" : "P" + t, t === "all" ? "TOUT" : t === "live" ? "JEU EN DIRECT" : "PISTE " + t); routeFx(); drawFxPads(); lcd("lcdPad", "FX", "cible : " + (t === "all" ? "tout le morceau" : t === "live" ? "jeu en direct" : "piste " + t)); }
   function routeFx() {
     if (!fxDry) return;
     [liveBus, loopBus].forEach(n => { try { n.disconnect(master); } catch (e) {} try { n.disconnect(fxDry); } catch (e) {} });
@@ -80,7 +83,7 @@
     const l = fxLayer();
     if (!LPR.rec && !l && fxTarget !== "all" && fxTarget !== "live") { lcd("lcdPad", "FX", `piste ${fxTarget} vide`); return; }
     loopPrint({ who: "FX", layer: l, tap: fxMaster, gain: () => l.vol * (fxSolo ? fxSolo.gain.value || 1 : 1) * (fxMaster.gain.value || 1),
-      ui: () => drawFxPrint(),
+      ui: p => { drawFxPrint(); if (p === null) fxDisp("P" + fxTarget, "PISTE " + fxTarget); else fxDisp("PRT", Math.round(p * 100) + " %"); },
       done: () => { if (fxActive >= 0) fxEnd(fxActive); for (let k = 0; k < 7; k++) { knobVals.fx[k] = FX_HOME[k]; applyFxKnob(k); } if (tab === "fx") drawKnobs(); } });
   }
   function drawFxPrint() {
@@ -92,8 +95,10 @@
   $("fxPrint").addEventListener("click", fxPrintToggle);
   $("fxBpmDown").addEventListener("click", () => { manualBpm = Math.max(60, manualBpm - 1); drawFxBar(); applyFxKnob(3); });
   $("fxBpmUp").addEventListener("click", () => { manualBpm = Math.min(180, manualBpm + 1); drawFxBar(); applyFxKnob(3); });
+  function fxDisp(big, small) { $("fxSeg").textContent = big; $("fxSegSub").textContent = small; }
   function fxStart(i) {
     if (!ctx || !fxNode) return;
+    fxDisp("F" + String(i + 1).padStart(2, "0"), FXS[i].name);
     if (fxTrig === "latch" && fxActive === i) { fxEnd(i); return; }
     const f = FXS[i], beatF = 60 / curBpm() * sr;
     const nowF = ctx.currentTime * sr, q = f.steps ? beatF : beatF / 4;

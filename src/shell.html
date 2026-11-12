@@ -182,13 +182,15 @@
     <p class="note help">Chaque partie joue une séquence du LOOPER (A à H) un certain nombre de fois. Les séquences se remplissent dans le LOOPER : choisissez une lettre puis enregistrez avec REC / Sustain. Le tempo est celui de la toute première boucle. ▶ sur une ligne lance le morceau depuis cette partie. Potards : volumes des pistes de la séquence en cours, volume des boucles, volume du métronome.</p>
   </section>
 
-  <section class="view" id="view-fx" hidden>
+  <section class="view stack" id="view-fx" hidden>
+    <div class="spface"><div class="spdisp"><b id="fxSeg">FX</b><span id="fxSegSub">TOUT</span></div><div class="spbrand">NOMAD<small>BEAT EFFECTS</small></div></div>
     <div class="fxtargets" role="group" aria-label="Cible des effets">
       <button class="fxt on" type="button" data-t="all">TOUT</button><button class="fxt" type="button" data-t="live">LIVE</button>
       <button class="fxt" type="button" data-t="1">P1</button><button class="fxt" type="button" data-t="2">P2</button><button class="fxt" type="button" data-t="3">P3</button>
       <button class="fxt" type="button" data-t="4">P4</button><button class="fxt" type="button" data-t="5">P5</button><button class="fxt" type="button" data-t="6">P6</button>
     </div>
     <button class="btn rec spprint fxprint idle" id="fxPrint" type="button">● IMPRIMER : CHOISIS UNE PISTE</button>
+    <h4 class="sphead"><span>MOTIFS · PADS 1 À 16</span></h4>
     <div class="fxgrid" id="fxgrid"></div>
     <div class="fxbar">
       <button class="btn" id="fxSet" type="button">MOTIFS FLEX</button>

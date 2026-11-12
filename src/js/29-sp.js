@@ -200,10 +200,14 @@
   }
   // ---------- Cible : toute la sortie ou une piste du looper ; impression des couleurs sur la piste ----------
   SPX.target = "all"; let spLayer = null;
+  let fxLayerSeen = null;
   function spRoute() {
     if (!sp) return;
     const want = SPX.target === "all" ? null : LP.layers[+SPX.target - 1] || null;
-    if (want === spLayer) return;
+    // une piste créée ou remplacée après le choix de la cible FX : on refait les branchements
+    const fl = typeof fxLayer === "function" ? fxLayer() : null;
+    if (want === spLayer) { if (fl !== fxLayerSeen) { fxLayerSeen = fl; if (fxDry) routeFx(); } return; }
+    fxLayerSeen = fl;
     spLayer = want;
     try { sp.in.disconnect(sp.head); } catch (e) {} try { sp.in.disconnect(sp.post); } catch (e) {}
     sp.in.connect(spLayer ? sp.post : sp.head);
@@ -213,6 +217,7 @@
   }
   function setSpTarget(t) {
     if (LPR.rec) return;
+    if (/^\d$/.test(t) && fxTarget === t) { fxTarget = "all"; routeFx(); drawFxPads(); drawFxPrint(); }   // SP reprend la piste à FX
     SPX.target = t; spRoute(); drawSpTargets();
     lcd("lcdPad", "SP", t === "all" ? "les effets colorent toute la sortie" : (LP.layers[+t - 1] ? `effets sur la piste ${t} · Sustain = imprimer` : `piste ${t} vide`));
   }

@@ -583,6 +583,27 @@ def test_digging_zoom_cretes_nettoyage(app):
     assert app.evaluate("nomadDbg.clip.buf === nomadDbg.clip.orig")
 
 
+def test_fx_sur_piste_apres_sp(app):
+    # une piste choisie dans SP puis dans FX : FX la reprend et ses effets s'entendent
+    fake_loop(app, 0.6)
+    app.evaluate("""() => { const c = nomadDbg.sp.in.context, n = nomadDbg.LP.Lf, b = c.createBuffer(2, n, c.sampleRate);
+      for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * 0.3; }
+      nomadDbg.addLayer(b, 1, 0);
+      const o = nomadDbg.sp.out, an = c.createAnalyser(); an.fftSize = 2048; o.connect(an); window._b2 = new Float32Array(2048);
+      window._lv2 = () => { an.getFloatTimeDomainData(_b2); let s = 0; for (const v of _b2) s += v * v; return Math.sqrt(s / 2048); }; }""")
+    app.click("#tab-sp"); app.click(".spt[data-t='1']")
+    app.click("#tab-fx"); app.click(".fxt[data-t='1']")
+    assert "on" not in app.get_attribute(".spt[data-t='1']", "class").split()
+    def lv():
+        v = []
+        for _ in range(6):
+            app.wait_for_timeout(60); v.append(app.evaluate("_lv2()"))
+        return sum(v) / len(v)
+    open_ = lv()
+    app.evaluate("nomadMidi([0xB0, 70, 64]); nomadMidi([0xB0, 70, 3])")
+    assert lv() < open_ * 0.5
+
+
 def test_famille_20syl(app):
     app.click("#tab-sons")
     app.locator("#cats .cat", has_text="20SYL").click()
