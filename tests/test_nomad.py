@@ -462,6 +462,28 @@ def test_fx_clavier_et_prog_change(app):
     assert app.get_attribute("#tab-sons", "data-pc") == "3"
 
 
+def test_sp_station_effets(app):
+    app.click("#tab-sp")
+    assert app.locator("#spFxGrid .spfx").count() == 16
+    app.evaluate("nomadMidi([0x99, 36, 100]); nomadMidi([0x89, 36, 0])")     # pad 1 : SP COMP, appui court = allumé
+    assert "on" in app.get_attribute("#spFxGrid .spfx >> nth=12", "class")
+    assert "SP COMP" in app.inner_text("#spSeg") + app.inner_text("#spSegSub")
+    app.evaluate("nomadMidi([0x99, 44, 100])")       # pad 9 : LOOPER DJ tenu
+    app.wait_for_timeout(500)
+    app.evaluate("nomadMidi([0x89, 44, 0])")         # appui long : s'éteint au relâché
+    assert "on" not in app.get_attribute("#spFxGrid .spfx >> nth=4", "class").split()
+    labels = app.evaluate("[...document.querySelectorAll('#knobs label')].map(e => e.textContent)")
+    assert labels[0] == "Longueur" and labels[2] == "Dosage"
+    for n in range(36, 52):                          # tous les effets ensemble : la sortie reste propre
+        app.evaluate(f"nomadMidi([0x99, {n}, 100]); nomadMidi([0x89, {n}, 0])")
+    app.evaluate("nomadMidi([0xB0, 64, 0])")
+    app.click("#tab-play"); app.evaluate("nomadMidi([0x99, 36, 110])"); app.click("#tab-sp")
+    lv = max(loud(app, 80) for _ in range(6))
+    assert 0.0005 < lv < 2.5, lv
+    app.click("#spAllOff")
+    assert app.locator("#spFxGrid .spfx.on").count() == 0
+
+
 def test_famille_20syl(app):
     app.click("#tab-sons")
     app.locator("#cats .cat", has_text="20SYL").click()

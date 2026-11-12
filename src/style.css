@@ -564,3 +564,20 @@ html.flipped, html.flipped body { overflow: hidden; }
 #view-sp .songinfo, #view-sp .note { color: #a3a39d; }
 :root.desk #view-sp .dpads { grid-template-columns: repeat(8, 1fr); gap: 8px; }
 :root.desk #view-sp .dpad { height: 64px; }
+/* SP : grille des 16 effets */
+.spfxgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.spfx { position: relative; height: 58px; border: 0; border-radius: 5px; cursor: pointer; touch-action: none; background: linear-gradient(180deg, #8d8e8f, #6d6e70); color: #1e1e1f; box-shadow: inset 0 1px 0 #b3b4b5, inset 0 -2px 0 #565759, 0 2px 0 #111; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 10px 3px 4px; }
+.spfx i { position: absolute; top: 6px; left: 50%; width: 8px; height: 4px; margin-left: -4px; border-radius: 2px; background: #3e3f40; }
+.spfx b { font: 800 10px/1.1 var(--font-display, sans-serif); letter-spacing: .03em; text-align: center; }
+.spfx span { font: 600 8px/1 var(--font-lcd, monospace); opacity: .55; }
+.spfx.cur { box-shadow: inset 0 1px 0 #b3b4b5, 0 0 0 2px #f08a2c, 0 2px 0 #111; }
+.spfx.on { background: linear-gradient(180deg, #e8e8e4, #bdbeba); }
+.spfx.on i { background: #ff3b2a; box-shadow: 0 0 6px #ff3b2a, 0 0 2px #fff inset; }
+.spfx:nth-child(n+9) b { color: #2a2a2b; }
+.spbar { grid-template-columns: 1fr 1fr !important; }
+.spres { border-radius: 6px; background: rgba(0,0,0,.18); padding: 8px 10px; }
+.spres summary { cursor: pointer; font: 700 10px/1.4 var(--font-display, sans-serif); letter-spacing: .12em; color: #c9c9c4; }
+.spres[open] summary { margin-bottom: 8px; }
+.spres .songhead { grid-template-columns: 1fr 1fr; margin-top: 8px; }
+:root.desk .spfx { height: 76px; }
+:root.desk .spfx b { font-size: 12px; }

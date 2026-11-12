@@ -90,7 +90,20 @@ if(this.armed&&this.refr<=0&&this.env>0.004&&this.env>0.6*this.pk){this.armed=fa
 if(this.atk>0){this.atk--;this.d+=(1-this.d)*0.02;}else this.d*=this.relDec;
 const g=1-this.depth*this.d;for(let c=0;c<o.length;c++){const x=i&&i.length?(i[c]||i[0]):null;o[c][s]=x?x[s]*g:0;}}
 return true;}}
-registerProcessor('nomad-duck',Duck);`;
+registerProcessor('nomad-duck',Duck);
+class Lofi extends AudioWorkletProcessor{constructor(){super();this.q=Math.pow(2,9);this.hold=4;this.c=0;this.v=[0,0];this.port.onmessage=e=>{const m=e.data;if(m.bits)this.q=Math.pow(2,m.bits-1);if(m.hold)this.hold=m.hold;};}
+process(inputs,outputs){const i=inputs[0],o=outputs[0];if(!i||!i[0])return true;const n=o[0].length;
+for(let s=0;s<n;s++){if(this.c<=0){for(let c=0;c<2;c++){const x=(i[c]||i[0])[s];this.v[c]=Math.round(x*this.q)/this.q;}this.c=this.hold;}this.c--;for(let c=0;c<o.length;c++)o[c][s]=this.v[c]||0;}return true;}}
+registerProcessor('nomad-lofi',Lofi);
+class DjLoop extends AudioWorkletProcessor{constructor(){super();this.N=(sampleRate*4)|0;this.b=[new Float32Array(this.N),new Float32Array(this.N)];this.w=0;this.on=false;this.len=(sampleRate*0.25)|0;this.rate=1;this.st=0;this.p=0;this.g=0;
+this.port.onmessage=e=>{const m=e.data;if(m.len)this.len=Math.max(64,Math.min(this.N-1,m.len));if(m.rate)this.rate=m.rate;if(m.on!==undefined){if(m.on&&!this.on){this.st=(this.w-this.len+this.N)%this.N;this.p=0;}this.on=m.on;}};}
+process(inputs,outputs){const i=inputs[0],o=outputs[0];const n=o[0].length,F=Math.min(256,this.len>>2);
+for(let s=0;s<n;s++){for(let c=0;c<2;c++){const x=i&&i.length?(i[c]||i[0])[s]:0;if(!this.on)this.b[c][this.w]=x;}
+this.g+=((this.on?1:0)-this.g)*0.01;let y=[0,0];
+if(this.g>0.0005){const pi=Math.floor(this.p),fr=this.p-pi,e=Math.min(1,pi/F,(this.len-pi)/F);for(let c=0;c<2;c++){const a=this.b[c][(this.st+pi)%this.N],b=this.b[c][(this.st+pi+1)%this.N];y[c]=(a+(b-a)*fr)*e;}this.p+=this.rate;if(this.p>=this.len)this.p-=this.len;}
+for(let c=0;c<o.length;c++){const x=i&&i.length?(i[c]||i[0])[s]:0;o[c][s]=x*(1-this.g)+y[c]*this.g;}
+if(!this.on)this.w=(this.w+1)%this.N;}return true;}}
+registerProcessor('nomad-djloop',DjLoop);`;
   let hasWorklet = false;
   async function setupCapture() {
     ringN = Math.floor(sr * CAP_SECONDS);
