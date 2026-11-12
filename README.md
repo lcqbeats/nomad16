@@ -35,6 +35,16 @@ Sous iOS 9, installer d'abord le certificat racine Let's Encrypt depuis Safari :
 
 L'app et les kits restent dans l'appareil (service worker) : NOMAD démarre sans réseau. La session s'enregistre toute seule (« SESSION AUTO ») et se reprend depuis l'accueil ; RÉGLAGES propose une sauvegarde complète en un fichier .nomad. L'export MULTIPISTE + MPC contient, pour chaque séquence, les WAV, un programme .xpm et un fichier .mid des notes jouées (pads sur le canal 10 avec les notes des pads de la MPC, clavier sur le canal 1).
 
+## Sur ordinateur
+
+Sur un grand écran avec souris, NOMAD passe tout seul en paysage, dans l'esprit d'une MPC 1000 noire : écran, touches de mode et potards à gauche, pads à droite. F1 à F9 changent d'onglet. RÉGLAGES → AFFICHAGE permet de forcer la mise en page téléphone ou ordinateur. Dans Chrome, l'Akai branché en USB fonctionne directement.
+
+## Nouveautés sons
+
+- SONS : famille 20SYL (12 sons de synthèse dans l'esprit de 20syl) et 14 préréglages d'effets (DREAMY, CASSETTE, SOUL 70s, RADIO, TÉLÉPHONE, SOUS L'EAU, DUB, PING-PONG, SHIMMER, CRUNCH, WOBBLE, TRÉMOLO, TRÈS PROCHE, LOINTAIN).
+- Kits J DILLA, RZA, PETE ROCK, DAMU THE FUDGEMUNK : batterie CC0 (Virtuosity Drums) traitée dans l'esprit de chacun.
+- SONG : mastering automatique (NATUREL, CHAUD, CLAIR, PUNCH, LO-FI ; STREAMING -14, FORT -9, DOUX -18 LUFS), appliqué aux exports WAV du morceau, de la séquence et de la session. L'export multipiste + MPC reste brut.
+
 ## Pour modifier NOMAD
 
 Le code est rangé dans `src/` : `shell.html` (la page), `style.css`, et `js/` en morceaux numérotés, collés bout à bout dans l'ordre.

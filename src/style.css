@@ -469,3 +469,46 @@ html.flipped, html.flipped body { overflow: hidden; }
 .inst.on, :root[data-skin="clair"] .inst.on { background: var(--red); color: #fff; box-shadow: 0 0 0 2px var(--text); }
 .stylebtn.on, :root[data-skin="clair"] .stylebtn.on { background: var(--green); color: #fff; box-shadow: 0 0 0 2px var(--text); }
 :root[data-skin="clair"] .cat.on { background: #1e1e1e; color: #f4f2ee; }
+/* ---------- ORDINATEUR (grand écran, souris) : paysage façon MPC 1000 noire. Rien ici ne s'applique au téléphone. ---------- */
+:root.desk, :root.desk[data-skin] {
+  --body: #141414; --ink: #070707; --text: #e9e9e6; --muted: #8a8a86; --pad: #262626; --pad-edge: #050505;
+  --lcd-bg: #a9bcc8; --lcd-ink: #0f2230; --red: #d4242a; --green: #2f9e66; --stripe-mid: #050505; color-scheme: dark;
+}
+:root.desk body { padding: 28px 24px; align-items: flex-start; background: radial-gradient(ellipse at 50% 0%, #2a2a28, #0b0b0b 70%); }
+:root.desk .machine {
+  max-width: 1380px; display: grid; grid-template-columns: minmax(400px, 460px) minmax(0, 1fr); column-gap: 30px; row-gap: 14px; align-items: start;
+  padding: 22px 28px 28px; border-radius: 12px; background: linear-gradient(180deg, #1b1b1b, #121212 40%, #0f0f0f);
+  box-shadow: 0 0 0 1px #000, inset 0 1px 0 #3b3b3b, inset 0 -2px 0 #000, 0 30px 60px rgba(0,0,0,.7);
+}
+:root.desk .machine > .stripe, :root.desk .machine > .top { grid-column: 1 / -1; }
+:root.desk .machine > .stripe { height: 4px; opacity: .85; }
+:root.desk .machine > .lcd, :root.desk .machine > .tabs, :root.desk .machine > .knobs, :root.desk .machine > .legend { grid-column: 1; }
+:root.desk .machine > section.view { grid-column: 2; grid-row: 3 / span 8; max-width: 860px; width: 100%; justify-self: center; }
+:root.desk .top .brand .bw { font-size: 30px; }
+/* écran : rétroéclairage gris-bleu, encre sombre, cadre noir profond */
+:root.desk .lcd { text-shadow: none; border: 6px solid #050505; border-radius: 4px; box-shadow: inset 0 0 18px rgba(0,0,0,.35), 0 0 0 1px #2a2a2a; }
+:root.desk .lcd .k, :root.desk .lcd button { text-shadow: none; }
+:root.desk .sheet-in { text-shadow: none; }
+/* touches de mode : rangée de boutons durs, la touche F affichée dessous */
+:root.desk .tabs { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+:root.desk .tabs .tab { grid-column: auto; padding: 12px 4px 16px; font-size: 11px; letter-spacing: .08em; background: linear-gradient(180deg, #3a3a3a, #262626); color: #e6e6e2; border-radius: 4px; box-shadow: 0 2px 0 #000, inset 0 1px 0 #555; position: relative; }
+:root.desk .tabs .tab:nth-child(6) { grid-column: auto; }
+:root.desk .tabs .tab::after { content: attr(data-f); position: absolute; left: 0; right: 0; bottom: 3px; font-size: 8px; color: #8a8a86; letter-spacing: .1em; }
+:root.desk .tabs .tab[aria-selected="true"] { background: linear-gradient(180deg, #e9e9e6, #c9c9c5); color: #111; }
+:root.desk .tabs .tab[aria-selected="true"]::after { color: #555; }
+/* potards : rangée de 8, gros boutons noirs crantés */
+:root.desk .knobs { grid-template-columns: repeat(4, 1fr); padding: 14px 8px 10px; background: #0d0d0d; border-radius: 6px; box-shadow: inset 0 0 0 1px #262626; }
+:root.desk .dial { width: 52px; height: 52px; }
+:root.desk .dial::after { width: 38px; height: 38px; background: radial-gradient(circle at 40% 30%, #4b4b4b, #111 70%); box-shadow: 0 3px 6px #000, inset 0 0 0 2px #1d1d1d; }
+/* pads : caoutchouc noir, légèrement plus clair au repos, grille large */
+:root.desk .pads { gap: 14px; max-width: 640px; margin: 0 auto; }
+:root.desk .pad { border-radius: 6px; background: linear-gradient(170deg, #343434, #1f1f1f 70%); box-shadow: 0 0 0 2px #050505, inset 0 1px 0 #4a4a4a, 0 6px 10px rgba(0,0,0,.6); color: #cfcfcb; }
+:root.desk .btn { border-radius: 4px; }
+:root.desk .btn.rec { background: linear-gradient(180deg, #e0353a, #a81b20); }
+:root.desk .legend { display: none; }
+:root.desk #scrCanvas { margin: 0 auto; }
+:root.desk .scrplay { margin-left: auto; margin-right: auto; width: 100%; }
+:root.desk .keybar .kv, :root.desk .fxbar .bpm, :root.desk .tuner, :root.desk .tuner * { color: #a9bcc8; }
+:root.desk .mini, :root.desk .saverow input { background: rgba(255,255,255,.35); border-color: rgba(15,34,48,.35); }
+:root.desk .sheet-in h2 button { border-color: rgba(15,34,48,.4); }
+:root.desk #scrCanvas, :root.desk .scrplay { max-width: 470px; }

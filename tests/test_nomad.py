@@ -443,3 +443,28 @@ def test_mastering_export(app):
     peak = max(abs(x) for x in samples) / 32768
     assert 0.5 < peak <= 0.9, peak            # poussé vers le volume cible, plafond -1 dBFS
     assert "master-chaud" in dl.value.suggested_filename
+
+
+def test_ordinateur_paysage_et_touches_f(browser, server):
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+    page = ctx.new_page()
+    errors = []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    page.goto(server)
+    page.wait_for_timeout(400)
+    assert page.evaluate("document.documentElement.classList.contains('desk')")
+    page.click("#powerBtn")
+    page.wait_for_function("window.nomadState && nomadState().bufs > 0", timeout=15000)
+    page.keyboard.press("F8")
+    assert page.get_attribute("#tab-sons", "aria-selected") == "true"
+    page.keyboard.press("F2")
+    assert page.get_attribute("#tab-loops", "aria-selected") == "true"
+    # la grille de pads est à droite de l'écran
+    page.keyboard.press("F1")
+    assert page.locator("#pads").bounding_box()["x"] > 500
+    assert not errors, errors
+    ctx.close()
+
+
+def test_telephone_reste_en_portrait(app):
+    assert not app.evaluate("document.documentElement.classList.contains('desk')")
