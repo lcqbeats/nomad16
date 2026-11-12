@@ -53,3 +53,7 @@ Le code est rangé dans `src/` : `shell.html` (la page), `style.css`, et `js/` e
 Après une modification : `python3 tools/build.py` reconstruit `index.html` (la page publiée, à ne pas modifier à la main).
 Tests dans un navigateur : `pip install pytest playwright && python -m playwright install chromium`, puis `python -m pytest tests -q`.
 Ils tournent aussi tout seuls sur GitHub à chaque envoi (onglet Actions).
+
+### DIGGING en ligne
+
+Huit bacs sont cherchés en direct sur internet, sans rien garder dans l'appareil (il faut une connexion) : SOUL & GOSPEL, JAZZ 20'S, TANGO & LATINO et MONDE 78 viennent des 78 tours d'Internet Archive enregistrés entre 1900 et 1925, domaine public aux États-Unis, avec la photo réelle du disque ; BRÉSIL, INDE, ASIE et AFRIQUE & ORIENT viennent de Wikimedia Commons, en domaine public ou sous licence CC BY / CC BY-SA (citer l'auteur, indiqué sous le titre). Un morceau entier est téléchargé une fois puis découpé en extraits de 30 s. Une barre fine montre le chargement. Le bouton ×1 au-dessus du cercle de l'écran choisit la longueur de la prochaine boucle (×1, ×2, ×4, ÷2).

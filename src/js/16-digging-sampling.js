@@ -222,8 +222,11 @@
     // avant de la caisse
     g.fillStyle = "#5e3f23"; g.fillRect(0, H * 0.84, W, H * 0.16);
     g.fillStyle = "rgba(255,255,255,.06)"; g.fillRect(0, H * 0.84, W, 3);
-    g.fillStyle = "#f3e9d2"; g.font = `${H * 0.06}px Archivo Black, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
-    g.fillText(crate.collections[crateIdx].name + " · " + crate.collections[crateIdx].sub, W / 2, H * 0.92);
+    g.fillStyle = "#f3e9d2"; g.textAlign = "center"; g.textBaseline = "middle";
+    const foot = crate.collections[crateIdx].name + " · " + crate.collections[crateIdx].sub;
+    let fs = H * 0.06; g.font = `${fs}px Archivo Black, sans-serif`;
+    const fw = g.measureText(foot).width; if (fw > W * 0.94) { fs *= W * 0.94 / fw; g.font = `${fs}px Archivo Black, sans-serif`; }
+    g.fillText(foot, W / 2, H * 0.92);
     g.globalAlpha = 1;
   }
 
