@@ -507,6 +507,7 @@ html.flipped, html.flipped body { overflow: hidden; }
 :root.desk .tabs { grid-template-columns: repeat(3, 1fr); gap: 8px; }
 :root.desk .tabs .tab { grid-column: auto; padding: 12px 4px 16px; font-size: 11px; letter-spacing: .08em; background: linear-gradient(180deg, #3a3a3a, #262626); color: #e6e6e2; border-radius: 4px; box-shadow: 0 2px 0 #000, inset 0 1px 0 #555; position: relative; }
 :root.desk .tabs .tab:nth-child(6) { grid-column: auto; }
+:root.desk .tabs .tab { order: var(--dord, 0); }
 :root.desk .tabs .tab::after { content: attr(data-f); position: absolute; left: 0; right: 0; bottom: 3px; font-size: 8px; color: #8a8a86; letter-spacing: .1em; }
 :root.desk .tabs .tab[aria-selected="true"] { background: linear-gradient(180deg, #e9e9e6, #c9c9c5); color: #111; }
 :root.desk .tabs .tab[aria-selected="true"]::after { color: #555; }
@@ -3923,7 +3924,7 @@ registerProcessor('nomad-scratch',Scr);`;
     const kits = kitIndex.slice(0, 8).map(k => k.name);
     const sec = (title, body, open) => `<details class="gl"${open ? " open" : ""}><summary>${title}</summary><div>${body}</div></details>`;
     el.innerHTML = [
-      sec("PARTOUT", `<p><b>Pédale Sustain</b> : REC / superposition du looper.</p><p><b>Clavier</b> : joue l'instrument de SONS (ou le pad choisi, transposé) ; en mode ACCORDS, les touches graves jouent les accords ; dans SCRATCH, il transpose le disque.</p><p><b>Potards</b> : changent de rôle selon l'onglet (voir POTARDS).</p><p><b>Sur ordinateur</b> : touches & é " ' ( § è ! ç (ou F1 à F9) = onglets (PADS, LOOPER, SONG, FX, SP, DIGGING, SCRATCH, SONS, GUITARE), Espace = REC, Retour arrière = annuler.</p>`, true),
+      sec("PARTOUT", `<p><b>Pédale Sustain</b> : REC / superposition du looper.</p><p><b>Clavier</b> : joue l'instrument de SONS (ou le pad choisi, transposé) ; en mode ACCORDS, les touches graves jouent les accords ; dans SCRATCH, il transpose le disque.</p><p><b>Potards</b> : changent de rôle selon l'onglet (voir POTARDS).</p><p><b>Sur ordinateur</b> : touches & é " ' ( § è ! ç (ou F1 à F9) = onglets (PADS, LOOPER, SONS / DIGGING, SCRATCH, GUITARE / FX, SP, SONG, dans l'ordre de la grille), Espace = REC, Retour arrière = annuler.</p>`, true),
       sec("BOUTON CC (pads en CC, preset 3)", `<p class="glh">Banque A</p>${padGrid(["Play / stop looper", "Annuler", "Muet piste 1", "Muet piste 2", "Muet piste 3", "Muet piste 4", "Muet piste 5", "Muet piste 6"])}<p class="glh">Banque B</p>${padGrid(["Kit précédent", "Kit suivant", "Morceau ▶/■", "Séquence ◀", "Note repeat", "Séquence ▶", "Onglet suivant", "Guitare (onglet + entrée)"], 8)}`),
       sec("BOUTON PROG CHANGE (onglets et kits)", `<p>PROG CHANGE allumé, un pad, puis PROG CHANGE éteint pour rejouer.</p><p class="glh">Banque A : aller à l'onglet</p>${padGrid(["PADS", "LOOPER", "SONG", "FX", "SP", "DIGGING", "SCRATCH", "SONS"])}<p class="glh">Banque B : charger le kit</p>${padGrid(kits, 8)}<p>GUITARE : pad 16 en mode CC (allume l'entrée et ouvre l'onglet).</p>`),
       sec("PADS EN NOTES, SELON L'ONGLET", `<p><b>PADS, SONG, SP, GUITARE</b> : les 16 sons du kit (banque A = 1 à 8, banque B = 9 à 16).</p>
@@ -5546,7 +5547,10 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     const b = $("layoutBtn"); if (b) b.textContent = "AFFICHAGE : " + { auto: "AUTOMATIQUE", phone: "TÉLÉPHONE", desk: "ORDINATEUR" }[deskMode];
     if (typeof drawSpPads === "function" && tab === "sp") drawSpPads();
   }
-  TABS.forEach((t, i) => { const el = $("tab-" + t); if (el) el.dataset.f = ["&", "é", "\"", "'", "(", "§", "è", "!", "ç"][i] + "  ·  F" + (i + 1); });
+  // ordre de la grille 3×3 sur ordinateur : jouer (PADS LOOPER SONS), matière (DIGGING SCRATCH GUITARE), finition (FX SP SONG) ;
+  // la version téléphone garde son ordre
+  const DESK_TABS = ["play", "loops", "sons", "sample", "scratch", "guitar", "fx", "sp", "song"];
+  DESK_TABS.forEach((t, i) => { const el = $("tab-" + t); if (el) { el.dataset.f = ["&", "é", "\"", "'", "(", "§", "è", "!", "ç"][i] + "  ·  F" + (i + 1); el.style.setProperty("--dord", i); } });
   if (DESK_Q) { try { DESK_Q.addEventListener("change", applyDesk); } catch (e) { DESK_Q.addListener && DESK_Q.addListener(applyDesk); } }
   $("layoutBtn").addEventListener("click", () => { deskMode = { auto: "desk", desk: "phone", phone: "auto" }[deskMode]; store.set("layout", deskMode); applyDesk(); });
   // rangée du haut d'un clavier AZERTY (Mac) sans Maj : & é " ' ( § è ! ç = onglets 1 à 9 ; F1 à F9 marchent aussi
@@ -5555,7 +5559,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (e.metaKey || e.ctrlKey || e.altKey || e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") return;
     const m = /^F([1-9])$/.exec(e.key), a = AZ_TABS.indexOf(e.key);
     if (!m && a < 0) return;
-    const t = TABS[m ? +m[1] - 1 : a]; if (!t) return;
+    const t = DESK_TABS[m ? +m[1] - 1 : a]; if (!t) return;
     e.preventDefault(); setTab(t); lcd("lcdPad", "ONGLET", $("tab-" + t).textContent);
   });
   applyDesk();

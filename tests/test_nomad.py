@@ -455,10 +455,15 @@ def test_ordinateur_paysage_et_touches_f(browser, server):
     assert page.evaluate("document.documentElement.classList.contains('desk')")
     page.click("#powerBtn")
     page.wait_for_function("window.nomadState && nomadState().bufs > 0", timeout=15000)
-    page.keyboard.press("F8")
+    page.keyboard.press("F3")
     assert page.get_attribute("#tab-sons", "aria-selected") == "true"
     page.evaluate("window.dispatchEvent(new KeyboardEvent('keydown', { key: 'è' }))")
-    assert page.get_attribute("#tab-scratch", "aria-selected") == "true"
+    assert page.get_attribute("#tab-fx", "aria-selected") == "true"
+    page.keyboard.press("F9")
+    assert page.get_attribute("#tab-song", "aria-selected") == "true"
+    # la grille suit l'ordre jouer / matière / finition
+    xs = page.evaluate("['play','loops','sons','sample','scratch','guitar','fx','sp','song'].map(t => { const r = document.getElementById('tab-' + t).getBoundingClientRect(); return [Math.round(r.top), Math.round(r.left)]; })")
+    assert xs == sorted(xs), xs
     page.evaluate("window.dispatchEvent(new KeyboardEvent('keydown', { key: '&' }))")
     assert page.get_attribute("#tab-play", "aria-selected") == "true"
     page.keyboard.press("F2")
