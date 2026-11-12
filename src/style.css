@@ -533,3 +533,11 @@ html.flipped, html.flipped body { overflow: hidden; }
 .duckbar .btn.on { background: var(--red); color: #fff; }
 /* téléphone : numéro du pad PROG CHANGE sous chaque onglet */
 :root:not(.desk) .tabs .tab[data-pc]::after { content: attr(data-pc); display: block; font-size: 8px; line-height: 1; margin-top: 2px; opacity: .55; font-weight: 500; }
+/* écran : longueur de la prochaine boucle, au-dessus du cercle */
+.lcdlen { font: 600 11px/1 var(--font-lcd, monospace); color: var(--lcd-ink); background: transparent; border: 1px solid currentColor; border-radius: 4px; padding: 2px 4px; min-width: 34px; cursor: pointer; opacity: .75; }
+.lcdlen.on { opacity: 1; background: var(--lcd-ink); color: var(--lcd-bg, #0d1a12); }
+/* DIGGING : barre de chargement discrète (bac en ligne, disque, extrait) */
+.digload { height: 3px; border-radius: 2px; background: rgba(255,255,255,.08); overflow: hidden; margin: 6px 2px 0; }
+.digload i { display: block; height: 100%; width: 0; background: var(--green); transition: width .15s; }
+.digload.wait i { width: 35% !important; animation: digwait 1.1s ease-in-out infinite; }
+@keyframes digwait { from { transform: translateX(-100%); } to { transform: translateX(290%); } }

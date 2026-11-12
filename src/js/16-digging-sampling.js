@@ -23,34 +23,100 @@
       const b = document.createElement("button");
       b.type = "button"; b.className = "crate"; b.id = "crate" + i; b.setAttribute("role", "tab");
       b.innerHTML = `<i style="background:${c.color}"></i>${c.name}`;
-      b.addEventListener("click", () => { crateIdx = i; recIdx = 0; drawCrates(); showRecord(0); });
+      b.addEventListener("click", () => openCrate(i, 0));
       $("crates").appendChild(b);
     });
     const s = store.get("dig", { c: 0, r: 0 });
-    crateIdx = Math.min(s.c, crate.collections.length - 1); recIdx = Math.min(s.r, crate.collections[crateIdx].items.length - 1);
-    drawCrates(); showRecord(0);
+    openCrate(Math.min(s.c, crate.collections.length - 1), s.r);
+  }
+  // ---------- Bacs en ligne : Internet Archive (78 tours d'avant 1926, domaine public) et Wikimedia Commons (licences libres) ----------
+  // Rien n'est stocké dans l'appareil : la liste et les sons arrivent d'internet à chaque fois.
+  let crateTok = 0;
+  async function openCrate(i, r) {
+    crateIdx = i; const c = crate.collections[i], tok = ++crateTok;
+    drawCrates();
+    if (c.src && !c.items) {
+      $("digTitle").textContent = "on fouille le bac en ligne…"; $("digYear").textContent = ""; $("digArtist").textContent = ""; $("digCount").textContent = c.name;
+      digLoad(-1);
+      try { c.items = c.src === "ia" ? await iaList(c) : await wcList(c); } catch (e) { c.items = null; }
+      digLoad(null);
+      if (tok !== crateTok) return;
+      if (!c.items || !c.items.length) { c.items = null; $("digTitle").textContent = "bac en ligne injoignable (pas de connexion ?)"; return; }
+    }
+    recIdx = Math.max(0, Math.min(r || 0, curItems().length - 1)); showRecord(0);
+  }
+  async function iaList(c) {
+    const u = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent(c.q) + "&fl[]=identifier&fl[]=title&fl[]=creator&fl[]=date&sort[]=downloads+desc&rows=" + (c.rows || 120) + "&output=json";
+    const j = await (await fetch(u, { cache: "no-store" })).json(), seen = new Set(), drop = c.drop ? new RegExp(c.drop, "i") : null;
+    return j.response.docs.map(d => ({ id: d.identifier, t: String(d.title || "").replace(/\s+/g, " ").slice(0, 90), a: String([].concat(d.creator || "")[0] || "").split(",")[0].slice(0, 50), y: d.date ? +String(d.date).slice(0, 4) : undefined }))
+      .filter(x => { const k = x.t.toLowerCase(); if (!x.t || seen.has(k) || /none legible|unknown/i.test(x.t) || (drop && drop.test(x.t + " " + x.a))) return false; seen.add(k); return true; })
+      .map(x => ({ ...x, ia: 1, u: "https://archive.org/details/" + x.id, img: "https://archive.org/services/img/" + x.id, l: "domaine public" }));
+  }
+  async function wcList(c) {
+    const strip = h => String(h || "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim(), drop = c.drop ? new RegExp(c.drop, "i") : null;
+    const okLic = l => /^(CC0|Public domain|PD|CC BY(-SA)?)/i.test(l) && !/NC|ND/.test(l);
+    const res = await Promise.all(c.terms.map(term => fetch("https://commons.wikimedia.org/w/api.php?format=json&origin=*&" + new URLSearchParams({ action: "query", generator: "search", gsrsearch: term + " filetype:audio", gsrnamespace: 6, gsrlimit: 40, prop: "videoinfo", viprop: "url|mime|derivatives|extmetadata", viextmetadatafilter: "LicenseShortName|Artist|DateTimeOriginal|ObjectName|Categories" }), { cache: "no-store" }).then(r => r.json()).catch(() => ({}))));
+    const out = [], seen = new Set();
+    res.forEach(j => { if (!j.query) return; Object.values(j.query.pages).sort((a, b) => a.index - b.index).forEach(p => {
+      const vi = p.videoinfo && p.videoinfo[0]; if (!vi) return;
+      const m = vi.extmetadata || {}, lic = strip(m.LicenseShortName && m.LicenseShortName.value), cats = strip(m.Categories && m.Categories.value), a = strip(m.Artist && m.Artist.value).replace(/Unknown author/g, "");
+      const t = strip((m.ObjectName && m.ObjectName.value) || p.title.slice(5).replace(/\.\w+$/, "")).slice(0, 90);
+      if (seen.has(t) || !okLic(lic) || !(vi.duration >= 25 && vi.duration <= 330)) return;
+      if (/LL-Q|\.mid$|pronunciation|dialect|interview|soundfont|minus one|Nl-|wav\)?$/i.test(p.title) || /MacLeod/i.test(a) || (drop && drop.test(t + " " + a))) return;
+      if (!/music|song|musique|audio files of|recordings|78|jazz|blues|gospel|spiritual/i.test(cats)) return;
+      const mp3 = /mpeg/.test(vi.mime) ? vi.url : ((vi.derivatives || []).find(x => /mpeg/.test(x.type)) || {}).src; if (!mp3) return;
+      const dt = strip(m.DateTimeOriginal && m.DateTimeOriginal.value), y = (dt.match(/1[89]\d\d|20\d\d/) || [""])[0];
+      seen.add(t); out.push({ id: "wc-" + p.pageid, t, a: a.slice(0, 60), y: y ? +y : undefined, l: /public|PD|CC0/i.test(lic) ? "domaine public" : lic, u: "https://commons.wikimedia.org/?curid=" + p.pageid, m: mp3, d: vi.duration });
+    }); });
+    return out.slice(0, c.rows || 80);
+  }
+  // Barre de chargement discrète : p entre 0 et 1, -1 = on attend sans savoir combien, null = fini
+  function digLoad(p) {
+    const el = $("digLoad"); if (!el) return;
+    el.hidden = p === null; el.classList.toggle("wait", p === -1);
+    if (p !== null && p >= 0) el.firstElementChild.style.width = Math.round(p * 100) + "%";
+  }
+  async function fetchProgress(url) {
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const total = +r.headers.get("content-length") || 0;
+    if (!r.body || !total) { digLoad(-1); return r.arrayBuffer(); }
+    const rd = r.body.getReader(), parts = []; let got = 0;
+    for (;;) { const { done, value } = await rd.read(); if (done) break; parts.push(value); got += value.length; digLoad(Math.min(1, got / total)); }
+    const out = new Uint8Array(got); let o = 0; parts.forEach(p => { out.set(p, o); o += p.length; });
+    return out.buffer;
+  }
+  // Pochettes réelles : photo de l'étiquette du 78 tours (Internet Archive)
+  const covers = new Map();
+  function cover(it) {
+    if (!it.img) return null;
+    let im = covers.get(it.id);
+    if (!im) { im = new Image(); im.onload = () => { digDirty = true; }; im.src = it.img; covers.set(it.id, im); if (covers.size > 30) covers.delete(covers.keys().next().value); }
+    return im.complete && im.naturalWidth ? im : null;
   }
   function enterDig() { fitCanvas(dcv); fitCanvas(wcv); tcv.width = 240; tcv.height = 240; loadCrate(); drawWave(); }
   function drawCrates() { digDirty = true; crate.collections.forEach((c, i) => { $("crate" + i).classList.toggle("on", i === crateIdx); $("crate" + i).setAttribute("aria-selected", i === crateIdx); }); }
-  const curItems = () => crate ? crate.collections[crateIdx].items : [];
+  const curItems = () => crate ? crate.collections[crateIdx].items || [] : [];
   const curItem = () => curItems()[recIdx];
   function showRecord(dir) {
     if (!crate) return;
     const it = curItem(), c = crate.collections[crateIdx];
+    if (!it) return;
     $("digTitle").textContent = it.t;
     $("digYear").textContent = it.y || "";
     $("digArtist").textContent = it.a || "artiste inconnu";
-    $("digCount").textContent = `${c.name} · ${recIdx + 1}/${curItems().length}`;
+    $("digCount").textContent = `${c.name} · ${recIdx + 1}/${curItems().length}` + (it.l && it.l !== "domaine public" ? ` · ${it.l} (citer l'auteur)` : "");
     $("digLink").href = it.u;
+    $("digLink").textContent = it.ia ? "fiche sur Internet Archive" : it.m ? "fiche sur Wikimedia Commons" : "fiche à la Bibliothèque du Congrès";
     if (dir) digAnim = { dir, t0: performance.now() };
     digDirty = true;
     store.set("dig", { c: crateIdx, r: recIdx });
     if (tab === "sample") lcd("lcdPad", "BAC", `${c.name} · ${it.t}`);
   }
-  function flip(d) { if (!crate) return; const n = curItems().length; recIdx = (recIdx + d + n) % n; showRecord(d); }
+  function flip(d) { if (!crate) return; const n = curItems().length; if (!n) return; recIdx = (recIdx + d + n) % n; showRecord(d); }
   $("digPrev").addEventListener("click", () => flip(-1));
   $("digNext").addEventListener("click", () => flip(1));
-  $("digRand").addEventListener("click", () => { if (!crate) return; crateIdx = Math.floor(Math.random() * crate.collections.length); recIdx = Math.floor(Math.random() * curItems().length); drawCrates(); showRecord(1); });
+  $("digRand").addEventListener("click", () => { if (!crate) return; const i = Math.floor(Math.random() * crate.collections.length); openCrate(i, 0).then(() => { if (i !== crateIdx || !curItems().length) return; recIdx = Math.floor(Math.random() * curItems().length); showRecord(1); }); });
   dcv.addEventListener("pointerdown", e => { digDragX = e.clientX; });
   dcv.addEventListener("pointerup", e => { if (digDragX === null) return; const dx = e.clientX - digDragX; digDragX = null; if (Math.abs(dx) > 25) flip(dx < 0 ? 1 : -1); else pullRecord(); });
   dcv.addEventListener("pointercancel", () => { digDragX = null; });
@@ -65,6 +131,15 @@
     lines.forEach((l, i) => g.fillText(l, x, y + (i - (lines.length - 1) / 2) * lh));
   }
   function drawLabel(g, it, cx, cy, r, angle) {
+    const im = cover(it);
+    if (im) {
+      g.save(); g.translate(cx, cy); g.rotate(angle || 0);
+      g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.clip();
+      const s = Math.min(im.naturalWidth, im.naturalHeight);
+      g.drawImage(im, (im.naturalWidth - s) / 2, (im.naturalHeight - s) / 2, s, s, -r, -r, r * 2, r * 2);
+      g.beginPath(); g.arc(0, 0, r * 0.055, 0, Math.PI * 2); g.fillStyle = "#111"; g.fill();
+      g.restore(); return;
+    }
     const [bg, ink] = labelColors(it);
     g.save(); g.translate(cx, cy); g.rotate(angle || 0);
     g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fillStyle = bg; g.fill();
@@ -73,7 +148,7 @@
     g.font = `italic 700 ${r * 0.16}px ${"Playfair Display, Georgia, serif"}`;
     g.fillText(crate.collections[crateIdx].name.split(" ")[0], 0, -r * 0.62);
     g.font = `600 ${r * 0.075}px IBM Plex Mono, monospace`;
-    g.fillText("78 TOURS · DOMAINE PUBLIC", 0, -r * 0.42);
+    g.fillText(it.m ? String(it.l || "").toUpperCase() : "78 TOURS · DOMAINE PUBLIC", 0, -r * 0.42);
     g.font = `700 ${r * 0.13}px Archivo Black, sans-serif`;
     wrapText(g, it.t.toUpperCase(), 0, r * 0.25, r * 1.35, r * 0.15, 2);
     g.font = `${r * 0.09}px IBM Plex Mono, monospace`;
@@ -92,7 +167,7 @@
     for (let i = 0; i < 40; i++) { g.fillRect(-w / 2 + r() * w, -h / 2 + r() * h, r() * w * 0.2, 1 + r() * 2); }
     g.globalAlpha = 0.18; g.fillRect(-w / 2, -h / 2, w, 3); g.globalAlpha = 1;
     // trou central qui montre l'étiquette
-    const lr = w * 0.24;
+    const lr = it.img && cover(it) ? w * 0.36 : w * 0.24;
     g.beginPath(); g.arc(0, 0, lr * 1.12, 0, Math.PI * 2); g.fillStyle = "#121212"; g.fill();
     drawLabel(g, it, 0, 0, lr, (r() - 0.5) * 0.5);
     g.strokeStyle = "rgba(0,0,0,.35)"; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, lr * 1.12, 0, Math.PI * 2); g.stroke();
@@ -122,6 +197,7 @@
     g.fillStyle = grd; g.fillRect(0, 0, W, H);
     g.fillStyle = "rgba(0,0,0,.25)"; for (let i = 1; i < 4; i++) g.fillRect(0, H * i / 4, W, 2);
     const items = curItems(), n = items.length;
+    if (!n) return;
     const w = Math.min(W * 0.62, H * 0.86), x0 = (W - w) / 2;
     let p = 1, dir = 0;
     if (digAnim) { p = Math.min(1, (performance.now() - digAnim.t0) / 260); dir = digAnim.dir; if (p >= 1) digAnim = null; }
@@ -170,9 +246,10 @@
   }
   function pullRecord() {
     if (!crate) return;
-    const it = curItem();
+    const it = curItem(); if (!it) return;
     $("deck").hidden = false;
     $("faces").innerHTML = "";
+    if (!it.c) { loadOnline(it); return; }
     it.c.forEach((cl, i) => {
       const b = document.createElement("button");
       b.type = "button"; b.className = "face"; b.textContent = "extrait " + (i + 1) + " · " + cl[1];
@@ -186,18 +263,62 @@
     if (!ctx) return;
     stopTT();
     [...$("faces").children].forEach((b, j) => b.classList.toggle("on", j === i));
-    const file = it.c[i][0], url = crate.base + crate.collections.find(c => c.items.includes(it)).id + "/" + file + ".wav";
-    $("ttMsg").textContent = "on pose le disque…";
+    const file = it.c[i][0], url = crate.base + crate.collections.find(c => (c.items || []).includes(it)).id + "/" + file + ".wav";
+    $("ttMsg").textContent = "on pose le disque…"; digLoad(0);
     try {
       let buf = clipCache.get(url);
       if (!buf) {
-        const ab = await (await fetch(url)).arrayBuffer();
+        const ab = await fetchProgress(url);
         buf = await new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej));
         clipCache.set(url, buf); if (clipCache.size > 4) clipCache.delete(clipCache.keys().next().value);
       }
       setClip(buf, it, `${it.t} · extrait ${i + 1}`);
       $("ttMsg").textContent = Math.round(buf.duration) + " s";
     } catch (e) { $("ttMsg").textContent = "chargement impossible"; }
+    digLoad(null);
+  }
+  // Disque en ligne : on télécharge le morceau entier une fois, puis on le découpe en extraits de 30 s (sans re-télécharger)
+  let online = null, onlineTok = 0;
+  async function loadOnline(it) {
+    if (!ctx) return;
+    stopTT(); const tok = ++onlineTok;
+    $("faces").innerHTML = ""; $("ttMsg").textContent = "on pose le disque…"; digLoad(0);
+    try {
+      if (!online || online.id !== it.id) {
+        online = null;
+        let url = it.m;
+        if (it.ia) {
+          const md = await (await fetch("https://archive.org/metadata/" + it.id, { cache: "no-store" })).json();
+          const f = md.files.filter(f => /\.mp3$/i.test(f.name) && !/_sample|_64kb/i.test(f.name)).sort((a, b) => (+a.size || 0) - (+b.size || 0))[0];
+          if (!f) throw new Error("pas de mp3");
+          url = "https://archive.org/download/" + it.id + "/" + encodeURIComponent(f.name);
+        }
+        const ab = await fetchProgress(url);
+        if (tok !== onlineTok) return;
+        digLoad(-1); $("ttMsg").textContent = "décodage…";
+        const buf = await new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej));
+        if (tok !== onlineTok) return;
+        online = { id: it.id, buf };
+      }
+      const seg = 30, n = Math.max(1, Math.min(8, Math.ceil(online.buf.duration / seg - 0.2)));
+      for (let i = 0; i < n; i++) {
+        const b = document.createElement("button"), s0 = i * seg;
+        b.type = "button"; b.className = "face"; b.textContent = "extrait " + (i + 1) + " · " + Math.floor(s0 / 60) + ":" + String(s0 % 60).padStart(2, "0");
+        b.addEventListener("click", () => onlineFace(it, i, seg)); $("faces").appendChild(b);
+      }
+      onlineFace(it, 0, seg);
+    } catch (e) { if (tok === onlineTok) $("ttMsg").textContent = "chargement impossible (connexion ?)"; }
+    if (tok === onlineTok) digLoad(null);
+  }
+  function onlineFace(it, i, seg) {
+    if (!online) return;
+    stopTT();
+    [...$("faces").children].forEach((b, j) => b.classList.toggle("on", j === i));
+    const src = online.buf, a = Math.floor(i * seg * src.sampleRate), len = Math.min(src.length - a, Math.floor(seg * src.sampleRate));
+    const buf = ctx.createBuffer(src.numberOfChannels, len, src.sampleRate);
+    for (let c = 0; c < src.numberOfChannels; c++) buf.getChannelData(c).set(src.getChannelData(c).subarray(a, a + len));
+    setClip(buf, it, `${it.t} · extrait ${i + 1}`);
+    $("ttMsg").textContent = Math.round(buf.duration) + " s";
   }
   function setClip(buf, item, title) {
     clip = { buf, item, title, peaks: null };

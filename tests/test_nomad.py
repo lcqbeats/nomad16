@@ -382,6 +382,12 @@ def test_longueur_des_pistes(app):
     assert "×2" in app.inner_text("#lenNext")
     app.evaluate("nomadMidi([0xB0, 77, 0])")      # potard 8 du LOOPER : ÷2
     assert "÷2" in app.inner_text("#lenNext")
+    # bouton de l'écran au-dessus du cercle : ÷2 → ×1 → ×2 → ×4
+    seq = []
+    for _ in range(3):
+        app.click("#lcdLen"); seq.append(app.inner_text("#lcdLen"))
+    assert seq == ["×1", "×2", "×4"], seq
+    assert "×4" in app.inner_text("#lenNext")
 
 
 def test_prochaine_piste_demi_boucle(app):

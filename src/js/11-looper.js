@@ -258,6 +258,7 @@
   function drawLenBar() {
     if (!$("lenNext")) return;
     $("lenNext").textContent = "PROCHAINE : " + LEN_NAME[LP.nextLen];
+    $("lcdLen").textContent = LEN_NAME[LP.nextLen]; $("lcdLen").classList.toggle("on", LP.nextLen !== "1");
     const i = selLayer();
     $("lenSel").textContent = LP.layers.length ? "PISTE " + (i + 1) : "PISTE —";
   }
@@ -289,6 +290,8 @@
   function playLoops() { if (!ctx || LP.t0F === null) return; if (!LP.playing) playAll(); }
 
   $("btnRec").addEventListener("pointerdown", e => { e.preventDefault(); recPress(); });
+  // bouton de l'écran, au-dessus du cercle : ×1 → ×2 → ×4 → ÷2 → ×1
+  $("lcdLen").addEventListener("click", () => setNextLen({ 1: "2", 2: "4", 4: "h", h: "1" }[LP.nextLen]));
   $("lenNext").addEventListener("click", () => setNextLen(LEN_ORDER[(LEN_ORDER.indexOf(LP.nextLen) + 1) % LEN_ORDER.length]));
   $("lenSel").addEventListener("click", () => { if (!LP.layers.length) return; LP.sel = (selLayer() + 1) % LP.layers.length; drawLenBar(); });
   $("lenHalf").addEventListener("click", () => resizeLayer(selLayer(), "half"));

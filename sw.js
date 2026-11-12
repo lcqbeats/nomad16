@@ -32,7 +32,7 @@ function cacheFirst(req, cacheName) {
 
 self.addEventListener("fetch", e => {
   const req = e.request;
-  if (req.method !== "GET") return;
+  if (req.method !== "GET" || req.cache === "no-store") return;   // DIGGING : sons en ligne, jamais gardés dans l'appareil
   const url = new URL(req.url);
   const same = url.origin === self.location.origin;
   if (req.mode === "navigate" || (same && (url.pathname.endsWith(".html") || url.pathname.endsWith("/") || url.pathname.endsWith(".json")))) {
