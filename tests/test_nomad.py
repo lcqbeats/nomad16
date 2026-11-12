@@ -424,3 +424,22 @@ def test_famille_20syl(app):
         peak = max(loud(app, 40) for _ in range(4))
         app.evaluate("nomadMidi([0x80, 48, 0])")
         assert peak > 0.003, (i, peak)
+
+
+def test_mastering_export(app):
+    import struct
+    fake_loop(app, 2.0)
+    for i in range(3):
+        app.evaluate(f"nomadDbg.addLayer(nomadDbg.buffers[{i}], 1, 0)")
+    app.click("#tab-song")
+    assert "NATUREL" in app.inner_text("#mChar")
+    app.click("#mChar")                       # CHAUD
+    app.click("#tab-loops")
+    with app.expect_download(timeout=30000) as dl:
+        app.click("#expLoop")
+    data = open(dl.value.path(), "rb").read()
+    assert b"WAVE" in data[:12]
+    samples = struct.unpack("<%dh" % ((len(data) - 44) // 2), data[44:])
+    peak = max(abs(x) for x in samples) / 32768
+    assert 0.5 < peak <= 0.9, peak            # poussé vers le volume cible, plafond -1 dBFS
+    assert "master-chaud" in dl.value.suggested_filename

@@ -223,7 +223,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     const L = cycF(layers), mix = [new Float32Array(L), new Float32Array(L)];
     const stems = layers.map(l => {
       const out = [new Float32Array(L), new Float32Array(L)], LkL = l.k * LP.Lf, off = l.m * LP.Lf, g = l.vol;
-      for (let c = 0; c < 2; c++) { const s2 = l.buf.getChannelData(Math.min(c, l.buf.numberOfChannels - 1)); for (let p = 0; p < L; p++) { const x = s2[(((p - off) % LkL) + LkL) % LkL] * g; out[c][p] = x; if (!l.muted) mix[c][p] += x * loopBus.gain.value; } }
+      for (let c = 0; c < 2; c++) { const s2 = l.buf.getChannelData(Math.min(c, l.buf.numberOfChannels - 1)); for (let p = 0; p < L; p++) { const x = (s2[(((p - off) % LkL) + LkL) % LkL] || 0) * g; out[c][p] = x; if (!l.muted) mix[c][p] += x * loopBus.gain.value; } }
       return out;
     });
     if (norm) normalize(mix);
@@ -316,10 +316,11 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     btn.disabled = false; btn.textContent = "EXPORT MULTIPISTE + MPC";
   }
   $("expMpc").addEventListener("click", exportMpc);
-  $("songWav").addEventListener("click", () => {
+  $("songWav").addEventListener("click", async () => {
     const m = songMix();
     if (!m) { lcd("lcdPad", "SONG", LP.Lf ? "morceau vide ou trop long (12 min max)" : "enregistrez d'abord une boucle"); return; }
-    deliver(wavBlob(m, sr), `nomad16-morceau-${Math.round(curBpm())}bpm-${stamp()}.wav`);
+    const out = await masterMix(m);
+    deliver(wavBlob(out, sr), `nomad16-morceau-${Math.round(curBpm())}bpm${MASTER.char !== "none" ? "-master-" + MASTER.char : ""}-${stamp()}.wav`);
   });
   $("loopKit").addEventListener("click", loopToKit);
   $("projImport").addEventListener("click", () => $("projFile").click());

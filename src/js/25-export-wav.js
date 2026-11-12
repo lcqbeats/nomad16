@@ -15,9 +15,10 @@
     catch (e) { lcd("lcdPad", "EXPORT", "impossible ici : ouvrez la page dans Safari ou Chrome"); }
   }
   const stamp = () => new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
-  $("expLoop").addEventListener("click", () => {
+  $("expLoop").addEventListener("click", async () => {
     if (!LP.layers.length) { lcd("lcdPad", "EXPORT", "séquence vide, rien à exporter"); return; }
-    deliver(wavBlob(loopStems().mix, sr), `nomad16-sequence${SEQ_N[SQ.cur]}-${Math.round(curBpm())}bpm-${stamp()}.wav`);
+    const out = await masterMix(loopStems().mix);
+    deliver(wavBlob(out, sr), `nomad16-sequence${SEQ_N[SQ.cur]}-${Math.round(curBpm())}bpm${MASTER.char !== "none" ? "-master-" + MASTER.char : ""}-${stamp()}.wav`);
   });
   let sess = null;
   $("expSess").addEventListener("click", () => {
@@ -27,7 +28,7 @@
       $("expSess").textContent = "● SESSION"; $("expSess").classList.remove("on");
       const n = chunks.reduce((s2, c) => s2 + c[0].length, 0), L = new Float32Array(n), R = new Float32Array(n); let o = 0;
       chunks.forEach(c => { L.set(c[0], o); R.set(c[1], o); o += c[0].length; });
-      deliver(wavBlob([L, R], sr), `nomad16-session-${stamp()}.wav`);
+      masterMix([L, R]).then(out => deliver(wavBlob(out, sr), `nomad16-session${MASTER.char !== "none" ? "-master-" + MASTER.char : ""}-${stamp()}.wav`));
       return;
     }
     if (!hasWorklet) { lcd("lcdPad", "EXPORT", "enregistrement non disponible ici"); return; }
