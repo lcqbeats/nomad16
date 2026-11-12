@@ -250,8 +250,7 @@ def test_prog_change_onglets_et_kits(app):
     app.evaluate("nomadMidi([0xC0, 0])")
     assert app.get_attribute("#tab-play", "aria-selected") == "true"
     app.evaluate("nomadMidi([0xC0, 9])")      # banque B pad 2 = RZA
-    app.wait_for_timeout(800)
-    assert app.evaluate("nomadState().kit") == "rza"
+    app.wait_for_function("nomadState().kit === 'rza'", timeout=8000)
 
 
 def test_remplacer_le_son_d_un_pad(app):
