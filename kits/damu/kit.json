@@ -1,0 +1,88 @@
+{
+ "id": "damu",
+ "name": "DAMU THE FUDGEMUNK",
+ "style": "Washington D.C.",
+ "desc": "Jazzy et poussiéreux : balais, ride, caisse feutrée, craquements",
+ "pads": [
+  {
+   "name": "Kick",
+   "file": "01.wav",
+   "gain": 1.0
+  },
+  {
+   "name": "Snare",
+   "file": "02.wav",
+   "gain": 0.85
+  },
+  {
+   "name": "Hat",
+   "file": "03.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Open hat",
+   "file": "04.wav",
+   "gain": 0.45
+  },
+  {
+   "name": "Kick 2",
+   "file": "05.wav",
+   "gain": 1.0
+  },
+  {
+   "name": "Balai",
+   "file": "06.wav",
+   "gain": 0.7
+  },
+  {
+   "name": "Ride",
+   "file": "07.wav",
+   "gain": 0.45
+  },
+  {
+   "name": "Rim",
+   "file": "08.wav",
+   "gain": 0.75
+  },
+  {
+   "name": "Snare feutrée",
+   "file": "09.wav",
+   "gain": 0.75
+  },
+  {
+   "name": "Cloche ride",
+   "file": "10.wav",
+   "gain": 0.4
+  },
+  {
+   "name": "Shaker",
+   "file": "11.wav",
+   "gain": 0.42
+  },
+  {
+   "name": "Pédale HH",
+   "file": "12.wav",
+   "gain": 0.45
+  },
+  {
+   "name": "Tom bas",
+   "file": "13.wav",
+   "gain": 0.75
+  },
+  {
+   "name": "Tom haut",
+   "file": "14.wav",
+   "gain": 0.75
+  },
+  {
+   "name": "Triangle",
+   "file": "15.wav",
+   "gain": 0.35
+  },
+  {
+   "name": "Vinyle",
+   "file": "16.wav",
+   "gain": 0.55
+  }
+ ]
+}

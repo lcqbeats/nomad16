@@ -41,6 +41,30 @@
    "name": "PERCUS",
    "style": "Percussions",
    "desc": "Congas, bongos, cloches, shakers"
+  },
+  {
+   "id": "dilla",
+   "name": "J DILLA",
+   "style": "Detroit",
+   "desc": "Kick sourd, caisse claire douce doublée d'un clap, charleys lâches et voilés"
+  },
+  {
+   "id": "rza",
+   "name": "RZA",
+   "style": "Staten Island",
+   "desc": "Sale, désaccordé vers le bas, saturé, gong, épée et coups"
+  },
+  {
+   "id": "peterock",
+   "name": "PETE ROCK",
+   "style": "Mount Vernon",
+   "desc": "12 bits façon SP-1200, kick bombé, caisse claquante, tambourin, cuivres"
+  },
+  {
+   "id": "damu",
+   "name": "DAMU THE FUDGEMUNK",
+   "style": "Washington D.C.",
+   "desc": "Jazzy et poussiéreux : balais, ride, caisse feutrée, craquements"
   }
  ]
 }

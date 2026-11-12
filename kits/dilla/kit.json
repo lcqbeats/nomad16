@@ -1,0 +1,88 @@
+{
+ "id": "dilla",
+ "name": "J DILLA",
+ "style": "Detroit",
+ "desc": "Kick sourd, caisse claire douce doublée d'un clap, charleys lâches et voilés",
+ "pads": [
+  {
+   "name": "Kick",
+   "file": "01.wav",
+   "gain": 1.0
+  },
+  {
+   "name": "Snare",
+   "file": "02.wav",
+   "gain": 0.85
+  },
+  {
+   "name": "Hat",
+   "file": "03.wav",
+   "gain": 0.45
+  },
+  {
+   "name": "Open hat",
+   "file": "04.wav",
+   "gain": 0.42
+  },
+  {
+   "name": "Kick 2",
+   "file": "05.wav",
+   "gain": 1.0
+  },
+  {
+   "name": "Snare+clap",
+   "file": "06.wav",
+   "gain": 0.85
+  },
+  {
+   "name": "Shaker",
+   "file": "07.wav",
+   "gain": 0.42
+  },
+  {
+   "name": "Rim",
+   "file": "08.wav",
+   "gain": 0.75
+  },
+  {
+   "name": "Snare mat",
+   "file": "09.wav",
+   "gain": 0.75
+  },
+  {
+   "name": "Clap",
+   "file": "10.wav",
+   "gain": 0.7
+  },
+  {
+   "name": "Tamb",
+   "file": "11.wav",
+   "gain": 0.42
+  },
+  {
+   "name": "Ride",
+   "file": "12.wav",
+   "gain": 0.4
+  },
+  {
+   "name": "Kick sourd",
+   "file": "13.wav",
+   "gain": 1.0
+  },
+  {
+   "name": "Snap",
+   "file": "14.wav",
+   "gain": 0.55
+  },
+  {
+   "name": "Tom",
+   "file": "15.wav",
+   "gain": 0.75
+  },
+  {
+   "name": "Vinyle",
+   "file": "16.wav",
+   "gain": 0.5
+  }
+ ]
+}

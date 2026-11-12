@@ -306,6 +306,93 @@ def percus():
         ("Cabasa", perc("cabasa"), 0.5), ("Tamb", perc("tambourine"), 0.5), ("Triangle", perc("triangle"), 0.35), ("Vibraslap", perc("vibraslap", "71_127"), 0.5),
     ]
 
+
+# ---------- kits « producteurs » : sons CC0 (Virtuosity Drums) traités dans l'esprit de chacun ----------
+def s_hornstab(root=233.08, dur=0.75, bright=3200):
+    n = int(dur * SR); t = np.arange(n) / SR
+    fs = [root, root * 1.26, root * 1.5, root * 2]
+    s = sum(sum(np.sin(2 * np.pi * f * h * t + rng.random()) / h for h in range(1, 9)) for f in fs)
+    a = np.minimum(1, t / 0.012) * (0.55 * env(n, 0.09) + 0.45 * env(n, 0.45))
+    return sp1200(lp(sat(s * a, 1.8), bright, 2))
+
+def s_swoosh(dur=0.5):
+    n = int(dur * SR); t = np.arange(n) / SR; y = rng.normal(0, 1, n)
+    f = 400 + 6000 * np.sin(np.pi * t / dur) ** 2
+    out = np.zeros(n); blk = 256
+    for i in range(0, n, blk):
+        seg = y[i:i + blk]; fc = f[i]
+        out[i:i + blk] = bp(seg, max(100, fc * 0.7), min(SR * 0.45, fc * 1.3), 1)[: len(seg)]
+    return out * np.sin(np.pi * t / dur)
+
+def s_gong(f=82, dur=3.0):
+    n = int(dur * SR); t = np.arange(n) / SR
+    ps = [1, 1.47, 2.09, 2.56, 3.24, 4.1, 5.3]
+    s = sum(np.sin(2 * np.pi * f * p * t * (1 + 0.002 * np.sin(2 * np.pi * 3 * t))) * np.exp(-t / (dur * (0.5 - 0.05 * i))) for i, p in enumerate(ps))
+    s += bp(noise(dur, 0.08), 1500, 6000) * 0.4
+    return sat(lp(s, 5000), 1.3)
+
+def follow(x, ms=30):
+    e = lp(np.abs(x), 1000 / ms, 1); m = e.max()
+    return e / m if m > 0 else e
+
+def cut(x, sec, fade=0.04):
+    x = np.asarray(x)[: int(sec * SR)].copy(); nf = min(int(fade * SR), len(x) // 3)
+    if nf > 0: x[-nf:] *= np.linspace(1, 0, nf) ** 2
+    return x
+
+def dilla():
+    # Detroit, fin des années 90 : kick sourd et rond, caisse claire douce doublée d'un clap, charleys lâches et voilés
+    mpc = lambda x, c=9500: lp(comp(sat(x, 1.4), 0.4, 3, 0.003, 0.15), c, 2)
+    soft = lambda x: tape(x, 0.0008, 8500, 1.3)
+    kick = mpc(shelf_low(lp(mix((mic("kickmic", "kick_snoff"), 0.9), (mic("room", "kick_snoff"), 0.25)), 3500, 2), 90, 5), 6000)
+    snare = mpc(mix((mic("snaremic", "snare_offcenter"), 0.7), (mic("room", "snare_offcenter"), 0.35)))
+    clapsn = mpc(mix((snare, 0.8), (reverb(s_clap(), 0.4, 0.15)[: len(snare)] if len(s_clap()) > 0 else snare, 0.55)))
+    return [
+        ("Kick", kick, 1.0), ("Snare", snare, 0.85), ("Hat", cut(soft(lp(mic("mid", "hh_closed"), 7000)), 0.35), 0.45), ("Open hat", cut(soft(lp(mic("mid", "hh_half"), 7500)), 1.1), 0.42),
+        ("Rim", soft(mic("snaremic", "snare_crossstick")), 0.75), ("Snare+clap", clapsn, 0.85), ("Shaker", soft(perc("shaker")), 0.42), ("Kick 2", mpc(sat(mic("kickmic", "kick_snon"), 2.0), 5000), 1.0),
+        ("Snare mat", soft(mic("snaremic", "snare_muted")), 0.75), ("Clap", reverb(s_clap(), 0.6, 0.22), 0.7), ("Tamb", soft(perc("tambourine")), 0.42), ("Ride", soft(lp(mic("mid", "flatride_ride"), 6500)), 0.4),
+        ("Kick sourd", mpc(lp(mic("kickmic", "kick_snoff"), 900, 2), 1500), 1.0), ("Snap", s_snap(), 0.55), ("Tom", mpc(mic("mid", "ltom_center")), 0.75), ("Vinyle", s_vinylhit(), 0.5),
+    ]
+
+def rza():
+    # Staten Island 93 : sale, désaccordé vers le bas, saturé, bruit de fond, ambiance kung-fu
+    grit = lambda x, pr=0.89: sp1200(sat(pitch(x, pr), 3.0), 11, 22050)
+    def hiss(x):
+        return x + rng.normal(0, 1, len(x)) * 0.012 * np.abs(x).max() * follow(x, 80)
+    kick = grit(shelf_low(mix((mic("kickmic", "kick_snon"), 0.9), (mic("room", "kick_snon"), 0.5)), 110, 6))
+    snare = grit(mix((mic("mid", "snare_center"), 0.8), (mic("room", "snare_center"), 0.7)))
+    return [
+        ("Kick", hiss(kick), 1.0), ("Snare", hiss(snare), 0.95), ("Hat", grit(mic("room", "hh_closed")), 0.5), ("Open hat", grit(mic("room", "hh_open")), 0.45),
+        ("Rim", grit(mic("snaremic", "snare_rimshot")), 0.8), ("Snare sale", hiss(grit(mic("room", "snare_flam"), 0.84)), 0.9), ("Tamb", grit(perc("tambourine")), 0.5), ("Kick 2", hiss(grit(mic("kickmic", "kick_snoff"), 0.8)), 1.0),
+        ("Tom bas", grit(mic("room", "ltom_center"), 0.8), 0.8), ("Tom haut", grit(mic("room", "htom_center"), 0.85), 0.8), ("Crash", grit(mic("room", "crash_crash"), 0.85), 0.45), ("Gong", s_gong(), 0.55),
+        ("Épée", s_swoosh(), 0.55), ("Coup", sat(mix((osc_sweep(160, 55, 0.03, 0.4, 0.12), 1.0), (bp(noise(0.12, 0.03), 300, 3000), 0.6)), 2.5), 0.85), ("Cloche", grit(perc("cowbell"), 0.8), 0.5), ("Vinyle", s_vinylhit(), 0.55),
+    ]
+
+def peterock():
+    # Mount Vernon 94 : 12 bits façon SP-1200, kick filtré et bombé, caisse claire claquante, tambourin, cuivres
+    sp = lambda x: comp(sp1200(x, 12, 26040), 0.3, 4, 0.002, 0.1)
+    kick = sp(lp(shelf_low(sat(mix((mic("kickmic", "kick_snon"), 0.9), (mic("mid", "kick_snon"), 0.5)), 2.2), 100, 8), 2800, 2))
+    snare = sp(mix((mic("mid", "snare_rimshot"), 0.6), (mic("snaremic", "snare_center"), 0.6), (mic("room", "snare_center"), 0.35)))
+    return [
+        ("Kick", kick, 1.0), ("Snare", snare, 0.95), ("Hat", sp(mic("mid", "hh_closed")), 0.55), ("Open hat", sp(mic("mid", "hh_open")), 0.5),
+        ("Rim", sp(mic("snaremic", "snare_crossstick")), 0.8), ("Snare 2", sp(mic("snaremic", "snare_rimshot")), 0.9), ("Tamb", sp(perc("tambourine")), 0.6), ("Kick 2", sp(lp(sat(mic("kickmic", "kick_snoff"), 2.5), 1800, 2)), 1.0),
+        ("Cuivres", s_hornstab(233.08), 0.6), ("Cuivres 2", s_hornstab(311.13, 0.6, 3800), 0.6), ("Shaker", sp(perc("shaker")), 0.5), ("Ride", sp(mic("mid", "ride_ride")), 0.45),
+        ("Basse", sp(s_sub(33, 1.2)), 0.9), ("Conga", sp(perc("conga", "HitN_101")), 0.65), ("Tom", sp(mic("mid", "ltom_center")), 0.8), ("Vinyle", s_vinylhit(), 0.5),
+    ]
+
+def damu():
+    # Washington D.C. : jazzy, poussiéreux, caisse claire feutrée, ride et balais, craquements
+    def dust(x, amt=0.3):
+        c = crackle(len(x) / SR + 0.1, 22, 0.18)[: len(x)]
+        return x + c * np.abs(x).max() * amt * np.maximum(follow(x, 120), 0.05)
+    jz = lambda x: dust(sp1200(tape(x, 0.0012, 7500, 1.5), 12, 26040))
+    return [
+        ("Kick", jz(lp(mix((mic("kickmic", "kick_snoff"), 0.8), (mic("lofi", "kick_snoff"), 0.6)), 4000, 2)), 1.0), ("Snare", jz(mix((mic("mid", "snare_offcenter"), 0.7), (mic("lofi", "snare_offcenter"), 0.6))), 0.85), ("Hat", jz(mic("lofi", "hh_closed")), 0.5), ("Open hat", jz(mic("lofi", "hh_half")), 0.45),
+        ("Rim", jz(mic("lofi", "snare_crossstick")), 0.75), ("Balai", jz(lp(mic("mid", "snare_buzz"), 5000)), 0.7), ("Ride", jz(mic("mid", "ride_ride")), 0.45), ("Kick 2", jz(mic("lofi", "kick_snon")), 1.0),
+        ("Snare feutrée", jz(mic("lofi", "snare_muted")), 0.75), ("Cloche ride", jz(mic("mid", "ride_bell")), 0.4), ("Shaker", jz(perc("shaker")), 0.42), ("Pédale HH", jz(mic("mid", "hh_pedal")), 0.45),
+        ("Tom bas", jz(mic("lofi", "ltom_center")), 0.75), ("Tom haut", jz(mic("lofi", "htom_center")), 0.75), ("Triangle", jz(perc("triangle")), 0.35), ("Vinyle", tape(s_vinylhit(), 0, 7000, 1.2), 0.55),
+    ]
+
 KITS = [
     ("boombap", "BOOM BAP 93", "Boom bap", "Batterie acoustique passée au 12 bits, façon sampler années 90", boombap),
     ("lofi", "LO-FI CASSETTE", "Lo-fi", "Prise lo-fi, cassette, poussière de vinyle", lofi),
@@ -314,6 +401,10 @@ KITS = [
     ("acoustic", "ACOUSTIQUE", "Acoustique", "Batterie jazz naturelle, micros d'ensemble et de pièce", acoustic),
     ("neosoul", "NÉO SOUL", "Néo soul", "Kit serré et chaud, claquements de doigts, percussions", neosoul),
     ("percus", "PERCUS", "Percussions", "Congas, bongos, cloches, shakers", percus),
+    ("dilla", "J DILLA", "Detroit", "Kick sourd, caisse claire douce doublée d'un clap, charleys lâches et voilés", dilla),
+    ("rza", "RZA", "Staten Island", "Sale, désaccordé vers le bas, saturé, gong, épée et coups", rza),
+    ("peterock", "PETE ROCK", "Mount Vernon", "12 bits façon SP-1200, kick bombé, caisse claquante, tambourin, cuivres", peterock),
+    ("damu", "DAMU THE FUDGEMUNK", "Washington D.C.", "Jazzy et poussiéreux : balais, ride, caisse feutrée, craquements", damu),
 ]
 
 def main():
