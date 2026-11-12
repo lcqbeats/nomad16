@@ -38,6 +38,7 @@
       const c = new Float32Array(12);
       ls.forEach(l => { const x = chromaOf(l.buf); let s = 0; x.forEach(v => s += v); if (s > 0) for (let i = 0; i < 12; i++) c[i] += x[i] / s * (l.vol || 1); });
       TONAL.loop = ls.length ? keyOfChroma(c) : null;
+      try { drawKeyFromLoop(); } catch (e) {}
       if (TONAL.loop && tab === "loops") lcd("lcdLoop", "TONALITÉ", `${TONAL.loop.name} (estimée sur les boucles)`);
     }, 1200);
   }

@@ -631,3 +631,4 @@ html.flipped, html.flipped body { overflow: hidden; }
 .pk.b { height: 60%; background: linear-gradient(180deg, #2a2826, #0d0c0b); border-radius: 0 0 4px 4px; z-index: 2; box-shadow: 0 2px 3px rgba(0,0,0,.6); }
 .pk.w.on { background: linear-gradient(180deg, #ffd8c8, #f08a6b); }
 .pk.b.on { background: linear-gradient(180deg, #d92b2f, #8a1518); }
+#keyFromLoop { width: 100%; font-size: 11px; padding: 9px 4px; }

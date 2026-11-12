@@ -645,6 +645,7 @@ html.flipped, html.flipped body { overflow: hidden; }
 .pk.b { height: 60%; background: linear-gradient(180deg, #2a2826, #0d0c0b); border-radius: 0 0 4px 4px; z-index: 2; box-shadow: 0 2px 3px rgba(0,0,0,.6); }
 .pk.w.on { background: linear-gradient(180deg, #ffd8c8, #f08a6b); }
 .pk.b.on { background: linear-gradient(180deg, #d92b2f, #8a1518); }
+#keyFromLoop { width: 100%; font-size: 11px; padding: 9px 4px; }
 </style>
 </head>
 <body>
@@ -945,6 +946,7 @@ html.flipped, html.flipped body { overflow: hidden; }
         <span>TONALITÉ</span><span class="kv" id="keyVal">C</span><span id="keyMode" style="color:var(--muted);font-size:11px"></span>
         <button class="btn" id="keyUp" type="button" aria-label="Tonalité plus haut">▶</button>
       </div>
+      <button class="btn" id="keyFromLoop" type="button" disabled>CALER SUR LA BOUCLE : —</button>
       <div class="keybar">
         <button class="btn" id="octDown" type="button">OCTAVE −</button>
         <span class="kv" id="octVal">0</span>
@@ -3508,6 +3510,7 @@ registerProcessor('nomad-djloop',DjLoop);`;
     $("chordPanel").hidden = !chordMode;
     drawSonsFx();
     const st = STYLES[styleIdx];
+    drawKeyFromLoop();
     $("keyVal").textContent = NN[tonic] + (st.minor ? "m" : ""); $("keyMode").textContent = st.minor ? "mineur" : "majeur";
     $("styles").innerHTML = "";
     STYLES.forEach((s2, i) => { const b = document.createElement("button"); b.type = "button"; b.className = "stylebtn" + (i === styleIdx ? " on" : ""); b.textContent = s2.name; b.addEventListener("click", () => { styleIdx = i; store.set("style", i); drawSons(); }); $("styles").appendChild(b); });
@@ -3531,6 +3534,19 @@ registerProcessor('nomad-djloop',DjLoop);`;
   function setOct(o) { octShift = Math.max(-2, Math.min(2, o)); knobVals.sons[4] = (octShift + 2) / 4; $("octVal").textContent = (octShift > 0 ? "+" : "") + octShift; if (tab === "sons") drawKnobs(); }
   $("octDown").addEventListener("click", () => setOct(octShift - 1));
   $("octUp").addEventListener("click", () => setOct(octShift + 1));
+  // CALER SUR LA BOUCLE : la tonalité des accords suit celle estimée sur les boucles du looper.
+  // Si le style est majeur et la boucle mineure (ou l'inverse), on prend la relative : mêmes notes, le style ne change pas.
+  function drawKeyFromLoop() {
+    const b = $("keyFromLoop"); if (!b) return;
+    const k = TONAL.loop; b.disabled = !k;
+    b.textContent = k ? `CALER SUR LA BOUCLE : ${k.name}` : "CALER SUR LA BOUCLE : — (enregistrez une boucle)";
+  }
+  $("keyFromLoop").addEventListener("click", () => {
+    const k = TONAL.loop; if (!k) return;
+    const st = STYLES[styleIdx], t = st.minor === k.minor ? k.tonic : st.minor ? (k.tonic + 9) % 12 : (k.tonic + 3) % 12;
+    tonic = t; store.set("tonic", tonic); drawSons();
+    lcd("lcdPad", "TONALITÉ", st.minor === k.minor ? `calée sur la boucle : ${k.name}` : `boucle en ${k.name} · accords en ${NN[t]}${st.minor ? "m" : ""} (relative, mêmes notes)`);
+  });
   $("keyDown").addEventListener("click", () => { tonic = (tonic + 11) % 12; store.set("tonic", tonic); drawSons(); });
   $("keyUp").addEventListener("click", () => { tonic = (tonic + 1) % 12; store.set("tonic", tonic); drawSons(); });
 
@@ -4812,6 +4828,7 @@ registerProcessor('nomad-djloop',DjLoop);`;
       const c = new Float32Array(12);
       ls.forEach(l => { const x = chromaOf(l.buf); let s = 0; x.forEach(v => s += v); if (s > 0) for (let i = 0; i < 12; i++) c[i] += x[i] / s * (l.vol || 1); });
       TONAL.loop = ls.length ? keyOfChroma(c) : null;
+      try { drawKeyFromLoop(); } catch (e) {}
       if (TONAL.loop && tab === "loops") lcd("lcdLoop", "TONALITÉ", `${TONAL.loop.name} (estimée sur les boucles)`);
     }, 1200);
   }

@@ -15,7 +15,7 @@ Instruments de l'onglet SONS : échantillons libres (VCSL CC0, Splendid Grand Pi
 - Bank 2 (CC 28–35) : kit précédent, kit suivant, lecture/arrêt du morceau (SONG), séquence précédente, note repeat, séquence suivante, onglet suivant, entrée guitare (ouvre aussi l'onglet GUITARE).
 - PROG CHANGE, dans l'ordre des onglets (le numéro est écrit sous chaque onglet sur iPhone) : banque A = 1 PADS, 2 LOOPER, 3 SONS, 4 DIGGING, 5 SCRATCH, 6 GUITARE, 7 FX, 8 SP ; banque B = kits J DILLA, RZA, PETE ROCK, DAMU THE FUDGEMUNK, LO-FI CASSETTE, BOOM BAP 93, DUB STATION, ACOUSTIQUE (SONG n'a pas de raccourci).
 - FX : les 8 premières touches blanches du clavier (do à do) choisissent la cible : TOUT, LIVE, P1 à P6 ; les autres touches jouent SONS. Sur une piste, Sustain (ou ● IMPRIMER) grave les effets FX sur cette piste pendant un tour, en temps réel, comme dans SP.
-- Tonalité : l'écran affiche la tonalité estimée des boucles du looper (ex. « · Am » après le tempo) ; DIGGING affiche celle de l'extrait.
+- Tonalité : l'écran affiche la tonalité estimée des boucles du looper (ex. « · Am » après le tempo) ; DIGGING affiche celle de l'extrait ; dans SONS (mode ACCORDS), CALER SUR LA BOUCLE règle les accords dessus (relative si le style est d'un autre mode).
 - SONS : PIANO À L'ÉCRAN ouvre un clavier collé en bas (2 octaves sur iPhone, 3 sur ordinateur, glissé d'une touche à l'autre, octaves ◀ ▶) pour jouer des notes seules sans le MPK.
 - SONS : potard 6 = dose de l'effet (à fond = effet plein), potard 7 = attaque, potard 8 = strum ; la tonalité et le style se règlent en mode ACCORDS. SIDECHAIN (léger / fort) creuse SONS à chaque kick de la boucle ou des pads, comme le Mother Ducker de la MPC.
 

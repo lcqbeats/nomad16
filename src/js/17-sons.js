@@ -68,6 +68,7 @@
     $("chordPanel").hidden = !chordMode;
     drawSonsFx();
     const st = STYLES[styleIdx];
+    drawKeyFromLoop();
     $("keyVal").textContent = NN[tonic] + (st.minor ? "m" : ""); $("keyMode").textContent = st.minor ? "mineur" : "majeur";
     $("styles").innerHTML = "";
     STYLES.forEach((s2, i) => { const b = document.createElement("button"); b.type = "button"; b.className = "stylebtn" + (i === styleIdx ? " on" : ""); b.textContent = s2.name; b.addEventListener("click", () => { styleIdx = i; store.set("style", i); drawSons(); }); $("styles").appendChild(b); });
@@ -91,6 +92,19 @@
   function setOct(o) { octShift = Math.max(-2, Math.min(2, o)); knobVals.sons[4] = (octShift + 2) / 4; $("octVal").textContent = (octShift > 0 ? "+" : "") + octShift; if (tab === "sons") drawKnobs(); }
   $("octDown").addEventListener("click", () => setOct(octShift - 1));
   $("octUp").addEventListener("click", () => setOct(octShift + 1));
+  // CALER SUR LA BOUCLE : la tonalité des accords suit celle estimée sur les boucles du looper.
+  // Si le style est majeur et la boucle mineure (ou l'inverse), on prend la relative : mêmes notes, le style ne change pas.
+  function drawKeyFromLoop() {
+    const b = $("keyFromLoop"); if (!b) return;
+    const k = TONAL.loop; b.disabled = !k;
+    b.textContent = k ? `CALER SUR LA BOUCLE : ${k.name}` : "CALER SUR LA BOUCLE : — (enregistrez une boucle)";
+  }
+  $("keyFromLoop").addEventListener("click", () => {
+    const k = TONAL.loop; if (!k) return;
+    const st = STYLES[styleIdx], t = st.minor === k.minor ? k.tonic : st.minor ? (k.tonic + 9) % 12 : (k.tonic + 3) % 12;
+    tonic = t; store.set("tonic", tonic); drawSons();
+    lcd("lcdPad", "TONALITÉ", st.minor === k.minor ? `calée sur la boucle : ${k.name}` : `boucle en ${k.name} · accords en ${NN[t]}${st.minor ? "m" : ""} (relative, mêmes notes)`);
+  });
   $("keyDown").addEventListener("click", () => { tonic = (tonic + 11) % 12; store.set("tonic", tonic); drawSons(); });
   $("keyUp").addEventListener("click", () => { tonic = (tonic + 1) % 12; store.set("tonic", tonic); drawSons(); });
 
