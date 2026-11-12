@@ -19,7 +19,7 @@
     if (map[n]) map[n]();
   }
   function onCC(cc, v) {
-    if (cc === 64) { const down = v >= 64; if (down && !sustainDown) recPress(); sustainDown = down; return; }
+    if (cc === 64) { const down = v >= 64; if (down && !sustainDown) { if (tab === "sp") spPrintToggle(); else recPress(); } sustainDown = down; return; }
     if (cc >= 20 && cc <= 35) { if (v > 0) padCommand(cc); return; }
     const k = knobIndex(cc);
     if (k < 0) return;
@@ -95,6 +95,7 @@
       else if (isPad && idx >= 0 && idx < 16) playPad(idx, d2 / 127);
       else if (!isPad && tab === "scratch") scrKey(d1);
       else if (!isPad && tab === "fx") fxKey(d1);
+      else if (!isPad && tab === "sp") spKey(d1);
       else if (!isPad) playKey(d1, d2 / 127);
     } else if (type === 0x80 || (type === 0x90 && d2 === 0)) {
       const idx = d1 - BASE_NOTE;
@@ -144,7 +145,7 @@
   const KEYS = ["z","x","c","v","a","s","d","f","q","w","e","r","1","2","3","4"];
   window.addEventListener("keydown", e => {
     if (e.repeat || e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
-    if (e.key === " ") { e.preventDefault(); recPress(); return; }
+    if (e.key === " ") { e.preventDefault(); if (tab === "sp") spPrintToggle(); else recPress(); return; }
     if (e.key === "Backspace") { e.preventDefault(); undo(); return; }
     const i = KEYS.indexOf(e.key.toLowerCase());
     if (i >= 0) { select(i); playPad(i, 0.9); }

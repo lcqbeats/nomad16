@@ -71,7 +71,7 @@
     const k = /^\d$/.test(fxTarget) ? +fxTarget - 1 : -1;
     liveBus.connect(fxTarget === "all" || fxTarget === "live" ? master : fxDry);
     loopBus.connect(fxTarget === "all" ? master : fxDry);
-    LP.layers.forEach((l, i) => { if (i === k) { l.gain.connect(fxSolo); } else l.gain.connect(loopBus); if (l.an) l.gain.connect(l.an); });
+    LP.layers.forEach((l, i) => { if (typeof spLayer !== "undefined" && l === spLayer && sp) l.gain.connect(sp.lay); else if (i === k) { l.gain.connect(fxSolo); } else l.gain.connect(loopBus); if (l.an) l.gain.connect(l.an); });
   }
   let fxSolo = null;
   $("fxBpmDown").addEventListener("click", () => { manualBpm = Math.max(60, manualBpm - 1); drawFxBar(); applyFxKnob(3); });

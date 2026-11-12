@@ -25,6 +25,26 @@
    "gain": 0.45
   },
   {
+   "name": "Tom",
+   "file": "16.wav",
+   "gain": 0.75
+  },
+  {
+   "name": "Snap",
+   "file": "07.wav",
+   "gain": 0.6
+  },
+  {
+   "name": "Tamb",
+   "file": "11.wav",
+   "gain": 0.45
+  },
+  {
+   "name": "Rim",
+   "file": "08.wav",
+   "gain": 0.8
+  },
+  {
    "name": "Kick 2",
    "file": "05.wav",
    "gain": 1.0
@@ -35,44 +55,9 @@
    "gain": 0.8
   },
   {
-   "name": "Snap",
-   "file": "07.wav",
-   "gain": 0.6
-  },
-  {
-   "name": "Rim",
-   "file": "08.wav",
-   "gain": 0.8
-  },
-  {
-   "name": "Clap",
-   "file": "09.wav",
-   "gain": 0.7
-  },
-  {
    "name": "Shaker",
    "file": "10.wav",
    "gain": 0.45
-  },
-  {
-   "name": "Tamb",
-   "file": "11.wav",
-   "gain": 0.45
-  },
-  {
-   "name": "Ride",
-   "file": "12.wav",
-   "gain": 0.45
-  },
-  {
-   "name": "Conga",
-   "file": "13.wav",
-   "gain": 0.65
-  },
-  {
-   "name": "Bongo",
-   "file": "14.wav",
-   "gain": 0.65
   },
   {
    "name": "Triangle",
@@ -80,9 +65,24 @@
    "gain": 0.35
   },
   {
-   "name": "Tom",
-   "file": "16.wav",
-   "gain": 0.75
+   "name": "Conga",
+   "file": "13.wav",
+   "gain": 0.65
+  },
+  {
+   "name": "Clap",
+   "file": "09.wav",
+   "gain": 0.7
+  },
+  {
+   "name": "Ride",
+   "file": "12.wav",
+   "gain": 0.45
+  },
+  {
+   "name": "Bongo",
+   "file": "14.wav",
+   "gain": 0.65
   }
  ]
 }

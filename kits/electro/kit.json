@@ -20,14 +20,14 @@
    "gain": 0.55
   },
   {
-   "name": "Open hat",
-   "file": "04.wav",
-   "gain": 0.5
+   "name": "Cloche",
+   "file": "11.wav",
+   "gain": 0.55
   },
   {
-   "name": "Kick court",
-   "file": "05.wav",
-   "gain": 1.0
+   "name": "Sub",
+   "file": "14.wav",
+   "gain": 0.95
   },
   {
    "name": "Rim",
@@ -40,9 +40,29 @@
    "gain": 0.55
   },
   {
+   "name": "Tom haut",
+   "file": "10.wav",
+   "gain": 0.85
+  },
+  {
+   "name": "Kick court",
+   "file": "05.wav",
+   "gain": 1.0
+  },
+  {
    "name": "Clap",
    "file": "08.wav",
    "gain": 0.85
+  },
+  {
+   "name": "Open hat",
+   "file": "04.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Zap",
+   "file": "15.wav",
+   "gain": 0.6
   },
   {
    "name": "Tom bas",
@@ -50,34 +70,14 @@
    "gain": 0.85
   },
   {
-   "name": "Tom haut",
-   "file": "10.wav",
-   "gain": 0.85
-  },
-  {
-   "name": "Cloche",
-   "file": "11.wav",
-   "gain": 0.55
-  },
-  {
-   "name": "Cymbale",
-   "file": "12.wav",
-   "gain": 0.4
-  },
-  {
    "name": "Conga",
    "file": "13.wav",
    "gain": 0.7
   },
   {
-   "name": "Sub",
-   "file": "14.wav",
-   "gain": 0.95
-  },
-  {
-   "name": "Zap",
-   "file": "15.wav",
-   "gain": 0.6
+   "name": "Cymbale",
+   "file": "12.wav",
+   "gain": 0.4
   },
   {
    "name": "Hit",

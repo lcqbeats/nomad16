@@ -25,6 +25,26 @@
    "gain": 0.5
   },
   {
+   "name": "Tom bas",
+   "file": "09.wav",
+   "gain": 0.8
+  },
+  {
+   "name": "Rim",
+   "file": "08.wav",
+   "gain": 0.8
+  },
+  {
+   "name": "Guiro",
+   "file": "07.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Écho",
+   "file": "12.wav",
+   "gain": 0.75
+  },
+  {
    "name": "Steppers",
    "file": "05.wav",
    "gain": 1.0
@@ -35,44 +55,19 @@
    "gain": 0.85
   },
   {
-   "name": "Guiro",
-   "file": "07.wav",
-   "gain": 0.5
-  },
-  {
-   "name": "Rim",
-   "file": "08.wav",
-   "gain": 0.8
-  },
-  {
-   "name": "Tom bas",
-   "file": "09.wav",
-   "gain": 0.8
-  },
-  {
-   "name": "Tom haut",
-   "file": "10.wav",
-   "gain": 0.8
-  },
-  {
    "name": "Ride",
    "file": "11.wav",
    "gain": 0.45
   },
   {
-   "name": "Écho",
-   "file": "12.wav",
-   "gain": 0.75
+   "name": "Sirène",
+   "file": "14.wav",
+   "gain": 0.45
   },
   {
    "name": "Syndrum",
    "file": "13.wav",
    "gain": 0.6
-  },
-  {
-   "name": "Sirène",
-   "file": "14.wav",
-   "gain": 0.45
   },
   {
    "name": "Claves",
@@ -83,6 +78,11 @@
    "name": "Cloche",
    "file": "16.wav",
    "gain": 0.5
+  },
+  {
+   "name": "Tom haut",
+   "file": "10.wav",
+   "gain": 0.8
   }
  ]
 }

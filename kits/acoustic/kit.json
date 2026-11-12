@@ -25,6 +25,26 @@
    "gain": 0.5
   },
   {
+   "name": "Tom bas",
+   "file": "09.wav",
+   "gain": 0.8
+  },
+  {
+   "name": "Rim",
+   "file": "08.wav",
+   "gain": 0.75
+  },
+  {
+   "name": "Pédale HH",
+   "file": "07.wav",
+   "gain": 0.5
+  },
+  {
+   "name": "Crash",
+   "file": "13.wav",
+   "gain": 0.45
+  },
+  {
    "name": "Kick 2",
    "file": "05.wav",
    "gain": 1.0
@@ -33,26 +53,6 @@
    "name": "Rimshot",
    "file": "06.wav",
    "gain": 0.85
-  },
-  {
-   "name": "Pédale HH",
-   "file": "07.wav",
-   "gain": 0.5
-  },
-  {
-   "name": "Rim",
-   "file": "08.wav",
-   "gain": 0.75
-  },
-  {
-   "name": "Tom bas",
-   "file": "09.wav",
-   "gain": 0.8
-  },
-  {
-   "name": "Tom haut",
-   "file": "10.wav",
-   "gain": 0.8
   },
   {
    "name": "Ride",
@@ -65,14 +65,14 @@
    "gain": 0.45
   },
   {
-   "name": "Crash",
-   "file": "13.wav",
-   "gain": 0.45
+   "name": "Tom haut",
+   "file": "10.wav",
+   "gain": 0.8
   },
   {
-   "name": "Tamb",
-   "file": "14.wav",
-   "gain": 0.5
+   "name": "Roulement",
+   "file": "16.wav",
+   "gain": 0.75
   },
   {
    "name": "Shaker",
@@ -80,9 +80,9 @@
    "gain": 0.45
   },
   {
-   "name": "Roulement",
-   "file": "16.wav",
-   "gain": 0.75
+   "name": "Tamb",
+   "file": "14.wav",
+   "gain": 0.5
   }
  ]
 }

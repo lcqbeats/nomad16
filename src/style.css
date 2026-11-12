@@ -581,3 +581,12 @@ html.flipped, html.flipped body { overflow: hidden; }
 .spres .songhead { grid-template-columns: 1fr 1fr; margin-top: 8px; }
 :root.desk .spfx { height: 76px; }
 :root.desk .spfx b { font-size: 12px; }
+/* SP : cible et impression */
+.sptargets { display: grid; grid-template-columns: 1.4fr repeat(6, 1fr); gap: 4px; }
+.spt { border: 0; border-radius: 4px; padding: 8px 0; cursor: pointer; background: #1b1c1e; color: #a3a39d; font: 700 10px/1 var(--font-display, sans-serif); box-shadow: inset 0 0 0 1px #3a3b3e; }
+.spt.empty { opacity: .45; }
+.spt.on { background: #f08a2c; color: #1a0f05; box-shadow: none; }
+#view-sp .spprint { width: 100%; padding: 12px 4px; font-size: 11px; letter-spacing: .06em; }
+#view-sp .spprint.on { animation: sprec 0.9s ease-in-out infinite alternate; }
+@keyframes sprec { from { box-shadow: 0 0 0 2px #ff3b2a; } to { box-shadow: 0 0 14px 2px rgba(255,59,42,.8); } }
+#view-sp .spprint.idle { background: #3a3b3e; color: #a3a39d; }

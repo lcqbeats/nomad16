@@ -484,6 +484,42 @@ def test_sp_station_effets(app):
     assert app.locator("#spFxGrid .spfx.on").count() == 0
 
 
+def test_sp_imprime_sur_une_piste(app):
+    fake_loop(app, 0.6)
+    app.evaluate("""() => { const c = nomadDbg.sp.in.context, n = nomadDbg.LP.Lf, b = c.createBuffer(2, n, c.sampleRate);
+      for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * 0.3; }
+      nomadDbg.addLayer(b, 1, 0); }""")
+    rms = "(() => { const d = nomadDbg.LP.layers[0].buf.getChannelData(0); let s = 0; for (const v of d) s += v * v; return Math.sqrt(s / d.length); })()"
+    before = app.evaluate(rms)
+    app.click("#tab-sp")
+    app.evaluate("nomadMidi([0x99, 49, 100]); nomadMidi([0x89, 49, 0])")     # pad 14 : KILL AIGUS
+    app.evaluate("nomadMidi([0x90, 50, 100]); nomadMidi([0x80, 50, 0])")     # RÉ = P1
+    assert "on" in app.get_attribute(".spt[data-t='1']", "class")
+    app.evaluate("nomadMidi([0xB0, 64, 127]); nomadMidi([0xB0, 64, 0])")     # Sustain : imprimer
+    assert "ARRÊTER" in app.inner_text("#spPrint")
+    app.wait_for_function("!document.getElementById('spPrint').classList.contains('on')", timeout=6000)
+    after = app.evaluate(rms)
+    assert after < before * 0.6, (before, after)
+    assert app.locator("#spFxGrid .spfx.on").count() == 0       # effets remis à zéro
+    app.click("#undoBtn")
+    assert abs(app.evaluate(rms) - before) < 1e-6
+
+
+def test_sp_impression_bien_calee(app):
+    # sans effet, l'impression rend la même piste, au même endroit de la boucle
+    fake_loop(app, 0.5)
+    app.evaluate("""() => { const c = nomadDbg.sp.in.context, n = nomadDbg.LP.Lf, b = c.createBuffer(2, n, c.sampleRate);
+      for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < n; i++) d[i] = Math.sin(i / 7) * 0.2 + ((i % 4000) < 30 ? 0.5 : 0); }
+      nomadDbg.addLayer(b, 1, 0); window._orig = b.getChannelData(0).slice(); }""")
+    app.click("#tab-sp")
+    app.click(".spt[data-t='1']")
+    app.click("#spPrint")
+    app.wait_for_function("!document.getElementById('spPrint').classList.contains('on')", timeout=6000)
+    err = app.evaluate("(() => { const d = nomadDbg.LP.layers[0].buf.getChannelData(0); let e = 0, s = 0; for (let i = 0; i < d.length; i++) { e += (d[i] - _orig[i]) ** 2; s += _orig[i] ** 2; } return Math.sqrt(e / s); })()")
+    info = app.evaluate("(() => { const d = nomadDbg.LP.layers[0].buf.getChannelData(0), n = d.length; let best = [1e9, 0]; for (let lag = -300; lag <= 300; lag++) { let e = 0; for (let i = 0; i < n; i += 3) { const j = (i + lag + n) % n; e += (d[j] - _orig[i]) ** 2; } if (e < best[0]) best = [e, lag]; } let r = 0, o = 0; for (let i = 0; i < n; i++) { r += d[i] * d[i]; o += _orig[i] * _orig[i]; } return [best[1], Math.sqrt(r / o)]; })()")
+    assert abs(info[0]) <= 2 and abs(info[1] - 1) < 0.03, (err, info)   # calé à 2 échantillons près, même niveau
+
+
 def test_famille_20syl(app):
     app.click("#tab-sons")
     app.locator("#cats .cat", has_text="20SYL").click()

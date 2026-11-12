@@ -56,6 +56,7 @@
   // Sélecteur de séquences du LOOPER (toucher : choisir ; glisser une séquence sur une autre : copier)
   function drawSeqSel() {
     try { drawLenBar(); } catch (e) {}
+    try { spRoute(); drawSpTargets(); } catch (e) {}
     for (let i = 0; i < 8; i++) {
       const b = $("sq" + i); if (!b) return;
       b.classList.toggle("on", i === SQ.cur); b.classList.toggle("has", SQ.list[i].length > 0);

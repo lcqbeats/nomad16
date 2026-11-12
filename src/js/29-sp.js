@@ -39,7 +39,8 @@
     const n = ctx.sampleRate * 4, nb = ctx.createBuffer(2, n, ctx.sampleRate);
     for (let c = 0; c < 2; c++) { const d = nb.getChannelData(c); let lp = 0; for (let i = 0; i < n; i++) { lp = lp * 0.97 + (Math.random() * 2 - 1) * 0.03; d[i] = lp * 0.35; if (Math.random() < 0.00018) { const a = (Math.random() * 0.9 + 0.1) * (Math.random() < 0.5 ? -1 : 1); for (let k = 0; k < 40 && i + k < n; k++) d[i + k] += a * Math.exp(-k / 6); } } }
     // chaque effet : entrée → (chemin sec + chemin traité) → sortie ; « send » = le sec reste à fond (écho, réverbe)
-    const unit = (id, wetIn, wetOut, send) => { const u = { i: G(1), o: G(1), dry: G(1), wet: G(0), send }; u.i.connect(u.dry); u.dry.connect(u.o); u.i.connect(wetIn); wetOut.connect(u.wet); u.wet.connect(u.o); sp.u[id] = u; return u; };
+    // le chemin traité n'est branché que quand l'effet est allumé (économie de calcul)
+    const unit = (id, wetIn, wetOut, send) => { const u = { i: G(1), o: G(1), dry: G(1), wet: G(0), send, wi: wetIn, wc: false }; u.i.connect(u.dry); u.dry.connect(u.o); wetOut.connect(u.wet); u.wet.connect(u.o); sp.u[id] = u; return u; };
     let x;
     // saturation à niveau constant : on pousse avant la courbe, on rattrape après
     const DRV = () => { const pg = G(1), w = WS(makeDriveCurve(0)), po = G(1); pg.connect(w); w.connect(po); return { pg, w, po }; };
@@ -84,10 +85,14 @@
     // SP COMP : compresseur qui pompe + gain de rattrapage
     { const cp = ctx.createDynamicsCompressor(), mk = G(1); cp.knee.value = 2; cp.attack.value = 0.002; cp.connect(mk); x = unit("comp", cp, mk); Object.assign(x, { cp, mk }); }
     // chaîne
-    let prev = input;
+    // entrée : toute la sortie (cible TOUT) ou une seule piste du looper (sp.lay) ; sp.post = après les effets
+    sp.in = input; sp.head = G(1); sp.lay = G(1); sp.lay.connect(sp.head); sp.post = G(1);
+    input.connect(sp.head);
+    let prev = sp.head;
     SP_ORDER.forEach(id => { prev.connect(sp.u[id].i); prev = sp.u[id].o; });
+    sp.tap = prev; prev.connect(sp.post);
     sp.iso = [["lowshelf", 250], ["peaking", 1200], ["highshelf", 4200]].map(([type, f]) => BQ(type, f, type === "peaking" ? 0.7 : 0));
-    prev.connect(sp.iso[0]); sp.iso[0].connect(sp.iso[1]); sp.iso[1].connect(sp.iso[2]);
+    sp.post.connect(sp.iso[0]); sp.iso[0].connect(sp.iso[1]); sp.iso[1].connect(sp.iso[2]);
     sp.out = G(1); sp.iso[2].connect(sp.out); sp.out.connect(output);
     SP_FX.forEach((f, i) => spParams(i));
     for (let k = 3; k < 7; k++) applySp(k);
@@ -119,6 +124,8 @@
   function spMix(i) {
     if (!sp) return;
     const f = SP_FX[i], u = sp.u[f.id], on = f.on && SPX.on, t = ctx.currentTime, m = f.m;
+    if (on && !u.wc) { u.i.connect(u.wi); u.wc = true; }
+    if (!on && u.wc) { clearTimeout(u.off); u.off = setTimeout(() => { if (u.wc && !(f.on && SPX.on)) { try { u.i.disconnect(u.wi); } catch (e) {} u.wc = false; } }, 120); }
     u.wet.gain.setTargetAtTime(on ? m : 0, t, 0.015);
     u.dry.gain.setTargetAtTime(on && !u.send ? 1 - m : 1, t, 0.015);
     if (f.id === "loop" && u.node) u.node.port.postMessage({ on });
@@ -155,6 +162,80 @@
       if (!f.on) lcd("lcdPad", "SP", `${f.name} coupé`);
     }
   }
+  // ---------- Cible : toute la sortie ou une piste du looper ; impression des couleurs sur la piste ----------
+  SPX.target = "all"; let spLayer = null;
+  function spRoute() {
+    if (!sp) return;
+    const want = SPX.target === "all" ? null : LP.layers[+SPX.target - 1] || null;
+    if (want === spLayer) return;
+    spLayer = want;
+    try { sp.in.disconnect(sp.head); } catch (e) {} try { sp.in.disconnect(sp.post); } catch (e) {}
+    sp.in.connect(spLayer ? sp.post : sp.head);
+    sp.lay.gain.value = loopBus.gain.value;
+    if (typeof routeFx === "function" && fxDry) routeFx();
+    else LP.layers.forEach(l => { try { l.gain.disconnect(); } catch (e) {} l.gain.connect(l === spLayer ? sp.lay : loopBus); if (l.an) l.gain.connect(l.an); });
+  }
+  function setSpTarget(t) {
+    if (SPR.rec) return;
+    SPX.target = t; spRoute(); drawSpTargets();
+    lcd("lcdPad", "SP", t === "all" ? "les effets colorent toute la sortie" : (LP.layers[+t - 1] ? `effets sur la piste ${t} · Sustain = imprimer` : `piste ${t} vide`));
+  }
+  function drawSpTargets() {
+    document.querySelectorAll(".spt").forEach(b => { const t = b.dataset.t; b.classList.toggle("on", t === SPX.target); b.classList.toggle("empty", t !== "all" && !LP.layers[+t - 1]); });
+    const b = $("spPrint"); if (!b) return;
+    b.classList.toggle("on", !!SPR.rec); b.classList.toggle("idle", !SPR.rec && SPX.target === "all");
+    b.textContent = SPR.rec ? `■ ARRÊTER · ${Math.round(SPR.rec.pct * 100)} %` : SPX.target === "all" ? "● IMPRIMER : CHOISIS UNE PISTE" : `● IMPRIMER SUR LA PISTE ${SPX.target}`;
+  }
+  document.querySelectorAll(".spt").forEach(b => b.addEventListener("click", () => setSpTarget(b.dataset.t)));
+  // clavier de l'Akai dans SP : les 8 premières touches blanches = TOUT, P1 à P6
+  function spKey(note) {
+    const r = note - 48, pc = ((r % 12) + 12) % 12, wi = [0, 2, 4, 5, 7, 9, 11].indexOf(pc);
+    if (wi < 0) return;
+    const w = (((Math.floor(r / 12) * 7 + wi) % 14) + 14) % 14;
+    if (w < 7) setSpTarget(["all", "1", "2", "3", "4", "5", "6"][w]);
+  }
+  // Impression : un tour complet de la piste passe dans les effets et remplace la piste (annulable).
+  // Ce qu'on fait pendant le tour est gravé à cet endroit-là de la boucle (un effet sur un seul temps reste sur ce temps).
+  const SPR = { rec: null };
+  function spPrintToggle() {
+    if (SPR.rec) { spPrintStop(false); return; }
+    const l = spLayer;
+    if (!ctx || !hasWorklet || !sp) { lcd("lcdPad", "SP", "impression non disponible ici"); return; }
+    if (!l) { lcd("lcdPad", "SP", "choisis d'abord une piste (P1 à P6 ou touches blanches)"); return; }
+    if (!LP.playing) { lcd("lcdPad", "SP", "lance la boucle, puis imprime"); return; }
+    if (l.muted || l.vol < 0.05) { lcd("lcdPad", "SP", "la piste est coupée"); return; }
+    const Lk = l.k * LP.Lf, sF = LP.t0F + l.m * LP.Lf, startF = Math.ceil(ctx.currentTime * sr + 0.03 * sr);
+    const node = new AudioWorkletNode(ctx, "nomad-cap", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: "explicit" });
+    const silent = ctx.createGain(); silent.gain.value = 0; node.connect(silent); silent.connect(ctx.destination);
+    sp.tap.connect(node);
+    const rec = SPR.rec = { l, node, silent, Lk, sF, startF, endF: startF + Lk, L: new Float32Array(Lk), R: new Float32Array(Lk), pct: 0, last: 0 };
+    node.port.onmessage = e => {
+      const { f, l: a, r: b } = e.data;
+      for (let j = 0; j < a.length; j++) { const p = f + j; if (p < rec.startF || p >= rec.endF) continue; const i = (((p - rec.sF) % rec.Lk) + rec.Lk) % rec.Lk; rec.L[i] = a[j]; rec.R[i] = b[j]; }
+      rec.pct = Math.max(0, Math.min(1, (f + a.length - rec.startF) / rec.Lk));
+      if (performance.now() - rec.last > 150) { rec.last = performance.now(); drawSpTargets(); spSeg("PRT", Math.round(rec.pct * 100) + " %"); }
+      if (f + a.length >= rec.endF) spPrintStop(true);
+    };
+    drawSpTargets(); spSeg("PRT", "0 %");
+    lcd("lcdPad", "SP", `impression sur la piste ${LP.layers.indexOf(l) + 1} : joue tes effets pendant un tour`);
+  }
+  function spPrintStop(done) {
+    const rec = SPR.rec; if (!rec) return; SPR.rec = null;
+    try { sp.tap.disconnect(rec.node); } catch (e) {} rec.node.disconnect(); rec.node.port.onmessage = null;
+    const l = rec.l, i = LP.layers.indexOf(l);
+    if (!done || i < 0) { drawSpTargets(); spSeg("F" + String(SPX.cur + 1).padStart(2, "0"), SP_FX[SPX.cur].name); lcd("lcdPad", "SP", "impression annulée"); return; }
+    const g = l.vol * (sp.lay.gain.value || 1), sc = g > 0.05 ? 1 / g : 1;
+    const buf = ctx.createBuffer(2, rec.Lk, sr), d0 = buf.getChannelData(0), d1 = buf.getChannelData(1);
+    for (let j = 0; j < rec.Lk; j++) { d0[j] = rec.L[j] * sc; d1[j] = rec.R[j] * sc; }
+    const old = { buf: l.buf, k: l.k, m: l.m, notes: l.notes }, now = { buf, k: l.k, m: l.m, notes: l.notes };
+    const apply = st => { stopLayer(l); Object.assign(l, st); if (LP.playing) startLayer(l, ctx.currentTime + 0.005); drawSeqSel(); };
+    apply(now);
+    pushHist(`couleur SP piste ${i + 1}`, () => apply(old), () => apply(now));
+    spAllOff();
+    lcd("lcdPad", "SP", `piste ${i + 1} imprimée · effets remis à zéro (Retour arrière = annuler)`);
+    drawSpTargets();
+  }
+  $("spPrint").addEventListener("click", spPrintToggle);
   function spAllOff() { SP_FX.forEach((f, i) => { f.on = false; spMix(i); }); drawSpFx(); lcd("lcdPad", "SP", "tous les effets coupés"); }
   const spFxEls = [];
   [12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3].forEach(i => {
@@ -203,7 +284,7 @@
   async function rsStop() {
     const rec = RS.rec; if (!rec) return; RS.rec = null;
     try { mixOut.disconnect(rec.node); } catch (e) {} rec.node.disconnect(); rec.node.port.onmessage = null;
-    $("spRec").textContent = "● IMPRIMER"; $("spRec").classList.remove("on"); spSeg("F" + String(SPX.cur + 1).padStart(2, "0"), SP_FX[SPX.cur].name);
+    $("spRec").textContent = "● ENREGISTRER"; $("spRec").classList.remove("on"); spSeg("F" + String(SPX.cur + 1).padStart(2, "0"), SP_FX[SPX.cur].name);
     if (!rec.chunks.length) { drawSpPads(); return; }
     let a = rec.startF ?? rec.chunks[0][0], b = rec.endF ?? (rec.chunks[rec.chunks.length - 1][0] + 1024);
     const f0 = rec.chunks[0][0], n = b - a; if (n < sr * 0.05) { drawSpPads(); return; }

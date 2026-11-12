@@ -56,7 +56,7 @@ Ils tournent aussi tout seuls sur GitHub à chaque envoi (onglet Actions).
 
 ### SP : station de couleur
 
-L'onglet SP colore toute la sortie, façon sampler de poche. 16 effets sur les 16 pads (à l'écran et sur l'Akai) : banque A = SP COMP, VINYL SIM, CASSETTE, LO-FI, FILTRE + DRIVE, PASSE-HAUT, RADIO, SATURATION ; banque B = LOOPER DJ, ÉCHO, RÉVERBE, SLICER, KILL BASSES, KILL AIGUS, FLANGER, DÉSACCORD. Appui court = l'effet reste allumé, appui long = seulement tant qu'on tient ; plusieurs effets peuvent tourner ensemble. Potards : 1 et 2 règlent l'effet touché en dernier, 3 son dosage, 4 à 6 l'isolateur, 7 la sortie. Les réglages de chaque effet sont gardés. Le rééchantillonnage reste disponible, replié en bas : IMPRIMER SUR UN PAD.
+L'onglet SP colore toute la sortie, façon sampler de poche. 16 effets sur les 16 pads (à l'écran et sur l'Akai) : banque A = SP COMP, VINYL SIM, CASSETTE, LO-FI, FILTRE + DRIVE, PASSE-HAUT, RADIO, SATURATION ; banque B = LOOPER DJ, ÉCHO, RÉVERBE, SLICER, KILL BASSES, KILL AIGUS, FLANGER, DÉSACCORD. Appui court = l'effet reste allumé, appui long = seulement tant qu'on tient ; plusieurs effets peuvent tourner ensemble. Potards : 1 et 2 règlent l'effet touché en dernier, 3 son dosage, 4 à 6 l'isolateur, 7 la sortie. Les réglages de chaque effet sont gardés. Cible : TOUT (toute la sortie) ou P1 à P6 (une seule piste du looper ; touches blanches DO à LA). Dans SP, Sustain (ou ● IMPRIMER) grave les effets sur la piste choisie pendant un tour complet, en temps réel : un effet joué sur un seul temps ne reste que là. Ensuite les effets se remettent à zéro ; Retour arrière annule. Le rééchantillonnage vers un pad reste disponible, replié en bas : ENVOYER SUR UN PAD.
 
 ### DIGGING en ligne
 

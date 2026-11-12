@@ -595,6 +595,15 @@ html.flipped, html.flipped body { overflow: hidden; }
 .spres .songhead { grid-template-columns: 1fr 1fr; margin-top: 8px; }
 :root.desk .spfx { height: 76px; }
 :root.desk .spfx b { font-size: 12px; }
+/* SP : cible et impression */
+.sptargets { display: grid; grid-template-columns: 1.4fr repeat(6, 1fr); gap: 4px; }
+.spt { border: 0; border-radius: 4px; padding: 8px 0; cursor: pointer; background: #1b1c1e; color: #a3a39d; font: 700 10px/1 var(--font-display, sans-serif); box-shadow: inset 0 0 0 1px #3a3b3e; }
+.spt.empty { opacity: .45; }
+.spt.on { background: #f08a2c; color: #1a0f05; box-shadow: none; }
+#view-sp .spprint { width: 100%; padding: 12px 4px; font-size: 11px; letter-spacing: .06em; }
+#view-sp .spprint.on { animation: sprec 0.9s ease-in-out infinite alternate; }
+@keyframes sprec { from { box-shadow: 0 0 0 2px #ff3b2a; } to { box-shadow: 0 0 14px 2px rgba(255,59,42,.8); } }
+#view-sp .spprint.idle { background: #3a3b3e; color: #a3a39d; }
 </style>
 </head>
 <body>
@@ -722,6 +731,10 @@ html.flipped, html.flipped body { overflow: hidden; }
 
   <section class="view stack" id="view-sp" hidden>
     <div class="spface"><div class="spdisp" aria-live="polite"><b id="spSeg">P01</b><span id="spSegSub">RÉÉCH.</span></div><div class="spbrand">NOMAD<small>SAMPLING STATION</small></div></div>
+    <div class="sptargets" role="group" aria-label="Cible des effets SP">
+      <button class="spt on" type="button" data-t="all">TOUT</button><button class="spt" type="button" data-t="1">P1</button><button class="spt" type="button" data-t="2">P2</button><button class="spt" type="button" data-t="3">P3</button><button class="spt" type="button" data-t="4">P4</button><button class="spt" type="button" data-t="5">P5</button><button class="spt" type="button" data-t="6">P6</button>
+    </div>
+    <button class="btn rec spprint" id="spPrint" type="button">● IMPRIMER : CHOISIS UNE PISTE</button>
     <h4 class="sphead"><span>EFFETS · PADS 1 À 16</span></h4>
     <div class="spfxgrid" id="spFxGrid"></div>
     <div class="songhead spbar">
@@ -729,16 +742,16 @@ html.flipped, html.flipped body { overflow: hidden; }
       <button class="btn" id="spBypass" type="button">EFFETS SP : OUI</button>
     </div>
     <details class="spres">
-      <summary>IMPRIMER SUR UN PAD (rééchantillonnage)</summary>
+      <summary>ENVOYER SUR UN PAD (rééchantillonnage)</summary>
       <div class="dpads" id="spPads" aria-label="Pad de destination"></div>
       <div class="songhead">
-        <button class="btn rec" id="spRec" type="button">● IMPRIMER</button>
+        <button class="btn rec" id="spRec" type="button">● ENREGISTRER</button>
         <button class="btn" id="spSync" type="button">CALÉ : BOUCLE</button>
       </div>
       <p class="songinfo" id="spInfo">Destination : pad 1</p>
       <p class="note help">Enregistre tout ce qui sort de NOMAD, effets compris, dans le pad choisi : une boucle devient un son de pad qu'on peut rejouer, pitcher ou découper. CALÉ : BOUCLE enregistre exactement un cycle ; LIBRE jusqu'au second appui. Le kit modifié est gardé sous le nom « … · RÉÉCH ».</p>
     </details>
-    <p class="note help">Chaque pad allume un effet : appui court = il reste allumé (un autre appui l'éteint), appui long = seulement tant qu'on tient. Plusieurs effets peuvent tourner ensemble ; ils colorent toute la sortie. Potards : 1 et 2 règlent l'effet touché en dernier, 3 son dosage, 4 à 6 l'isolateur (graves, médiums, aigus), 7 le volume de sortie. Les 16 pads de l'Akai déclenchent les mêmes effets.</p>
+    <p class="note help">Cible : TOUT colore toute la sortie ; P1 à P6 n'envoie que cette piste du looper dans les effets (touches blanches du clavier : DO = TOUT, RÉ à LA = P1 à P6). Sustain (ou ● IMPRIMER) grave les effets sur la piste pendant un tour complet, en temps réel : un effet lancé sur un seul temps ne reste que sur ce temps. Ensuite les effets se remettent à zéro, prêts pour une autre piste ; Retour arrière annule. Chaque pad allume un effet : appui court = il reste allumé (un autre appui l'éteint), appui long = seulement tant qu'on tient. Plusieurs effets peuvent tourner ensemble ; ils colorent toute la sortie. Potards : 1 et 2 règlent l'effet touché en dernier, 3 son dosage, 4 à 6 l'isolateur (graves, médiums, aigus), 7 le volume de sortie. Les 16 pads de l'Akai déclenchent les mêmes effets.</p>
   </section>
 
   <section class="view stack" id="view-song" hidden>
@@ -1714,6 +1727,7 @@ registerProcessor('nomad-djloop',DjLoop);`;
   // Sélecteur de séquences du LOOPER (toucher : choisir ; glisser une séquence sur une autre : copier)
   function drawSeqSel() {
     try { drawLenBar(); } catch (e) {}
+    try { spRoute(); drawSpTargets(); } catch (e) {}
     for (let i = 0; i < 8; i++) {
       const b = $("sq" + i); if (!b) return;
       b.classList.toggle("on", i === SQ.cur); b.classList.toggle("has", SQ.list[i].length > 0);
@@ -2209,7 +2223,7 @@ registerProcessor('nomad-djloop',DjLoop);`;
     const k = /^\d$/.test(fxTarget) ? +fxTarget - 1 : -1;
     liveBus.connect(fxTarget === "all" || fxTarget === "live" ? master : fxDry);
     loopBus.connect(fxTarget === "all" ? master : fxDry);
-    LP.layers.forEach((l, i) => { if (i === k) { l.gain.connect(fxSolo); } else l.gain.connect(loopBus); if (l.an) l.gain.connect(l.an); });
+    LP.layers.forEach((l, i) => { if (typeof spLayer !== "undefined" && l === spLayer && sp) l.gain.connect(sp.lay); else if (i === k) { l.gain.connect(fxSolo); } else l.gain.connect(loopBus); if (l.an) l.gain.connect(l.an); });
   }
   let fxSolo = null;
   $("fxBpmDown").addEventListener("click", () => { manualBpm = Math.max(60, manualBpm - 1); drawFxBar(); applyFxKnob(3); });
@@ -4197,7 +4211,7 @@ registerProcessor('nomad-djloop',DjLoop);`;
     const kits = PC_KITS.map(id => (kitIndex.find(k => k.id === id) || { name: id }).name);
     const sec = (title, body, open) => `<details class="gl"${open ? " open" : ""}><summary>${title}</summary><div>${body}</div></details>`;
     el.innerHTML = [
-      sec("PARTOUT", `<p><b>Pédale Sustain</b> : REC / superposition du looper.</p><p><b>Clavier</b> : joue l'instrument de SONS (ou le pad choisi, transposé) ; en mode ACCORDS, les touches graves jouent les accords ; dans SCRATCH, il transpose le disque ; dans FX, les 8 premières touches blanches (do à do) choisissent la cible : TOUT, LIVE, P1 à P6.</p><p><b>Potards</b> : changent de rôle selon l'onglet (voir POTARDS).</p><p><b>Sur ordinateur</b> : touches & é " ' ( § è ! ç (ou F1 à F9) = onglets (PADS, LOOPER, SONS / DIGGING, SCRATCH, GUITARE / FX, SP, SONG, dans l'ordre de la grille), Espace = REC, Retour arrière = annuler.</p>`, true),
+      sec("PARTOUT", `<p><b>Pédale Sustain</b> : REC / superposition du looper ; dans SP, imprime les effets sur la piste choisie.</p><p><b>Clavier</b> : joue l'instrument de SONS (ou le pad choisi, transposé) ; en mode ACCORDS, les touches graves jouent les accords ; dans SCRATCH, il transpose le disque ; dans FX, les 8 premières touches blanches (do à do) choisissent la cible : TOUT, LIVE, P1 à P6 ; dans SP, les 7 premières : TOUT, P1 à P6.</p><p><b>Potards</b> : changent de rôle selon l'onglet (voir POTARDS).</p><p><b>Sur ordinateur</b> : touches & é " ' ( § è ! ç (ou F1 à F9) = onglets (PADS, LOOPER, SONS / DIGGING, SCRATCH, GUITARE / FX, SP, SONG, dans l'ordre de la grille), Espace = REC, Retour arrière = annuler.</p>`, true),
       sec("BOUTON CC (pads en CC, preset 3)", `<p class="glh">Banque A</p>${padGrid(["Play / stop looper", "Annuler", "Muet piste 1", "Muet piste 2", "Muet piste 3", "Muet piste 4", "Muet piste 5", "Muet piste 6"])}<p class="glh">Banque B</p>${padGrid(["Kit précédent", "Kit suivant", "Morceau ▶/■", "Séquence ◀", "Note repeat", "Séquence ▶", "Onglet suivant", "Guitare (onglet + entrée)"], 8)}`),
       sec("BOUTON PROG CHANGE (onglets et kits)", `<p>PROG CHANGE allumé, un pad, puis PROG CHANGE éteint pour rejouer.</p><p>Les numéros sous les onglets de l'iPhone rappellent le pad.</p><p class="glh">Banque A : aller à l'onglet</p>${padGrid(["PADS", "LOOPER", "SONS", "DIGGING", "SCRATCH", "GUITARE", "FX", "SP"])}<p class="glh">Banque B : charger le kit</p>${padGrid(kits, 8)}<p>Pad 16 en mode CC : allume l'entrée guitare et ouvre l'onglet.</p>`),
       sec("PADS EN NOTES, SELON L'ONGLET", `<p><b>PADS, SONG, SP, GUITARE</b> : les 16 sons du kit (banque A = 1 à 8, banque B = 9 à 16).</p>
@@ -5046,7 +5060,8 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     const n = ctx.sampleRate * 4, nb = ctx.createBuffer(2, n, ctx.sampleRate);
     for (let c = 0; c < 2; c++) { const d = nb.getChannelData(c); let lp = 0; for (let i = 0; i < n; i++) { lp = lp * 0.97 + (Math.random() * 2 - 1) * 0.03; d[i] = lp * 0.35; if (Math.random() < 0.00018) { const a = (Math.random() * 0.9 + 0.1) * (Math.random() < 0.5 ? -1 : 1); for (let k = 0; k < 40 && i + k < n; k++) d[i + k] += a * Math.exp(-k / 6); } } }
     // chaque effet : entrée → (chemin sec + chemin traité) → sortie ; « send » = le sec reste à fond (écho, réverbe)
-    const unit = (id, wetIn, wetOut, send) => { const u = { i: G(1), o: G(1), dry: G(1), wet: G(0), send }; u.i.connect(u.dry); u.dry.connect(u.o); u.i.connect(wetIn); wetOut.connect(u.wet); u.wet.connect(u.o); sp.u[id] = u; return u; };
+    // le chemin traité n'est branché que quand l'effet est allumé (économie de calcul)
+    const unit = (id, wetIn, wetOut, send) => { const u = { i: G(1), o: G(1), dry: G(1), wet: G(0), send, wi: wetIn, wc: false }; u.i.connect(u.dry); u.dry.connect(u.o); wetOut.connect(u.wet); u.wet.connect(u.o); sp.u[id] = u; return u; };
     let x;
     // saturation à niveau constant : on pousse avant la courbe, on rattrape après
     const DRV = () => { const pg = G(1), w = WS(makeDriveCurve(0)), po = G(1); pg.connect(w); w.connect(po); return { pg, w, po }; };
@@ -5091,10 +5106,14 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     // SP COMP : compresseur qui pompe + gain de rattrapage
     { const cp = ctx.createDynamicsCompressor(), mk = G(1); cp.knee.value = 2; cp.attack.value = 0.002; cp.connect(mk); x = unit("comp", cp, mk); Object.assign(x, { cp, mk }); }
     // chaîne
-    let prev = input;
+    // entrée : toute la sortie (cible TOUT) ou une seule piste du looper (sp.lay) ; sp.post = après les effets
+    sp.in = input; sp.head = G(1); sp.lay = G(1); sp.lay.connect(sp.head); sp.post = G(1);
+    input.connect(sp.head);
+    let prev = sp.head;
     SP_ORDER.forEach(id => { prev.connect(sp.u[id].i); prev = sp.u[id].o; });
+    sp.tap = prev; prev.connect(sp.post);
     sp.iso = [["lowshelf", 250], ["peaking", 1200], ["highshelf", 4200]].map(([type, f]) => BQ(type, f, type === "peaking" ? 0.7 : 0));
-    prev.connect(sp.iso[0]); sp.iso[0].connect(sp.iso[1]); sp.iso[1].connect(sp.iso[2]);
+    sp.post.connect(sp.iso[0]); sp.iso[0].connect(sp.iso[1]); sp.iso[1].connect(sp.iso[2]);
     sp.out = G(1); sp.iso[2].connect(sp.out); sp.out.connect(output);
     SP_FX.forEach((f, i) => spParams(i));
     for (let k = 3; k < 7; k++) applySp(k);
@@ -5126,6 +5145,8 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   function spMix(i) {
     if (!sp) return;
     const f = SP_FX[i], u = sp.u[f.id], on = f.on && SPX.on, t = ctx.currentTime, m = f.m;
+    if (on && !u.wc) { u.i.connect(u.wi); u.wc = true; }
+    if (!on && u.wc) { clearTimeout(u.off); u.off = setTimeout(() => { if (u.wc && !(f.on && SPX.on)) { try { u.i.disconnect(u.wi); } catch (e) {} u.wc = false; } }, 120); }
     u.wet.gain.setTargetAtTime(on ? m : 0, t, 0.015);
     u.dry.gain.setTargetAtTime(on && !u.send ? 1 - m : 1, t, 0.015);
     if (f.id === "loop" && u.node) u.node.port.postMessage({ on });
@@ -5162,6 +5183,80 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       if (!f.on) lcd("lcdPad", "SP", `${f.name} coupé`);
     }
   }
+  // ---------- Cible : toute la sortie ou une piste du looper ; impression des couleurs sur la piste ----------
+  SPX.target = "all"; let spLayer = null;
+  function spRoute() {
+    if (!sp) return;
+    const want = SPX.target === "all" ? null : LP.layers[+SPX.target - 1] || null;
+    if (want === spLayer) return;
+    spLayer = want;
+    try { sp.in.disconnect(sp.head); } catch (e) {} try { sp.in.disconnect(sp.post); } catch (e) {}
+    sp.in.connect(spLayer ? sp.post : sp.head);
+    sp.lay.gain.value = loopBus.gain.value;
+    if (typeof routeFx === "function" && fxDry) routeFx();
+    else LP.layers.forEach(l => { try { l.gain.disconnect(); } catch (e) {} l.gain.connect(l === spLayer ? sp.lay : loopBus); if (l.an) l.gain.connect(l.an); });
+  }
+  function setSpTarget(t) {
+    if (SPR.rec) return;
+    SPX.target = t; spRoute(); drawSpTargets();
+    lcd("lcdPad", "SP", t === "all" ? "les effets colorent toute la sortie" : (LP.layers[+t - 1] ? `effets sur la piste ${t} · Sustain = imprimer` : `piste ${t} vide`));
+  }
+  function drawSpTargets() {
+    document.querySelectorAll(".spt").forEach(b => { const t = b.dataset.t; b.classList.toggle("on", t === SPX.target); b.classList.toggle("empty", t !== "all" && !LP.layers[+t - 1]); });
+    const b = $("spPrint"); if (!b) return;
+    b.classList.toggle("on", !!SPR.rec); b.classList.toggle("idle", !SPR.rec && SPX.target === "all");
+    b.textContent = SPR.rec ? `■ ARRÊTER · ${Math.round(SPR.rec.pct * 100)} %` : SPX.target === "all" ? "● IMPRIMER : CHOISIS UNE PISTE" : `● IMPRIMER SUR LA PISTE ${SPX.target}`;
+  }
+  document.querySelectorAll(".spt").forEach(b => b.addEventListener("click", () => setSpTarget(b.dataset.t)));
+  // clavier de l'Akai dans SP : les 8 premières touches blanches = TOUT, P1 à P6
+  function spKey(note) {
+    const r = note - 48, pc = ((r % 12) + 12) % 12, wi = [0, 2, 4, 5, 7, 9, 11].indexOf(pc);
+    if (wi < 0) return;
+    const w = (((Math.floor(r / 12) * 7 + wi) % 14) + 14) % 14;
+    if (w < 7) setSpTarget(["all", "1", "2", "3", "4", "5", "6"][w]);
+  }
+  // Impression : un tour complet de la piste passe dans les effets et remplace la piste (annulable).
+  // Ce qu'on fait pendant le tour est gravé à cet endroit-là de la boucle (un effet sur un seul temps reste sur ce temps).
+  const SPR = { rec: null };
+  function spPrintToggle() {
+    if (SPR.rec) { spPrintStop(false); return; }
+    const l = spLayer;
+    if (!ctx || !hasWorklet || !sp) { lcd("lcdPad", "SP", "impression non disponible ici"); return; }
+    if (!l) { lcd("lcdPad", "SP", "choisis d'abord une piste (P1 à P6 ou touches blanches)"); return; }
+    if (!LP.playing) { lcd("lcdPad", "SP", "lance la boucle, puis imprime"); return; }
+    if (l.muted || l.vol < 0.05) { lcd("lcdPad", "SP", "la piste est coupée"); return; }
+    const Lk = l.k * LP.Lf, sF = LP.t0F + l.m * LP.Lf, startF = Math.ceil(ctx.currentTime * sr + 0.03 * sr);
+    const node = new AudioWorkletNode(ctx, "nomad-cap", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: "explicit" });
+    const silent = ctx.createGain(); silent.gain.value = 0; node.connect(silent); silent.connect(ctx.destination);
+    sp.tap.connect(node);
+    const rec = SPR.rec = { l, node, silent, Lk, sF, startF, endF: startF + Lk, L: new Float32Array(Lk), R: new Float32Array(Lk), pct: 0, last: 0 };
+    node.port.onmessage = e => {
+      const { f, l: a, r: b } = e.data;
+      for (let j = 0; j < a.length; j++) { const p = f + j; if (p < rec.startF || p >= rec.endF) continue; const i = (((p - rec.sF) % rec.Lk) + rec.Lk) % rec.Lk; rec.L[i] = a[j]; rec.R[i] = b[j]; }
+      rec.pct = Math.max(0, Math.min(1, (f + a.length - rec.startF) / rec.Lk));
+      if (performance.now() - rec.last > 150) { rec.last = performance.now(); drawSpTargets(); spSeg("PRT", Math.round(rec.pct * 100) + " %"); }
+      if (f + a.length >= rec.endF) spPrintStop(true);
+    };
+    drawSpTargets(); spSeg("PRT", "0 %");
+    lcd("lcdPad", "SP", `impression sur la piste ${LP.layers.indexOf(l) + 1} : joue tes effets pendant un tour`);
+  }
+  function spPrintStop(done) {
+    const rec = SPR.rec; if (!rec) return; SPR.rec = null;
+    try { sp.tap.disconnect(rec.node); } catch (e) {} rec.node.disconnect(); rec.node.port.onmessage = null;
+    const l = rec.l, i = LP.layers.indexOf(l);
+    if (!done || i < 0) { drawSpTargets(); spSeg("F" + String(SPX.cur + 1).padStart(2, "0"), SP_FX[SPX.cur].name); lcd("lcdPad", "SP", "impression annulée"); return; }
+    const g = l.vol * (sp.lay.gain.value || 1), sc = g > 0.05 ? 1 / g : 1;
+    const buf = ctx.createBuffer(2, rec.Lk, sr), d0 = buf.getChannelData(0), d1 = buf.getChannelData(1);
+    for (let j = 0; j < rec.Lk; j++) { d0[j] = rec.L[j] * sc; d1[j] = rec.R[j] * sc; }
+    const old = { buf: l.buf, k: l.k, m: l.m, notes: l.notes }, now = { buf, k: l.k, m: l.m, notes: l.notes };
+    const apply = st => { stopLayer(l); Object.assign(l, st); if (LP.playing) startLayer(l, ctx.currentTime + 0.005); drawSeqSel(); };
+    apply(now);
+    pushHist(`couleur SP piste ${i + 1}`, () => apply(old), () => apply(now));
+    spAllOff();
+    lcd("lcdPad", "SP", `piste ${i + 1} imprimée · effets remis à zéro (Retour arrière = annuler)`);
+    drawSpTargets();
+  }
+  $("spPrint").addEventListener("click", spPrintToggle);
   function spAllOff() { SP_FX.forEach((f, i) => { f.on = false; spMix(i); }); drawSpFx(); lcd("lcdPad", "SP", "tous les effets coupés"); }
   const spFxEls = [];
   [12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3].forEach(i => {
@@ -5210,7 +5305,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   async function rsStop() {
     const rec = RS.rec; if (!rec) return; RS.rec = null;
     try { mixOut.disconnect(rec.node); } catch (e) {} rec.node.disconnect(); rec.node.port.onmessage = null;
-    $("spRec").textContent = "● IMPRIMER"; $("spRec").classList.remove("on"); spSeg("F" + String(SPX.cur + 1).padStart(2, "0"), SP_FX[SPX.cur].name);
+    $("spRec").textContent = "● ENREGISTRER"; $("spRec").classList.remove("on"); spSeg("F" + String(SPX.cur + 1).padStart(2, "0"), SP_FX[SPX.cur].name);
     if (!rec.chunks.length) { drawSpPads(); return; }
     let a = rec.startF ?? rec.chunks[0][0], b = rec.endF ?? (rec.chunks[rec.chunks.length - 1][0] + 1024);
     const f0 = rec.chunks[0][0], n = b - a; if (n < sr * 0.05) { drawSpPads(); return; }
@@ -5708,7 +5803,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (map[n]) map[n]();
   }
   function onCC(cc, v) {
-    if (cc === 64) { const down = v >= 64; if (down && !sustainDown) recPress(); sustainDown = down; return; }
+    if (cc === 64) { const down = v >= 64; if (down && !sustainDown) { if (tab === "sp") spPrintToggle(); else recPress(); } sustainDown = down; return; }
     if (cc >= 20 && cc <= 35) { if (v > 0) padCommand(cc); return; }
     const k = knobIndex(cc);
     if (k < 0) return;
@@ -5784,6 +5879,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       else if (isPad && idx >= 0 && idx < 16) playPad(idx, d2 / 127);
       else if (!isPad && tab === "scratch") scrKey(d1);
       else if (!isPad && tab === "fx") fxKey(d1);
+      else if (!isPad && tab === "sp") spKey(d1);
       else if (!isPad) playKey(d1, d2 / 127);
     } else if (type === 0x80 || (type === 0x90 && d2 === 0)) {
       const idx = d1 - BASE_NOTE;
@@ -5833,7 +5929,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   const KEYS = ["z","x","c","v","a","s","d","f","q","w","e","r","1","2","3","4"];
   window.addEventListener("keydown", e => {
     if (e.repeat || e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
-    if (e.key === " ") { e.preventDefault(); recPress(); return; }
+    if (e.key === " ") { e.preventDefault(); if (tab === "sp") spPrintToggle(); else recPress(); return; }
     if (e.key === "Backspace") { e.preventDefault(); undo(); return; }
     const i = KEYS.indexOf(e.key.toLowerCase());
     if (i >= 0) { select(i); playPad(i, 0.9); }
