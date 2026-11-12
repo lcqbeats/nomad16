@@ -1,6 +1,12 @@
   // ---------- Historique global (annuler / rétablir) ----------
   const HIST = { stack: [], i: 0 };
-  function pushHist(label, undo, redo) { HIST.stack.length = HIST.i; HIST.stack.push({ label, undo, redo }); if (HIST.stack.length > 60) HIST.stack.shift(); HIST.i = HIST.stack.length; drawHist(); }
+  // heavy : l'étape garde un son entier en mémoire ; on n'en garde que les 6 dernières pour ne pas saturer l'iPhone
+  function pushHist(label, undo, redo, heavy) {
+    HIST.stack.length = HIST.i; HIST.stack.push({ label, undo, redo, heavy });
+    if (HIST.stack.length > 60) HIST.stack.shift();
+    const hv = HIST.stack.filter(x => x.heavy); if (hv.length > 6) HIST.stack.splice(HIST.stack.indexOf(hv[0]), 1);
+    HIST.i = HIST.stack.length; drawHist();
+  }
   function drawHist() { $("undoBtn").disabled = HIST.i === 0; $("redoBtn").disabled = HIST.i >= HIST.stack.length; $("undoBtn").title = HIST.i ? "Annuler : " + HIST.stack[HIST.i - 1].label : ""; }
   function histUndo() { if (!HIST.i) return; const a = HIST.stack[--HIST.i]; a.undo(); lcd("lcdPad", "ANNULÉ", a.label); drawHist(); }
   function histRedo() { if (HIST.i >= HIST.stack.length) return; const a = HIST.stack[HIST.i++]; a.redo(); lcd("lcdPad", "RÉTABLI", a.label); drawHist(); }

@@ -230,7 +230,7 @@
     const old = { buf: l.buf, k: l.k, m: l.m, notes: l.notes }, now = { buf, k: l.k, m: l.m, notes: l.notes };
     const apply = st => { stopLayer(l); Object.assign(l, st); if (LP.playing) startLayer(l, ctx.currentTime + 0.005); drawSeqSel(); };
     apply(now);
-    pushHist(`couleur SP piste ${i + 1}`, () => apply(old), () => apply(now));
+    pushHist(`couleur SP piste ${i + 1}`, () => apply(old), () => apply(now), true);
     spAllOff();
     lcd("lcdPad", "SP", `piste ${i + 1} imprimée · effets remis à zéro (Retour arrière = annuler)`);
     drawSpTargets();
