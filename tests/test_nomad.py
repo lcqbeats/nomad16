@@ -453,7 +453,8 @@ def test_fx_clavier_et_prog_change(app):
     app.click("#tab-fx")
     app.evaluate("nomadMidi([0x90, 52, 100]); nomadMidi([0x80, 52, 0])")     # MI = P1
     assert app.get_attribute(".fxt[data-t='1']", "class").endswith("on")
-    app.evaluate("nomadMidi([0x90, 72, 100]); nomadMidi([0x80, 72, 0])")     # DO aigu = TOUT
+    app.evaluate("nomadMidi([0x99, 36, 100]); nomadMidi([0x89, 36, 0])")     # pad (canal 10) : le clavier est reconnu
+    app.evaluate("nomadMidi([0x90, 48, 100]); nomadMidi([0x80, 48, 0])")     # DO = TOUT
     assert "on" in app.get_attribute(".fxt[data-t='all']", "class")
     app.evaluate("nomadMidi([0xC0, 2])")            # PROG CHANGE pad 3 = SONS
     assert app.get_attribute("#tab-sons", "aria-selected") == "true"
@@ -527,6 +528,31 @@ def test_sp_impression_bien_calee(app):
     err = app.evaluate("(() => { const d = nomadDbg.LP.layers[0].buf.getChannelData(0); let e = 0, s = 0; for (let i = 0; i < d.length; i++) { e += (d[i] - _orig[i]) ** 2; s += _orig[i] ** 2; } return Math.sqrt(e / s); })()")
     info = app.evaluate("(() => { const d = nomadDbg.LP.layers[0].buf.getChannelData(0), n = d.length; let best = [1e9, 0]; for (let lag = -300; lag <= 300; lag++) { let e = 0; for (let i = 0; i < n; i += 3) { const j = (i + lag + n) % n; e += (d[j] - _orig[i]) ** 2; } if (e < best[0]) best = [e, lag]; } let r = 0, o = 0; for (let i = 0; i < n; i++) { r += d[i] * d[i]; o += _orig[i] * _orig[i]; } return [best[1], Math.sqrt(r / o)]; })()")
     assert abs(info[0]) <= 2 and abs(info[1] - 1) < 0.03, (err, info)   # calé à 2 échantillons près, même niveau
+
+
+def test_fx_imprime_et_clavier_joue_sons(app):
+    fake_loop(app, 0.6)
+    app.evaluate("""() => { const c = nomadDbg.sp.in.context, n = nomadDbg.LP.Lf, b = c.createBuffer(2, n, c.sampleRate);
+      for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * 0.3; }
+      nomadDbg.addLayer(b, 1, 0); }""")
+    rms = "(() => { const d = nomadDbg.LP.layers[0].buf.getChannelData(0); let s = 0; for (const v of d) s += v * v; return Math.sqrt(s / d.length); })()"
+    before = app.evaluate(rms)
+    app.click("#tab-fx")
+    app.evaluate("nomadMidi([0x99, 36, 100]); nomadMidi([0x89, 36, 0])")     # une note de pad (canal 10) pour que le clavier soit reconnu
+    app.evaluate("nomadMidi([0x90, 52, 100]); nomadMidi([0x80, 52, 0])")     # MI = P1
+    assert "on" in app.get_attribute(".fxt[data-t='1']", "class")
+    assert "PISTE 1" in app.inner_text("#fxPrint")
+    app.evaluate("nomadMidi([0xB0, 70, 64]); nomadMidi([0xB0, 70, 4])")      # filtre fermé
+    app.evaluate("nomadMidi([0xB0, 64, 127]); nomadMidi([0xB0, 64, 0])")     # Sustain : imprimer
+    app.wait_for_function("!document.getElementById('fxPrint').classList.contains('on')", timeout=6000)
+    after = app.evaluate(rms)
+    assert after < before * 0.5, (before, after)
+    app.click("#undoBtn")
+    assert abs(app.evaluate(rms) - before) < 1e-6
+    # hors des 8 touches blanches du bas, le clavier joue SONS dans FX
+    app.evaluate("nomadMidi([0x90, 64, 110])")
+    assert max(loud(app, 80) for _ in range(5)) > 0.003
+    app.evaluate("nomadMidi([0x80, 64, 0])")
 
 
 def test_famille_20syl(app):

@@ -160,7 +160,7 @@
       <p class="songinfo" id="spInfo">Destination : pad 1</p>
       <p class="note help">Enregistre tout ce qui sort de NOMAD, effets compris, dans le pad choisi : une boucle devient un son de pad qu'on peut rejouer, pitcher ou découper. CALÉ : BOUCLE enregistre exactement un cycle ; LIBRE jusqu'au second appui. Le kit modifié est gardé sous le nom « … · RÉÉCH ».</p>
     </details>
-    <p class="note help">Cible : TOUT colore toute la sortie ; P1 à P6 n'envoie que cette piste du looper dans les effets (touches blanches du clavier : DO = TOUT, RÉ à LA = P1 à P6). Sustain (ou ● IMPRIMER) grave les effets sur la piste pendant un tour complet, en temps réel : un effet lancé sur un seul temps ne reste que sur ce temps. Ensuite les effets se remettent à zéro, prêts pour une autre piste ; Retour arrière annule. Chaque pad allume un effet : appui court = il reste allumé (un autre appui l'éteint), appui long = seulement tant qu'on tient. Plusieurs effets peuvent tourner ensemble ; ils colorent toute la sortie. Potards : 1 et 2 règlent l'effet touché en dernier, 3 son dosage, 4 à 6 l'isolateur (graves, médiums, aigus), 7 la découpe des effets au tempo (droit, triolet, pointé, swing 54 à 66 %) pour l'écho, le slicer et le looper DJ, 8 coupe tout en le tournant à gauche et rétablit en le ramenant à droite. Les 16 pads de l'Akai déclenchent les mêmes effets.</p>
+    <p class="note help">Cible : TOUT colore toute la sortie ; P1 à P6 n'envoie que cette piste du looper dans les effets (touches blanches du clavier : DO = TOUT, RÉ à SI = P1 à P6 ; les autres touches jouent SONS). Sustain (ou ● IMPRIMER) grave les effets sur la piste pendant un tour complet, en temps réel : un effet lancé sur un seul temps ne reste que sur ce temps. Ensuite les effets se remettent à zéro, prêts pour une autre piste ; Retour arrière annule. Chaque pad allume un effet : appui court = il reste allumé (un autre appui l'éteint), appui long = seulement tant qu'on tient. Plusieurs effets peuvent tourner ensemble ; ils colorent toute la sortie. Potards : 1 et 2 règlent l'effet touché en dernier, 3 le dosage de toute la couleur SP (à gauche le son d'origine, à droite les effets pleins ; c'est aussi ce qui s'imprime), 4 à 6 l'isolateur (graves, médiums, aigus), 7 la découpe des effets au tempo (droit, triolet, pointé, swing 54 à 66 %) pour l'écho, le slicer et le looper DJ, 8 coupe tout en le tournant à gauche et rétablit en le ramenant à droite. Les 16 pads de l'Akai déclenchent les mêmes effets.</p>
   </section>
 
   <section class="view stack" id="view-song" hidden>
@@ -183,12 +183,13 @@
   </section>
 
   <section class="view" id="view-fx" hidden>
-    <div class="fxgrid" id="fxgrid"></div>
     <div class="fxtargets" role="group" aria-label="Cible des effets">
       <button class="fxt on" type="button" data-t="all">TOUT</button><button class="fxt" type="button" data-t="live">LIVE</button>
       <button class="fxt" type="button" data-t="1">P1</button><button class="fxt" type="button" data-t="2">P2</button><button class="fxt" type="button" data-t="3">P3</button>
       <button class="fxt" type="button" data-t="4">P4</button><button class="fxt" type="button" data-t="5">P5</button><button class="fxt" type="button" data-t="6">P6</button>
     </div>
+    <button class="btn rec spprint fxprint idle" id="fxPrint" type="button">● IMPRIMER : CHOISIS UNE PISTE</button>
+    <div class="fxgrid" id="fxgrid"></div>
     <div class="fxbar">
       <button class="btn" id="fxSet" type="button">MOTIFS FLEX</button>
       <button class="btn" id="fxTrig" type="button">MAINTIEN</button>
@@ -199,7 +200,7 @@
       <button class="btn" id="fxBpmDown" type="button" aria-label="Tempo moins">−</button>
       <button class="btn" id="fxBpmUp" type="button" aria-label="Tempo plus">+</button>
     </div>
-    <p class="note help" style="margin-top:8px">Cible : TOUT le morceau, le jeu en direct (LIVE) ou une seule piste du looper. MOTIFS FLEX rejoue la mesure qui vient de passer selon un motif (roulements, coupes, scratch, demi-vitesse…) ; CLASSIQUES = effets simples. Déclenchement : MAINTIEN (tant que le pad est tenu), 1 MESURE (joue le motif une fois), VERROU (un appui lance, un autre arrête). Bank 2 de l'Akai = les 8 effets. Potards : filtre (gauche passe-bas, droite passe-haut), envoi d'écho dub, ressort, bitcrush. Le tempo suit la boucle quand il y en a une.</p>
+    <p class="note help" style="margin-top:8px">Cible : TOUT le morceau, le jeu en direct (LIVE) ou une seule piste du looper (touches blanches du clavier : DO = TOUT, RÉ = LIVE, MI à DO aigu = P1 à P6 ; les autres touches jouent SONS). Sur une piste, Sustain (ou ● IMPRIMER) grave les effets FX sur cette piste pendant un tour, en temps réel ; ensuite les effets reviennent à zéro, Retour arrière annule. MOTIFS FLEX rejoue la mesure qui vient de passer selon un motif (roulements, coupes, scratch, demi-vitesse…) ; CLASSIQUES = effets simples. Déclenchement : MAINTIEN (tant que le pad est tenu), 1 MESURE (joue le motif une fois), VERROU (un appui lance, un autre arrête). Bank 2 de l'Akai = les 8 effets. Potards : filtre (gauche passe-bas, droite passe-haut), envoi d'écho dub, ressort, bitcrush. Le tempo suit la boucle quand il y en a une.</p>
   </section>
 
   <section class="view stack" id="view-sample" hidden>

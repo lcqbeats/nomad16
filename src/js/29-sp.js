@@ -24,7 +24,8 @@
   ];
   const SP_ORDER = ["lofi", "vinyl", "tape", "filt", "hpf", "radio", "sat", "kbass", "khigh", "flang", "chorus", "slice", "loop", "echo", "verb", "comp"];
   const spState = store.get("spFx", null);
-  SP_FX.forEach((f, i) => { f.on = false; f.m = 1; if (spState && spState[i]) { f.a = spState[i].a; f.b = spState[i].b; f.m = spState[i].m ?? 1; } });
+  SP_FX.forEach((f, i) => { f.on = false; f.m = 1; if (spState && spState[i]) { f.a = spState[i].a; f.b = spState[i].b; } f.m = 1; });
+  SPX.dose = store.get("spDose", 1);
   const spSave = () => store.set("spFx", SP_FX.map(f => ({ a: f.a, b: f.b, m: f.m })));
   let sp = null;
   const spBeat = () => 60 / (typeof curBpm === "function" ? curBpm() : 90);
@@ -90,12 +91,15 @@
     input.connect(sp.head);
     let prev = sp.head;
     SP_ORDER.forEach(id => { prev.connect(sp.u[id].i); prev = sp.u[id].o; });
-    sp.tap = prev; prev.connect(sp.post);
+    sp.tap = prev;
+    sp.dryAll = G(0); sp.wetAll = G(1); sp.mix = G(1);
+    sp.head.connect(sp.dryAll); sp.dryAll.connect(sp.mix); prev.connect(sp.wetAll); sp.wetAll.connect(sp.mix); sp.mix.connect(sp.post);
     sp.iso = [["lowshelf", 250], ["peaking", 1200], ["highshelf", 4200]].map(([type, f]) => BQ(type, f, type === "peaking" ? 0.7 : 0));
     sp.post.connect(sp.iso[0]); sp.iso[0].connect(sp.iso[1]); sp.iso[1].connect(sp.iso[2]);
     sp.out = G(1); sp.iso[2].connect(sp.out); sp.out.connect(output);
     SP_FX.forEach((f, i) => spParams(i));
     for (let k = 3; k < 7; k++) applySp(k);
+    spDose();
   }
   // réglages d'un effet (a, b entre 0 et 1)
   const spDrive = (d, amt, t) => { d.pg.gain.setTargetAtTime(1 + amt * 12, t, 0.03); d.po.gain.setTargetAtTime(1 / (1 + amt * 2.4), t, 0.03); };
@@ -160,8 +164,10 @@
     if (!sp) return;
     const t = ctx.currentTime, x = knobVals.sp[k], f = SP_FX[SPX.cur];
     const isoDb = y => y < 0.5 ? -40 * Math.pow((0.5 - y) * 2, 1.5) : (y - 0.5) * 12;
-    if (k <= 2) { if (k === 0) f.a = x; if (k === 1) { if (f.p[1] === "—") return; f.b = x; } if (k === 2) f.m = x; spParams(SPX.cur); spSave();
-      if (tab === "sp") { lcd("lcdPad", "SP", `${f.name} · ${k === 2 ? "dosage" : f.p[k].toLowerCase()} ${Math.round(x * 100)} %`); spSeg("F" + String(SPX.cur + 1).padStart(2, "0"), f.name); } return; }
+    // potard 3 : dosage de TOUTE la couleur SP (0 = son d'origine, à fond = effets pleins) ; c'est aussi ce qui s'imprime
+    if (k === 2) { SPX.dose = x; store.set("spDose", x); spDose(); if (tab === "sp") { lcd("lcdPad", "SP", `dosage ${Math.round(x * 100)} % · ${100 - Math.round(x * 100)} % de son d'origine`); spSeg("DOS", Math.round(x * 100) + " %"); } return; }
+    if (k <= 1) { if (k === 0) f.a = x; if (k === 1) { if (f.p[1] === "—") return; f.b = x; } spParams(SPX.cur); spSave();
+      if (tab === "sp") { lcd("lcdPad", "SP", `${f.name} · ${f.p[k].toLowerCase()} ${Math.round(x * 100)} %`); spSeg("F" + String(SPX.cur + 1).padStart(2, "0"), f.name); } return; }
     if (k >= 3 && k <= 5) { sp.iso[k - 3].gain.setTargetAtTime(SPX.on ? isoDb(x) : 0, t, 0.02); if (tab === "sp") lcd("lcdPad", "SP", `${["graves", "médiums", "aigus"][k - 3]} ${isoDb(x) > 0 ? "+" : ""}${isoDb(x).toFixed(0)} dB`); }
     if (k === 6) { ["echo", "slice", "loop"].forEach(id => spParams(SP_FX.findIndex(f => f.id === id))); if (tab === "sp") { lcd("lcdPad", "SP", `découpe : ${spFeel()[0].toLowerCase()} (écho, slicer, looper DJ)`); spSeg("RYT", spFeel()[0]); } }
     // potard 8 : tout couper en le tournant à gauche, tout rétablir en le ramenant à droite
@@ -170,9 +176,10 @@
       else if (x > 0.75 && SPX.killed) { const back = SPX.killed; SPX.killed = null; back.forEach(i => { SP_FX[i].on = true; spParams(i); }); drawSpFx(); if (tab === "sp") { lcd("lcdPad", "SP", back.length ? `${back.length} effet(s) rétabli(s)` : "rien à rétablir"); spSeg("ON", "RÉTABLI"); } }
     }
   }
+  function spDose() { if (!sp) return; const t = ctx.currentTime, x = SPX.dose; sp.wetAll.gain.setTargetAtTime(x, t, 0.02); sp.dryAll.gain.setTargetAtTime(1 - x, t, 0.02); }
   function spSelect(i) {
     SPX.cur = i; const f = SP_FX[i];
-    knobVals.sp[0] = f.a; knobVals.sp[1] = f.b; knobVals.sp[2] = f.m;
+    knobVals.sp[0] = f.a; knobVals.sp[1] = f.b; knobVals.sp[2] = SPX.dose;
     KNOB_LABELS.sp[0] = f.p[0]; KNOB_LABELS.sp[1] = f.p[1]; KNOB_LABELS.sp[2] = "Dosage";
     if (tab === "sp") drawKnobs();
   }
@@ -205,64 +212,29 @@
     else LP.layers.forEach(l => { try { l.gain.disconnect(); } catch (e) {} l.gain.connect(l === spLayer ? sp.lay : loopBus); if (l.an) l.gain.connect(l.an); });
   }
   function setSpTarget(t) {
-    if (SPR.rec) return;
+    if (LPR.rec) return;
     SPX.target = t; spRoute(); drawSpTargets();
     lcd("lcdPad", "SP", t === "all" ? "les effets colorent toute la sortie" : (LP.layers[+t - 1] ? `effets sur la piste ${t} · Sustain = imprimer` : `piste ${t} vide`));
   }
   function drawSpTargets() {
     document.querySelectorAll(".spt").forEach(b => { const t = b.dataset.t; b.classList.toggle("on", t === SPX.target); b.classList.toggle("empty", t !== "all" && !LP.layers[+t - 1]); });
     const b = $("spPrint"); if (!b) return;
-    b.classList.toggle("on", !!SPR.rec); b.classList.toggle("idle", !SPR.rec && SPX.target === "all");
-    b.textContent = SPR.rec ? `■ ARRÊTER · ${Math.round(SPR.rec.pct * 100)} %` : SPX.target === "all" ? "● IMPRIMER : CHOISIS UNE PISTE" : `● IMPRIMER SUR LA PISTE ${SPX.target}`;
+    const pr = printing("SP");
+    b.classList.toggle("on", pr); b.classList.toggle("idle", !pr && SPX.target === "all");
+    b.textContent = pr ? `■ ARRÊTER · ${Math.round(LPR.rec.pct * 100)} %` : SPX.target === "all" ? "● IMPRIMER : CHOISIS UNE PISTE" : `● IMPRIMER SUR LA PISTE ${SPX.target}`;
   }
   document.querySelectorAll(".spt").forEach(b => b.addEventListener("click", () => setSpTarget(b.dataset.t)));
   // clavier de l'Akai dans SP : les 8 premières touches blanches = TOUT, P1 à P6
+  // renvoie true si la touche a servi de sélecteur ; les autres touches jouent SONS normalement
   function spKey(note) {
-    const r = note - 48, pc = ((r % 12) + 12) % 12, wi = [0, 2, 4, 5, 7, 9, 11].indexOf(pc);
-    if (wi < 0) return;
-    const w = (((Math.floor(r / 12) * 7 + wi) % 14) + 14) % 14;
-    if (w < 7) setSpTarget(["all", "1", "2", "3", "4", "5", "6"][w]);
+    const wi = [0, 2, 4, 5, 7, 9, 11].indexOf(note - 48);
+    if (wi < 0) return false;
+    setSpTarget(["all", "1", "2", "3", "4", "5", "6"][wi]); return true;
   }
-  // Impression : un tour complet de la piste passe dans les effets et remplace la piste (annulable).
-  // Ce qu'on fait pendant le tour est gravé à cet endroit-là de la boucle (un effet sur un seul temps reste sur ce temps).
-  const SPR = { rec: null };
   function spPrintToggle() {
-    if (SPR.rec) { spPrintStop(false); return; }
-    const l = spLayer;
-    if (!ctx || !hasWorklet || !sp) { lcd("lcdPad", "SP", "impression non disponible ici"); return; }
-    if (!l) { lcd("lcdPad", "SP", "choisis d'abord une piste (P1 à P6 ou touches blanches)"); return; }
-    if (!LP.playing) { lcd("lcdPad", "SP", "lance la boucle, puis imprime"); return; }
-    if (l.muted || l.vol < 0.05) { lcd("lcdPad", "SP", "la piste est coupée"); return; }
-    const Lk = l.k * LP.Lf, sF = LP.t0F + l.m * LP.Lf, startF = Math.ceil(ctx.currentTime * sr + 0.03 * sr);
-    const node = new AudioWorkletNode(ctx, "nomad-cap", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: "explicit" });
-    const silent = ctx.createGain(); silent.gain.value = 0; node.connect(silent); silent.connect(ctx.destination);
-    sp.tap.connect(node);
-    const rec = SPR.rec = { l, node, silent, Lk, sF, startF, endF: startF + Lk, L: new Float32Array(Lk), R: new Float32Array(Lk), pct: 0, last: 0 };
-    node.port.onmessage = e => {
-      const { f, l: a, r: b } = e.data;
-      for (let j = 0; j < a.length; j++) { const p = f + j; if (p < rec.startF || p >= rec.endF) continue; const i = (((p - rec.sF) % rec.Lk) + rec.Lk) % rec.Lk; rec.L[i] = a[j]; rec.R[i] = b[j]; }
-      rec.pct = Math.max(0, Math.min(1, (f + a.length - rec.startF) / rec.Lk));
-      if (performance.now() - rec.last > 150) { rec.last = performance.now(); drawSpTargets(); spSeg("PRT", Math.round(rec.pct * 100) + " %"); }
-      if (f + a.length >= rec.endF) spPrintStop(true);
-    };
-    drawSpTargets(); spSeg("PRT", "0 %");
-    lcd("lcdPad", "SP", `impression sur la piste ${LP.layers.indexOf(l) + 1} : joue tes effets pendant un tour`);
-  }
-  function spPrintStop(done) {
-    const rec = SPR.rec; if (!rec) return; SPR.rec = null;
-    try { sp.tap.disconnect(rec.node); } catch (e) {} rec.node.disconnect(); rec.node.port.onmessage = null;
-    const l = rec.l, i = LP.layers.indexOf(l);
-    if (!done || i < 0) { drawSpTargets(); spSeg("F" + String(SPX.cur + 1).padStart(2, "0"), SP_FX[SPX.cur].name); lcd("lcdPad", "SP", "impression annulée"); return; }
-    const g = l.vol * (sp.lay.gain.value || 1), sc = g > 0.05 ? 1 / g : 1;
-    const buf = ctx.createBuffer(2, rec.Lk, sr), d0 = buf.getChannelData(0), d1 = buf.getChannelData(1);
-    for (let j = 0; j < rec.Lk; j++) { d0[j] = rec.L[j] * sc; d1[j] = rec.R[j] * sc; }
-    const old = { buf: l.buf, k: l.k, m: l.m, notes: l.notes }, now = { buf, k: l.k, m: l.m, notes: l.notes };
-    const apply = st => { stopLayer(l); Object.assign(l, st); if (LP.playing) startLayer(l, ctx.currentTime + 0.005); drawSeqSel(); };
-    apply(now);
-    pushHist(`couleur SP piste ${i + 1}`, () => apply(old), () => apply(now), true);
-    spAllOff();
-    lcd("lcdPad", "SP", `piste ${i + 1} imprimée · effets remis à zéro (Retour arrière = annuler)`);
-    drawSpTargets();
+    loopPrint({ who: "SP", layer: spLayer, tap: sp && sp.mix, gain: () => spLayer.vol * (sp.lay.gain.value || 1),
+      ui: p => { drawSpTargets(); if (p === null) spSeg("F" + String(SPX.cur + 1).padStart(2, "0"), SP_FX[SPX.cur].name); else spSeg("PRT", Math.round(p * 100) + " %"); },
+      done: () => spAllOff() });
   }
   $("spPrint").addEventListener("click", spPrintToggle);
   function spAllOff() { SPX.killed = null; SP_FX.forEach((f, i) => { f.on = false; spMix(i); }); drawSpFx(); lcd("lcdPad", "SP", "tous les effets coupés"); }

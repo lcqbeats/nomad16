@@ -17,7 +17,7 @@
     if (!p.knobsV) { knobVals.sons[5] = 1; knobVals.sons[6] = 0; }
     if (!p.knobsV || p.knobsV < 3) { knobVals.sp[6] = 0; knobVals.sp[7] = 1; }   // anciens potards SP : sortie et rien
     if (typeof sonsFxDose === "function") sonsFxDose(true);
-    { const f = SP_FX[SPX.cur]; knobVals.sp[0] = f.a; knobVals.sp[1] = f.b; knobVals.sp[2] = f.m; }   // les effets SP gardent leurs propres réglages
+    { const f = SP_FX[SPX.cur]; knobVals.sp[0] = f.a; knobVals.sp[1] = f.b; knobVals.sp[2] = SPX.dose; }   // les effets SP gardent leurs propres réglages
     manualBpm = p.manualBpm || 90;
     for (let k = 0; k < 8; k++) applyFxKnob(k);
     G.amp = p.guitar.amp; G.fx = new Set(p.guitar.fx); G.preset = p.guitar.preset; applyGuitar();

@@ -57,13 +57,13 @@
   let fxDry = null;
   // Clavier de l'Akai dans FX : les 8 premières touches blanches (do à do) = TOUT, LIVE, P1 à P6 ; les noires ne font rien
   const FX_KEY_T = ["all", "live", "1", "2", "3", "4", "5", "6"];
+  // renvoie true si la touche a servi de sélecteur ; les autres touches jouent SONS normalement
   function fxKey(note) {
-    const r = note - 48, pc = ((r % 12) + 12) % 12, wi = [0, 2, 4, 5, 7, 9, 11].indexOf(pc);
-    if (wi < 0) return;
-    const w = (((Math.floor(r / 12) * 7 + wi) % 14) + 14) % 14;
-    if (w < 8) setFxTarget(FX_KEY_T[w]);
+    const w = [0, 2, 4, 5, 7, 9, 11, 12].indexOf(note - 48);
+    if (w < 0) return false;
+    setFxTarget(FX_KEY_T[w]); return true;
   }
-  function setFxTarget(t) { fxTarget = t; routeFx(); drawFxPads(); lcd("lcdPad", "FX", "cible : " + (t === "all" ? "tout le morceau" : t === "live" ? "jeu en direct" : "piste " + t)); }
+  function setFxTarget(t) { if (LPR.rec) return; fxTarget = t; drawFxPrint(); routeFx(); drawFxPads(); lcd("lcdPad", "FX", "cible : " + (t === "all" ? "tout le morceau" : t === "live" ? "jeu en direct" : "piste " + t)); }
   function routeFx() {
     if (!fxDry) return;
     [liveBus, loopBus].forEach(n => { try { n.disconnect(master); } catch (e) {} try { n.disconnect(fxDry); } catch (e) {} });
@@ -74,6 +74,22 @@
     LP.layers.forEach((l, i) => { if (typeof spLayer !== "undefined" && l === spLayer && sp) l.gain.connect(sp.lay); else if (i === k) { l.gain.connect(fxSolo); } else l.gain.connect(loopBus); if (l.an) l.gain.connect(l.an); });
   }
   let fxSolo = null;
+  // Impression des effets FX sur la piste choisie (même principe que SP)
+  const fxLayer = () => /^\d$/.test(fxTarget) ? LP.layers[+fxTarget - 1] || null : null;
+  function fxPrintToggle() {
+    const l = fxLayer();
+    if (!LPR.rec && !l && fxTarget !== "all" && fxTarget !== "live") { lcd("lcdPad", "FX", `piste ${fxTarget} vide`); return; }
+    loopPrint({ who: "FX", layer: l, tap: fxMaster, gain: () => l.vol * (fxSolo ? fxSolo.gain.value || 1 : 1) * (fxMaster.gain.value || 1),
+      ui: () => drawFxPrint(),
+      done: () => { if (fxActive >= 0) fxEnd(fxActive); for (let k = 0; k < 7; k++) { knobVals.fx[k] = FX_HOME[k]; applyFxKnob(k); } if (tab === "fx") drawKnobs(); } });
+  }
+  function drawFxPrint() {
+    const b = $("fxPrint"); if (!b) return;
+    const pr = printing("FX"), lay = /^\d$/.test(fxTarget);
+    b.classList.toggle("on", pr); b.classList.toggle("idle", !pr && !lay);
+    b.textContent = pr ? `■ ARRÊTER · ${Math.round(LPR.rec.pct * 100)} %` : lay ? `● IMPRIMER SUR LA PISTE ${fxTarget}` : "● IMPRIMER : CHOISIS UNE PISTE";
+  }
+  $("fxPrint").addEventListener("click", fxPrintToggle);
   $("fxBpmDown").addEventListener("click", () => { manualBpm = Math.max(60, manualBpm - 1); drawFxBar(); applyFxKnob(3); });
   $("fxBpmUp").addEventListener("click", () => { manualBpm = Math.min(180, manualBpm + 1); drawFxBar(); applyFxKnob(3); });
   function fxStart(i) {
