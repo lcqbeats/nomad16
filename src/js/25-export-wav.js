@@ -16,9 +16,9 @@
   }
   const stamp = () => new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
   $("expLoop").addEventListener("click", async () => {
-    if (!LP.layers.length) { lcd("lcdPad", "EXPORT", "séquence vide, rien à exporter"); return; }
-    const out = await masterMix(loopStems().mix);
-    deliver(wavBlob(out, sr), `nomad16-sequence${SEQ_N[SQ.cur]}-${Math.round(curBpm())}bpm${MASTER.char !== "none" ? "-master-" + MASTER.char : ""}-${stamp()}.wav`);
+    if (!allLayers().length) { lcd("lcdPad", "EXPORT", "aucune boucle, rien à exporter"); return; }
+    const out = await masterMix(loopStems(allLayers()).mix);   // ce qu'on entend : les 3 banks, pistes coupées comprises
+    deliver(wavBlob(out, sr), `nomad16-boucles-${Math.round(curBpm())}bpm${MASTER.char !== "none" ? "-master-" + MASTER.char : ""}-${stamp()}.wav`);
   });
   let sess = null;
   $("expSess").addEventListener("click", () => {

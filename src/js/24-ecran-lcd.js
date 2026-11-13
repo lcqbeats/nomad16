@@ -7,8 +7,8 @@
   function transport() {
     if (LP.t0F !== null && LP.playing) {
       const C = cycF(LP.layers), pos = ((ctx.currentTime * sr - LP.t0F) % C + C) % C, bl = LP.Lf / LP.beats, beat = Math.floor(pos / bl);
-      const nx = SQ.sw ? SQ.sw.i : SQ.next, tag = SONG.playing ? `♫${SONG.idx + 1} ` : "";
-      return { s: `${tag}${SEQ_N[SQ.cur]}${nx >= 0 ? "→" + SEQ_N[nx] : ""} ${Math.floor(beat / 4) + 1}.${beat % 4 + 1}.${Math.floor((pos % bl) / bl * 4) + 1}${keyTag()}`, on: (pos % bl) / bl < 0.25 };
+      const tag = SONG.playing ? `♫${SONG.idx + 1} ` : "";
+      return { s: `${tag}${SEQ_N[SQ.cur]} ${Math.floor(beat / 4) + 1}.${beat % 4 + 1}.${Math.floor((pos % bl) / bl * 4) + 1}${keyTag()}`, on: (pos % bl) / bl < 0.25 };
     }
     return { s: `■ ${SEQ_N[SQ.cur]} · ${Math.round(curBpm())} BPM${keyTag()}`, on: false };
   }

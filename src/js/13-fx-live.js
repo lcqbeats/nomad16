@@ -122,11 +122,12 @@
   function routeFx() {
     if (!fxDry) return;
     [liveBus, loopBus].forEach(n => { try { n.disconnect(master); } catch (e) {} try { n.disconnect(fxDry); } catch (e) {} });
-    LP.layers.forEach(l => { try { l.gain.disconnect(); } catch (e) {} });
+    allLayers().forEach(l => { try { l.gain.disconnect(); } catch (e) {} });
     const k = /^\d$/.test(fxTarget) ? +fxTarget - 1 : -1;
     liveBus.connect(fxTarget === "all" || fxTarget === "live" ? master : fxDry);
     loopBus.connect(fxTarget === "all" ? master : fxDry);
-    LP.layers.forEach((l, i) => { if (typeof spLayer !== "undefined" && l === spLayer && sp) l.gain.connect(sp.lay); else if (i === k) { l.gain.connect(fxSolo); } else l.gain.connect(loopBus); if (l.an) l.gain.connect(l.an); });
+    // P1 à P6 = pistes de la bank affichée ; les pistes des autres banks restent sur le bus des boucles
+    allLayers().forEach(l => { const i = LP.layers.indexOf(l); if (typeof spLayer !== "undefined" && l === spLayer && sp) l.gain.connect(sp.lay); else if (i >= 0 && i === k) { l.gain.connect(fxSolo); } else l.gain.connect(loopBus); if (l.an) l.gain.connect(l.an); });
   }
   let fxSolo = null;
   // Impression des effets FX sur la piste choisie (même principe que SP)

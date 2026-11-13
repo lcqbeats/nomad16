@@ -721,7 +721,8 @@ def test_prise_du_looper_vers_song(app):
     app.wait_for_timeout(500)
     app.click("#btnPlay")                            # STOP termine la prise
     st = app.evaluate("nomadDbg.song.steps[nomadDbg.song.steps.length - 1]")
-    assert st["take"] and st["take"]["ev"][0]["mask"][:2] == [False, True] and len(st["take"]["ev"]) == 3, st
+    ev = st["take"]["ev"]                            # état de départ des 3 banks, puis 2 gestes sur la bank A
+    assert ev[0]["mask"][:2] == [False, True] and [e["seq"] for e in ev] == [0, 1, 2, 0, 0], st
     assert st["take"]["len"] % app.evaluate("nomadDbg.LP.Lf") == 0
     app.click("#tab-song")
     assert "PRISE" in app.inner_text("#songList")
@@ -844,3 +845,67 @@ def test_ordinateur_paysage_et_touches_f(browser, server):
 
 def test_telephone_reste_en_portrait(app):
     assert not app.evaluate("document.documentElement.classList.contains('desk')")
+
+
+def test_banks_jouent_ensemble(app):
+    fake_loop(app, 2.0)
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[0], 1, 0)")
+    app.click("#tab-loops")
+    app.evaluate("nomadMidi([0x99, 51, 100])")      # un pad sur le canal 10 (pad 16 = lecture) : le clavier est sur le canal 1
+    app.evaluate("nomadMidi([0x90, 50, 100])")      # ré (2e touche blanche) : bank B, sans arrêter la lecture
+    assert app.evaluate("nomadDbg.SQ.cur") == 1 and app.evaluate("nomadDbg.LP.playing") is True
+    assert app.evaluate("nomadDbg.LP.layers.length") == 0
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[1], 1, 0)")
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[2], 1, 0)")
+    # les pistes des deux banks jouent en même temps
+    assert app.evaluate("nomadDbg.SQ.list.map(x => x.filter(l => l.src).length)") == [1, 2, 0]
+    assert "1/1" in app.inner_text("#sq0") and "2/2" in app.inner_text("#sq1")
+    # tout couper (pad 4) n'agit que sur la bank affichée
+    app.evaluate("nomadMidi([0x99, 39, 100])")
+    assert app.evaluate("nomadDbg.SQ.list.map(x => x.map(l => l.muted))") == [[False], [True, True], []]
+    # une prise retient les gestes sur plusieurs banks
+    app.click("#btnPlay")                            # stop
+    app.evaluate("nomadDbg.perfArm()")
+    app.click("#btnPlay")                            # PLAY lance la prise
+    app.wait_for_timeout(300)
+    app.evaluate("nomadMidi([0x99, 40, 100])")       # pad 5 : piste 1 de B rétablie
+    app.evaluate("nomadMidi([0x90, 48, 100])")       # do : bank A
+    assert app.evaluate("nomadDbg.SQ.cur") == 0
+    app.evaluate("nomadMidi([0x99, 40, 100])")       # piste 1 de A coupée
+    app.wait_for_timeout(300)
+    app.evaluate("nomadDbg.perfArm()")               # fin de prise
+    ev = app.evaluate("nomadDbg.song.steps[nomadDbg.song.steps.length - 1].take.ev")
+    assert [e["seq"] for e in ev] == [0, 1, 2, 1, 0] and ev[3]["mask"][:2] == [False, True] and ev[4]["mask"][0] is True
+    # rejouer : on repart de l'état de départ des deux banks
+    app.evaluate("nomadDbg.songPlay(0)")
+    app.wait_for_timeout(100)
+    assert app.evaluate("nomadDbg.SQ.list.map(x => x.map(l => l.muted))")[:2] == [[False], [True, True]]
+    app.evaluate("nomadDbg.songStop()")
+    # stop / play agit sur les 3 banks
+    app.click("#btnPlay")
+    assert app.evaluate("nomadDbg.SQ.list.flat().every(l => !l.src)")
+    app.click("#btnPlay")
+    assert app.evaluate("nomadDbg.SQ.list.flat().every(l => l.src)")
+
+
+def test_fx_suit_la_bank_affichee(app):
+    fake_loop(app, 0.4)
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[0], 1, 0)")
+    app.evaluate("nomadDbg.selectSeq(1)")
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[1], 1, 0)")
+    app.click("#tab-fx")
+    app.evaluate("nomadMidi([0x99, 36, 1]); nomadMidi([0x89, 36, 0])")
+    app.evaluate("nomadMidi([0x90, 52, 100])")       # mi : FX sur P1 = piste 1 de la bank B
+    app.evaluate("nomadDbg.selectSeq(0)")
+    app.evaluate("nomadDbg.selectSeq(1)")
+    assert app.evaluate("nomadDbg.SQ.cur") == 1 and app.evaluate("nomadDbg.SQ.list.flat().every(l => l.src)")
+
+
+def test_ancien_projet_converti_en_banks(app):
+    fake_loop(app, 0.4)
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[0], 1, 0)")
+    # ancien morceau : séquence A ×2, puis une prise qui passait de A à D
+    steps = app.evaluate("""nomadDbg.songMigrate([{ s: 0, r: 2 }, { s: 0, r: 1, take: { n: 1, len: 1000, ev: [{ t: 0, seq: 0, mask: [false] }, { t: 500, seq: 3, mask: [false] }] } }], { 0: 0, 3: 1 })""")
+    assert steps[0]["take"]["label"] == "PARTIE A ×2" and steps[0]["take"]["len"] == 2 * app.evaluate("nomadDbg.LP.Lf")
+    ev = steps[1]["take"]["ev"]
+    assert [(e["t"], e["seq"]) for e in ev] == [(0, 0), (0, 1), (0, 2), (500, 0), (500, 1)] and ev[3]["mask"][0] is True

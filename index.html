@@ -332,7 +332,11 @@ button { font-family: var(--font-body); }
 .pat.has { color: var(--text); } .pat.has::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--green); }
 .pat.on { background: var(--text); color: var(--ink); } .pat.next { box-shadow: inset 0 0 0 2px var(--red); }
 #seqCanvas { width: 100%; aspect-ratio: 1 / 1.02; display: block; background: #121110; border-radius: 8px; box-shadow: inset 0 0 0 1px #050505; touch-action: none; }
-.seqsel { grid-template-columns: repeat(8, 1fr) 1.6fr; margin-bottom: 8px; }
+.seqsel { grid-template-columns: repeat(3, 1fr) 0.9fr; margin-bottom: 8px; }
+.pat.bank { letter-spacing: .06em; } .pat.bank small { display: block; font-size: 9px; opacity: .7; min-height: 11px; margin-top: 1px; font-family: var(--font-mono, monospace); }
+.pat.bank.has:not(.live)::after { background: #6a655d; }
+.mixbanks .pat::after { display: none; }
+.mixbanks { display: flex; align-items: center; gap: 6px; } .mixbanks .pat { flex: 0 0 auto; min-width: 46px; padding: 4px 8px 3px; font-size: 12px; }
 .pat.metro { font-size: 10px; letter-spacing: .04em; }
 .sphead { margin: 2px 0 0; font-size: 10px; letter-spacing: .14em; color: var(--muted); display: flex; align-items: center; gap: 8px; font-weight: 700; }
 .sphead::before, .sphead::after { content: ""; height: 1px; flex: 1; background: currentColor; opacity: .4; }
@@ -780,11 +784,11 @@ html.flipped, html.flipped body { overflow: hidden; }
     </div>
     <p class="note" id="perfInfo"></p>
     <div class="transport" style="grid-template-columns:1fr 1fr">
-      <button class="btn" id="expLoop" type="button">SÉQUENCE WAV</button>
+      <button class="btn" id="expLoop" type="button">BOUCLES WAV</button>
       <button class="btn" id="expSess" type="button">● SESSION</button>
     </div>
     <div class="transport" style="grid-template-columns:1fr">
-      <button class="btn" id="loopKit" type="button">→ KIT DE PADS (pistes, mix, séquences)</button>
+      <button class="btn" id="loopKit" type="button">→ KIT DE PADS (pistes, mix, banks)</button>
     </div>
     <div class="transport" style="grid-template-columns:1fr">
       <button class="btn" id="expMpc" type="button">EXPORT MULTIPISTE + MPC</button>
@@ -843,7 +847,6 @@ html.flipped, html.flipped body { overflow: hidden; }
     <div class="songhead">
       <button class="btn" id="songPlay" type="button">▶ MORCEAU</button>
       <button class="btn" id="songLoop" type="button">BOUCLER : NON</button>
-      <button class="btn" id="songAdd" type="button">+ PARTIE</button>
     </div>
     <p class="songinfo" id="songInfo"></p>
     <div id="songList"></div>
@@ -855,7 +858,7 @@ html.flipped, html.flipped body { overflow: hidden; }
     </div>
     <p class="note" id="mInfo" style="margin:0;text-align:center"></p>
     <div class="transport" style="grid-template-columns:1fr"><button class="btn" id="songWav" type="button">EXPORTER LE MORCEAU (WAV)</button></div>
-    <p class="note help">Chaque partie joue une séquence du LOOPER (A à H) un certain nombre de fois. Les séquences se remplissent dans le LOOPER : choisissez une lettre puis enregistrez avec REC / Sustain. Le tempo est celui de la toute première boucle. ▶ sur une ligne lance le morceau depuis cette partie. Potards : volumes des pistes de la séquence en cours, volume des boucles, volume du métronome.</p>
+    <p class="note help">Chaque partie est une prise du LOOPER : armez, PLAY, jouez les muets et les solos sur les banks A, B et C (elles jouent ensemble), STOP. Le tempo est celui de la toute première boucle. ▶ sur une ligne lance le morceau depuis cette partie. Potards : volumes des pistes de la bank affichée, volume des boucles, volume du métronome.</p>
   </section>
 
   <section class="view stack" id="view-fx" hidden>
@@ -1027,7 +1030,7 @@ html.flipped, html.flipped body { overflow: hidden; }
     <h2>TABLE DE MIXAGE <button type="button" id="mixClose">FERMER</button></h2>
     <div class="mixpresets"><button class="btn rec" type="button" data-mixp="auto">AUTO</button><button class="btn" type="button" data-mixp="flat">À PLAT</button><button class="btn" type="button" data-mixp="wide">LARGE</button><button class="btn" type="button" data-mixp="narrow">ÉTROIT</button></div>
     <div class="mixer" id="mixer"></div>
-    <p class="help">Boucles P1 à P6 (séquence en cours) : volume, panoramique (glissière, double-touche = centre), BAS = coupe-bas à 120 Hz pour laisser la place à la basse, M = muet, S = solo. AUTO écoute les boucles : niveaux rapprochés, boucles graves au centre, les autres écartées à gauche et à droite, coupe-bas là où il n'y a pas de basses. À retoucher ensuite à l'oreille. Le panoramique et le coupe-bas sont gardés dans le projet et dans les exports. PADS comprend la platine DIGGING. Les voies PADS, SONS et GUITARE sont réglées avant le looper : ce qui est enregistré suit leurs niveaux. MASTER règle tout ce qui sort.</p>
+    <p class="help">Boucles P1 à P6 de la bank choisie (A, B ou C en haut ; les 3 banks jouent ensemble) : volume, panoramique (glissière, double-touche = centre), BAS = coupe-bas à 120 Hz pour laisser la place à la basse, M = muet, S = solo. AUTO écoute les boucles : niveaux rapprochés, boucles graves au centre, les autres écartées à gauche et à droite, coupe-bas là où il n'y a pas de basses. À retoucher ensuite à l'oreille. Le panoramique et le coupe-bas sont gardés dans le projet et dans les exports. PADS comprend la platine DIGGING. Les voies PADS, SONS et GUITARE sont réglées avant le looper : ce qui est enregistré suit leurs niveaux. MASTER règle tout ce qui sort.</p>
   </div>
 </div>
 
@@ -1087,7 +1090,7 @@ html.flipped, html.flipped body { overflow: hidden; }
     <p class="note" id="curProj"></p>
     <div class="saverow"><input id="projName" type="text" maxlength="40" placeholder="nom du projet" aria-label="Nom du projet"><button class="btn rec" id="projSave" type="button">ENREGISTRER SOUS</button></div>
     <div class="saverow"><button class="btn" id="projImport" type="button" style="flex:1">IMPORTER UN PROJET (.nomad)</button><input type="file" id="projFile" accept=".nomad,.zip,application/zip,application/octet-stream" hidden></div>
-    <p class="help">FICHIER enregistre un projet complet (sons, séquences, morceau, réglages) dans un fichier .nomad, à garder dans l'app Fichiers ou à passer sur un autre appareil.</p>
+    <p class="help">FICHIER enregistre un projet complet (sons, banks de boucles, morceau, réglages) dans un fichier .nomad, à garder dans l'app Fichiers ou à passer sur un autre appareil.</p>
     <div id="projList"></div>
     <h3>HORS LIGNE ET SAUVEGARDE</h3>
     <p class="help">L'app et les kits sont gardés dans l'appareil pour jouer sans réseau. La session en cours est enregistrée toute seule (projet « SESSION AUTO ») et se reprend depuis l'écran d'accueil. iOS peut effacer les données d'un site : gardez une sauvegarde complète dans l'app Fichiers.</p>
@@ -1788,48 +1791,36 @@ registerProcessor('nomad-oct',Oct);`;
 
   // ---------- Looper ----------
   const LP = { t0F: null, Lf: 0, beats: 4, layers: [], pending: null, playing: true };
-  // Séquences A à H : chacune a ses pistes ; le tempo (LP.Lf, LP.beats) est commun et fixé par la toute première boucle
-  const SQ = { list: Array.from({ length: 8 }, () => []), cur: 0, next: -1, sw: null, metro: false, metroF: 0 };
+  // Banks A, B, C : 6 pistes chacune, et les 3 banks jouent ENSEMBLE (18 pistes au plus). La bank affichée est celle
+  // que l'écran, les pads de muet / solo, FX, SP et la table de mixage commandent. Le tempo (LP.Lf, LP.beats) est commun.
+  const NB = 3;
+  const SQ = { list: Array.from({ length: NB }, () => []), cur: 0, next: -1, sw: null, metro: false, metroF: 0, solo: [] };
   SQ.list[0] = LP.layers;
+  const allLayers = () => SQ.list.flat();
+  const cycAll = () => cycF(allLayers());
   const gcdI = (x, y) => y ? gcdI(y, x % y) : x;
   function cycF(layers) { let k = 1; layers.forEach(l => { k = k * l.k / gcdI(k, l.k); }); return Math.min(k, 8) * LP.Lf; }
   function seqOf(l) { return SQ.list.findIndex(x => x.includes(l)); }
   function syncLoopKnobs() { LP.layers.forEach((l, i) => { knobVals.loops[i] = l.vol; }); for (let i = LP.layers.length; i < 6; i++) knobVals.loops[i] = 1; if (tab === "loops" || tab === "song") drawKnobs(); }
-  // Change de séquence tout de suite (arrêt)
-  function switchNow(i) {
-    LP.layers.forEach(stopLayer);
-    SQ.cur = i; LP.layers = SQ.list[i]; SQ.next = -1; SQ.sw = null;
-    perfMark(i);
-    routeFx(); LP.layers.forEach(l => l.gain.gain.setValueAtTime(l.muted ? 0 : l.vol, ctx.currentTime));
-    syncLoopKnobs(); drawSeqSel();
+  // Change la bank affichée (le son ne change pas : toutes les banks continuent de jouer)
+  function showBank(i) {
+    SQ.solo[SQ.cur] = LP.solo; SQ.cur = i; LP.layers = SQ.list[i]; LP.solo = SQ.solo[i] || null; LP.sel = -1;
+    routeFx(); syncLoopKnobs(); drawSeqSel();
   }
-  // Change de séquence pile sur une fin de cycle (bF en frames)
-  function doSwitch(i, bF) {
-    const T = Math.max(bF / sr, ctx.currentTime + 0.005);
-    LP.layers.forEach(l => { if (l.src) { try { l.src.stop(T); } catch (e) {} l.src = null; } });
-    SQ.cur = i; LP.layers = SQ.list[i]; LP.t0F = bF; SQ.sw = null; SQ.next = -1;
-    perfMark(i, bF);
-    routeFx();
-    LP.layers.forEach(l => { l.gain.gain.setValueAtTime(l.muted ? 0 : l.vol, ctx.currentTime); startLayer(l, T); });
-    syncLoopKnobs(); drawSeqSel();
-  }
+  // clavier de l'Akai dans LOOPER : do, ré, mi (les 3 premières touches blanches) = bank A, B, C ; le reste joue SONS
+  function bankKey(note) { const w = [0, 2, 4].indexOf(note - 48); if (w < 0) return false; selectSeq(w); return true; }
   function selectSeq(i) {
-    if (!ctx) return;
-    if (SONG.playing) songStop();
-    if (i === SQ.cur) { SQ.next = -1; SQ.sw = null; drawSeqSel(); return; }
-    if (LP.pending && LP.pending.type === "first") return;
-    if (LP.t0F === null || !LP.playing) { switchNow(i); lcd("lcdPad", "SÉQUENCE", SEQ_N[i] + (SQ.list[i].length ? "" : " · vide, REC pour la remplir")); return; }
-    SQ.next = i; SQ.sw = null; drawSeqSel();
-    lcd("lcdPad", "SÉQUENCE", SEQ_N[i] + " en attente · fin du cycle");
+    if (!ctx || i < 0 || i >= NB) return;
+    if (i === SQ.cur) { drawSeqSel(); return; }
+    if (LP.pending) { lcd("lcdPad", "BANK", "attends la fin de l'enregistrement"); return; }
+    if (LPR.rec) { lcd("lcdPad", "BANK", "impression en cours : attends la fin"); return; }
+    showBank(i);
+    const n = SQ.list[i].length, on = SQ.list[i].filter(l => !l.muted).length;
+    lcd("lcdPad", "BANK " + SEQ_N[i], n ? `${n} piste(s) · ${on} audible(s)` : "vide · REC pour la remplir");
   }
   function seqTick() {
     if (!ctx || LP.t0F === null) return;
     const nowF = ctx.currentTime * sr;
-    if (SQ.next >= 0 && !SQ.sw && LP.playing && !LP.pending) {
-      const C = cycF(LP.layers), n = Math.ceil((nowF + 0.13 * sr - LP.t0F) / C);
-      SQ.sw = { i: SQ.next, bF: LP.t0F + n * C };
-    }
-    if (SQ.sw && nowF >= SQ.sw.bF - 0.12 * sr) doSwitch(SQ.sw.i, SQ.sw.bF);
     // métronome : un clic par temps, accent tous les 4 temps
     if (SQ.metro && LP.playing) {
       const bF = LP.Lf / LP.beats; let n = Math.ceil((Math.max(nowF, SQ.metroF + 1) - LP.t0F) / bF);
@@ -1843,26 +1834,34 @@ registerProcessor('nomad-oct',Oct);`;
     }
     songTick();
   }
-  // Sélecteur de séquences du LOOPER (toucher : choisir ; glisser une séquence sur une autre : copier)
+  // Sélecteur de banks du LOOPER (toucher : afficher ; glisser une bank sur une autre : copier)
   function drawSeqSel() {
     try { drawLenBar(); } catch (e) {}
     try { spRoute(); drawSpTargets(); } catch (e) {}
     try { scheduleKey(); } catch (e) {}
-    for (let i = 0; i < 8; i++) {
-      const b = $("sq" + i); if (!b) return;
-      b.classList.toggle("on", i === SQ.cur); b.classList.toggle("has", SQ.list[i].length > 0);
-      b.classList.toggle("next", i === SQ.next || (SQ.sw && SQ.sw.i === i));
-    }
+    drawBanks();
     $("metroBtn").classList.toggle("on", SQ.metro); $("trMetro").classList.toggle("on", SQ.metro);
+  }
+  function drawBanks() {
+    for (let i = 0; i < NB; i++) {
+      const on = SQ.list[i].filter(l => !l.muted).length;
+      document.querySelectorAll(`[data-bank="${i}"]`).forEach(b => {
+        b.classList.toggle("on", i === SQ.cur); b.classList.toggle("has", SQ.list[i].length > 0); b.classList.toggle("live", on > 0);
+        const c = b.querySelector("small"); if (c) c.textContent = SQ.list[i].length ? `${on}/${SQ.list[i].length}` : "";
+      });
+    }
+    // table de mixage ouverte : on la reconstruit si la bank ou le nombre de pistes a changé
+    try { if (MIX.redraw) { if (!$("mixSheet").hidden && (MIX.bank !== SQ.cur || MIX.n !== LP.layers.length)) buildMixer(); else MIX.redraw(); } } catch (e) {}
   }
   function copySeq(a, b) {
     if (a === b || !SQ.list[a].length) return;
     const old = SQ.list[b].slice();
-    const make = () => SQ.list[a].map(l => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = l.muted ? 0 : l.vol; gain.connect(loopBus); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: l.muted, src: null, pan: l.pan || 0, hp: !!l.hp }; });
-    const put = arr => { const T = SQ.list[b]; if (b === SQ.cur) T.forEach(stopLayer); T.length = 0; arr.forEach(l => T.push(l)); if (b === SQ.cur) { routeFx(); if (LP.playing) T.forEach(l => startLayer(l, ctx.currentTime + 0.005)); syncLoopKnobs(); } drawSeqSel(); };
+    // la copie arrive coupée : les banks jouent ensemble, sinon on entendrait tout en double
+    const make = () => SQ.list[a].map(l => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = 0; gain.connect(loopBus); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: true, src: null, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [] }; });
+    const put = arr => { const T = SQ.list[b]; T.forEach(l => { stopLayer(l); try { l.gain.disconnect(); } catch (e) {} }); T.length = 0; arr.forEach(l => { l.gain.gain.value = l.muted ? 0 : l.vol; T.push(l); }); routeFx(); if (LP.playing) T.forEach(l => startLayer(l, ctx.currentTime + 0.005)); if (b === SQ.cur) syncLoopKnobs(); drawSeqSel(); };
     const fresh = make(); put(fresh);
     pushHist(`copie ${SEQ_N[a]} → ${SEQ_N[b]}`, () => put(old), () => put(fresh));
-    lcd("lcdPad", "SÉQUENCE", `${SEQ_N[a]} copiée sur ${SEQ_N[b]}`);
+    lcd("lcdPad", "BANK", `${SEQ_N[a]} copiée sur ${SEQ_N[b]} · pistes coupées, rétablis celles que tu veux`);
   }
   const loopLen = () => LP.Lf / sr;
   const compF = () => Math.round(latMs / 1000 * sr);
@@ -1962,18 +1961,16 @@ registerProcessor('nomad-oct',Oct);`;
   function dropLayer(l) {
     const si = seqOf(l); if (si < 0) return;
     if (si === SQ.cur) removeLayer(LP.layers.indexOf(l), false);
-    else { SQ.list[si].splice(SQ.list[si].indexOf(l), 1); try { l.gain.disconnect(); } catch (e) {} }
+    else { SQ.list[si].splice(SQ.list[si].indexOf(l), 1); stopLayer(l); try { l.gain.disconnect(); } catch (e) {} }
     drawSeqSel();
   }
   function reinsertLayer(l, idx, st) {
     if (LP.t0F === null && st) { LP.Lf = st.Lf; LP.beats = st.beats; LP.t0F = Math.round((ctx.currentTime + 0.03) * sr); LP.playing = true; }
     const si = st && st.si !== undefined ? st.si : SQ.cur, arr = SQ.list[si];
     arr.splice(Math.min(idx, arr.length), 0, l);
-    if (si === SQ.cur) {
-      routeFx();
-      l.gain.gain.setValueAtTime(l.muted ? 0 : l.vol, ctx.currentTime);
-      if (LP.playing) startLayer(l, ctx.currentTime + 0.005);
-    }
+    routeFx();
+    l.gain.gain.setValueAtTime(l.muted ? 0 : l.vol, ctx.currentTime);
+    if (LP.playing) startLayer(l, ctx.currentTime + 0.005);
     drawSeqSel();
   }
   // chaîne de chaque piste : coupe-bas → panoramique → volume (réglés dans la table de mixage)
@@ -1996,12 +1993,12 @@ registerProcessor('nomad-oct',Oct);`;
     l.src = src;
   }
   function stopLayer(l) { if (l.src) { try { l.src.stop(); } catch (e) {} l.src.disconnect(); l.src = null; } }
-  function stopAll() { perfOnStop(); LP.layers.forEach(stopLayer); LP.playing = false; SQ.sw = null; if (SONG.playing) songStop(); if (LP.pending && LP.pending.type === "layer") LP.pending = null; }
+  function stopAll() { perfOnStop(); allLayers().forEach(stopLayer); LP.playing = false; SQ.sw = null; if (SONG.playing) songStop(); if (LP.pending && LP.pending.type === "layer") LP.pending = null; }
   function playAll() {
     if (!ctx || LP.t0F === null) return;
     const T = ctx.currentTime + 0.03;
     LP.t0F = Math.round(T * sr); SQ.metroF = 0; SQ.sw = null;
-    LP.layers.forEach(l => { stopLayer(l); startLayer(l, T); });
+    allLayers().forEach(l => { stopLayer(l); startLayer(l, T); });
     LP.playing = true;
     perfOnPlay();
   }
@@ -2024,7 +2021,7 @@ registerProcessor('nomad-oct',Oct);`;
   function resetAll() {
     songStop();
     SQ.list.forEach(x => { x.forEach(l => { stopLayer(l); l.gain.disconnect(); }); x.length = 0; });
-    SQ.cur = 0; LP.layers = SQ.list[0]; LP.t0F = null; LP.Lf = 0; LP.pending = null; LP.playing = true; SQ.next = -1; SQ.sw = null;
+    SQ.cur = 0; SQ.solo = []; LP.solo = null; LP.layers = SQ.list[0]; LP.t0F = null; LP.Lf = 0; LP.pending = null; LP.playing = true; SQ.next = -1; SQ.sw = null;
     drawSeqSel();
   }
   function undo() { if (LP.pending) { LP.pending = null; return; } removeLayer(LP.layers.length - 1); }
@@ -2086,23 +2083,23 @@ registerProcessor('nomad-oct',Oct);`;
     LP.solo = null;
     l.muted = !l.muted;
     l.gain.gain.setTargetAtTime(l.muted ? 0 : l.vol, ctx.currentTime, 0.01);
-    perfMark();
+    perfMark(); drawBanks();
   }
   // Commandes du looper aux pads : tout couper, tout rétablir, solo, arrêt en ralentissant, lecture
   function setMute(l, m) { l.muted = m; l.gain.gain.setTargetAtTime(m ? 0 : l.vol, ctx.currentTime, 0.01); }
-  function muteAll(m) { if (!ctx) return; LP.solo = null; LP.layers.forEach(l => setMute(l, m)); perfMark(); lcd("lcdLoop", "BOUCLE", m ? "toutes les pistes coupées" : "toutes les pistes rétablies"); }
+  function muteAll(m) { if (!ctx) return; LP.solo = null; LP.layers.forEach(l => setMute(l, m)); perfMark(); drawBanks(); lcd("lcdLoop", "BOUCLE", m ? "toutes les pistes coupées" : "toutes les pistes rétablies"); }
   function soloLayer(i) {
     if (!ctx || !LP.layers[i]) return;
-    if (LP.solo && LP.solo.i === i) { LP.layers.forEach((l, j) => setMute(l, LP.solo.saved[j] ?? false)); LP.solo = null; perfMark(); lcd("lcdLoop", "BOUCLE", "solo terminé"); return; }
+    if (LP.solo && LP.solo.i === i) { LP.layers.forEach((l, j) => setMute(l, LP.solo.saved[j] ?? false)); LP.solo = null; perfMark(); drawBanks(); lcd("lcdLoop", "BOUCLE", "solo terminé"); return; }
     const saved = LP.solo ? LP.solo.saved : LP.layers.map(l => l.muted);
     LP.layers.forEach((l, j) => setMute(l, j !== i));
-    LP.solo = { i, saved }; perfMark();
+    LP.solo = { i, saved }; perfMark(); drawBanks();
     lcd("lcdLoop", "BOUCLE", `solo piste ${i + 1}`);
   }
   function tapeStopAll() {
     if (!ctx || !LP.playing) return;
     const t = ctx.currentTime, dur = 0.9;
-    LP.layers.forEach(l => { if (!l.src) return; const r = l.src.playbackRate; r.cancelScheduledValues(t); r.setValueAtTime(r.value, t); r.exponentialRampToValueAtTime(0.02, t + dur); });
+    allLayers().forEach(l => { if (!l.src) return; const r = l.src.playbackRate; r.cancelScheduledValues(t); r.setValueAtTime(r.value, t); r.exponentialRampToValueAtTime(0.02, t + dur); });
     loopBus.gain.cancelScheduledValues(t); loopBus.gain.setValueAtTime(loopBus.gain.value, t + dur * 0.6); loopBus.gain.linearRampToValueAtTime(0, t + dur);
     const vol = knobVals.loops[6];
     setTimeout(() => { stopAll(); loopBus.gain.cancelScheduledValues(ctx.currentTime); loopBus.gain.setValueAtTime(vol, ctx.currentTime); lcd("lcdLoop", "BOUCLE", "arrêt (tape stop)"); }, dur * 1000 + 30);
@@ -2122,27 +2119,27 @@ registerProcessor('nomad-oct',Oct);`;
   $("btnClear").addEventListener("pointerdown", e => { e.currentTarget.classList.add("holding"); clearTimer = setTimeout(() => {
     const ls = LP.layers.slice(), st = { Lf: LP.Lf, beats: LP.beats, si: SQ.cur };
     resetLooper(); $("btnClear").classList.remove("holding");
-    if (ls.length) pushHist("effacer la séquence " + SEQ_N[st.si], () => ls.forEach((l, i) => reinsertLayer(l, i, st)), () => ls.forEach(dropLayer));
+    if (ls.length) pushHist("effacer la bank " + SEQ_N[st.si], () => ls.forEach((l, i) => reinsertLayer(l, i, st)), () => ls.forEach(dropLayer));
   }, 700); });
   ["pointerup", "pointerleave", "pointercancel"].forEach(ev => $("btnClear").addEventListener(ev, () => { clearTimeout(clearTimer); $("btnClear").classList.remove("holding"); }));
 
   // ---------- LOOPER : PRISES. On arme, PLAY lance la prise (ou tout de suite si ça tourne déjà), STOP la termine.
-  // La prise retient les gestes (coupures, solos, changements de séquence) à l'instant près, sans aucun son :
+  // La prise retient les gestes (coupures, solos, sur les 3 banks) à l'instant près, sans aucun son :
   // elle devient UNE ligne de SONG, rejouée sur les boucles telles qu'elles sont (une boucle retouchée plus tard en profite).
   const PERF = { armed: false, rec: false, startF: 0, ev: [], t: null, n: store.get("takeN", 0), last: null };
   const perfMask = seq => (SQ.list[seq] || []).map(l => !!l.muted);
   const perfNow = () => ctx.currentTime * sr - compF();
   function perfMark(seq, F) {
     if (!PERF.rec) return;
-    const s = seq === undefined ? SQ.cur : seq, m = perfMask(s), last = PERF.ev[PERF.ev.length - 1];
-    if (last && last.seq === s && last.mask.join() === m.join()) return;
+    const s = seq === undefined ? SQ.cur : seq, m = perfMask(s), last = PERF.ev.filter(e => e.seq === s).pop();
+    if (last && last.mask.join() === m.join()) return;
     PERF.ev.push({ t: Math.max(0, Math.round((F === undefined ? perfNow() : F) - PERF.startF)), seq: s, mask: m });
   }
   function perfBegin(startF) {
     PERF.armed = false; PERF.rec = true; PERF.startF = startF;
-    PERF.ev = [{ t: 0, seq: SQ.cur, mask: perfMask(SQ.cur) }];
+    PERF.ev = SQ.list.map((x, b) => ({ t: 0, seq: b, mask: perfMask(b) }));   // état de départ des 3 banks
     clearInterval(PERF.t); PERF.t = setInterval(drawPerf, 250); drawPerf();
-    lcd("lcdLoop", "PRISE", "enregistrement : coupe, rétablis, solo, change de séquence… STOP pour finir");
+    lcd("lcdLoop", "PRISE", "enregistrement : coupe, rétablis, solo, sur toutes les banks… STOP pour finir");
   }
   function perfArm() {
     if (!ctx) return;
@@ -2150,7 +2147,7 @@ registerProcessor('nomad-oct',Oct);`;
     if (PERF.armed) { PERF.armed = false; drawPerf(); lcd("lcdLoop", "PRISE", "prise désarmée"); return; }
     if (LP.t0F === null) { lcd("lcdLoop", "PRISE", "enregistre d'abord une boucle"); return; }
     if (LP.playing) {   // ça tourne déjà : la prise part tout de suite, depuis le début du tour en cours
-      const C = cycF(LP.layers), now = perfNow();
+      const C = cycAll(), now = perfNow();
       perfBegin(LP.t0F + Math.floor((now - LP.t0F) / C) * C);
     } else { PERF.armed = true; drawPerf(); lcd("lcdLoop", "PRISE", "armée · choisis tes pistes de départ, puis PLAY"); }
   }
@@ -2159,12 +2156,12 @@ registerProcessor('nomad-oct',Oct);`;
   function perfOnStop() { if (PERF.rec) perfEnd(); }
   function perfEnd() {
     PERF.rec = false; clearInterval(PERF.t);
-    const C = cycF(LP.layers) || LP.Lf, endRaw = perfNow();
+    const C = cycAll() || LP.Lf, endRaw = perfNow();
     const endF = LP.t0F + Math.max(1, Math.round((endRaw - LP.t0F) / C)) * C;   // fin calée sur le tour le plus proche
     const len = Math.max(C, Math.round(endF - PERF.startF));
     const ev = PERF.ev.filter(e => e.t < len);
     PERF.n++; store.set("takeN", PERF.n);
-    const step = { s: ev[0].seq, r: 1, take: { n: PERF.n, len, ev } };
+    const step = { s: SQ.cur, r: 1, take: { n: PERF.n, len, ev } };
     PERF.last = step;
     songEdit("prise " + PERF.n + " → SONG", () => { SONG.steps.push(JSON.parse(JSON.stringify(step))); });
     drawPerf();
@@ -2181,22 +2178,22 @@ registerProcessor('nomad-oct',Oct);`;
   // rendu d'une prise : chaque piste suit ses coupures, avec de courts fondus ; renvoie le mix et les pistes séparées
   function renderTake(tk, wantStems) {
     const N = tk.len, mix = [new Float32Array(N), new Float32Array(N)], stems = {}, lb = loopBus.gain.value, a = 1 - Math.exp(-1 / (0.004 * sr));
-    const segs = []; let origin = 0;
-    tk.ev.forEach((e, i) => { if (i === 0 || e.seq !== tk.ev[i - 1].seq) origin = e.t; segs.push({ ...e, origin, end: i + 1 < tk.ev.length ? tk.ev[i + 1].t : N }); });
-    const seqs = [...new Set(tk.ev.map(e => e.seq))];
-    seqs.forEach(sq => (SQ.list[sq] || []).forEach((l, q) => {
+    // chaque bank suit ses propres événements ; une bank sans événement garde son état actuel
+    const segOf = sq => { const evb = tk.ev.filter(e => e.seq === sq), cur = { t: 0, mask: perfMask(sq) }, list = evb.length && evb[0].t <= 0 ? evb : [cur, ...evb];
+      return list.map((e, i) => ({ mask: e.mask, t: i ? e.t : 0, end: i + 1 < list.length ? list[i + 1].t : N })); };
+    SQ.list.forEach((ls, sq) => { const segs = segOf(sq); ls.forEach((l, q) => {
       const name = SEQ_N[sq] + "_piste" + (q + 1), out = wantStems ? [new Float32Array(N), new Float32Array(N)] : null, LkL = l.k * LP.Lf, off = l.m * LP.Lf, pg = panGains(l), hk = l.hp ? Math.exp(-2 * Math.PI * 120 / sr) : 0, hs = [[0, 0], [0, 0]];
       let g = 0;
       segs.forEach(sg => {
-        const tgt = sg.seq === sq && !(sg.mask[q] || false) ? l.vol * lb : 0;
+        const tgt = !(sg.mask[q] || false) ? l.vol * lb : 0;
         for (let t = sg.t; t < sg.end; t++) {
           g += (tgt - g) * a; if (g < 1e-5 && tgt === 0) { g = 0; continue; }
-          const p = ((((t - sg.origin - off) % LkL) + LkL) % LkL);
+          const p = ((((t - off) % LkL) + LkL) % LkL);
           for (let c = 0; c < 2; c++) { let x = l.buf.getChannelData(Math.min(c, l.buf.numberOfChannels - 1))[p] || 0; if (hk) { const y = hk * (hs[c][1] + x - hs[c][0]); hs[c][0] = x; hs[c][1] = y; x = y; } const v = x * g * pg[c]; mix[c][t] += v; if (out) out[c][t] = v; }
         }
       });
-      if (out) stems[name] = out;
-    }));
+      if (out && segs.some(sg => !sg.mask[q])) stems[name] = out;
+    }); });
     return { mix, stems };
   }
   async function perfToWav() {
@@ -2314,7 +2311,7 @@ registerProcessor('nomad-oct',Oct);`;
     else {
       const bpm = (60 * LP.beats / loopLen()).toFixed(1);
       const mb = Math.round(SQ.list.reduce((a, x) => a + x.reduce((b, l) => b + l.buf.length * l.buf.numberOfChannels * 4, 0), 0) / 1048576);
-      s = `SÉQ ${SEQ_N[SQ.cur]} · ${bpm} BPM · ${LP.layers.length}/${MAX_LAYERS}` + (mb >= 40 ? ` · ${mb} Mo` : "");
+      s = `BANK ${SEQ_N[SQ.cur]} · ${bpm} BPM · ${LP.layers.length}/${MAX_LAYERS}` + (mb >= 40 ? ` · ${mb} Mo` : "");
       if (p) { s += ctx.currentTime * sr - (p.comp || 0) < p.sF ? " · ARMÉE" : " · REC " + (p.half ? "÷2" : "×" + p.k); cls = "rec"; }
       else if (!LP.playing) s += " · STOP";
     }
@@ -2505,11 +2502,12 @@ registerProcessor('nomad-oct',Oct);`;
   function routeFx() {
     if (!fxDry) return;
     [liveBus, loopBus].forEach(n => { try { n.disconnect(master); } catch (e) {} try { n.disconnect(fxDry); } catch (e) {} });
-    LP.layers.forEach(l => { try { l.gain.disconnect(); } catch (e) {} });
+    allLayers().forEach(l => { try { l.gain.disconnect(); } catch (e) {} });
     const k = /^\d$/.test(fxTarget) ? +fxTarget - 1 : -1;
     liveBus.connect(fxTarget === "all" || fxTarget === "live" ? master : fxDry);
     loopBus.connect(fxTarget === "all" ? master : fxDry);
-    LP.layers.forEach((l, i) => { if (typeof spLayer !== "undefined" && l === spLayer && sp) l.gain.connect(sp.lay); else if (i === k) { l.gain.connect(fxSolo); } else l.gain.connect(loopBus); if (l.an) l.gain.connect(l.an); });
+    // P1 à P6 = pistes de la bank affichée ; les pistes des autres banks restent sur le bus des boucles
+    allLayers().forEach(l => { const i = LP.layers.indexOf(l); if (typeof spLayer !== "undefined" && l === spLayer && sp) l.gain.connect(sp.lay); else if (i >= 0 && i === k) { l.gain.connect(fxSolo); } else l.gain.connect(loopBus); if (l.an) l.gain.connect(l.an); });
   }
   let fxSolo = null;
   // Impression des effets FX sur la piste choisie (même principe que SP)
@@ -4395,7 +4393,7 @@ registerProcessor('nomad-oct',Oct);`;
     }
     if (s === "pad") return buffers.map((b, i) => b ? { name: `PAD ${i + 1} · ${(names[i] || "").toUpperCase()}`, get: async () => b } : null).filter(Boolean);
     if (s === "chop") { if (!clip) return []; return chops.map((_, i) => ({ name: `CHOP ${i + 1} · ${clip.title}`, get: async () => { const [a, b] = chopRange(i), n = Math.max(1, b - a), o = ctx.createBuffer(clip.buf.numberOfChannels, n, clip.buf.sampleRate); for (let c = 0; c < o.numberOfChannels; c++) o.copyToChannel(clip.buf.getChannelData(c).subarray(a, b), c); return o; } })); }
-    if (s === "piste") return LP.layers.filter(l => l.buf).map((l, i) => ({ name: `PISTE ${i + 1} · séquence ${SEQ_N[SQ.cur]}`, get: async () => l.buf }));
+    if (s === "piste") return LP.layers.filter(l => l.buf).map((l, i) => ({ name: `PISTE ${i + 1} · bank ${SEQ_N[SQ.cur]}`, get: async () => l.buf }));
     if (s === "mine") { try { SCR.mine = (await DB.all("scratch")).sort((a, b) => a.created - b.created); } catch (e) { SCR.mine = []; } return SCR.mine.map(m => ({ name: m.name, get: async () => unpackBuf(m.buf) })); }
     return [];
   }
@@ -4404,7 +4402,7 @@ registerProcessor('nomad-oct',Oct);`;
     const tok = ++SCR.loading;
     const list = await scrList();
     if (tok !== SCR.loading) return;
-    if (!list.length) { $("scrName").textContent = { chop: "aucun chop : passez par DIGGING", piste: "aucune piste dans cette séquence", mine: "aucun son : IMPORTER", voix: "bac hors ligne" }[SCR.src] || "vide"; return; }
+    if (!list.length) { $("scrName").textContent = { chop: "aucun chop : passez par DIGGING", piste: "aucune piste dans cette bank", mine: "aucun son : IMPORTER", voix: "bac hors ligne" }[SCR.src] || "vide"; return; }
     SCR.idx = abs !== undefined ? ((abs % list.length) + list.length) % list.length : ((SCR.idx + delta) % list.length + list.length) % list.length;
     const e = list[SCR.idx];
     $("scrName").textContent = "on pose le disque…";
@@ -4824,7 +4822,7 @@ registerProcessor('nomad-oct',Oct);`;
     const sec = (title, body, open) => `<details class="gl"${open ? " open" : ""}><summary>${title}</summary><div>${body}</div></details>`;
     el.innerHTML = [
       sec("PARTOUT", `<p><b>Pédale Sustain</b> : REC / superposition du looper ; dans SP, imprime les effets sur la piste choisie.</p><p><b>Clavier</b> : joue l'instrument de SONS (ou le pad choisi, transposé) ; en mode ACCORDS, les touches graves jouent les accords ; dans SCRATCH, il transpose le disque ; dans FX, les 8 premières touches blanches (do à do) choisissent la cible : TOUT, LIVE, P1 à P6 ; dans SP, les 7 premières : TOUT, P1 à P6.</p><p><b>Potards</b> : changent de rôle selon l'onglet (voir POTARDS).</p><p><b>Sur ordinateur</b> : touches & é " ' ( § è ! ç (ou F1 à F9) = onglets (PADS, LOOPER, SONS / DIGGING, SCRATCH, GUITARE / FX, SP, SONG, dans l'ordre de la grille), Espace = play / stop, Entrée = REC (dans SP et FX : imprimer sur la piste), Retour arrière = annuler, Cmd+S = SAVE.</p>`, true),
-      sec("BOUTON CC (pads en CC, preset 3)", `<p class="glh">Banque A</p>${padGrid(["Play / stop looper", "Annuler", "Muet piste 1", "Muet piste 2", "Muet piste 3", "Muet piste 4", "Muet piste 5", "Muet piste 6"])}<p class="glh">Banque B</p>${padGrid(["Kit précédent", "Kit suivant", "Morceau ▶/■", "Séquence ◀", "Note repeat", "Séquence ▶", "Onglet suivant", "Guitare (onglet + entrée)"], 8)}`),
+      sec("BOUTON CC (pads en CC, preset 3)", `<p class="glh">Banque A</p>${padGrid(["Play / stop looper", "Annuler", "Muet piste 1", "Muet piste 2", "Muet piste 3", "Muet piste 4", "Muet piste 5", "Muet piste 6"])}<p class="glh">Banque B</p>${padGrid(["Kit précédent", "Kit suivant", "Morceau ▶/■", "Bank ◀", "Note repeat", "Bank ▶", "Onglet suivant", "Guitare (onglet + entrée)"], 8)}`),
       sec("BOUTON PROG CHANGE (onglets et kits)", `<p>PROG CHANGE allumé, un pad, puis PROG CHANGE éteint pour rejouer.</p><p>Les numéros sous les onglets de l'iPhone rappellent le pad.</p><p class="glh">Banque A : aller à l'onglet</p>${padGrid(["PADS", "LOOPER", "SONS", "DIGGING", "SCRATCH", "GUITARE", "FX", "SP"])}<p class="glh">Banque B : charger le kit</p>${padGrid(kits, 8)}<p>Pad 16 en mode CC : allume l'entrée guitare et ouvre l'onglet.</p>`),
       sec("PADS EN NOTES, SELON L'ONGLET", `<p><b>PADS, SONG, SP, GUITARE</b> : les 16 sons du kit (banque A = 1 à 8, banque B = 9 à 16).</p>
         <p class="glh">LOOPER · banque A</p>${padGrid(["Muet piste 4", "Muet piste 5", "Muet piste 6", "Tout couper", "Muet piste 1", "Muet piste 2", "Muet piste 3", "Tout rétablir"])}
@@ -4956,71 +4954,88 @@ registerProcessor('nomad-oct',Oct);`;
   drawNR();
 
   // ---------- SONG : enchaînement des séquences ----------
-  const SONG = { steps: [{ s: 0, r: 2 }], playing: false, idx: 0, loop: false, stepT0: 0, endT: null };
+  const SONG = { steps: [], playing: false, idx: 0, loop: false, stepT0: 0, endT: null, tkI: 0 };
   const SEQ_N = "ABCDEFGH";
-  // durée d'une ligne : prise = sa longueur ; séquence = répétitions × cycle
-  const stepDur = st => st.take ? st.take.len : st.r * cycF(SQ.list[st.s]);
-  // prise : applique un état des pistes (et la séquence) à l'instant F
+  // durée d'une ligne : une prise a sa longueur (les anciennes lignes « séquence × n » sont converties en prises)
+  const stepDur = st => st.take ? st.take.len : st.r * cycF(SQ.list[st.s] || []);
+  // prise : un événement = l'état muet / audible des pistes d'UNE bank, à l'instant F (les autres banks ne bougent pas)
   function takeApply(e, F) {
     const ls = SQ.list[e.seq] || [], T = Math.max(F / sr, ctx.currentTime);
-    ls.forEach((l, q) => { const m = !!e.mask[q]; l.muted = m; if (e.seq === SQ.cur) { l.gain.gain.cancelScheduledValues(T); l.gain.gain.setTargetAtTime(m ? 0 : l.vol, T, 0.004); } });
-    if (e.seq !== SQ.cur) SQ.sw = { i: e.seq, bF: Math.round(F) };
+    ls.forEach((l, q) => { const m = !!e.mask[q]; l.muted = m; l.gain.gain.cancelScheduledValues(T); l.gain.gain.setTargetAtTime(m ? 0 : l.vol, T, 0.004); });
+    if (e.seq === SQ.cur) LP.solo = null;
+    drawBanks();
   }
+  // état de départ d'une prise (événements à t = 0) ; renvoie l'indice du premier geste
+  function takeInit(tk, F) { let n = 0; while (n < tk.ev.length && tk.ev[n].t <= 0) takeApply(tk.ev[n++], F); return n; }
   function takeTick() {
-    const st = SONG.steps[SONG.idx]; if (!st || !st.take || SQ.sw) return;
+    const st = SONG.steps[SONG.idx]; if (!st || !st.take) return;
     const ev = st.take.ev, nowF = ctx.currentTime * sr;
-    while (SONG.tkI < ev.length && SONG.stepT0 + ev[SONG.tkI].t <= nowF + 0.14 * sr) { const e = ev[SONG.tkI++]; takeApply(e, SONG.stepT0 + e.t); if (SQ.sw) break; }
+    while (SONG.tkI < ev.length && SONG.stepT0 + ev[SONG.tkI].t <= nowF + 0.14 * sr) { const e = ev[SONG.tkI++]; takeApply(e, SONG.stepT0 + e.t); }
   }
-  function songPlay() {
+  // Anciennes lignes (séquence A à H × répétitions) et anciennes prises (qui changeaient de séquence) → prises sur les banks.
+  // map : ancienne séquence → bank. Une séquence qu'on quitte devient muette, celle qu'on rejoint reprend son état.
+  function songMigrate(steps, map) {
+    const full = () => Array(6).fill(true), init = (b0, mask) => SQ.list.map((x, b) => ({ t: 0, seq: b, mask: b === b0 ? mask : full() }));
+    const out = [];
+    steps.forEach(st => {
+      if (!st.take) {
+        const b = map[st.s]; if (b === undefined || !SQ.list[b].length) return;
+        out.push({ s: b, r: 1, take: { n: 0, label: `PARTIE ${SEQ_N[b]} ×${st.r}`, len: st.r * cycF(SQ.list[b]), ev: init(b, SQ.list[b].map(() => false)) } });
+        return;
+      }
+      const e0 = st.take.ev; let cur = map[e0[0].seq]; if (cur === undefined) return;
+      const ev = init(cur, e0[0].mask);
+      e0.slice(1).forEach(e => { const b = map[e.seq]; if (b === undefined) return; if (b !== cur) { ev.push({ t: e.t, seq: cur, mask: full() }); cur = b; } ev.push({ t: e.t, seq: b, mask: e.mask }); });
+      out.push({ s: map[st.s] ?? 0, r: 1, take: { ...st.take, ev } });
+    });
+    return out;
+  }
+  function songNormalize() { if (SONG.steps.some(st => !st.take)) SONG.steps = songMigrate(SONG.steps, { 0: 0, 1: 1, 2: 2 }); }
+  function songPlay(from = 0) {
     if (!ctx) return;
     if (LP.t0F === null) { lcd("lcdPad", "SONG", "enregistrez d'abord une boucle au LOOPER"); return; }
-    if (!SONG.steps.length) return;
-    SONG.idx = 0; SONG.endT = null;
-    const s0 = SONG.steps[0];
-    if (s0.take) s0.take.ev[0].mask.forEach((m, q) => { const l = SQ.list[s0.s][q]; if (l) l.muted = !!m; });
-    else if (SONG.steps.some(x => x.take)) SQ.list[s0.s].forEach(l => { l.muted = false; });
-    switchNow(s0.s);
+    songNormalize();
+    if (!SONG.steps.length) { lcd("lcdPad", "SONG", "aucune prise : ● ARMER UNE PRISE au LOOPER"); drawSong(true); return; }
+    if (SONG.playing) songStop();
+    SONG.idx = Math.min(from, SONG.steps.length - 1); SONG.endT = null;
+    SONG.tkI = takeInit(SONG.steps[SONG.idx].take, ctx.currentTime * sr);
     playAll();
-    SONG.stepT0 = LP.t0F; SONG.tkI = 0; SONG.playing = true; drawSong(true);
+    SONG.stepT0 = LP.t0F; SONG.playing = true; drawSong(true);
   }
   function songStop() { if (!SONG.playing) return; SONG.playing = false; clearTimeout(SONG.endT); SONG.endT = null; SQ.next = -1; SQ.sw = null; drawSong(true); drawSeqSel(); }
   function songTick() {
     if (!SONG.playing || !LP.playing || LP.t0F === null) return;
     takeTick();
-    if (SQ.sw) return;
     const st = SONG.steps[SONG.idx]; if (!st) { songStop(); return; }
-    const endF = SONG.stepT0 + (st.take ? st.take.len : st.r * cycF(LP.layers)), nowF = ctx.currentTime * sr;
+    const endF = SONG.stepT0 + stepDur(st), nowF = ctx.currentTime * sr;
     if (nowF < endF - 0.15 * sr) return;
     let idx = SONG.idx + 1;
     if (idx >= SONG.steps.length) {
-      if (!SONG.loop) { const T = endF / sr; LP.layers.forEach(l => { if (l.src) { try { l.src.stop(T); } catch (e) {} } }); SONG.playing = false; SONG.endT = setTimeout(() => { stopAll(); drawSong(true); }, Math.max(0, (T - ctx.currentTime) * 1000)); drawSong(true); return; }
+      if (!SONG.loop) { const T = endF / sr; allLayers().forEach(l => { if (l.src) { try { l.src.stop(T); } catch (e) {} } }); SONG.playing = false; SONG.endT = setTimeout(() => { stopAll(); drawSong(true); }, Math.max(0, (T - ctx.currentTime) * 1000)); drawSong(true); return; }
       idx = 0;
     }
-    SONG.idx = idx; SONG.stepT0 = endF; SONG.tkI = 0;
-    const nst = SONG.steps[idx], nx = nst.s;
-    // une ligne de séquence classique rejoue toutes ses pistes ; une prise part de son premier état
-    if (nst.take) { SONG.tkI = 1; const e0 = nst.take.ev[0]; (SQ.list[nx] || []).forEach((l, q) => { l.muted = !!e0.mask[q]; if (nx === SQ.cur) l.gain.gain.setTargetAtTime(l.muted ? 0 : l.vol, endF / sr, 0.004); }); }
-    else if (SONG.steps[SONG.idx - 1 < 0 ? SONG.steps.length - 1 : SONG.idx - 1] && SONG.steps[SONG.idx - 1 < 0 ? SONG.steps.length - 1 : SONG.idx - 1].take) (SQ.list[nx] || []).forEach(l => { l.muted = false; if (nx === SQ.cur) l.gain.gain.setTargetAtTime(l.vol, endF / sr, 0.004); });
-    if (nx !== SQ.cur) SQ.sw = { i: nx, bF: endF };
+    SONG.idx = idx; SONG.stepT0 = endF;
+    const nst = SONG.steps[idx];
+    SONG.tkI = nst.take ? takeInit(nst.take, endF) : 0;
     drawSong(true);
   }
   // Interface SONG
   let songKey = "";
   function drawSong(force) {
     const list = $("songList");
-    const prog = SONG.playing && LP.t0F !== null ? (() => { const st = SONG.steps[SONG.idx], C = cycF(LP.layers); const el = Math.max(0, ctx.currentTime * sr - SONG.stepT0); if (st.take) return { rep: 1, f: Math.min(1, el / st.take.len) }; return { rep: Math.min(st.r, Math.floor(el / C) + 1), f: (el % C) / C }; })() : null;
+    const prog = SONG.playing && LP.t0F !== null ? (() => { const st = SONG.steps[SONG.idx], C = cycAll(); const el = Math.max(0, ctx.currentTime * sr - SONG.stepT0); if (st.take) return { rep: 1, f: Math.min(1, el / st.take.len) }; return { rep: Math.min(st.r, Math.floor(el / C) + 1), f: (el % C) / C }; })() : null;
     const key = JSON.stringify([SONG.steps, SONG.playing, SONG.idx, SONG.loop, prog && prog.rep, SQ.list.map(x => x.length)]);
     if (force || key !== songKey) {
       songKey = key;
       list.innerHTML = "";
-      if (!SONG.steps.length) list.innerHTML = '<p class="songempty">Aucune partie. Touchez + PARTIE.</p>';
+      if (!SONG.steps.length) list.innerHTML = '<p class="songempty">Aucune partie. Au LOOPER : ● ARMER UNE PRISE, PLAY, joue tes muets et tes solos, STOP.</p>';
       SONG.steps.forEach((st, i) => {
         const row = document.createElement("div"); row.className = "songrow" + (SONG.playing && i === SONG.idx ? " on" : "");
         const bars = n => { const L = SQ.list[n]; if (!L.length || !LP.Lf) return "vide"; return Math.round(cycF(L) / LP.Lf * LP.beats / 4 * 10) / 10 + " m"; };
         if (st.take) {
-          const n = st.take.ev.length - 1, seqs = [...new Set(st.take.ev.map(e => SEQ_N[e.seq]))].join("→");
+          const ev = st.take.ev, n = ev.filter(e => e.t > 0).length, bk = [...new Set(ev.filter(e => (SQ.list[e.seq] || []).some((l, q) => !e.mask[q])).map(e => e.seq))].sort().map(b => SEQ_N[b]).join("+") || "—";
           row.classList.add("take");
-          row.innerHTML = `<span class="sn">${i + 1}</span><span class="tk"><b>PRISE ${st.take.n}</b> · ${fmtLen(st.take.len)} · séquence ${seqs} · ${n} geste${n > 1 ? "s" : ""}</span>
+          row.innerHTML = `<span class="sn">${i + 1}</span><span class="tk"><b>${st.take.label || "PRISE " + st.take.n}</b> · ${fmtLen(st.take.len)} · bank ${bk} · ${n} geste${n > 1 ? "s" : ""}</span>
             <button type="button" data-a="u" aria-label="Monter">▲</button><button type="button" data-a="go" aria-label="Lancer depuis cette partie">▶</button><button type="button" data-a="x" aria-label="Supprimer">✕</button><i class="bar"></i>`;
         } else
         row.innerHTML = `<span class="sn">${i + 1}</span><select aria-label="Séquence de la partie ${i + 1}">${[...SEQ_N].map((c, n) => `<option value="${n}"${n === st.s ? " selected" : ""}>${c} · ${bars(n)}</option>`).join("")}</select>
@@ -5033,7 +5048,7 @@ registerProcessor('nomad-oct',Oct);`;
           if (a === "p") songEdit("répétitions", () => { st.r = Math.min(64, st.r + 1); });
           if (a === "u" && i > 0) songEdit("ordre des parties", () => { SONG.steps.splice(i - 1, 0, SONG.steps.splice(i, 1)[0]); if (SONG.playing && SONG.idx === i) SONG.idx--; });
           if (a === "x") songEdit("supprimer une partie", () => { SONG.steps.splice(i, 1); if (SONG.idx >= SONG.steps.length) SONG.idx = 0; });
-          if (a === "go") { songPlay(); if (SONG.playing && i) { const s2 = SONG.steps[i]; SONG.idx = i; if (s2.take) s2.take.ev[0].mask.forEach((m, q) => { const l = SQ.list[s2.s][q]; if (l) l.muted = !!m; }); switchNow(s2.s); playAll(); SONG.stepT0 = LP.t0F; SONG.tkI = s2.take ? 1 : 0; drawSong(true); } }
+          if (a === "go") songPlay(i);
         }));
         list.appendChild(row);
       });
@@ -5053,24 +5068,18 @@ registerProcessor('nomad-oct',Oct);`;
   }
   $("songPlay").addEventListener("click", () => SONG.playing ? (songStop(), stopAll()) : songPlay());
   $("songLoop").addEventListener("click", () => { SONG.loop = !SONG.loop; drawSong(true); });
-  $("songAdd").addEventListener("click", () => songEdit("ajouter une partie", () => { const last = SONG.steps[SONG.steps.length - 1]; SONG.steps.push({ s: last ? Math.min(7, last.s + 1) : SQ.cur, r: 2 }); }));
-  // Boutons du sélecteur de séquences (LOOPER)
+  // Boutons du sélecteur de banks (LOOPER) : A, B, C ; glisser une bank sur une autre la copie
   {
     let drag = null;
-    for (let i = 0; i < 8; i++) {
-      const b = document.createElement("button"); b.type = "button"; b.className = "pat"; b.id = "sq" + i; b.textContent = SEQ_N[i]; b.dataset.i = i;
-      b.addEventListener("pointerdown", e => { drag = { from: i, x: e.clientX, y: e.clientY }; });
-      b.addEventListener("pointerup", e => {
-        const el = document.elementFromPoint(e.clientX, e.clientY), to = el && el.dataset && el.dataset.i !== undefined ? +el.dataset.i : -1;
-        if (drag && to >= 0 && to !== drag.from) copySeq(drag.from, to); else if (drag && drag.from === i) selectSeq(i);
-        drag = null;
-      });
+    const at = e => { const el = document.elementFromPoint(e.clientX, e.clientY), b = el && el.closest && el.closest("[data-bank]"); return b && b.closest("#seqSel") ? +b.dataset.bank : -1; };
+    for (let i = 0; i < NB; i++) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "pat bank"; b.id = "sq" + i; b.dataset.bank = i; b.innerHTML = `BANK ${SEQ_N[i]}<small></small>`;
+      b.setAttribute("aria-label", "Bank " + SEQ_N[i]);
+      b.addEventListener("pointerdown", () => { drag = { from: i }; });
+      b.addEventListener("pointerup", e => { const to = at(e); if (drag && to >= 0 && to !== drag.from) copySeq(drag.from, to); else if (drag && drag.from === i) selectSeq(i); drag = null; });
       $("seqSel").appendChild(b);
     }
-    document.addEventListener("pointerup", e => {
-      if (!drag) return; const el = document.elementFromPoint(e.clientX, e.clientY), to = el && el.dataset && el.dataset.i !== undefined ? +el.dataset.i : -1;
-      if (to >= 0 && to !== drag.from) copySeq(drag.from, to); drag = null;
-    });
+    document.addEventListener("pointerup", e => { if (!drag) return; const to = at(e); if (to >= 0 && to !== drag.from) copySeq(drag.from, to); drag = null; });
     const m = document.createElement("button"); m.type = "button"; m.className = "pat metro"; m.id = "metroBtn"; m.textContent = "MÉTRO";
     m.addEventListener("click", () => { SQ.metro = !SQ.metro; SQ.metroF = 0; drawSeqSel(); lcd("lcdPad", "MÉTRONOME", SQ.metro ? "activé" : "désactivé"); });
     $("seqSel").appendChild(m);
@@ -5086,8 +5095,8 @@ registerProcessor('nomad-oct',Oct);`;
   function transport() {
     if (LP.t0F !== null && LP.playing) {
       const C = cycF(LP.layers), pos = ((ctx.currentTime * sr - LP.t0F) % C + C) % C, bl = LP.Lf / LP.beats, beat = Math.floor(pos / bl);
-      const nx = SQ.sw ? SQ.sw.i : SQ.next, tag = SONG.playing ? `♫${SONG.idx + 1} ` : "";
-      return { s: `${tag}${SEQ_N[SQ.cur]}${nx >= 0 ? "→" + SEQ_N[nx] : ""} ${Math.floor(beat / 4) + 1}.${beat % 4 + 1}.${Math.floor((pos % bl) / bl * 4) + 1}${keyTag()}`, on: (pos % bl) / bl < 0.25 };
+      const tag = SONG.playing ? `♫${SONG.idx + 1} ` : "";
+      return { s: `${tag}${SEQ_N[SQ.cur]} ${Math.floor(beat / 4) + 1}.${beat % 4 + 1}.${Math.floor((pos % bl) / bl * 4) + 1}${keyTag()}`, on: (pos % bl) / bl < 0.25 };
     }
     return { s: `■ ${SEQ_N[SQ.cur]} · ${Math.round(curBpm())} BPM${keyTag()}`, on: false };
   }
@@ -5202,9 +5211,9 @@ registerProcessor('nomad-oct',Oct);`;
   }
   const stamp = () => new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
   $("expLoop").addEventListener("click", async () => {
-    if (!LP.layers.length) { lcd("lcdPad", "EXPORT", "séquence vide, rien à exporter"); return; }
-    const out = await masterMix(loopStems().mix);
-    deliver(wavBlob(out, sr), `nomad16-sequence${SEQ_N[SQ.cur]}-${Math.round(curBpm())}bpm${MASTER.char !== "none" ? "-master-" + MASTER.char : ""}-${stamp()}.wav`);
+    if (!allLayers().length) { lcd("lcdPad", "EXPORT", "aucune boucle, rien à exporter"); return; }
+    const out = await masterMix(loopStems(allLayers()).mix);   // ce qu'on entend : les 3 banks, pistes coupées comprises
+    deliver(wavBlob(out, sr), `nomad16-boucles-${Math.round(curBpm())}bpm${MASTER.char !== "none" ? "-master-" + MASTER.char : ""}-${stamp()}.wav`);
   });
   let sess = null;
   $("expSess").addEventListener("click", () => {
@@ -5306,7 +5315,7 @@ registerProcessor('nomad-oct',Oct);`;
   $("mListen").addEventListener("click", async () => {
     if (!ctx) return;
     if (MASTER.playing) { try { MASTER.playing.stop(); } catch (e) {} MASTER.playing = null; $("mListen").textContent = "▶ ÉCOUTER"; return; }
-    let m = songMix(); if (!m && LP.layers.length) m = loopStems().mix;
+    let m = songMix(); if (!m && allLayers().length) m = loopStems(allLayers()).mix;
     if (!m) { lcd("lcdPad", "MASTER", "rien à écouter : enregistrez une boucle"); return; }
     const n = Math.min(m[0].length, sr * 30), cut = [m[0].slice(0, n), (m[1] || m[0]).slice(0, n)];
     $("mListen").textContent = "…";
@@ -5623,12 +5632,12 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
           mute: kitChoke ? 1 : (pp.choke || ((i === 2 || i === 3) && !padParams[2].choke && !padParams[3].choke ? 7 : 0)), oneshot: pp.oneshot && !pp.loop, loop: pp.loop, release: pp.oneshot ? 0 : Math.min(1, pp.rel), color: PAD_COLORS(i) };
       }
       files.push({ name: kitDir + `NOMAD16_${kitN}.xpm`, data: makeXpm(`NOMAD16 ${kitN}`, pads) });
-      // 2. Chaque séquence : une piste par couche + mix + programme (piste n sur le pad A0n, mix sur A07)
+      // 2. Chaque bank : une piste par couche + mix + programme (piste n sur le pad A0n, mix sur A07)
       const seqDone = []; let midiDone = false;
-      for (let q = 0; q < 8; q++) {
+      for (let q = 0; q < SQ.list.length; q++) {
         const st = loopStems(SQ.list[q]); if (!st) continue;
-        btn.textContent = "SÉQUENCE " + SEQ_N[q] + "…"; await new Promise(r => setTimeout(r, 0));
-        const bars = Math.round(st.L / LP.Lf * LP.beats / 4 * 10) / 10, tag = `Seq${SEQ_N[q]}_${bpm}bpm`, dir = `${root}/Sequence_${SEQ_N[q]}_${bars}mes_${bpm}bpm/`, sp = [];
+        btn.textContent = "BANK " + SEQ_N[q] + "…"; await new Promise(r => setTimeout(r, 0));
+        const bars = Math.round(st.L / LP.Lf * LP.beats / 4 * 10) / 10, tag = `Bank${SEQ_N[q]}_${bpm}bpm`, dir = `${root}/Bank_${SEQ_N[q]}_${bars}mes_${bpm}bpm/`, sp = [];
         st.stems.forEach((ch, i) => { const nm = `N16_${tag}_Piste${i + 1}`; files.push({ name: dir + nm + ".wav", data: wav24(ch, sr) }); sp[i] = { name: nm, frames: st.L, vol: 0.707946, pan: 0.5, coarse: 0, fine: 0, mute: 0, oneshot: true, release: 0, color: STEM_COLORS[i] }; });
         files.push({ name: dir + `N16_${tag}_Mix.wav`, data: wav24(st.mix, sr) });
         sp[6] = { name: `N16_${tag}_Mix`, frames: st.L, vol: 0.707946, pan: 0.5, coarse: 0, fine: 0, mute: 0, oneshot: true, release: 0, color: 0xFFFFFF };
@@ -5689,7 +5698,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     });
     store.set("mix", MIX.ch.map(c => ({ vol: c.vol })));
   }
-  // Table : 6 tranches pour les boucles de la séquence en cours (volume, panoramique, coupe-bas, muet, solo)
+  // Table : 6 tranches pour les boucles de la bank affichée (volume, panoramique, coupe-bas, muet, solo)
   // + les voies générales (PADS, SONS, GUITARE, BOUCLES, MASTER). Presets pour harmoniser vite, AUTO analyse les boucles.
   const FH = 120;
   function strip(o) {
@@ -5735,10 +5744,13 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
         mute: () => { c.mute = !c.mute; applyMix(); }, solo: () => { c.solo = !c.solo; applyMix(); }, node: () => c.id === "loop" ? loopBus : mixNode(c.id) });
       strips.push(st.o); busBox.appendChild(st.el);
     });
-    const h1 = document.createElement("h4"); h1.className = "mixh"; h1.textContent = `BOUCLES · SÉQUENCE ${SEQ_N[SQ.cur]}`;
+    // sélecteur de bank : les 6 tranches montrent la bank choisie (les 3 banks jouent ensemble)
+    const h1 = document.createElement("h4"); h1.className = "mixh mixbanks"; h1.innerHTML = "BOUCLES · BANK";
+    for (let b = 0; b < NB; b++) { const x = document.createElement("button"); x.type = "button"; x.className = "pat bank"; x.dataset.bank = b; x.innerHTML = `${SEQ_N[b]}<small></small>`; x.addEventListener("click", () => selectSeq(b)); h1.appendChild(x); }
     const h2 = document.createElement("h4"); h2.className = "mixh"; h2.textContent = "GÉNÉRAL";
     el.append(h1, lpBox, h2, busBox);
     MIX.redraw = () => strips.forEach(o => o.draw());
+    MIX.bank = SQ.cur; MIX.n = LP.layers.length; drawBanks();
   }
   // Presets : AUTO (analyse : niveaux rapprochés, basses au centre, le reste écarté, coupe-bas où il n'y a pas de basses),
   // À PLAT (tout au centre, sans coupe-bas), LARGE et ÉTROIT (écartement gauche / droite en alternance)
@@ -5752,7 +5764,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     const r = { rms: Math.sqrt(e / n), low: e ? lo / e : 0, high: e ? hi / e : 0 }; anaCache.set(buf, r); return r;
   }
   function mixPreset(kind) {
-    if (!ctx || !LP.layers.length) { lcd("lcdPad", "MIX", "pas encore de boucles dans cette séquence"); return; }
+    if (!ctx || !LP.layers.length) { lcd("lcdPad", "MIX", "pas encore de boucles dans cette bank"); return; }
     const ls = LP.layers, side = i => (i % 2 ? 1 : -1);
     if (kind === "flat") ls.forEach(l => { setLayerPan(l, 0); setLayerHp(l, false); });
     if (kind === "wide" || kind === "narrow") ls.forEach((l, i) => setLayerPan(l, ls.length === 1 ? 0 : side(i) * (kind === "wide" ? 0.5 : 0.18)));
@@ -6043,7 +6055,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     sp.in.connect(spLayer ? sp.post : sp.head);
     sp.lay.gain.value = loopBus.gain.value;
     if (typeof routeFx === "function" && fxDry) routeFx();
-    else LP.layers.forEach(l => { try { l.gain.disconnect(); } catch (e) {} l.gain.connect(l === spLayer ? sp.lay : loopBus); if (l.an) l.gain.connect(l.an); });
+    else allLayers().forEach(l => { try { l.gain.disconnect(); } catch (e) {} l.gain.connect(l === spLayer ? sp.lay : loopBus); if (l.an) l.gain.connect(l.an); });
   }
   function setSpTarget(t) {
     if (LPR.rec) return;
@@ -6110,11 +6122,11 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     const silent = ctx.createGain(); silent.gain.value = 0; node.connect(silent); silent.connect(ctx.destination);
     mixOut.connect(node);
     const rec = { node, silent, chunks: [], startF: null, endF: null };
-    if (sync) { const C = cycF(LP.layers), nowF = ctx.currentTime * sr; rec.startF = LP.t0F + Math.ceil((nowF + 0.05 * sr - LP.t0F) / C) * C; rec.endF = rec.startF + C; }
+    if (sync) { const C = cycAll(), nowF = ctx.currentTime * sr; rec.startF = LP.t0F + Math.ceil((nowF + 0.05 * sr - LP.t0F) / C) * C; rec.endF = rec.startF + C; }
     node.port.onmessage = e => { rec.chunks.push([e.data.f, e.data.l, e.data.r]); if (rec.endF && e.data.f + e.data.l.length >= rec.endF) rsStop(); else if (rec.chunks.length * 1024 > sr * 60) rsStop(); };
     RS.rec = rec;
     $("spRec").textContent = "■ STOP"; $("spRec").classList.add("on"); spSeg("REC", sync ? "CALÉ" : "LIBRE");
-    $("spInfo").textContent = sync ? `En attente du début de la séquence ${SEQ_N[SQ.cur]}… (un cycle)` : "Enregistrement… appuyez pour arrêter (60 s max)";
+    $("spInfo").textContent = sync ? `En attente du début du cycle…` : "Enregistrement… appuyez pour arrêter (60 s max)";
     lcd("lcdPad", "RÉÉCH.", sync ? "calé sur la boucle" : "enregistrement");
   }
   async function rsStop() {
@@ -6144,14 +6156,15 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (!isRs) { await refreshUserKits(); kitCur = id; store.set("kit", id); $("kitName").textContent = name; }
   }
 
-  // ---------- LOOPER → KIT : chaque piste de la séquence sur un pad, le mix, et le mix de chaque séquence ----------
+  // ---------- LOOPER → KIT : chaque piste de la bank affichée sur un pad, son mix, le mix de chaque bank et le mix de tout ----------
   async function loopToKit() {
-    if (!ctx || !LP.layers.length) { lcd("lcdPad", "→ KIT", "séquence vide"); return; }
+    if (!ctx || !LP.layers.length) { lcd("lcdPad", "→ KIT", "bank vide"); return; }
     const mk = chs => { const b = ctx.createBuffer(2, chs[0].length, sr); b.getChannelData(0).set(chs[0]); b.getChannelData(1).set(chs[1]); return b; };
     const st = loopStems(LP.layers), nb = new Array(16).fill(null), nn = new Array(16).fill("—");
     st.stems.forEach((c, i) => { nb[i] = mk(c); nn[i] = `Piste ${i + 1} ${SEQ_N[SQ.cur]}`; });
     nb[7] = mk(st.mix); nn[7] = `Mix ${SEQ_N[SQ.cur]}`;
-    SQ.list.forEach((x, q) => { if (x.length) { nb[8 + q] = mk(loopStems(x).mix); nn[8 + q] = `Séquence ${SEQ_N[q]}`; } });
+    SQ.list.forEach((x, q) => { if (x.length) { nb[8 + q] = mk(loopStems(x).mix); nn[8 + q] = `Bank ${SEQ_N[q]}`; } });
+    { const t = loopStems(allLayers()); if (t) { nb[11] = mk(t.mix); nn[11] = "Tout (A+B+C)"; } }
     const d = new Date(), hh = String(d.getHours()).padStart(2, "0") + "h" + String(d.getMinutes()).padStart(2, "0");
     const name = `LOOPER ${SEQ_N[SQ.cur]} · ${Math.round(curBpm())} BPM · ${hh}`, id = "user-" + Date.now().toString(36);
     const params = newParams(); params.forEach(p => { p.oneshot = true; });
@@ -6555,7 +6568,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       // kit de chops ou kit perso : on l'emporte dans le projet (pour qu'un .nomad ouvert ailleurs ait ses sons)
       kit: kitCur, kitEmbed: (kitCur === "chops" || km.user) ? { names: names.slice(), gains: gains.slice(), bufs: buffers.map(packBuf16) } : null,
       knobs: JSON.parse(JSON.stringify(knobVals)), knobsV: 3, manualBpm, padParams: padParams.map(p => ({ ...p })), fxTarget,
-      song: { steps: SONG.steps, loop: SONG.loop, cur: SQ.cur, nr: NR.idx },
+      song: { steps: SONG.steps, loop: SONG.loop, cur: SQ.cur, nr: NR.idx }, banks: NB,
       guitar: { amp: G.amp, fx: [...G.fx], preset: G.preset },
       loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], buf: packBuf(l.buf) }))) }
     };
@@ -6596,16 +6609,29 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (p.padParams) { padParams = fixParams(p.padParams); select(selected); }
     if (p.fxTarget) setFxTarget(p.fxTarget);
     resetAll();
-    SONG.steps = p.song ? JSON.parse(JSON.stringify(p.song.steps)) : [{ s: 0, r: 2 }]; SONG.loop = !!(p.song && p.song.loop); if (p.song) NR.idx = p.song.nr ?? 2; drawNR();
+    SONG.steps = p.song ? JSON.parse(JSON.stringify(p.song.steps)) : []; SONG.loop = !!(p.song && p.song.loop); if (p.song) NR.idx = p.song.nr ?? 2; drawNR();
     if (p.loop && p.loop.sr === sr) {
       LP.Lf = p.loop.Lf; LP.beats = p.loop.beats; LP.t0F = Math.round((ctx.currentTime + 0.05) * sr); LP.playing = true;
-      const seqs = p.loop.seqs || [p.loop.layers], cur = p.song ? p.song.cur || 0 : 0;
-      seqs.forEach((arr, q) => {
-        switchNow(q);
-        arr.forEach((l, i) => { addLayer(unpackBuf(l.buf), l.k, l.m, false, l.notes || []); const L = LP.layers[i]; L.vol = l.vol; L.muted = l.muted; L.pan = l.pan || 0; L.hp = !!l.hp; L.gain.gain.value = l.muted ? 0 : l.vol; if (L.pn) { L.pn.pan.value = L.pan; L.hpf.frequency.value = L.hp ? 120 : 10; } });
-        if (q !== cur) LP.layers.forEach(stopLayer);
+      // projet d'avant les banks (séquences A à H, une seule jouait) : les séquences remplies vont dans les banks A, B, C,
+      // celle qui jouait reste audible, les autres sont coupées ; le morceau est converti en prises
+      const raw = p.loop.seqs || [p.loop.layers], old = !p.banks, curOld = p.song ? p.song.cur || 0 : 0;
+      let seqs = raw, cur = Math.min(curOld, NB - 1), map = null, dropped = 0;
+      if (old) {
+        const ne = raw.map((x, i) => x.length ? i : -1).filter(i => i >= 0);
+        let keep = ne.slice(0, NB); if (ne.includes(curOld) && !keep.includes(curOld)) keep = [curOld, ...ne.filter(i => i !== curOld)].slice(0, NB).sort((x, y) => x - y);
+        dropped = ne.length - keep.length; map = {}; keep.forEach((o, n) => { map[o] = n; });
+        seqs = Array.from({ length: NB }, (_, n) => keep[n] !== undefined ? raw[keep[n]] : []); cur = map[curOld] ?? 0;
+      }
+      LP.playing = false;
+      seqs.slice(0, NB).forEach((arr, q) => {
+        showBank(q);
+        arr.forEach((l, i) => { addLayer(unpackBuf(l.buf), l.k, l.m, false, l.notes || []); const L = LP.layers[i]; L.vol = l.vol; L.muted = l.muted || (old && q !== cur); L.pan = l.pan || 0; L.hp = !!l.hp; L.gain.gain.value = L.muted ? 0 : l.vol; if (L.pn) { L.pn.pan.value = L.pan; L.hpf.frequency.value = L.hp ? 120 : 10; } });
       });
-      switchNow(cur); LP.playing = false; playAll();
+      showBank(cur); playAll();
+      if (old) {
+        SONG.steps = songMigrate(SONG.steps, map);
+        if (raw.filter(x => x.length).length > 1 || dropped) lcd("lcdLoop", "BANKS", `ancien projet converti : ${Object.keys(map).map(o => SEQ_N[o] + "→" + SEQ_N[map[o]]).join(" ")}` + (dropped ? ` · ${dropped} séquence(s) au-delà de 3 non chargée(s)` : "") + " · banks autres que " + SEQ_N[cur] + " coupées");
+      } else songNormalize();
     } else if (p.loop) lcd("lcdLoop", "BOUCLE", "boucles enregistrées à une autre fréquence, non chargées");
     drawSong(true);
     drawKnobs();
@@ -6621,7 +6647,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       const row = document.createElement("div"); row.className = "item-row";
       const b = document.createElement("button"); b.type = "button"; b.className = "kititem";
       const d = new Date(p.created);
-      b.innerHTML = `${p.name}<small>${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · ${p.loop ? (p.loop.seqs ? p.loop.seqs.filter(x => x.length).length + " séquence(s)" : p.loop.layers.length + " piste(s)") : "sans boucle"}</small>`;
+      b.innerHTML = `${p.name}<small>${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · ${p.loop ? (p.loop.seqs ? p.loop.seqs.filter(x => x.length).length + (p.banks ? " bank(s)" : " séquence(s)") : p.loop.layers.length + " piste(s)") : "sans boucle"}</small>`;
       b.addEventListener("click", async () => { $("setSheet").hidden = true; await loadProject(p.id); });
       const del = document.createElement("button"); del.type = "button"; del.className = "mini"; del.textContent = "SUPPR.";
       del.addEventListener("click", async () => { if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "SÛR ?"; return; } await DB.del("projects", p.id); if (CUR && CUR.id === p.id) setCur(null); renderProjects(); });
@@ -6655,8 +6681,8 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   function padCommand(n) {
     const map = {
       20: togglePlay, 21: undo, 22: () => toggleMute(0), 23: () => toggleMute(1), 24: () => toggleMute(2), 25: () => toggleMute(3), 26: () => toggleMute(4), 27: () => toggleMute(5),
-      28: () => stepKit(-1), 29: () => stepKit(1), 30: () => SONG.playing ? (songStop(), stopAll()) : songPlay(), 31: () => selectSeq((SQ.cur + 7) % 8),
-      32: () => setNR(!NR.on), 33: () => selectSeq((SQ.cur + 1) % 8),
+      28: () => stepKit(-1), 29: () => stepKit(1), 30: () => SONG.playing ? (songStop(), stopAll()) : songPlay(), 31: () => selectSeq((SQ.cur + NB - 1) % NB),
+      32: () => setNR(!NR.on), 33: () => selectSeq((SQ.cur + 1) % NB),
       34: () => setTab(TABS[(TABS.indexOf(tab) + 1) % TABS.length]), 35: () => { if (G.on) stopInput(); else { startInput(); setTab("guitar"); } }
     };
     if (map[n]) map[n]();
@@ -6740,6 +6766,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       else if (!isPad && tab === "scratch") scrKey(d1);
       else if (!isPad && tab === "fx" && fxKey(d1)) {}
       else if (!isPad && tab === "sp" && spKey(d1)) {}
+      else if (!isPad && tab === "loops" && bankKey(d1)) {}
       else if (!isPad) playKey(d1, d2 / 127);
     } else if (type === 0x80 || (type === 0x90 && d2 === 0)) {
       const idx = d1 - BASE_NOTE;
@@ -6781,7 +6808,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   initMidi();
   try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi) { $("btBox").hidden = false; $("btPair").addEventListener("click", () => window.webkit.messageHandlers.nomadMidi.postMessage({ type: "btpair" })); } } catch (e) {}
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
-  window.nomadDbg = { song: SONG, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
+  window.nomadDbg = { song: SONG, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
   let probe = null;
   window.nomadProbe = () => { if (!probe) { probe = ctx.createAnalyser(); probe.fftSize = 2048; fxMaster.connect(probe); } const a = new Float32Array(2048); probe.getFloatTimeDomainData(a); let m = 0; for (const v of a) m = Math.max(m, Math.abs(v)); return +m.toFixed(3); };
   window.nomadState = () => ({ kit: kitCur, kits: kitIndex.length, bufs: buffers.filter(Boolean).length, names: names.slice(0, 4), t0F: LP.t0F, Lf: LP.Lf, layers: LP.layers.map(l => ({ k: l.k, m: l.m })), pending: LP.pending && { ...LP.pending }, latMs, guitar: { amp: G.amp, preset: G.preset, fx: [...G.fx], on: G.on }, cap: capLatest, now: ctx && ctx.currentTime });
@@ -6842,7 +6869,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   const TOUR = [
     ["NOMAD se joue au MPK", "L'écran sert à trouver ses marques ; le jeu se fait à l'Akai MPK mini, les yeux libres. Tout ce que font les pads, les potards et les boutons CC / PROG CHANGE est rangé dans RÉGLAGES → AIDE-MÉMOIRE AKAI."],
     ["Les pads", "Les 16 pads jouent le kit (banque A : 1 à 8, banque B : 9 à 16). PROG CHANGE puis un pad : banque A = aller à un onglet, banque B = charger un kit. Dans PADS, les potards règlent le pad choisi : filtre, écho, saleté, attaque, hauteur, durée, panoramique, niveau."],
-    ["Enregistrer en boucle", "La pédale Sustain fait REC : la première boucle part au premier son et se ferme au second appui, ce qui fixe le tempo. Chaque REC suivant ajoute une piste (6 par séquence). Huit séquences, A à H ; l'onglet SONG les enchaîne en morceau."],
+    ["Enregistrer en boucle", "La pédale Sustain fait REC : la première boucle part au premier son et se ferme au second appui, ce qui fixe le tempo. Chaque REC suivant ajoute une piste dans la bank affichée (6 par bank). Trois banks, A, B et C, qui jouent ensemble : do, ré, mi du clavier changent de bank. Les prises (muets, solos) font le morceau dans SONG."],
     ["Trouver des sons", "DIGGING : un bac de disques libres de droits, à découper en chops. SCRATCH : une platine, au doigt ou aux pads. SONS : claviers et accords au clavier de l'Akai. GUITARE : un ampli et ses effets, via le micro ou une interface."],
     ["Transformer", "FX : des motifs rythmiques et des textures, joués aux pads. SP : la couleur du sampler de poche (vinyle, cassette, lo-fi) et le rééchantillonnage sur un pad. MIX : les volumes de chaque partie."],
     ["Garder, et finir sur MPC", "La session s'enregistre toute seule et se reprend depuis l'accueil, même sans réseau. Dans RÉGLAGES, une sauvegarde complète va dans l'app Fichiers. EXPORT MULTIPISTE + MPC (LOOPER) prépare pour la MPC les sons, les pistes, un programme et les notes jouées (.mid)."]

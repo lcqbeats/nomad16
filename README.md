@@ -13,7 +13,7 @@ Instruments de l'onglet SONS : échantillons libres (VCSL CC0, Splendid Grand Pi
 
 - Bank 1 (CC 20–27) : play/stop du looper, undo, mute des pistes 1 à 6.
 - LOOPER (pads en notes) : rangée du haut = pistes 1 à 3, rangée du bas = pistes 4 à 6, comme à l'écran — banque A : pads 5-6-7 muet pistes 1-2-3, pads 1-2-3 muet pistes 4-5-6, 4 tout couper, 8 tout rétablir ; banque B : pads 13-14-15 et 9-10-11 = solos, 12 tape stop, 16 lecture.
-- Bank 2 (CC 28–35) : kit précédent, kit suivant, lecture/arrêt du morceau (SONG), séquence précédente, note repeat, séquence suivante, onglet suivant, entrée guitare (ouvre aussi l'onglet GUITARE).
+- Bank 2 (CC 28–35) : kit précédent, kit suivant, lecture/arrêt du morceau (SONG), bank précédente, note repeat, bank suivante, onglet suivant, entrée guitare (ouvre aussi l'onglet GUITARE).
 - PROG CHANGE, dans l'ordre des onglets (le numéro est écrit sous chaque onglet sur iPhone) : banque A = 1 PADS, 2 LOOPER, 3 SONS, 4 DIGGING, 5 SCRATCH, 6 GUITARE, 7 FX, 8 SP ; banque B = kits J DILLA, RZA, PETE ROCK, DAMU THE FUDGEMUNK, LO-FI CASSETTE, BOOM BAP 93, DUB STATION, ACOUSTIQUE (SONG n'a pas de raccourci).
 - FX : 32 motifs sur deux pages (1–16 classiques, 17–32 plus élaborés : POLY 3, SHUFFLE, ECHO ROLL, VINYL BRAKE, BACKSPIN, TRANSFORM, CHIRPS, HALF CHOP, DUB STAB, GLITCH, BABY SCRATCH, BREAKDOWN…), chacun avec son petit graphique ; bouton MOTIFS ⇄ ou DO# du clavier pour changer de page.
 - FX : les 8 premières touches blanches du clavier (do à do) choisissent la cible : TOUT, LIVE, P1 à P6 ; les autres touches jouent SONS. Sur une piste, Sustain (ou ● IMPRIMER) grave les effets FX sur cette piste pendant un tour, en temps réel, comme dans SP.
@@ -24,15 +24,19 @@ Instruments de l'onglet SONS : échantillons libres (VCSL CC0, Splendid Grand Pi
 
 ## Table de mixage
 
-MIX (en haut) : 6 tranches pour les boucles de la séquence en cours (volume, panoramique, BAS = coupe-bas 120 Hz, muet, solo) et les voies générales (PADS, SONS, GUITARE, BOUCLES, MASTER). Presets : AUTO (écoute les boucles : niveaux rapprochés, boucles graves au centre, les autres écartées à gauche et à droite, coupe-bas là où il n'y a pas de basses), À PLAT, LARGE, ÉTROIT. Panoramique et coupe-bas sont gardés dans le projet, les prises et les exports.
+MIX (en haut) : 6 tranches pour les boucles de la bank choisie (sélecteur A / B / C en haut de la table) (volume, panoramique, BAS = coupe-bas 120 Hz, muet, solo) et les voies générales (PADS, SONS, GUITARE, BOUCLES, MASTER). Presets : AUTO (écoute les boucles : niveaux rapprochés, boucles graves au centre, les autres écartées à gauche et à droite, coupe-bas là où il n'y a pas de basses), À PLAT, LARGE, ÉTROIT. Panoramique et coupe-bas sont gardés dans le projet, les prises et les exports.
 
 ## Guitare → basse
 
 8 presets BASSE (BOOM BAP, DUB, NÉO SOUL, FUNK, LO-FI, FKJ, SALE, JAZZ) sur l'ampli BASSE 300. La pédale OCT −1 (octaveur façon pédale analogique) descend la guitare d'une octave pour jouer des lignes de basse, une note à la fois ; avec une vraie basse, éteignez OCT −1.
 
+## Banks A, B, C (LOOPER)
+
+Trois banks de 6 pistes, qui jouent **ensemble** (18 pistes au plus, tempo commun). La bank affichée (BANK A / B / C en haut du LOOPER, ou do, ré, mi du clavier de l'Akai dans le LOOPER) est celle que commandent l'écran, REC, les pads de muet / solo / tout couper / tout rétablir, les potards, FX et SP (P1 à P6) et la table de mixage. Changer de bank n'arrête rien. Sous chaque lettre : pistes audibles / pistes. Glisser une bank sur une autre la copie (pistes coupées, pour ne pas doubler le son). Les anciens projets à séquences A à H sont convertis à l'ouverture : les séquences remplies vont dans A, B, C (3 au plus), celle qui jouait reste audible, les autres sont coupées, et le morceau devient des prises.
+
 ## Prises (LOOPER → SONG)
 
-● ARMER UNE PRISE (LOOPER), choisir les pistes de départ, puis PLAY : la prise commence (si les boucles tournent déjà, elle commence tout de suite, depuis le début du tour en cours). Tout ce qu'on coupe, rétablit, met en solo ou change de séquence est retenu à l'instant près. STOP termine (fin calée sur le tour le plus proche) : la prise devient UNE ligne de SONG (« PRISE 1 · 2:47 »), sans limite de durée ; une nouvelle prise ajoute la ligne suivante. La prise ne contient aucun son, seulement les gestes : elle se rejoue sur les boucles telles qu'elles sont (une boucle retouchée plus tard en profite). PRISE → WAV rend la dernière prise ; l'export MPC met chaque piste de chaque prise dans un dossier Prise_n. Les lignes de séquences classiques jouent toutes leurs pistes.
+● ARMER UNE PRISE (LOOPER), choisir les pistes de départ, puis PLAY : la prise commence (si les boucles tournent déjà, elle commence tout de suite, depuis le début du tour en cours). Tout ce qu'on coupe, rétablit, met en solo, sur n'importe quelle bank, est retenu à l'instant près. STOP termine (fin calée sur le tour le plus proche) : la prise devient UNE ligne de SONG (« PRISE 1 · 2:47 »), sans limite de durée ; une nouvelle prise ajoute la ligne suivante. La prise ne contient aucun son, seulement les gestes : elle se rejoue sur les boucles telles qu'elles sont (une boucle retouchée plus tard en profite). PRISE → WAV rend la dernière prise ; l'export MPC met chaque piste de chaque prise dans un dossier Prise_n.
 
 ## Longueur des pistes (LOOPER)
 
@@ -62,7 +66,7 @@ Sur un grand écran avec souris, NOMAD passe tout seul en paysage, dans l'esprit
 
 - SONS : famille 20SYL (12 sons de synthèse dans l'esprit de 20syl) et 14 préréglages d'effets (DREAMY, CASSETTE, SOUL 70s, RADIO, TÉLÉPHONE, SOUS L'EAU, DUB, PING-PONG, SHIMMER, CRUNCH, WOBBLE, TRÉMOLO, TRÈS PROCHE, LOINTAIN).
 - Kits J DILLA, RZA, PETE ROCK, DAMU THE FUDGEMUNK : batterie CC0 (Virtuosity Drums) traitée dans l'esprit de chacun.
-- SONG : mastering automatique (NATUREL, CHAUD, CLAIR, PUNCH, LO-FI ; STREAMING -14, FORT -9, DOUX -18 LUFS), appliqué aux exports WAV du morceau, de la séquence et de la session. L'export multipiste + MPC reste brut.
+- SONG : mastering automatique (NATUREL, CHAUD, CLAIR, PUNCH, LO-FI ; STREAMING -14, FORT -9, DOUX -18 LUFS), appliqué aux exports WAV du morceau, des boucles et de la session. L'export multipiste + MPC reste brut.
 
 ## Pour modifier NOMAD
 

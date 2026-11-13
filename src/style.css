@@ -318,7 +318,11 @@ button { font-family: var(--font-body); }
 .pat.has { color: var(--text); } .pat.has::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--green); }
 .pat.on { background: var(--text); color: var(--ink); } .pat.next { box-shadow: inset 0 0 0 2px var(--red); }
 #seqCanvas { width: 100%; aspect-ratio: 1 / 1.02; display: block; background: #121110; border-radius: 8px; box-shadow: inset 0 0 0 1px #050505; touch-action: none; }
-.seqsel { grid-template-columns: repeat(8, 1fr) 1.6fr; margin-bottom: 8px; }
+.seqsel { grid-template-columns: repeat(3, 1fr) 0.9fr; margin-bottom: 8px; }
+.pat.bank { letter-spacing: .06em; } .pat.bank small { display: block; font-size: 9px; opacity: .7; min-height: 11px; margin-top: 1px; font-family: var(--font-mono, monospace); }
+.pat.bank.has:not(.live)::after { background: #6a655d; }
+.mixbanks .pat::after { display: none; }
+.mixbanks { display: flex; align-items: center; gap: 6px; } .mixbanks .pat { flex: 0 0 auto; min-width: 46px; padding: 4px 8px 3px; font-size: 12px; }
 .pat.metro { font-size: 10px; letter-spacing: .04em; }
 .sphead { margin: 2px 0 0; font-size: 10px; letter-spacing: .14em; color: var(--muted); display: flex; align-items: center; gap: 8px; font-weight: 700; }
 .sphead::before, .sphead::after { content: ""; height: 1px; flex: 1; background: currentColor; opacity: .4; }

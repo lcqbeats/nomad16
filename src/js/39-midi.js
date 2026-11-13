@@ -12,8 +12,8 @@
   function padCommand(n) {
     const map = {
       20: togglePlay, 21: undo, 22: () => toggleMute(0), 23: () => toggleMute(1), 24: () => toggleMute(2), 25: () => toggleMute(3), 26: () => toggleMute(4), 27: () => toggleMute(5),
-      28: () => stepKit(-1), 29: () => stepKit(1), 30: () => SONG.playing ? (songStop(), stopAll()) : songPlay(), 31: () => selectSeq((SQ.cur + 7) % 8),
-      32: () => setNR(!NR.on), 33: () => selectSeq((SQ.cur + 1) % 8),
+      28: () => stepKit(-1), 29: () => stepKit(1), 30: () => SONG.playing ? (songStop(), stopAll()) : songPlay(), 31: () => selectSeq((SQ.cur + NB - 1) % NB),
+      32: () => setNR(!NR.on), 33: () => selectSeq((SQ.cur + 1) % NB),
       34: () => setTab(TABS[(TABS.indexOf(tab) + 1) % TABS.length]), 35: () => { if (G.on) stopInput(); else { startInput(); setTab("guitar"); } }
     };
     if (map[n]) map[n]();
@@ -97,6 +97,7 @@
       else if (!isPad && tab === "scratch") scrKey(d1);
       else if (!isPad && tab === "fx" && fxKey(d1)) {}
       else if (!isPad && tab === "sp" && spKey(d1)) {}
+      else if (!isPad && tab === "loops" && bankKey(d1)) {}
       else if (!isPad) playKey(d1, d2 / 127);
     } else if (type === 0x80 || (type === 0x90 && d2 === 0)) {
       const idx = d1 - BASE_NOTE;
@@ -138,7 +139,7 @@
   initMidi();
   try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi) { $("btBox").hidden = false; $("btPair").addEventListener("click", () => window.webkit.messageHandlers.nomadMidi.postMessage({ type: "btpair" })); } } catch (e) {}
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
-  window.nomadDbg = { song: SONG, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
+  window.nomadDbg = { song: SONG, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
   let probe = null;
   window.nomadProbe = () => { if (!probe) { probe = ctx.createAnalyser(); probe.fftSize = 2048; fxMaster.connect(probe); } const a = new Float32Array(2048); probe.getFloatTimeDomainData(a); let m = 0; for (const v of a) m = Math.max(m, Math.abs(v)); return +m.toFixed(3); };
   window.nomadState = () => ({ kit: kitCur, kits: kitIndex.length, bufs: buffers.filter(Boolean).length, names: names.slice(0, 4), t0F: LP.t0F, Lf: LP.Lf, layers: LP.layers.map(l => ({ k: l.k, m: l.m })), pending: LP.pending && { ...LP.pending }, latMs, guitar: { amp: G.amp, preset: G.preset, fx: [...G.fx], on: G.on }, cap: capLatest, now: ctx && ctx.currentTime });

@@ -213,7 +213,7 @@
     sp.in.connect(spLayer ? sp.post : sp.head);
     sp.lay.gain.value = loopBus.gain.value;
     if (typeof routeFx === "function" && fxDry) routeFx();
-    else LP.layers.forEach(l => { try { l.gain.disconnect(); } catch (e) {} l.gain.connect(l === spLayer ? sp.lay : loopBus); if (l.an) l.gain.connect(l.an); });
+    else allLayers().forEach(l => { try { l.gain.disconnect(); } catch (e) {} l.gain.connect(l === spLayer ? sp.lay : loopBus); if (l.an) l.gain.connect(l.an); });
   }
   function setSpTarget(t) {
     if (LPR.rec) return;
@@ -280,11 +280,11 @@
     const silent = ctx.createGain(); silent.gain.value = 0; node.connect(silent); silent.connect(ctx.destination);
     mixOut.connect(node);
     const rec = { node, silent, chunks: [], startF: null, endF: null };
-    if (sync) { const C = cycF(LP.layers), nowF = ctx.currentTime * sr; rec.startF = LP.t0F + Math.ceil((nowF + 0.05 * sr - LP.t0F) / C) * C; rec.endF = rec.startF + C; }
+    if (sync) { const C = cycAll(), nowF = ctx.currentTime * sr; rec.startF = LP.t0F + Math.ceil((nowF + 0.05 * sr - LP.t0F) / C) * C; rec.endF = rec.startF + C; }
     node.port.onmessage = e => { rec.chunks.push([e.data.f, e.data.l, e.data.r]); if (rec.endF && e.data.f + e.data.l.length >= rec.endF) rsStop(); else if (rec.chunks.length * 1024 > sr * 60) rsStop(); };
     RS.rec = rec;
     $("spRec").textContent = "■ STOP"; $("spRec").classList.add("on"); spSeg("REC", sync ? "CALÉ" : "LIBRE");
-    $("spInfo").textContent = sync ? `En attente du début de la séquence ${SEQ_N[SQ.cur]}… (un cycle)` : "Enregistrement… appuyez pour arrêter (60 s max)";
+    $("spInfo").textContent = sync ? `En attente du début du cycle…` : "Enregistrement… appuyez pour arrêter (60 s max)";
     lcd("lcdPad", "RÉÉCH.", sync ? "calé sur la boucle" : "enregistrement");
   }
   async function rsStop() {

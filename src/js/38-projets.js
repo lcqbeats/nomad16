@@ -14,7 +14,7 @@
       // kit de chops ou kit perso : on l'emporte dans le projet (pour qu'un .nomad ouvert ailleurs ait ses sons)
       kit: kitCur, kitEmbed: (kitCur === "chops" || km.user) ? { names: names.slice(), gains: gains.slice(), bufs: buffers.map(packBuf16) } : null,
       knobs: JSON.parse(JSON.stringify(knobVals)), knobsV: 3, manualBpm, padParams: padParams.map(p => ({ ...p })), fxTarget,
-      song: { steps: SONG.steps, loop: SONG.loop, cur: SQ.cur, nr: NR.idx },
+      song: { steps: SONG.steps, loop: SONG.loop, cur: SQ.cur, nr: NR.idx }, banks: NB,
       guitar: { amp: G.amp, fx: [...G.fx], preset: G.preset },
       loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], buf: packBuf(l.buf) }))) }
     };
@@ -55,16 +55,29 @@
     if (p.padParams) { padParams = fixParams(p.padParams); select(selected); }
     if (p.fxTarget) setFxTarget(p.fxTarget);
     resetAll();
-    SONG.steps = p.song ? JSON.parse(JSON.stringify(p.song.steps)) : [{ s: 0, r: 2 }]; SONG.loop = !!(p.song && p.song.loop); if (p.song) NR.idx = p.song.nr ?? 2; drawNR();
+    SONG.steps = p.song ? JSON.parse(JSON.stringify(p.song.steps)) : []; SONG.loop = !!(p.song && p.song.loop); if (p.song) NR.idx = p.song.nr ?? 2; drawNR();
     if (p.loop && p.loop.sr === sr) {
       LP.Lf = p.loop.Lf; LP.beats = p.loop.beats; LP.t0F = Math.round((ctx.currentTime + 0.05) * sr); LP.playing = true;
-      const seqs = p.loop.seqs || [p.loop.layers], cur = p.song ? p.song.cur || 0 : 0;
-      seqs.forEach((arr, q) => {
-        switchNow(q);
-        arr.forEach((l, i) => { addLayer(unpackBuf(l.buf), l.k, l.m, false, l.notes || []); const L = LP.layers[i]; L.vol = l.vol; L.muted = l.muted; L.pan = l.pan || 0; L.hp = !!l.hp; L.gain.gain.value = l.muted ? 0 : l.vol; if (L.pn) { L.pn.pan.value = L.pan; L.hpf.frequency.value = L.hp ? 120 : 10; } });
-        if (q !== cur) LP.layers.forEach(stopLayer);
+      // projet d'avant les banks (séquences A à H, une seule jouait) : les séquences remplies vont dans les banks A, B, C,
+      // celle qui jouait reste audible, les autres sont coupées ; le morceau est converti en prises
+      const raw = p.loop.seqs || [p.loop.layers], old = !p.banks, curOld = p.song ? p.song.cur || 0 : 0;
+      let seqs = raw, cur = Math.min(curOld, NB - 1), map = null, dropped = 0;
+      if (old) {
+        const ne = raw.map((x, i) => x.length ? i : -1).filter(i => i >= 0);
+        let keep = ne.slice(0, NB); if (ne.includes(curOld) && !keep.includes(curOld)) keep = [curOld, ...ne.filter(i => i !== curOld)].slice(0, NB).sort((x, y) => x - y);
+        dropped = ne.length - keep.length; map = {}; keep.forEach((o, n) => { map[o] = n; });
+        seqs = Array.from({ length: NB }, (_, n) => keep[n] !== undefined ? raw[keep[n]] : []); cur = map[curOld] ?? 0;
+      }
+      LP.playing = false;
+      seqs.slice(0, NB).forEach((arr, q) => {
+        showBank(q);
+        arr.forEach((l, i) => { addLayer(unpackBuf(l.buf), l.k, l.m, false, l.notes || []); const L = LP.layers[i]; L.vol = l.vol; L.muted = l.muted || (old && q !== cur); L.pan = l.pan || 0; L.hp = !!l.hp; L.gain.gain.value = L.muted ? 0 : l.vol; if (L.pn) { L.pn.pan.value = L.pan; L.hpf.frequency.value = L.hp ? 120 : 10; } });
       });
-      switchNow(cur); LP.playing = false; playAll();
+      showBank(cur); playAll();
+      if (old) {
+        SONG.steps = songMigrate(SONG.steps, map);
+        if (raw.filter(x => x.length).length > 1 || dropped) lcd("lcdLoop", "BANKS", `ancien projet converti : ${Object.keys(map).map(o => SEQ_N[o] + "→" + SEQ_N[map[o]]).join(" ")}` + (dropped ? ` · ${dropped} séquence(s) au-delà de 3 non chargée(s)` : "") + " · banks autres que " + SEQ_N[cur] + " coupées");
+      } else songNormalize();
     } else if (p.loop) lcd("lcdLoop", "BOUCLE", "boucles enregistrées à une autre fréquence, non chargées");
     drawSong(true);
     drawKnobs();
@@ -80,7 +93,7 @@
       const row = document.createElement("div"); row.className = "item-row";
       const b = document.createElement("button"); b.type = "button"; b.className = "kititem";
       const d = new Date(p.created);
-      b.innerHTML = `${p.name}<small>${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · ${p.loop ? (p.loop.seqs ? p.loop.seqs.filter(x => x.length).length + " séquence(s)" : p.loop.layers.length + " piste(s)") : "sans boucle"}</small>`;
+      b.innerHTML = `${p.name}<small>${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · ${p.loop ? (p.loop.seqs ? p.loop.seqs.filter(x => x.length).length + (p.banks ? " bank(s)" : " séquence(s)") : p.loop.layers.length + " piste(s)") : "sans boucle"}</small>`;
       b.addEventListener("click", async () => { $("setSheet").hidden = true; await loadProject(p.id); });
       const del = document.createElement("button"); del.type = "button"; del.className = "mini"; del.textContent = "SUPPR.";
       del.addEventListener("click", async () => { if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "SÛR ?"; return; } await DB.del("projects", p.id); if (CUR && CUR.id === p.id) setCur(null); renderProjects(); });

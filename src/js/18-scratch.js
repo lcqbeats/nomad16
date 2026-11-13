@@ -82,7 +82,7 @@
     }
     if (s === "pad") return buffers.map((b, i) => b ? { name: `PAD ${i + 1} · ${(names[i] || "").toUpperCase()}`, get: async () => b } : null).filter(Boolean);
     if (s === "chop") { if (!clip) return []; return chops.map((_, i) => ({ name: `CHOP ${i + 1} · ${clip.title}`, get: async () => { const [a, b] = chopRange(i), n = Math.max(1, b - a), o = ctx.createBuffer(clip.buf.numberOfChannels, n, clip.buf.sampleRate); for (let c = 0; c < o.numberOfChannels; c++) o.copyToChannel(clip.buf.getChannelData(c).subarray(a, b), c); return o; } })); }
-    if (s === "piste") return LP.layers.filter(l => l.buf).map((l, i) => ({ name: `PISTE ${i + 1} · séquence ${SEQ_N[SQ.cur]}`, get: async () => l.buf }));
+    if (s === "piste") return LP.layers.filter(l => l.buf).map((l, i) => ({ name: `PISTE ${i + 1} · bank ${SEQ_N[SQ.cur]}`, get: async () => l.buf }));
     if (s === "mine") { try { SCR.mine = (await DB.all("scratch")).sort((a, b) => a.created - b.created); } catch (e) { SCR.mine = []; } return SCR.mine.map(m => ({ name: m.name, get: async () => unpackBuf(m.buf) })); }
     return [];
   }
@@ -91,7 +91,7 @@
     const tok = ++SCR.loading;
     const list = await scrList();
     if (tok !== SCR.loading) return;
-    if (!list.length) { $("scrName").textContent = { chop: "aucun chop : passez par DIGGING", piste: "aucune piste dans cette séquence", mine: "aucun son : IMPORTER", voix: "bac hors ligne" }[SCR.src] || "vide"; return; }
+    if (!list.length) { $("scrName").textContent = { chop: "aucun chop : passez par DIGGING", piste: "aucune piste dans cette bank", mine: "aucun son : IMPORTER", voix: "bac hors ligne" }[SCR.src] || "vide"; return; }
     SCR.idx = abs !== undefined ? ((abs % list.length) + list.length) % list.length : ((SCR.idx + delta) % list.length + list.length) % list.length;
     const e = list[SCR.idx];
     $("scrName").textContent = "on pose le disque…";

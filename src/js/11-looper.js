@@ -1,47 +1,35 @@
   // ---------- Looper ----------
   const LP = { t0F: null, Lf: 0, beats: 4, layers: [], pending: null, playing: true };
-  // Séquences A à H : chacune a ses pistes ; le tempo (LP.Lf, LP.beats) est commun et fixé par la toute première boucle
-  const SQ = { list: Array.from({ length: 8 }, () => []), cur: 0, next: -1, sw: null, metro: false, metroF: 0 };
+  // Banks A, B, C : 6 pistes chacune, et les 3 banks jouent ENSEMBLE (18 pistes au plus). La bank affichée est celle
+  // que l'écran, les pads de muet / solo, FX, SP et la table de mixage commandent. Le tempo (LP.Lf, LP.beats) est commun.
+  const NB = 3;
+  const SQ = { list: Array.from({ length: NB }, () => []), cur: 0, next: -1, sw: null, metro: false, metroF: 0, solo: [] };
   SQ.list[0] = LP.layers;
+  const allLayers = () => SQ.list.flat();
+  const cycAll = () => cycF(allLayers());
   const gcdI = (x, y) => y ? gcdI(y, x % y) : x;
   function cycF(layers) { let k = 1; layers.forEach(l => { k = k * l.k / gcdI(k, l.k); }); return Math.min(k, 8) * LP.Lf; }
   function seqOf(l) { return SQ.list.findIndex(x => x.includes(l)); }
   function syncLoopKnobs() { LP.layers.forEach((l, i) => { knobVals.loops[i] = l.vol; }); for (let i = LP.layers.length; i < 6; i++) knobVals.loops[i] = 1; if (tab === "loops" || tab === "song") drawKnobs(); }
-  // Change de séquence tout de suite (arrêt)
-  function switchNow(i) {
-    LP.layers.forEach(stopLayer);
-    SQ.cur = i; LP.layers = SQ.list[i]; SQ.next = -1; SQ.sw = null;
-    perfMark(i);
-    routeFx(); LP.layers.forEach(l => l.gain.gain.setValueAtTime(l.muted ? 0 : l.vol, ctx.currentTime));
-    syncLoopKnobs(); drawSeqSel();
+  // Change la bank affichée (le son ne change pas : toutes les banks continuent de jouer)
+  function showBank(i) {
+    SQ.solo[SQ.cur] = LP.solo; SQ.cur = i; LP.layers = SQ.list[i]; LP.solo = SQ.solo[i] || null; LP.sel = -1;
+    routeFx(); syncLoopKnobs(); drawSeqSel();
   }
-  // Change de séquence pile sur une fin de cycle (bF en frames)
-  function doSwitch(i, bF) {
-    const T = Math.max(bF / sr, ctx.currentTime + 0.005);
-    LP.layers.forEach(l => { if (l.src) { try { l.src.stop(T); } catch (e) {} l.src = null; } });
-    SQ.cur = i; LP.layers = SQ.list[i]; LP.t0F = bF; SQ.sw = null; SQ.next = -1;
-    perfMark(i, bF);
-    routeFx();
-    LP.layers.forEach(l => { l.gain.gain.setValueAtTime(l.muted ? 0 : l.vol, ctx.currentTime); startLayer(l, T); });
-    syncLoopKnobs(); drawSeqSel();
-  }
+  // clavier de l'Akai dans LOOPER : do, ré, mi (les 3 premières touches blanches) = bank A, B, C ; le reste joue SONS
+  function bankKey(note) { const w = [0, 2, 4].indexOf(note - 48); if (w < 0) return false; selectSeq(w); return true; }
   function selectSeq(i) {
-    if (!ctx) return;
-    if (SONG.playing) songStop();
-    if (i === SQ.cur) { SQ.next = -1; SQ.sw = null; drawSeqSel(); return; }
-    if (LP.pending && LP.pending.type === "first") return;
-    if (LP.t0F === null || !LP.playing) { switchNow(i); lcd("lcdPad", "SÉQUENCE", SEQ_N[i] + (SQ.list[i].length ? "" : " · vide, REC pour la remplir")); return; }
-    SQ.next = i; SQ.sw = null; drawSeqSel();
-    lcd("lcdPad", "SÉQUENCE", SEQ_N[i] + " en attente · fin du cycle");
+    if (!ctx || i < 0 || i >= NB) return;
+    if (i === SQ.cur) { drawSeqSel(); return; }
+    if (LP.pending) { lcd("lcdPad", "BANK", "attends la fin de l'enregistrement"); return; }
+    if (LPR.rec) { lcd("lcdPad", "BANK", "impression en cours : attends la fin"); return; }
+    showBank(i);
+    const n = SQ.list[i].length, on = SQ.list[i].filter(l => !l.muted).length;
+    lcd("lcdPad", "BANK " + SEQ_N[i], n ? `${n} piste(s) · ${on} audible(s)` : "vide · REC pour la remplir");
   }
   function seqTick() {
     if (!ctx || LP.t0F === null) return;
     const nowF = ctx.currentTime * sr;
-    if (SQ.next >= 0 && !SQ.sw && LP.playing && !LP.pending) {
-      const C = cycF(LP.layers), n = Math.ceil((nowF + 0.13 * sr - LP.t0F) / C);
-      SQ.sw = { i: SQ.next, bF: LP.t0F + n * C };
-    }
-    if (SQ.sw && nowF >= SQ.sw.bF - 0.12 * sr) doSwitch(SQ.sw.i, SQ.sw.bF);
     // métronome : un clic par temps, accent tous les 4 temps
     if (SQ.metro && LP.playing) {
       const bF = LP.Lf / LP.beats; let n = Math.ceil((Math.max(nowF, SQ.metroF + 1) - LP.t0F) / bF);
@@ -55,26 +43,34 @@
     }
     songTick();
   }
-  // Sélecteur de séquences du LOOPER (toucher : choisir ; glisser une séquence sur une autre : copier)
+  // Sélecteur de banks du LOOPER (toucher : afficher ; glisser une bank sur une autre : copier)
   function drawSeqSel() {
     try { drawLenBar(); } catch (e) {}
     try { spRoute(); drawSpTargets(); } catch (e) {}
     try { scheduleKey(); } catch (e) {}
-    for (let i = 0; i < 8; i++) {
-      const b = $("sq" + i); if (!b) return;
-      b.classList.toggle("on", i === SQ.cur); b.classList.toggle("has", SQ.list[i].length > 0);
-      b.classList.toggle("next", i === SQ.next || (SQ.sw && SQ.sw.i === i));
-    }
+    drawBanks();
     $("metroBtn").classList.toggle("on", SQ.metro); $("trMetro").classList.toggle("on", SQ.metro);
+  }
+  function drawBanks() {
+    for (let i = 0; i < NB; i++) {
+      const on = SQ.list[i].filter(l => !l.muted).length;
+      document.querySelectorAll(`[data-bank="${i}"]`).forEach(b => {
+        b.classList.toggle("on", i === SQ.cur); b.classList.toggle("has", SQ.list[i].length > 0); b.classList.toggle("live", on > 0);
+        const c = b.querySelector("small"); if (c) c.textContent = SQ.list[i].length ? `${on}/${SQ.list[i].length}` : "";
+      });
+    }
+    // table de mixage ouverte : on la reconstruit si la bank ou le nombre de pistes a changé
+    try { if (MIX.redraw) { if (!$("mixSheet").hidden && (MIX.bank !== SQ.cur || MIX.n !== LP.layers.length)) buildMixer(); else MIX.redraw(); } } catch (e) {}
   }
   function copySeq(a, b) {
     if (a === b || !SQ.list[a].length) return;
     const old = SQ.list[b].slice();
-    const make = () => SQ.list[a].map(l => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = l.muted ? 0 : l.vol; gain.connect(loopBus); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: l.muted, src: null, pan: l.pan || 0, hp: !!l.hp }; });
-    const put = arr => { const T = SQ.list[b]; if (b === SQ.cur) T.forEach(stopLayer); T.length = 0; arr.forEach(l => T.push(l)); if (b === SQ.cur) { routeFx(); if (LP.playing) T.forEach(l => startLayer(l, ctx.currentTime + 0.005)); syncLoopKnobs(); } drawSeqSel(); };
+    // la copie arrive coupée : les banks jouent ensemble, sinon on entendrait tout en double
+    const make = () => SQ.list[a].map(l => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = 0; gain.connect(loopBus); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: true, src: null, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [] }; });
+    const put = arr => { const T = SQ.list[b]; T.forEach(l => { stopLayer(l); try { l.gain.disconnect(); } catch (e) {} }); T.length = 0; arr.forEach(l => { l.gain.gain.value = l.muted ? 0 : l.vol; T.push(l); }); routeFx(); if (LP.playing) T.forEach(l => startLayer(l, ctx.currentTime + 0.005)); if (b === SQ.cur) syncLoopKnobs(); drawSeqSel(); };
     const fresh = make(); put(fresh);
     pushHist(`copie ${SEQ_N[a]} → ${SEQ_N[b]}`, () => put(old), () => put(fresh));
-    lcd("lcdPad", "SÉQUENCE", `${SEQ_N[a]} copiée sur ${SEQ_N[b]}`);
+    lcd("lcdPad", "BANK", `${SEQ_N[a]} copiée sur ${SEQ_N[b]} · pistes coupées, rétablis celles que tu veux`);
   }
   const loopLen = () => LP.Lf / sr;
   const compF = () => Math.round(latMs / 1000 * sr);
@@ -174,18 +170,16 @@
   function dropLayer(l) {
     const si = seqOf(l); if (si < 0) return;
     if (si === SQ.cur) removeLayer(LP.layers.indexOf(l), false);
-    else { SQ.list[si].splice(SQ.list[si].indexOf(l), 1); try { l.gain.disconnect(); } catch (e) {} }
+    else { SQ.list[si].splice(SQ.list[si].indexOf(l), 1); stopLayer(l); try { l.gain.disconnect(); } catch (e) {} }
     drawSeqSel();
   }
   function reinsertLayer(l, idx, st) {
     if (LP.t0F === null && st) { LP.Lf = st.Lf; LP.beats = st.beats; LP.t0F = Math.round((ctx.currentTime + 0.03) * sr); LP.playing = true; }
     const si = st && st.si !== undefined ? st.si : SQ.cur, arr = SQ.list[si];
     arr.splice(Math.min(idx, arr.length), 0, l);
-    if (si === SQ.cur) {
-      routeFx();
-      l.gain.gain.setValueAtTime(l.muted ? 0 : l.vol, ctx.currentTime);
-      if (LP.playing) startLayer(l, ctx.currentTime + 0.005);
-    }
+    routeFx();
+    l.gain.gain.setValueAtTime(l.muted ? 0 : l.vol, ctx.currentTime);
+    if (LP.playing) startLayer(l, ctx.currentTime + 0.005);
     drawSeqSel();
   }
   // chaîne de chaque piste : coupe-bas → panoramique → volume (réglés dans la table de mixage)
@@ -208,12 +202,12 @@
     l.src = src;
   }
   function stopLayer(l) { if (l.src) { try { l.src.stop(); } catch (e) {} l.src.disconnect(); l.src = null; } }
-  function stopAll() { perfOnStop(); LP.layers.forEach(stopLayer); LP.playing = false; SQ.sw = null; if (SONG.playing) songStop(); if (LP.pending && LP.pending.type === "layer") LP.pending = null; }
+  function stopAll() { perfOnStop(); allLayers().forEach(stopLayer); LP.playing = false; SQ.sw = null; if (SONG.playing) songStop(); if (LP.pending && LP.pending.type === "layer") LP.pending = null; }
   function playAll() {
     if (!ctx || LP.t0F === null) return;
     const T = ctx.currentTime + 0.03;
     LP.t0F = Math.round(T * sr); SQ.metroF = 0; SQ.sw = null;
-    LP.layers.forEach(l => { stopLayer(l); startLayer(l, T); });
+    allLayers().forEach(l => { stopLayer(l); startLayer(l, T); });
     LP.playing = true;
     perfOnPlay();
   }
@@ -236,7 +230,7 @@
   function resetAll() {
     songStop();
     SQ.list.forEach(x => { x.forEach(l => { stopLayer(l); l.gain.disconnect(); }); x.length = 0; });
-    SQ.cur = 0; LP.layers = SQ.list[0]; LP.t0F = null; LP.Lf = 0; LP.pending = null; LP.playing = true; SQ.next = -1; SQ.sw = null;
+    SQ.cur = 0; SQ.solo = []; LP.solo = null; LP.layers = SQ.list[0]; LP.t0F = null; LP.Lf = 0; LP.pending = null; LP.playing = true; SQ.next = -1; SQ.sw = null;
     drawSeqSel();
   }
   function undo() { if (LP.pending) { LP.pending = null; return; } removeLayer(LP.layers.length - 1); }
@@ -298,23 +292,23 @@
     LP.solo = null;
     l.muted = !l.muted;
     l.gain.gain.setTargetAtTime(l.muted ? 0 : l.vol, ctx.currentTime, 0.01);
-    perfMark();
+    perfMark(); drawBanks();
   }
   // Commandes du looper aux pads : tout couper, tout rétablir, solo, arrêt en ralentissant, lecture
   function setMute(l, m) { l.muted = m; l.gain.gain.setTargetAtTime(m ? 0 : l.vol, ctx.currentTime, 0.01); }
-  function muteAll(m) { if (!ctx) return; LP.solo = null; LP.layers.forEach(l => setMute(l, m)); perfMark(); lcd("lcdLoop", "BOUCLE", m ? "toutes les pistes coupées" : "toutes les pistes rétablies"); }
+  function muteAll(m) { if (!ctx) return; LP.solo = null; LP.layers.forEach(l => setMute(l, m)); perfMark(); drawBanks(); lcd("lcdLoop", "BOUCLE", m ? "toutes les pistes coupées" : "toutes les pistes rétablies"); }
   function soloLayer(i) {
     if (!ctx || !LP.layers[i]) return;
-    if (LP.solo && LP.solo.i === i) { LP.layers.forEach((l, j) => setMute(l, LP.solo.saved[j] ?? false)); LP.solo = null; perfMark(); lcd("lcdLoop", "BOUCLE", "solo terminé"); return; }
+    if (LP.solo && LP.solo.i === i) { LP.layers.forEach((l, j) => setMute(l, LP.solo.saved[j] ?? false)); LP.solo = null; perfMark(); drawBanks(); lcd("lcdLoop", "BOUCLE", "solo terminé"); return; }
     const saved = LP.solo ? LP.solo.saved : LP.layers.map(l => l.muted);
     LP.layers.forEach((l, j) => setMute(l, j !== i));
-    LP.solo = { i, saved }; perfMark();
+    LP.solo = { i, saved }; perfMark(); drawBanks();
     lcd("lcdLoop", "BOUCLE", `solo piste ${i + 1}`);
   }
   function tapeStopAll() {
     if (!ctx || !LP.playing) return;
     const t = ctx.currentTime, dur = 0.9;
-    LP.layers.forEach(l => { if (!l.src) return; const r = l.src.playbackRate; r.cancelScheduledValues(t); r.setValueAtTime(r.value, t); r.exponentialRampToValueAtTime(0.02, t + dur); });
+    allLayers().forEach(l => { if (!l.src) return; const r = l.src.playbackRate; r.cancelScheduledValues(t); r.setValueAtTime(r.value, t); r.exponentialRampToValueAtTime(0.02, t + dur); });
     loopBus.gain.cancelScheduledValues(t); loopBus.gain.setValueAtTime(loopBus.gain.value, t + dur * 0.6); loopBus.gain.linearRampToValueAtTime(0, t + dur);
     const vol = knobVals.loops[6];
     setTimeout(() => { stopAll(); loopBus.gain.cancelScheduledValues(ctx.currentTime); loopBus.gain.setValueAtTime(vol, ctx.currentTime); lcd("lcdLoop", "BOUCLE", "arrêt (tape stop)"); }, dur * 1000 + 30);
@@ -334,7 +328,7 @@
   $("btnClear").addEventListener("pointerdown", e => { e.currentTarget.classList.add("holding"); clearTimer = setTimeout(() => {
     const ls = LP.layers.slice(), st = { Lf: LP.Lf, beats: LP.beats, si: SQ.cur };
     resetLooper(); $("btnClear").classList.remove("holding");
-    if (ls.length) pushHist("effacer la séquence " + SEQ_N[st.si], () => ls.forEach((l, i) => reinsertLayer(l, i, st)), () => ls.forEach(dropLayer));
+    if (ls.length) pushHist("effacer la bank " + SEQ_N[st.si], () => ls.forEach((l, i) => reinsertLayer(l, i, st)), () => ls.forEach(dropLayer));
   }, 700); });
   ["pointerup", "pointerleave", "pointercancel"].forEach(ev => $("btnClear").addEventListener(ev, () => { clearTimeout(clearTimer); $("btnClear").classList.remove("holding"); }));
 

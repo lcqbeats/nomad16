@@ -294,12 +294,12 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
           mute: kitChoke ? 1 : (pp.choke || ((i === 2 || i === 3) && !padParams[2].choke && !padParams[3].choke ? 7 : 0)), oneshot: pp.oneshot && !pp.loop, loop: pp.loop, release: pp.oneshot ? 0 : Math.min(1, pp.rel), color: PAD_COLORS(i) };
       }
       files.push({ name: kitDir + `NOMAD16_${kitN}.xpm`, data: makeXpm(`NOMAD16 ${kitN}`, pads) });
-      // 2. Chaque séquence : une piste par couche + mix + programme (piste n sur le pad A0n, mix sur A07)
+      // 2. Chaque bank : une piste par couche + mix + programme (piste n sur le pad A0n, mix sur A07)
       const seqDone = []; let midiDone = false;
-      for (let q = 0; q < 8; q++) {
+      for (let q = 0; q < SQ.list.length; q++) {
         const st = loopStems(SQ.list[q]); if (!st) continue;
-        btn.textContent = "SÉQUENCE " + SEQ_N[q] + "…"; await new Promise(r => setTimeout(r, 0));
-        const bars = Math.round(st.L / LP.Lf * LP.beats / 4 * 10) / 10, tag = `Seq${SEQ_N[q]}_${bpm}bpm`, dir = `${root}/Sequence_${SEQ_N[q]}_${bars}mes_${bpm}bpm/`, sp = [];
+        btn.textContent = "BANK " + SEQ_N[q] + "…"; await new Promise(r => setTimeout(r, 0));
+        const bars = Math.round(st.L / LP.Lf * LP.beats / 4 * 10) / 10, tag = `Bank${SEQ_N[q]}_${bpm}bpm`, dir = `${root}/Bank_${SEQ_N[q]}_${bars}mes_${bpm}bpm/`, sp = [];
         st.stems.forEach((ch, i) => { const nm = `N16_${tag}_Piste${i + 1}`; files.push({ name: dir + nm + ".wav", data: wav24(ch, sr) }); sp[i] = { name: nm, frames: st.L, vol: 0.707946, pan: 0.5, coarse: 0, fine: 0, mute: 0, oneshot: true, release: 0, color: STEM_COLORS[i] }; });
         files.push({ name: dir + `N16_${tag}_Mix.wav`, data: wav24(st.mix, sr) });
         sp[6] = { name: `N16_${tag}_Mix`, frames: st.L, vol: 0.707946, pan: 0.5, coarse: 0, fine: 0, mute: 0, oneshot: true, release: 0, color: 0xFFFFFF };

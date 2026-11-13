@@ -18,7 +18,7 @@
     });
     store.set("mix", MIX.ch.map(c => ({ vol: c.vol })));
   }
-  // Table : 6 tranches pour les boucles de la séquence en cours (volume, panoramique, coupe-bas, muet, solo)
+  // Table : 6 tranches pour les boucles de la bank affichée (volume, panoramique, coupe-bas, muet, solo)
   // + les voies générales (PADS, SONS, GUITARE, BOUCLES, MASTER). Presets pour harmoniser vite, AUTO analyse les boucles.
   const FH = 120;
   function strip(o) {
@@ -64,10 +64,13 @@
         mute: () => { c.mute = !c.mute; applyMix(); }, solo: () => { c.solo = !c.solo; applyMix(); }, node: () => c.id === "loop" ? loopBus : mixNode(c.id) });
       strips.push(st.o); busBox.appendChild(st.el);
     });
-    const h1 = document.createElement("h4"); h1.className = "mixh"; h1.textContent = `BOUCLES · SÉQUENCE ${SEQ_N[SQ.cur]}`;
+    // sélecteur de bank : les 6 tranches montrent la bank choisie (les 3 banks jouent ensemble)
+    const h1 = document.createElement("h4"); h1.className = "mixh mixbanks"; h1.innerHTML = "BOUCLES · BANK";
+    for (let b = 0; b < NB; b++) { const x = document.createElement("button"); x.type = "button"; x.className = "pat bank"; x.dataset.bank = b; x.innerHTML = `${SEQ_N[b]}<small></small>`; x.addEventListener("click", () => selectSeq(b)); h1.appendChild(x); }
     const h2 = document.createElement("h4"); h2.className = "mixh"; h2.textContent = "GÉNÉRAL";
     el.append(h1, lpBox, h2, busBox);
     MIX.redraw = () => strips.forEach(o => o.draw());
+    MIX.bank = SQ.cur; MIX.n = LP.layers.length; drawBanks();
   }
   // Presets : AUTO (analyse : niveaux rapprochés, basses au centre, le reste écarté, coupe-bas où il n'y a pas de basses),
   // À PLAT (tout au centre, sans coupe-bas), LARGE et ÉTROIT (écartement gauche / droite en alternance)
@@ -81,7 +84,7 @@
     const r = { rms: Math.sqrt(e / n), low: e ? lo / e : 0, high: e ? hi / e : 0 }; anaCache.set(buf, r); return r;
   }
   function mixPreset(kind) {
-    if (!ctx || !LP.layers.length) { lcd("lcdPad", "MIX", "pas encore de boucles dans cette séquence"); return; }
+    if (!ctx || !LP.layers.length) { lcd("lcdPad", "MIX", "pas encore de boucles dans cette bank"); return; }
     const ls = LP.layers, side = i => (i % 2 ? 1 : -1);
     if (kind === "flat") ls.forEach(l => { setLayerPan(l, 0); setLayerHp(l, false); });
     if (kind === "wide" || kind === "narrow") ls.forEach((l, i) => setLayerPan(l, ls.length === 1 ? 0 : side(i) * (kind === "wide" ? 0.5 : 0.18)));

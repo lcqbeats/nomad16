@@ -109,11 +109,11 @@
     </div>
     <p class="note" id="perfInfo"></p>
     <div class="transport" style="grid-template-columns:1fr 1fr">
-      <button class="btn" id="expLoop" type="button">SÉQUENCE WAV</button>
+      <button class="btn" id="expLoop" type="button">BOUCLES WAV</button>
       <button class="btn" id="expSess" type="button">● SESSION</button>
     </div>
     <div class="transport" style="grid-template-columns:1fr">
-      <button class="btn" id="loopKit" type="button">→ KIT DE PADS (pistes, mix, séquences)</button>
+      <button class="btn" id="loopKit" type="button">→ KIT DE PADS (pistes, mix, banks)</button>
     </div>
     <div class="transport" style="grid-template-columns:1fr">
       <button class="btn" id="expMpc" type="button">EXPORT MULTIPISTE + MPC</button>
@@ -172,7 +172,6 @@
     <div class="songhead">
       <button class="btn" id="songPlay" type="button">▶ MORCEAU</button>
       <button class="btn" id="songLoop" type="button">BOUCLER : NON</button>
-      <button class="btn" id="songAdd" type="button">+ PARTIE</button>
     </div>
     <p class="songinfo" id="songInfo"></p>
     <div id="songList"></div>
@@ -184,7 +183,7 @@
     </div>
     <p class="note" id="mInfo" style="margin:0;text-align:center"></p>
     <div class="transport" style="grid-template-columns:1fr"><button class="btn" id="songWav" type="button">EXPORTER LE MORCEAU (WAV)</button></div>
-    <p class="note help">Chaque partie joue une séquence du LOOPER (A à H) un certain nombre de fois. Les séquences se remplissent dans le LOOPER : choisissez une lettre puis enregistrez avec REC / Sustain. Le tempo est celui de la toute première boucle. ▶ sur une ligne lance le morceau depuis cette partie. Potards : volumes des pistes de la séquence en cours, volume des boucles, volume du métronome.</p>
+    <p class="note help">Chaque partie est une prise du LOOPER : armez, PLAY, jouez les muets et les solos sur les banks A, B et C (elles jouent ensemble), STOP. Le tempo est celui de la toute première boucle. ▶ sur une ligne lance le morceau depuis cette partie. Potards : volumes des pistes de la bank affichée, volume des boucles, volume du métronome.</p>
   </section>
 
   <section class="view stack" id="view-fx" hidden>
@@ -356,7 +355,7 @@
     <h2>TABLE DE MIXAGE <button type="button" id="mixClose">FERMER</button></h2>
     <div class="mixpresets"><button class="btn rec" type="button" data-mixp="auto">AUTO</button><button class="btn" type="button" data-mixp="flat">À PLAT</button><button class="btn" type="button" data-mixp="wide">LARGE</button><button class="btn" type="button" data-mixp="narrow">ÉTROIT</button></div>
     <div class="mixer" id="mixer"></div>
-    <p class="help">Boucles P1 à P6 (séquence en cours) : volume, panoramique (glissière, double-touche = centre), BAS = coupe-bas à 120 Hz pour laisser la place à la basse, M = muet, S = solo. AUTO écoute les boucles : niveaux rapprochés, boucles graves au centre, les autres écartées à gauche et à droite, coupe-bas là où il n'y a pas de basses. À retoucher ensuite à l'oreille. Le panoramique et le coupe-bas sont gardés dans le projet et dans les exports. PADS comprend la platine DIGGING. Les voies PADS, SONS et GUITARE sont réglées avant le looper : ce qui est enregistré suit leurs niveaux. MASTER règle tout ce qui sort.</p>
+    <p class="help">Boucles P1 à P6 de la bank choisie (A, B ou C en haut ; les 3 banks jouent ensemble) : volume, panoramique (glissière, double-touche = centre), BAS = coupe-bas à 120 Hz pour laisser la place à la basse, M = muet, S = solo. AUTO écoute les boucles : niveaux rapprochés, boucles graves au centre, les autres écartées à gauche et à droite, coupe-bas là où il n'y a pas de basses. À retoucher ensuite à l'oreille. Le panoramique et le coupe-bas sont gardés dans le projet et dans les exports. PADS comprend la platine DIGGING. Les voies PADS, SONS et GUITARE sont réglées avant le looper : ce qui est enregistré suit leurs niveaux. MASTER règle tout ce qui sort.</p>
   </div>
 </div>
 
@@ -416,7 +415,7 @@
     <p class="note" id="curProj"></p>
     <div class="saverow"><input id="projName" type="text" maxlength="40" placeholder="nom du projet" aria-label="Nom du projet"><button class="btn rec" id="projSave" type="button">ENREGISTRER SOUS</button></div>
     <div class="saverow"><button class="btn" id="projImport" type="button" style="flex:1">IMPORTER UN PROJET (.nomad)</button><input type="file" id="projFile" accept=".nomad,.zip,application/zip,application/octet-stream" hidden></div>
-    <p class="help">FICHIER enregistre un projet complet (sons, séquences, morceau, réglages) dans un fichier .nomad, à garder dans l'app Fichiers ou à passer sur un autre appareil.</p>
+    <p class="help">FICHIER enregistre un projet complet (sons, banks de boucles, morceau, réglages) dans un fichier .nomad, à garder dans l'app Fichiers ou à passer sur un autre appareil.</p>
     <div id="projList"></div>
     <h3>HORS LIGNE ET SAUVEGARDE</h3>
     <p class="help">L'app et les kits sont gardés dans l'appareil pour jouer sans réseau. La session en cours est enregistrée toute seule (projet « SESSION AUTO ») et se reprend depuis l'écran d'accueil. iOS peut effacer les données d'un site : gardez une sauvegarde complète dans l'app Fichiers.</p>

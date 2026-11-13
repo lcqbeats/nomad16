@@ -103,7 +103,7 @@
     else {
       const bpm = (60 * LP.beats / loopLen()).toFixed(1);
       const mb = Math.round(SQ.list.reduce((a, x) => a + x.reduce((b, l) => b + l.buf.length * l.buf.numberOfChannels * 4, 0), 0) / 1048576);
-      s = `SÉQ ${SEQ_N[SQ.cur]} · ${bpm} BPM · ${LP.layers.length}/${MAX_LAYERS}` + (mb >= 40 ? ` · ${mb} Mo` : "");
+      s = `BANK ${SEQ_N[SQ.cur]} · ${bpm} BPM · ${LP.layers.length}/${MAX_LAYERS}` + (mb >= 40 ? ` · ${mb} Mo` : "");
       if (p) { s += ctx.currentTime * sr - (p.comp || 0) < p.sF ? " · ARMÉE" : " · REC " + (p.half ? "÷2" : "×" + p.k); cls = "rec"; }
       else if (!LP.playing) s += " · STOP";
     }

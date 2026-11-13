@@ -76,7 +76,7 @@
   $("mListen").addEventListener("click", async () => {
     if (!ctx) return;
     if (MASTER.playing) { try { MASTER.playing.stop(); } catch (e) {} MASTER.playing = null; $("mListen").textContent = "▶ ÉCOUTER"; return; }
-    let m = songMix(); if (!m && LP.layers.length) m = loopStems().mix;
+    let m = songMix(); if (!m && allLayers().length) m = loopStems(allLayers()).mix;
     if (!m) { lcd("lcdPad", "MASTER", "rien à écouter : enregistrez une boucle"); return; }
     const n = Math.min(m[0].length, sr * 30), cut = [m[0].slice(0, n), (m[1] || m[0]).slice(0, n)];
     $("mListen").textContent = "…";
