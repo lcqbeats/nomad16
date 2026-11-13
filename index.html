@@ -163,12 +163,28 @@ button { font-family: var(--font-body); }
 .scrbrand small { font-size: 7px; font-weight: 700; letter-spacing: .14em; color: #3a3b3e; }
 .scrpitch { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 9px; font-weight: 700; letter-spacing: .1em; color: #3a3b3e; }
 .scrpitch input { width: 100%; accent-color: #3a3b3e; }
-.xfader { position: relative; height: 62px; background: #0c0b0a; border-radius: 8px; touch-action: none; box-shadow: inset 0 0 0 1px #2b2825; cursor: ew-resize; }
-.xfader .zone { position: absolute; top: 0; bottom: 0; background: rgba(217,43,47,.22); border-radius: 8px; }
-.xfader .rail { position: absolute; left: 16px; right: 16px; top: 29px; height: 4px; background: #33302c; border-radius: 2px; }
-.xfader .cap { position: absolute; top: 6px; width: 46px; height: 50px; margin-left: -23px; background: #5a554f; border-radius: 6px; border-top: 3px solid #8a847b; pointer-events: none; }
-.xfader .led { position: absolute; right: 8px; top: 6px; width: 8px; height: 8px; border-radius: 50%; background: #5a1414; }
+/* crossfader : façade de table de mixage (plaque brossée, vis, graduations, fente, bouton strié) */
+.xfader { position: relative; height: 66px; border-radius: 6px; touch-action: none; cursor: ew-resize;
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px), linear-gradient(180deg, #3b3c3f, #232427 60%, #1b1c1e);
+  box-shadow: inset 0 1px 0 #55575b, inset 0 -1px 0 #0b0b0c, 0 0 0 1px #050505, 0 4px 10px rgba(0,0,0,.5); }
+.xfader::before, .xfader::after { content: ""; position: absolute; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #9a9ca0, #44464a 70%); box-shadow: inset 0 0 0 1px #1a1a1a; }
+.xfader::before { left: 6px; } .xfader::after { right: 6px; }
+.xfader .zone { position: absolute; top: 8px; bottom: 8px; background: rgba(217,43,47,.28); border-radius: 3px; margin: 0 18px; }
+.xfader .rail { position: absolute; left: 22px; right: 22px; top: 30px; height: 6px; background: #000; border-radius: 3px; box-shadow: inset 0 1px 2px #000, 0 1px 0 #4a4b4e; }
+.xfader .rail::before { content: ""; position: absolute; left: 0; right: 0; top: -12px; height: 6px;
+  background: repeating-linear-gradient(90deg, #8d8f93 0 1px, transparent 1px calc(10% - .1px)); opacity: .55; }
+.xfader .rail::after { content: ""; position: absolute; left: 0; right: 0; bottom: -12px; height: 6px;
+  background: repeating-linear-gradient(90deg, #8d8f93 0 1px, transparent 1px calc(10% - .1px)); opacity: .55; }
+.xfader .cap { position: absolute; top: 9px; width: 30px; height: 48px; margin-left: -15px; border-radius: 5px; pointer-events: none;
+  background: linear-gradient(90deg, #121212, #3a3a3a 18%, #1e1e1e 50%, #3a3a3a 82%, #121212);
+  box-shadow: 0 4px 6px rgba(0,0,0,.7), inset 0 1px 0 #5a5a5a, 0 0 0 1px #000; }
+.xfader .cap::before { content: ""; position: absolute; left: 50%; top: 6px; bottom: 6px; width: 2px; margin-left: -1px; background: #ece3d3; border-radius: 1px; }
+.xfader .cap::after { content: ""; position: absolute; left: 4px; right: 4px; top: 4px; bottom: 4px; border-radius: 3px;
+  background: repeating-linear-gradient(180deg, rgba(255,255,255,.07) 0 1px, transparent 1px 4px); }
+.xfader .led { position: absolute; right: 20px; top: 6px; width: 7px; height: 7px; border-radius: 50%; background: #5a1414; box-shadow: inset 0 0 0 1px #000; }
 .xfader.open .led { background: #a8dd3a; box-shadow: 0 0 6px #a8dd3a; }
+.xfader .xlab { position: absolute; left: 0; right: 0; bottom: 3px; text-align: center; font: 700 7px/1 var(--font-display, sans-serif); letter-spacing: .3em; color: #8d8f93; pointer-events: none; }
 .scrcuts, .scrph, .scrtools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .scrtools { grid-template-columns: repeat(3, 1fr); }
 .scrcues { display: grid; grid-template-columns: repeat(4, 1fr) 1.5fr; gap: 6px; }
@@ -529,7 +545,7 @@ html.flipped, html.flipped body { overflow: hidden; }
 :root.desk .keybar .kv, :root.desk .fxbar .bpm, :root.desk .tuner, :root.desk .tuner * { color: #a9bcc8; }
 :root.desk .mini, :root.desk .saverow input { background: rgba(255,255,255,.35); border-color: rgba(15,34,48,.35); }
 :root.desk .sheet-in h2 button { border-color: rgba(15,34,48,.4); }
-:root.desk #scrCanvas, :root.desk .scrplay { max-width: 470px; }
+:root.desk #scrCanvas, :root.desk .scrdeck .scrplay { max-width: 400px; }
 /* ordinateur : la grille de pads tient dans la hauteur de la fenêtre (Chrome sur un portable 13 pouces) */
 :root.desk body { padding-top: 14px; padding-bottom: 14px; }
 :root.desk .machine { padding-top: 16px; padding-bottom: 18px; row-gap: 10px; }
@@ -713,6 +729,25 @@ html.flipped, html.flipped body { overflow: hidden; }
 .tbanks button.on { background: #ece3d3; color: #1a1a1a; box-shadow: none; }
 #view-fx .tbanks button.on { background: #35c4ef; color: #062533; }
 #view-sp .tbanks button.on { background: #f08a2c; color: #1a0f05; }
+
+/* SCRATCH : menu des sons, rangement */
+.scrmain { display: flex; flex-direction: column; gap: 10px; }
+.scrmixer, .scrside, .scrdisk { display: flex; flex-direction: column; gap: 10px; }
+.scrnav select { min-width: 0; width: 100%; background: #1b1a18; color: var(--text); border: 1px solid #3a3733; border-radius: 6px; padding: 10px 8px; font: 600 12px/1.2 var(--font-display, sans-serif); }
+.scrname { text-align: center; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: -4px; }
+/* ordinateur : platine un peu plus petite, cue et phrases à droite en colonne, fader et coupes dessous ; « sur le disque » à gauche sous les onglets */
+:root.desk .machine > .deskside { grid-column: 1; }
+:root.desk .scrmain { display: grid; grid-template-columns: minmax(0, 400px) 210px; grid-template-areas: "deck side" "mixer side"; gap: 12px 18px; justify-content: center; align-items: start; }
+:root.desk .scrdeck { grid-area: deck; } :root.desk .scrmixer { grid-area: mixer; max-width: 400px; width: 100%; } :root.desk .scrside { grid-area: side; }
+:root.desk .scrside .sphead { margin: 0; }
+:root.desk .scrside .scrcues { grid-template-columns: 1fr 1fr; }
+:root.desk .scrside .scrcues > :last-child { grid-column: 1 / -1; }
+:root.desk .scrside .scrph { grid-template-columns: 1fr; }
+:root.desk .scrside .scrph .btn { padding: 14px 4px; font-size: 11px; }
+:root.desk .scrmixer .scrcuts .btn { padding: 13px 4px; }
+:root.desk .deskside .scrsrc { grid-template-columns: repeat(3, 1fr); }
+:root.desk .deskside .scrsrc .btn { padding: 10px 2px; font-size: 10px; }
+.scrname:empty { display: none; }
 </style>
 </head>
 <body>
@@ -756,6 +791,7 @@ html.flipped, html.flipped body { overflow: hidden; }
   </div>
 
   <div class="knobs" id="knobs"></div>
+  <div class="deskside" id="deskSide" hidden></div>
 
   <section class="view" id="view-play">
     <div class="padtools"><button class="btn" id="edBtn" type="button">ÉDITER LE PAD 01</button><button class="btn" id="allPadsBtn" type="button" aria-pressed="false">TOUS</button><button class="btn" id="fullBtn" type="button">FULL</button><button class="btn" id="nrBtn" type="button">REPEAT</button><button class="btn" id="nrRate" type="button">1/16</button></div>
@@ -964,7 +1000,9 @@ html.flipped, html.flipped body { overflow: hidden; }
   </section>
 
   <section class="view stack" id="view-scratch" hidden>
-    <div class="scrplay">
+    <div class="scrmain">
+    <div class="scrdeck">
+      <div class="scrplay">
       <canvas id="scrCanvas" aria-label="Platine : posez le doigt sur le disque et faites-le tourner, en avant ou en arrière"></canvas>
       <div class="scrplate">
         <canvas id="scrLcd" role="button" aria-label="Écran : enregistrer le scratch dans le looper"></canvas>
@@ -976,27 +1014,35 @@ html.flipped, html.flipped body { overflow: hidden; }
         <div class="scrbrand"><small>DIRECT DRIVE · SCRATCH</small><b>NOMAD</b></div>
       </div>
     </div>
-    <div class="scrplay" style="display:flex;flex-direction:column;gap:10px">
-    <div class="xfader" id="scrFader" role="slider" aria-label="Fader de coupure" aria-valuemin="0" aria-valuemax="100"><div class="zone" id="scrZone"></div><div class="rail"></div><div class="cap" id="scrCap"></div><i class="led"></i></div>
-    <div class="scrcuts">
-      <button class="btn" id="scrHam" type="button">HAMSTER : NON</button>
-      <button class="btn hold" id="scrCut" type="button">COUPE</button>
-      <button class="btn hold" id="scrOpen" type="button">OUVRE</button>
+    </div>
+    <div class="scrmixer scrplay">
+      <div class="xfader" id="scrFader" role="slider" aria-label="Fader de coupure" aria-valuemin="0" aria-valuemax="100"><div class="zone" id="scrZone"></div><div class="rail"></div><div class="cap" id="scrCap"></div><i class="led"></i><span class="xlab">CROSSFADER</span></div>
+      <div class="scrcuts">
+        <button class="btn" id="scrHam" type="button">HAMSTER : NON</button>
+        <button class="btn hold" id="scrCut" type="button">COUPE</button>
+        <button class="btn hold" id="scrOpen" type="button">OUVRE</button>
+      </div>
+    </div>
+    <div class="scrside">
+      <h4 class="sphead"><span>CUE</span></h4>
+      <div class="scrcues scrplay" id="scrCues"></div>
+      <h4 class="sphead"><span>PHRASES</span></h4>
+      <div class="scrph scrplay" id="scrPh"></div>
     </div>
     </div>
-    <div class="scrcues scrplay" id="scrCues"></div>
-    <h4 class="sphead"><span>PHRASES</span></h4>
-    <div class="scrph scrplay" id="scrPh"></div>
-    <h4 class="sphead"><span>SUR LE DISQUE</span></h4>
-    <div class="scrsrc" id="scrSrc"></div>
-    <div class="scrnav"><button class="btn" id="scrPrev" type="button" aria-label="Son précédent">◀</button><span id="scrName">—</span><button class="btn" id="scrNext" type="button" aria-label="Son suivant">▶</button></div>
-    <div class="scrtools">
-      <button class="btn" id="scrRand" type="button">HASARD</button>
-      <button class="btn" id="scrImp" type="button">IMPORTER</button>
-      <button class="btn" id="scrKey" type="button">NOTE : —</button>
+    <div class="scrdisk" id="scrDisk">
+      <h4 class="sphead"><span>SUR LE DISQUE</span></h4>
+      <div class="scrsrc" id="scrSrc"></div>
+      <div class="scrnav"><button class="btn" id="scrPrev" type="button" aria-label="Son précédent">◀</button><select id="scrSel" aria-label="Son posé sur la platine"><option>—</option></select><button class="btn" id="scrNext" type="button" aria-label="Son suivant">▶</button></div>
+      <span id="scrName" class="scrname">—</span>
+      <div class="scrtools">
+        <button class="btn" id="scrRand" type="button">HASARD</button>
+        <button class="btn" id="scrImp" type="button">IMPORTER</button>
+        <button class="btn" id="scrKey" type="button">NOTE : —</button>
+      </div>
+      <input type="file" id="scrFile" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff" hidden>
+      <div class="scrset" id="scrSet"></div>
     </div>
-    <input type="file" id="scrFile" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff" hidden>
-    <div class="scrset" id="scrSet"></div>
     <p class="note help">Posez le doigt sur le disque et tournez : en avant, en arrière, à la vitesse de votre main. Touchez l'écran vert pour enregistrer : le scratch est posé sur une nouvelle piste du looper, sur un tour de boucle complet (départ au début de la boucle suivante) ; sans boucle, c'est le REC du looper. Le son tourne en sillon fermé. START lance le moteur ; la main arrête le disque tant qu'elle est posée. Fader : la zone rouge coupe le son (HAMSTER inverse le côté). OUVRE, COUPE et les phrases agissent tant qu'on les tient (une phrase rejoue son geste en boucle, calée sur le tempo). CUE 1 à 4 : toucher un repère vide le pose là où est le disque ; toucher un repère posé y ramène le disque et en fait le repère actif (l'autocollant blanc) ; appui long pour l'effacer. PHRASES : REPÈRE fait partir les phrases du repère actif, PHRASES : ICI de là où se trouve le disque. Akai, banque A : pad 1 tire le disque en arrière, pad 5 le pousse en avant (plus on frappe fort, plus c'est rapide ; si le moteur tourne, le disque repart dès qu'on lâche), pad 2 ouvre, pad 3 coupe, pad 4 start/stop, pads 6-7-8 = CUE 1 à 3 (frappe : poser ou rappeler ; tenu : effacer) ; banque B : pads 9-10-11 et 13-14-15 = phrases baby, chirp, transform, flare, tear, stab (tenues), 12 = repère précédent, 16 = repère suivant. Le clavier transpose le disque (scratch mélodique) ; potards : volume, pitch, filtre, démarrage, freinage, coupure, MAIN (déplace le disque comme une main, sur un demi-tour), fader. Tout passe dans le looper : REC / Sustain enregistre vos scratchs. Sons VOIX : Bibliothèque du Congrès (Citizen DJ), libres d'utilisation ; MES SONS : vos fichiers, gardés dans cet appareil.</p>
   </section>
 
@@ -1310,7 +1356,7 @@ html.flipped, html.flipped body { overflow: hidden; }
     if (t === "sample") enterDig();
     if (t === "sons") enterSons();
     if (t === "sp") drawSpPads();
-    if (t === "scratch") enterScratch();
+    if (t === "scratch") enterScratch(); else $("deskSide").hidden = true;
     if (t === "song") { for (let k = 0; k < 7; k++) knobVals.song[k] = knobVals.loops[k]; drawKnobs(); drawSong(true); }
   }
   TABS.forEach(x => $("tab-" + x).addEventListener("click", () => setTab(x)));
@@ -4480,17 +4526,31 @@ registerProcessor('nomad-oct',Oct);`;
     const tok = ++SCR.loading;
     const list = await scrList();
     if (tok !== SCR.loading) return;
+    scrFillSel(list);
     if (!list.length) { $("scrName").textContent = { chop: "aucun chop : passez par DIGGING", piste: "aucune piste dans cette bank", mine: "aucun son : IMPORTER", voix: "bac hors ligne" }[SCR.src] || "vide"; return; }
     SCR.idx = abs !== undefined ? ((abs % list.length) + list.length) % list.length : ((SCR.idx + delta) % list.length + list.length) % list.length;
-    const e = list[SCR.idx];
+    const e = list[SCR.idx]; $("scrSel").value = SCR.idx;
     $("scrName").textContent = "on pose le disque…";
     try { const b = await e.get(); if (tok !== SCR.loading) return; scrLoad(b, e.name); }
     catch (err) { $("scrName").textContent = "chargement impossible"; }
     store.set("scr", { src: SCR.src, idx: SCR.idx });
   }
+  // menu déroulant : les sons de la catégorie choisie
+  function scrFillSel(list) {
+    const sel = $("scrSel"), key = SCR.src + "|" + list.map(x => x.name).join("|");
+    if (sel.dataset.key === key) return; sel.dataset.key = key;
+    sel.innerHTML = list.length ? "" : "<option>—</option>";
+    list.forEach((x, i) => { const o = document.createElement("option"); o.value = i; o.textContent = `${i + 1}. ${x.name}`; sel.appendChild(o); });
+  }
+  // ordinateur : « sur le disque » passe sous les onglets, à gauche (la colonne y est vide)
+  function placeScrDisk() {
+    const side = $("deskSide"), d = $("scrDisk"), desk = document.documentElement.classList.contains("desk");
+    if (desk && d.parentNode !== side) side.appendChild(d); else if (!desk && d.parentNode !== $("view-scratch")) $("view-scratch").insertBefore(d, $("view-scratch").querySelector(".help"));
+    side.hidden = !(desk && tab === "scratch");
+  }
   function scrLoad(buf, name) {
     if (!buf || !SCR.node) return;
-    const bsr = buf.sampleRate, n0 = Math.min(buf.length, Math.floor(bsr * 12)), N = Math.max(n0, Math.ceil(bsr * SCR_REV));
+    const bsr = buf.sampleRate, n0 = Math.min(buf.length, Math.floor(bsr * 90)), N = Math.max(n0, Math.ceil(bsr * SCR_REV));
     const L = new Float32Array(N), R = new Float32Array(N);
     L.set(buf.getChannelData(0).subarray(0, n0)); R.set((buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0)).subarray(0, n0));
     let pk = 0; for (let i = 0; i < n0; i++) pk = Math.max(pk, Math.abs(L[i]), Math.abs(R[i]));
@@ -4502,7 +4562,7 @@ registerProcessor('nomad-oct',Oct);`;
     SCR.node.port.postMessage({ type: "buf", l: L, r: R, cue: SCR.cue }, [L.buffer, R.buffer]);
     SCR.rep = { pos: SCR.cue, vel: 0, t: performance.now() };
     scrApply();
-    $("scrName").textContent = name;
+    $("scrName").textContent = "";   // le nom est dans le menu ; cette ligne ne sert qu'aux messages
     lcd("lcdPad", "DISQUE", name);
   }
   async function scrInit() {
@@ -4620,7 +4680,7 @@ registerProcessor('nomad-oct',Oct);`;
   // Points de repère (4 par son, gardés pour chaque son pendant la session) et mode des phrases
   const SCR_CUEC = ["#d92b2f", "#22a35a", "#ece3d3", "#e0a63a"];
   const scrCueMem = new Map();
-  SCR.cues = [null, null, null, null]; SCR.cueIdx = -1; SCR.phMode = store.get("scrPhMode", "cue");
+  SCR.cues = [null, null, null, null]; SCR.cueIdx = -1; SCR.phMode = store.get("scrPhMode2", "here");   // par défaut, les phrases partent de l'endroit où est le disque
   const scrWrap = p => ((Math.round(p) % SCR.N) + SCR.N) % SCR.N;
   function scrCueTap(i) {
     if (!SCR.N) return;
@@ -4700,6 +4760,7 @@ registerProcessor('nomad-oct',Oct);`;
     ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => b.addEventListener(ev, () => { if (!SCR[key]) return; SCR[key] = false; b.classList.remove("holding"); scrGate(); }));
   });
   $("scrPrev").addEventListener("click", () => scrPick(-1));
+  $("scrSel").addEventListener("change", async e => { if (await scrInit()) scrPick(0, +e.target.value); });
   $("scrNext").addEventListener("click", () => scrPick(1));
   $("scrRand").addEventListener("click", async () => { if (!(await scrInit())) return; const n = (await scrList()).length; if (n) scrPick(0, Math.floor(Math.random() * n)); });
   (() => {
@@ -4713,7 +4774,7 @@ registerProcessor('nomad-oct',Oct);`;
       el.appendChild(b);
     }
     const m = document.createElement("button"); m.className = "btn"; m.type = "button"; m.id = "scrPhMode";
-    m.addEventListener("pointerdown", e => { e.preventDefault(); SCR.phMode = SCR.phMode === "cue" ? "here" : "cue"; store.set("scrPhMode", SCR.phMode); drawScrCues(); lcd("lcdPad", "PHRASES", SCR.phMode === "cue" ? "partent du repère actif" : "partent de là où est le disque"); });
+    m.addEventListener("pointerdown", e => { e.preventDefault(); SCR.phMode = SCR.phMode === "cue" ? "here" : "cue"; store.set("scrPhMode2", SCR.phMode); drawScrCues(); lcd("lcdPad", "PHRASES", SCR.phMode === "cue" ? "partent du repère actif" : "partent de là où est le disque"); });
     el.appendChild(m);
     drawScrCues();
   })();
@@ -4881,6 +4942,7 @@ registerProcessor('nomad-oct',Oct);`;
     if (SCR.semi !== null) { g.textAlign = "left"; g.font = `700 ${Math.round(9 * s)}px Arimo, Arial, sans-serif`; g.fillText("♪" + (SCR.semi > 0 ? "+" : "") + SCR.semi, 40 * s, 30 * s); }
   }
   function enterScratch() {
+    placeScrDisk();
     drawScrSrc(); drawScrFader();
     if (!SCR.raf) SCR.raf = requestAnimationFrame(drawScratch);
     if (ctx) scrInit();
@@ -6999,7 +7061,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   initMidi();
   try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi) { $("btBox").hidden = false; $("btPair").addEventListener("click", () => window.webkit.messageHandlers.nomadMidi.postMessage({ type: "btpair" })); } } catch (e) {}
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
-  window.nomadDbg = { song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
+  window.nomadDbg = { scrLoad, song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
   let probe = null;
   window.nomadProbe = () => { if (!probe) { probe = ctx.createAnalyser(); probe.fftSize = 2048; fxMaster.connect(probe); } const a = new Float32Array(2048); probe.getFloatTimeDomainData(a); let m = 0; for (const v of a) m = Math.max(m, Math.abs(v)); return +m.toFixed(3); };
   window.nomadState = () => ({ kit: kitCur, kits: kitIndex.length, bufs: buffers.filter(Boolean).length, names: names.slice(0, 4), t0F: LP.t0F, Lf: LP.Lf, layers: LP.layers.map(l => ({ k: l.k, m: l.m })), pending: LP.pending && { ...LP.pending }, latMs, guitar: { amp: G.amp, preset: G.preset, fx: [...G.fx], on: G.on }, cap: capLatest, now: ctx && ctx.currentTime });
@@ -7124,6 +7186,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     document.documentElement.classList.toggle("desk", on);
     const b = $("layoutBtn"); if (b) b.textContent = "AFFICHAGE : " + { auto: "AUTOMATIQUE", phone: "TÉLÉPHONE", desk: "ORDINATEUR" }[deskMode];
     if (typeof drawSpPads === "function" && tab === "sp") drawSpPads();
+    if (typeof placeScrDisk === "function") placeScrDisk();
   }
   // grille 3×3 : jouer (PADS LOOPER SONS), matière (DIGGING SCRATCH GUITARE), finition (FX SP SONG), même ordre que sur téléphone
   TABS.forEach((t, i) => { const el = $("tab-" + t); if (el) el.dataset.f = i + 1; });

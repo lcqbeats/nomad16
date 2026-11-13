@@ -48,6 +48,8 @@ PROCHAINE : ×1, ×2, ×4 ou ÷2 (aussi au potard 8 du LOOPER) fixe la longueur 
 
 ## Onglet SCRATCH
 
+Sur le disque : choisir une catégorie (BANQUE, VOIX, PAD, CHOP, PISTE, MES SONS), puis le son dans le menu déroulant. Le son est posé en entier (jusqu'à 90 s), pratique pour réenregistrer une boucle en la manipulant. Les phrases partent par défaut de l'endroit où se trouve le disque (PHRASES : ICI ; REPÈRE pour repartir du cue). Sur ordinateur, « sur le disque » est à gauche sous les onglets, les cue et phrases à droite de la platine, le crossfader et les coupes dessous.
+
 Platine tactile : le doigt posé sur le disque l'arrête et le fait tourner, en avant comme en arrière ; le son tourne en sillon fermé. Fader de coupure (zone rouge = coupé, HAMSTER inverse), boutons OUVRE / COUPE à maintenir, six phrases calées sur le tempo (baby, chirp, transform, flare, tear, stab). Sources : banque intégrée (voyelles et sons synthétisés, voix de la Bibliothèque du Congrès), bac VOIX, pads, chops de DIGGING, pistes du looper, et vos propres fichiers (gardés dans l'appareil). Tout passe dans le looper.
 
 Akai dans SCRATCH : banque A — pad 1 arrière, pad 5 avant (vitesse selon la frappe, reprise immédiate au lâcher si le moteur tourne), 2 ouvre, 3 coupe, 4 start/stop, 6-7-8 CUE 1 à 3 ; banque B — 9-10-11 et 13-14-15 phrases (baby, chirp, transform, flare, tear, stab), 12 repère précédent, 16 repère suivant. Le clavier transpose le disque. Potards : volume, pitch, filtre, démarrage, freinage, coupure, main (déplace le disque), fader.

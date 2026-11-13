@@ -1027,3 +1027,22 @@ def test_preset_de_mix_allume(app):
     assert lit() == []
     app.evaluate("nomadDbg.selectSeq(0)")
     assert lit() == ["auto"]
+
+
+def test_scratch_menu_disque_entier_et_phrases_ici(app):
+    app.click("#tab-scratch")
+    app.wait_for_function("nomadDbg.SCR.N > 0", timeout=10000)
+    n = app.evaluate("document.querySelectorAll('#scrSel option').length")
+    assert n > 5
+    app.select_option("#scrSel", "3")
+    app.wait_for_function("nomadDbg.SCR.idx === 3 && nomadDbg.SCR.name.length > 0")
+    # catégorie PAD : le menu se remplit avec les pads du kit
+    app.click('#scrSrc [data-s="pad"]')
+    app.wait_for_function("document.querySelector('#scrSel option').textContent.includes('PAD 1')")
+    # une boucle de 30 s se pose en entier sur la platine
+    app.evaluate("(() => { const b = new AudioBuffer({ length: 30 * nomadDbg.sr, sampleRate: nomadDbg.sr }); b.getChannelData(0).fill(0.2); nomadDbg.scrLoad(b, 'LONGUE'); })()")
+    assert app.evaluate("nomadDbg.SCR.N") == 30 * app.evaluate("nomadDbg.sr")
+    assert app.evaluate("nomadDbg.SCR.phMode") == "here"
+    # ordinateur : « sur le disque » sous les onglets
+    if app.evaluate("document.documentElement.classList.contains('desk')"):
+        assert app.evaluate("document.getElementById('scrDisk').parentNode.id") == "deskSide"

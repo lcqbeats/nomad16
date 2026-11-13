@@ -91,17 +91,31 @@
     const tok = ++SCR.loading;
     const list = await scrList();
     if (tok !== SCR.loading) return;
+    scrFillSel(list);
     if (!list.length) { $("scrName").textContent = { chop: "aucun chop : passez par DIGGING", piste: "aucune piste dans cette bank", mine: "aucun son : IMPORTER", voix: "bac hors ligne" }[SCR.src] || "vide"; return; }
     SCR.idx = abs !== undefined ? ((abs % list.length) + list.length) % list.length : ((SCR.idx + delta) % list.length + list.length) % list.length;
-    const e = list[SCR.idx];
+    const e = list[SCR.idx]; $("scrSel").value = SCR.idx;
     $("scrName").textContent = "on pose le disque…";
     try { const b = await e.get(); if (tok !== SCR.loading) return; scrLoad(b, e.name); }
     catch (err) { $("scrName").textContent = "chargement impossible"; }
     store.set("scr", { src: SCR.src, idx: SCR.idx });
   }
+  // menu déroulant : les sons de la catégorie choisie
+  function scrFillSel(list) {
+    const sel = $("scrSel"), key = SCR.src + "|" + list.map(x => x.name).join("|");
+    if (sel.dataset.key === key) return; sel.dataset.key = key;
+    sel.innerHTML = list.length ? "" : "<option>—</option>";
+    list.forEach((x, i) => { const o = document.createElement("option"); o.value = i; o.textContent = `${i + 1}. ${x.name}`; sel.appendChild(o); });
+  }
+  // ordinateur : « sur le disque » passe sous les onglets, à gauche (la colonne y est vide)
+  function placeScrDisk() {
+    const side = $("deskSide"), d = $("scrDisk"), desk = document.documentElement.classList.contains("desk");
+    if (desk && d.parentNode !== side) side.appendChild(d); else if (!desk && d.parentNode !== $("view-scratch")) $("view-scratch").insertBefore(d, $("view-scratch").querySelector(".help"));
+    side.hidden = !(desk && tab === "scratch");
+  }
   function scrLoad(buf, name) {
     if (!buf || !SCR.node) return;
-    const bsr = buf.sampleRate, n0 = Math.min(buf.length, Math.floor(bsr * 12)), N = Math.max(n0, Math.ceil(bsr * SCR_REV));
+    const bsr = buf.sampleRate, n0 = Math.min(buf.length, Math.floor(bsr * 90)), N = Math.max(n0, Math.ceil(bsr * SCR_REV));
     const L = new Float32Array(N), R = new Float32Array(N);
     L.set(buf.getChannelData(0).subarray(0, n0)); R.set((buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0)).subarray(0, n0));
     let pk = 0; for (let i = 0; i < n0; i++) pk = Math.max(pk, Math.abs(L[i]), Math.abs(R[i]));
@@ -113,7 +127,7 @@
     SCR.node.port.postMessage({ type: "buf", l: L, r: R, cue: SCR.cue }, [L.buffer, R.buffer]);
     SCR.rep = { pos: SCR.cue, vel: 0, t: performance.now() };
     scrApply();
-    $("scrName").textContent = name;
+    $("scrName").textContent = "";   // le nom est dans le menu ; cette ligne ne sert qu'aux messages
     lcd("lcdPad", "DISQUE", name);
   }
   async function scrInit() {
@@ -231,7 +245,7 @@
   // Points de repère (4 par son, gardés pour chaque son pendant la session) et mode des phrases
   const SCR_CUEC = ["#d92b2f", "#22a35a", "#ece3d3", "#e0a63a"];
   const scrCueMem = new Map();
-  SCR.cues = [null, null, null, null]; SCR.cueIdx = -1; SCR.phMode = store.get("scrPhMode", "cue");
+  SCR.cues = [null, null, null, null]; SCR.cueIdx = -1; SCR.phMode = store.get("scrPhMode2", "here");   // par défaut, les phrases partent de l'endroit où est le disque
   const scrWrap = p => ((Math.round(p) % SCR.N) + SCR.N) % SCR.N;
   function scrCueTap(i) {
     if (!SCR.N) return;
@@ -311,6 +325,7 @@
     ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => b.addEventListener(ev, () => { if (!SCR[key]) return; SCR[key] = false; b.classList.remove("holding"); scrGate(); }));
   });
   $("scrPrev").addEventListener("click", () => scrPick(-1));
+  $("scrSel").addEventListener("change", async e => { if (await scrInit()) scrPick(0, +e.target.value); });
   $("scrNext").addEventListener("click", () => scrPick(1));
   $("scrRand").addEventListener("click", async () => { if (!(await scrInit())) return; const n = (await scrList()).length; if (n) scrPick(0, Math.floor(Math.random() * n)); });
   (() => {
@@ -324,7 +339,7 @@
       el.appendChild(b);
     }
     const m = document.createElement("button"); m.className = "btn"; m.type = "button"; m.id = "scrPhMode";
-    m.addEventListener("pointerdown", e => { e.preventDefault(); SCR.phMode = SCR.phMode === "cue" ? "here" : "cue"; store.set("scrPhMode", SCR.phMode); drawScrCues(); lcd("lcdPad", "PHRASES", SCR.phMode === "cue" ? "partent du repère actif" : "partent de là où est le disque"); });
+    m.addEventListener("pointerdown", e => { e.preventDefault(); SCR.phMode = SCR.phMode === "cue" ? "here" : "cue"; store.set("scrPhMode2", SCR.phMode); drawScrCues(); lcd("lcdPad", "PHRASES", SCR.phMode === "cue" ? "partent du repère actif" : "partent de là où est le disque"); });
     el.appendChild(m);
     drawScrCues();
   })();
@@ -492,6 +507,7 @@
     if (SCR.semi !== null) { g.textAlign = "left"; g.font = `700 ${Math.round(9 * s)}px Arimo, Arial, sans-serif`; g.fillText("♪" + (SCR.semi > 0 ? "+" : "") + SCR.semi, 40 * s, 30 * s); }
   }
   function enterScratch() {
+    placeScrDisk();
     drawScrSrc(); drawScrFader();
     if (!SCR.raf) SCR.raf = requestAnimationFrame(drawScratch);
     if (ctx) scrInit();

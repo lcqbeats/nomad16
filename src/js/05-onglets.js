@@ -9,7 +9,7 @@
     if (t === "sample") enterDig();
     if (t === "sons") enterSons();
     if (t === "sp") drawSpPads();
-    if (t === "scratch") enterScratch();
+    if (t === "scratch") enterScratch(); else $("deskSide").hidden = true;
     if (t === "song") { for (let k = 0; k < 7; k++) knobVals.song[k] = knobVals.loops[k]; drawKnobs(); drawSong(true); }
   }
   TABS.forEach(x => $("tab-" + x).addEventListener("click", () => setTab(x)));

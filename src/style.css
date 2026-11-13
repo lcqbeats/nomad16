@@ -149,12 +149,28 @@ button { font-family: var(--font-body); }
 .scrbrand small { font-size: 7px; font-weight: 700; letter-spacing: .14em; color: #3a3b3e; }
 .scrpitch { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 9px; font-weight: 700; letter-spacing: .1em; color: #3a3b3e; }
 .scrpitch input { width: 100%; accent-color: #3a3b3e; }
-.xfader { position: relative; height: 62px; background: #0c0b0a; border-radius: 8px; touch-action: none; box-shadow: inset 0 0 0 1px #2b2825; cursor: ew-resize; }
-.xfader .zone { position: absolute; top: 0; bottom: 0; background: rgba(217,43,47,.22); border-radius: 8px; }
-.xfader .rail { position: absolute; left: 16px; right: 16px; top: 29px; height: 4px; background: #33302c; border-radius: 2px; }
-.xfader .cap { position: absolute; top: 6px; width: 46px; height: 50px; margin-left: -23px; background: #5a554f; border-radius: 6px; border-top: 3px solid #8a847b; pointer-events: none; }
-.xfader .led { position: absolute; right: 8px; top: 6px; width: 8px; height: 8px; border-radius: 50%; background: #5a1414; }
+/* crossfader : façade de table de mixage (plaque brossée, vis, graduations, fente, bouton strié) */
+.xfader { position: relative; height: 66px; border-radius: 6px; touch-action: none; cursor: ew-resize;
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px), linear-gradient(180deg, #3b3c3f, #232427 60%, #1b1c1e);
+  box-shadow: inset 0 1px 0 #55575b, inset 0 -1px 0 #0b0b0c, 0 0 0 1px #050505, 0 4px 10px rgba(0,0,0,.5); }
+.xfader::before, .xfader::after { content: ""; position: absolute; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #9a9ca0, #44464a 70%); box-shadow: inset 0 0 0 1px #1a1a1a; }
+.xfader::before { left: 6px; } .xfader::after { right: 6px; }
+.xfader .zone { position: absolute; top: 8px; bottom: 8px; background: rgba(217,43,47,.28); border-radius: 3px; margin: 0 18px; }
+.xfader .rail { position: absolute; left: 22px; right: 22px; top: 30px; height: 6px; background: #000; border-radius: 3px; box-shadow: inset 0 1px 2px #000, 0 1px 0 #4a4b4e; }
+.xfader .rail::before { content: ""; position: absolute; left: 0; right: 0; top: -12px; height: 6px;
+  background: repeating-linear-gradient(90deg, #8d8f93 0 1px, transparent 1px calc(10% - .1px)); opacity: .55; }
+.xfader .rail::after { content: ""; position: absolute; left: 0; right: 0; bottom: -12px; height: 6px;
+  background: repeating-linear-gradient(90deg, #8d8f93 0 1px, transparent 1px calc(10% - .1px)); opacity: .55; }
+.xfader .cap { position: absolute; top: 9px; width: 30px; height: 48px; margin-left: -15px; border-radius: 5px; pointer-events: none;
+  background: linear-gradient(90deg, #121212, #3a3a3a 18%, #1e1e1e 50%, #3a3a3a 82%, #121212);
+  box-shadow: 0 4px 6px rgba(0,0,0,.7), inset 0 1px 0 #5a5a5a, 0 0 0 1px #000; }
+.xfader .cap::before { content: ""; position: absolute; left: 50%; top: 6px; bottom: 6px; width: 2px; margin-left: -1px; background: #ece3d3; border-radius: 1px; }
+.xfader .cap::after { content: ""; position: absolute; left: 4px; right: 4px; top: 4px; bottom: 4px; border-radius: 3px;
+  background: repeating-linear-gradient(180deg, rgba(255,255,255,.07) 0 1px, transparent 1px 4px); }
+.xfader .led { position: absolute; right: 20px; top: 6px; width: 7px; height: 7px; border-radius: 50%; background: #5a1414; box-shadow: inset 0 0 0 1px #000; }
 .xfader.open .led { background: #a8dd3a; box-shadow: 0 0 6px #a8dd3a; }
+.xfader .xlab { position: absolute; left: 0; right: 0; bottom: 3px; text-align: center; font: 700 7px/1 var(--font-display, sans-serif); letter-spacing: .3em; color: #8d8f93; pointer-events: none; }
 .scrcuts, .scrph, .scrtools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .scrtools { grid-template-columns: repeat(3, 1fr); }
 .scrcues { display: grid; grid-template-columns: repeat(4, 1fr) 1.5fr; gap: 6px; }
@@ -515,7 +531,7 @@ html.flipped, html.flipped body { overflow: hidden; }
 :root.desk .keybar .kv, :root.desk .fxbar .bpm, :root.desk .tuner, :root.desk .tuner * { color: #a9bcc8; }
 :root.desk .mini, :root.desk .saverow input { background: rgba(255,255,255,.35); border-color: rgba(15,34,48,.35); }
 :root.desk .sheet-in h2 button { border-color: rgba(15,34,48,.4); }
-:root.desk #scrCanvas, :root.desk .scrplay { max-width: 470px; }
+:root.desk #scrCanvas, :root.desk .scrdeck .scrplay { max-width: 400px; }
 /* ordinateur : la grille de pads tient dans la hauteur de la fenêtre (Chrome sur un portable 13 pouces) */
 :root.desk body { padding-top: 14px; padding-bottom: 14px; }
 :root.desk .machine { padding-top: 16px; padding-bottom: 18px; row-gap: 10px; }
@@ -699,3 +715,22 @@ html.flipped, html.flipped body { overflow: hidden; }
 .tbanks button.on { background: #ece3d3; color: #1a1a1a; box-shadow: none; }
 #view-fx .tbanks button.on { background: #35c4ef; color: #062533; }
 #view-sp .tbanks button.on { background: #f08a2c; color: #1a0f05; }
+
+/* SCRATCH : menu des sons, rangement */
+.scrmain { display: flex; flex-direction: column; gap: 10px; }
+.scrmixer, .scrside, .scrdisk { display: flex; flex-direction: column; gap: 10px; }
+.scrnav select { min-width: 0; width: 100%; background: #1b1a18; color: var(--text); border: 1px solid #3a3733; border-radius: 6px; padding: 10px 8px; font: 600 12px/1.2 var(--font-display, sans-serif); }
+.scrname { text-align: center; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: -4px; }
+/* ordinateur : platine un peu plus petite, cue et phrases à droite en colonne, fader et coupes dessous ; « sur le disque » à gauche sous les onglets */
+:root.desk .machine > .deskside { grid-column: 1; }
+:root.desk .scrmain { display: grid; grid-template-columns: minmax(0, 400px) 210px; grid-template-areas: "deck side" "mixer side"; gap: 12px 18px; justify-content: center; align-items: start; }
+:root.desk .scrdeck { grid-area: deck; } :root.desk .scrmixer { grid-area: mixer; max-width: 400px; width: 100%; } :root.desk .scrside { grid-area: side; }
+:root.desk .scrside .sphead { margin: 0; }
+:root.desk .scrside .scrcues { grid-template-columns: 1fr 1fr; }
+:root.desk .scrside .scrcues > :last-child { grid-column: 1 / -1; }
+:root.desk .scrside .scrph { grid-template-columns: 1fr; }
+:root.desk .scrside .scrph .btn { padding: 14px 4px; font-size: 11px; }
+:root.desk .scrmixer .scrcuts .btn { padding: 13px 4px; }
+:root.desk .deskside .scrsrc { grid-template-columns: repeat(3, 1fr); }
+:root.desk .deskside .scrsrc .btn { padding: 10px 2px; font-size: 10px; }
+.scrname:empty { display: none; }

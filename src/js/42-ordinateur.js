@@ -6,6 +6,7 @@
     document.documentElement.classList.toggle("desk", on);
     const b = $("layoutBtn"); if (b) b.textContent = "AFFICHAGE : " + { auto: "AUTOMATIQUE", phone: "TÉLÉPHONE", desk: "ORDINATEUR" }[deskMode];
     if (typeof drawSpPads === "function" && tab === "sp") drawSpPads();
+    if (typeof placeScrDisk === "function") placeScrDisk();
   }
   // grille 3×3 : jouer (PADS LOOPER SONS), matière (DIGGING SCRATCH GUITARE), finition (FX SP SONG), même ordre que sur téléphone
   TABS.forEach((t, i) => { const el = $("tab-" + t); if (el) el.dataset.f = i + 1; });
