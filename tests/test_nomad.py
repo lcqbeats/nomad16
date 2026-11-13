@@ -299,10 +299,12 @@ def test_looper_pads_coupent_les_pistes(app):
     for i in range(4):
         app.evaluate(f"nomadDbg.addLayer(nomadDbg.buffers[{i}], 1, 0)")
     app.click("#tab-loops")
-    app.evaluate("nomadMidi([0x99, 40, 100])")   # pad 5 → piste 4
-    assert app.evaluate("nomadDbg.LP.layers[3].muted") is True
+    app.evaluate("nomadMidi([0x99, 40, 100])")   # pad 5 → piste 1 (rangée du haut = pistes 1 à 3)
+    assert app.evaluate("nomadDbg.LP.layers[0].muted") is True
     app.evaluate("nomadMidi([0x99, 40, 100])")
-    assert app.evaluate("nomadDbg.LP.layers[3].muted") is False
+    assert app.evaluate("nomadDbg.LP.layers[0].muted") is False
+    app.evaluate("nomadMidi([0x99, 36, 100])")   # pad 1 → piste 4
+    assert app.evaluate("nomadDbg.LP.layers[3].muted") is True
 
 
 def test_sons_accords_ranges_comme_les_pads(app):
@@ -324,9 +326,9 @@ def test_looper_tout_couper_solo_tape_stop_lecture(app):
     assert mutes() == [True, True, True]
     app.evaluate("nomadMidi([0x99, 43, 100])")       # pad 8 : tout rétablir
     assert mutes() == [False, False, False]
-    app.evaluate("nomadMidi([0x99, 45, 100])")       # pad 10 : solo piste 2
+    app.evaluate("nomadMidi([0x99, 49, 100])")       # pad 14 : solo piste 2
     assert mutes() == [True, False, True]
-    app.evaluate("nomadMidi([0x99, 45, 100])")       # fin du solo
+    app.evaluate("nomadMidi([0x99, 49, 100])")       # fin du solo
     assert mutes() == [False, False, False]
     app.evaluate("nomadMidi([0x99, 47, 100])")       # pad 12 : tape stop
     app.wait_for_timeout(1300)
@@ -682,6 +684,21 @@ def test_fx_32_motifs(app):
         assert worst[1] == 0 and worst[0] < 1.5, (i + 17, worst)
     app.click("#fxSet")
     assert "1–16" in app.inner_text("#fxSet")
+
+
+def test_doubler_aligne_les_autres_pistes(app):
+    fake_loop(app, 0.5)
+    for i in range(2):
+        app.evaluate(f"nomadDbg.addLayer(nomadDbg.buffers[{i}].length >= nomadDbg.LP.Lf ? nomadDbg.buffers[{i}] : (() => {{ const b = nomadDbg.sp.in.context.createBuffer(2, nomadDbg.LP.Lf, nomadDbg.sr); b.copyToChannel(nomadDbg.buffers[{i}].getChannelData(0), 0); return b; }})(), 1, 0)")
+    app.click("#tab-loops")
+    n0 = app.evaluate("nomadDbg.LP.layers[1].buf.length")
+    app.click("#lenSel")      # piste choisie : la dernière, puis on boucle sur la 1
+    app.evaluate("nomadDbg.LP.sel = 0")
+    app.click("#lenDouble")
+    assert app.evaluate("nomadDbg.LP.layers.map(l => l.k)") == [2, 2]
+    assert app.evaluate("nomadDbg.LP.layers[1].buf.length") == n0 * 2
+    app.click("#undoBtn")
+    assert app.evaluate("nomadDbg.LP.layers.map(l => l.k)") == [1, 1]
 
 
 def test_famille_20syl(app):

@@ -1912,7 +1912,10 @@ registerProcessor('nomad-djloop',DjLoop);`;
     LP.layers.push(l); LP.sel = -1;
     routeFx();
     if (LP.playing) startLayer(l, ctx.currentTime + 0.005);
-    if (hist) { const st = { Lf: LP.Lf, beats: LP.beats, si: SQ.cur }; pushHist("nouvelle piste " + (idx + 1), () => dropLayer(l), () => reinsertLayer(l, idx, st)); }
+    // nouvelle piste plus longue (×2, ×4) : les autres se mettent à sa longueur
+    const plan = hist ? equalizePlan() : [];
+    if (plan.length) applyPlan(plan, "now");
+    if (hist) { const st = { Lf: LP.Lf, beats: LP.beats, si: SQ.cur }; pushHist("nouvelle piste " + (idx + 1), () => { dropLayer(l); applyPlan(plan, "old"); drawSeqSel(); }, () => { reinsertLayer(l, idx, st); applyPlan(plan, "now"); drawSeqSel(); }, plan.length > 0); }
     drawSeqSel();
   }
   function dropLayer(l) {
@@ -1977,6 +1980,18 @@ registerProcessor('nomad-djloop',DjLoop);`;
   // ---------- Longueurs : prochaine piste (×1, ×2, ×4, ÷2) et piste existante (÷2, ×2) ----------
   const LEN_ORDER = ["h", "1", "2", "4"], LEN_NAME = { h: "÷2", 1: "×1", 2: "×2", 4: "×4" };
   LP.nextLen = "1"; LP.sel = -1;
+  // Quand une piste devient plus longue (×2, ×4), les pistes plus courtes sont recopiées bout à bout jusqu'à la même
+  // longueur : on entend exactement la même chose, mais toutes les pistes ont la même durée (fusion, export, ÷2 plus simples).
+  function equalizePlan() {
+    const K = Math.max(1, ...LP.layers.map(l => l.k)), plan = [];
+    LP.layers.forEach(l => {
+      if (l.k >= K || K % l.k) return;
+      const r = K / l.k, n = l.buf.length, notes = l.notes || [];
+      plan.push({ l, old: { buf: l.buf, k: l.k, notes }, now: { buf: repeatBuf(l.buf, r), k: K, notes: Array.from({ length: r }, (_, q) => notes.map(x => ({ ...x, at: x.at + q * n }))).flat() } });
+    });
+    return plan;
+  }
+  function applyPlan(plan, which) { plan.forEach(p => { stopLayer(p.l); Object.assign(p.l, p[which]); if (LP.playing) startLayer(p.l, ctx.currentTime + 0.005); }); }
   function repeatBuf(b, n) { const o = ctx.createBuffer(b.numberOfChannels, b.length * n, b.sampleRate); for (let c = 0; c < b.numberOfChannels; c++) { const s = b.getChannelData(c), d = o.getChannelData(c); for (let r = 0; r < n; r++) d.set(s, r * b.length); } return o; }
   function setNextLen(v) {
     LP.nextLen = v; drawLenBar();
@@ -2003,8 +2018,10 @@ registerProcessor('nomad-djloop',DjLoop);`;
     const apply = st => { stopLayer(l); Object.assign(l, st); if (LP.playing) startLayer(l, ctx.currentTime + 0.005); drawSeqSel(); };
     const now = { buf, k, m, notes };
     apply(now);
-    pushHist(`piste ${i + 1} ${mode === "double" ? "×2" : "÷2"}`, () => apply(old), () => apply(now));
-    lcd("lcdLoop", "BOUCLE", `piste ${i + 1} ${mode === "double" ? "doublée (×2)" : "coupée en deux (÷2)"}`);
+    const plan = mode === "double" ? equalizePlan() : [];
+    if (plan.length) { applyPlan(plan, "now"); drawSeqSel(); }
+    pushHist(`piste ${i + 1} ${mode === "double" ? "×2" : "÷2"}`, () => { applyPlan(plan, "old"); apply(old); }, () => { apply(now); applyPlan(plan, "now"); drawSeqSel(); }, plan.length > 0);
+    lcd("lcdLoop", "BOUCLE", `piste ${i + 1} ${mode === "double" ? "doublée (×2)" : "coupée en deux (÷2)"}` + (plan.length ? ` · ${plan.length} autre(s) piste(s) mise(s) à la même longueur` : ""));
   }
   function drawLenBar() {
     if (!$("lenNext")) return;
@@ -4566,8 +4583,8 @@ registerProcessor('nomad-djloop',DjLoop);`;
       sec("BOUTON CC (pads en CC, preset 3)", `<p class="glh">Banque A</p>${padGrid(["Play / stop looper", "Annuler", "Muet piste 1", "Muet piste 2", "Muet piste 3", "Muet piste 4", "Muet piste 5", "Muet piste 6"])}<p class="glh">Banque B</p>${padGrid(["Kit précédent", "Kit suivant", "Morceau ▶/■", "Séquence ◀", "Note repeat", "Séquence ▶", "Onglet suivant", "Guitare (onglet + entrée)"], 8)}`),
       sec("BOUTON PROG CHANGE (onglets et kits)", `<p>PROG CHANGE allumé, un pad, puis PROG CHANGE éteint pour rejouer.</p><p>Les numéros sous les onglets de l'iPhone rappellent le pad.</p><p class="glh">Banque A : aller à l'onglet</p>${padGrid(["PADS", "LOOPER", "SONS", "DIGGING", "SCRATCH", "GUITARE", "FX", "SP"])}<p class="glh">Banque B : charger le kit</p>${padGrid(kits, 8)}<p>Pad 16 en mode CC : allume l'entrée guitare et ouvre l'onglet.</p>`),
       sec("PADS EN NOTES, SELON L'ONGLET", `<p><b>PADS, SONG, SP, GUITARE</b> : les 16 sons du kit (banque A = 1 à 8, banque B = 9 à 16).</p>
-        <p class="glh">LOOPER · banque A</p>${padGrid(["Muet piste 1", "Muet piste 2", "Muet piste 3", "Tout couper", "Muet piste 4", "Muet piste 5", "Muet piste 6", "Tout rétablir"])}
-        <p class="glh">LOOPER · banque B</p>${padGrid(["Solo piste 1", "Solo piste 2", "Solo piste 3", "Tape stop", "Solo piste 4", "Solo piste 5", "Solo piste 6", "▶ Lecture"], 8)}
+        <p class="glh">LOOPER · banque A</p>${padGrid(["Muet piste 4", "Muet piste 5", "Muet piste 6", "Tout couper", "Muet piste 1", "Muet piste 2", "Muet piste 3", "Tout rétablir"])}
+        <p class="glh">LOOPER · banque B</p>${padGrid(["Solo piste 4", "Solo piste 5", "Solo piste 6", "Tape stop", "Solo piste 1", "Solo piste 2", "Solo piste 3", "▶ Lecture"], 8)}
         <p class="glh">FX · motifs 1 à 16 (banques A puis B)</p>${padGrid(fxA)}${padGrid(fxB, 8)}<p class="glh">FX · motifs 17 à 32 (DO# du clavier pour changer de page)</p>${padGrid(fxC)}${padGrid(fxD, 8)}
         <p class="glh">SP · banque A : couleur (appui court = allumé, long = tant qu'on tient)</p>${padGrid(SP_FX.slice(0, 8).map(f => f.name))}<p class="glh">SP · banque B : espace et jeu</p>${padGrid(SP_FX.slice(8).map(f => f.name), 8)}
         <p><b>DIGGING</b> : avec CHOP LIVE et le disque qui tourne, chaque pad pose sa découpe ; sinon, le kit.</p>
@@ -6345,7 +6362,8 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   }
   // LOOPER : pads 1-2-3 et 5-6-7 = couper / rétablir les pistes 1 à 6 ; 4 = tout couper, 8 = tout rétablir ;
   // banque B : 9-10-11 et 13-14-15 = solo des pistes 1 à 6, 12 = tape stop puis arrêt, 16 = lecture
-  const LOOP_MUTE_PADS = { 0: 0, 1: 1, 2: 2, 4: 3, 5: 4, 6: 5 }, LOOP_SOLO_PADS = { 8: 0, 9: 1, 10: 2, 12: 3, 13: 4, 14: 5 };
+  // pads rangés comme les pistes à l'écran : rangée du haut = pistes 1 à 3, rangée du bas = pistes 4 à 6
+  const LOOP_MUTE_PADS = { 4: 0, 5: 1, 6: 2, 0: 3, 1: 4, 2: 5 }, LOOP_SOLO_PADS = { 12: 0, 13: 1, 14: 2, 8: 3, 9: 4, 10: 5 };
   function loopPad(idx) {
     if (LOOP_MUTE_PADS[idx] !== undefined) toggleMute(LOOP_MUTE_PADS[idx]);
     else if (LOOP_SOLO_PADS[idx] !== undefined) soloLayer(LOOP_SOLO_PADS[idx]);

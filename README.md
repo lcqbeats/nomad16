@@ -12,6 +12,7 @@ Instruments de l'onglet SONS : échantillons libres (VCSL CC0, Splendid Grand Pi
 ## Contrôles Akai (preset 3)
 
 - Bank 1 (CC 20–27) : play/stop du looper, undo, mute des pistes 1 à 6.
+- LOOPER (pads en notes) : rangée du haut = pistes 1 à 3, rangée du bas = pistes 4 à 6, comme à l'écran — banque A : pads 5-6-7 muet pistes 1-2-3, pads 1-2-3 muet pistes 4-5-6, 4 tout couper, 8 tout rétablir ; banque B : pads 13-14-15 et 9-10-11 = solos, 12 tape stop, 16 lecture.
 - Bank 2 (CC 28–35) : kit précédent, kit suivant, lecture/arrêt du morceau (SONG), séquence précédente, note repeat, séquence suivante, onglet suivant, entrée guitare (ouvre aussi l'onglet GUITARE).
 - PROG CHANGE, dans l'ordre des onglets (le numéro est écrit sous chaque onglet sur iPhone) : banque A = 1 PADS, 2 LOOPER, 3 SONS, 4 DIGGING, 5 SCRATCH, 6 GUITARE, 7 FX, 8 SP ; banque B = kits J DILLA, RZA, PETE ROCK, DAMU THE FUDGEMUNK, LO-FI CASSETTE, BOOM BAP 93, DUB STATION, ACOUSTIQUE (SONG n'a pas de raccourci).
 - FX : 32 motifs sur deux pages (1–16 classiques, 17–32 plus élaborés : POLY 3, SHUFFLE, ECHO ROLL, VINYL BRAKE, BACKSPIN, TRANSFORM, CHIRPS, HALF CHOP, DUB STAB, GLITCH, BABY SCRATCH, BREAKDOWN…), chacun avec son petit graphique ; bouton MOTIFS ⇄ ou DO# du clavier pour changer de page.
@@ -22,7 +23,7 @@ Instruments de l'onglet SONS : échantillons libres (VCSL CC0, Splendid Grand Pi
 
 ## Longueur des pistes (LOOPER)
 
-PROCHAINE : ×1, ×2, ×4 ou ÷2 (aussi au potard 8 du LOOPER) fixe la longueur de la prochaine piste ; pendant un REC, chaque nouvel appui rallonge encore d'un tour. PISTE n choisit une piste existante (la dernière par défaut) : ÷2 garde la moitié qui joue en ce moment, ×2 la répète pour la doubler. Tout s'annule avec ↶.
+PROCHAINE : ×1, ×2, ×4 ou ÷2 (aussi au potard 8 du LOOPER) fixe la longueur de la prochaine piste ; pendant un REC, chaque nouvel appui rallonge encore d'un tour. PISTE n choisit une piste existante (la dernière par défaut) : ÷2 garde la moitié qui joue en ce moment, ×2 la répète pour la doubler. Dès qu'une piste devient plus longue (×2, ×4), les pistes plus courtes sont recopiées jusqu'à la même longueur : le son ne change pas, mais toutes les pistes ont la même durée. Tout s'annule avec ↶.
 
 ## Onglet SCRATCH
 

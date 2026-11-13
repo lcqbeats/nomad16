@@ -69,7 +69,8 @@
   }
   // LOOPER : pads 1-2-3 et 5-6-7 = couper / rétablir les pistes 1 à 6 ; 4 = tout couper, 8 = tout rétablir ;
   // banque B : 9-10-11 et 13-14-15 = solo des pistes 1 à 6, 12 = tape stop puis arrêt, 16 = lecture
-  const LOOP_MUTE_PADS = { 0: 0, 1: 1, 2: 2, 4: 3, 5: 4, 6: 5 }, LOOP_SOLO_PADS = { 8: 0, 9: 1, 10: 2, 12: 3, 13: 4, 14: 5 };
+  // pads rangés comme les pistes à l'écran : rangée du haut = pistes 1 à 3, rangée du bas = pistes 4 à 6
+  const LOOP_MUTE_PADS = { 4: 0, 5: 1, 6: 2, 0: 3, 1: 4, 2: 5 }, LOOP_SOLO_PADS = { 12: 0, 13: 1, 14: 2, 8: 3, 9: 4, 10: 5 };
   function loopPad(idx) {
     if (LOOP_MUTE_PADS[idx] !== undefined) toggleMute(LOOP_MUTE_PADS[idx]);
     else if (LOOP_SOLO_PADS[idx] !== undefined) soloLayer(LOOP_SOLO_PADS[idx]);

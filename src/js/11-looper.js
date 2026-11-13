@@ -163,7 +163,10 @@
     LP.layers.push(l); LP.sel = -1;
     routeFx();
     if (LP.playing) startLayer(l, ctx.currentTime + 0.005);
-    if (hist) { const st = { Lf: LP.Lf, beats: LP.beats, si: SQ.cur }; pushHist("nouvelle piste " + (idx + 1), () => dropLayer(l), () => reinsertLayer(l, idx, st)); }
+    // nouvelle piste plus longue (×2, ×4) : les autres se mettent à sa longueur
+    const plan = hist ? equalizePlan() : [];
+    if (plan.length) applyPlan(plan, "now");
+    if (hist) { const st = { Lf: LP.Lf, beats: LP.beats, si: SQ.cur }; pushHist("nouvelle piste " + (idx + 1), () => { dropLayer(l); applyPlan(plan, "old"); drawSeqSel(); }, () => { reinsertLayer(l, idx, st); applyPlan(plan, "now"); drawSeqSel(); }, plan.length > 0); }
     drawSeqSel();
   }
   function dropLayer(l) {
@@ -228,6 +231,18 @@
   // ---------- Longueurs : prochaine piste (×1, ×2, ×4, ÷2) et piste existante (÷2, ×2) ----------
   const LEN_ORDER = ["h", "1", "2", "4"], LEN_NAME = { h: "÷2", 1: "×1", 2: "×2", 4: "×4" };
   LP.nextLen = "1"; LP.sel = -1;
+  // Quand une piste devient plus longue (×2, ×4), les pistes plus courtes sont recopiées bout à bout jusqu'à la même
+  // longueur : on entend exactement la même chose, mais toutes les pistes ont la même durée (fusion, export, ÷2 plus simples).
+  function equalizePlan() {
+    const K = Math.max(1, ...LP.layers.map(l => l.k)), plan = [];
+    LP.layers.forEach(l => {
+      if (l.k >= K || K % l.k) return;
+      const r = K / l.k, n = l.buf.length, notes = l.notes || [];
+      plan.push({ l, old: { buf: l.buf, k: l.k, notes }, now: { buf: repeatBuf(l.buf, r), k: K, notes: Array.from({ length: r }, (_, q) => notes.map(x => ({ ...x, at: x.at + q * n }))).flat() } });
+    });
+    return plan;
+  }
+  function applyPlan(plan, which) { plan.forEach(p => { stopLayer(p.l); Object.assign(p.l, p[which]); if (LP.playing) startLayer(p.l, ctx.currentTime + 0.005); }); }
   function repeatBuf(b, n) { const o = ctx.createBuffer(b.numberOfChannels, b.length * n, b.sampleRate); for (let c = 0; c < b.numberOfChannels; c++) { const s = b.getChannelData(c), d = o.getChannelData(c); for (let r = 0; r < n; r++) d.set(s, r * b.length); } return o; }
   function setNextLen(v) {
     LP.nextLen = v; drawLenBar();
@@ -254,8 +269,10 @@
     const apply = st => { stopLayer(l); Object.assign(l, st); if (LP.playing) startLayer(l, ctx.currentTime + 0.005); drawSeqSel(); };
     const now = { buf, k, m, notes };
     apply(now);
-    pushHist(`piste ${i + 1} ${mode === "double" ? "×2" : "÷2"}`, () => apply(old), () => apply(now));
-    lcd("lcdLoop", "BOUCLE", `piste ${i + 1} ${mode === "double" ? "doublée (×2)" : "coupée en deux (÷2)"}`);
+    const plan = mode === "double" ? equalizePlan() : [];
+    if (plan.length) { applyPlan(plan, "now"); drawSeqSel(); }
+    pushHist(`piste ${i + 1} ${mode === "double" ? "×2" : "÷2"}`, () => { applyPlan(plan, "old"); apply(old); }, () => { apply(now); applyPlan(plan, "now"); drawSeqSel(); }, plan.length > 0);
+    lcd("lcdLoop", "BOUCLE", `piste ${i + 1} ${mode === "double" ? "doublée (×2)" : "coupée en deux (÷2)"}` + (plan.length ? ` · ${plan.length} autre(s) piste(s) mise(s) à la même longueur` : ""));
   }
   function drawLenBar() {
     if (!$("lenNext")) return;
