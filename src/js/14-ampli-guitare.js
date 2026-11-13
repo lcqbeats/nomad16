@@ -3,10 +3,11 @@
     cristal: { label: "CRISTAL 22", skin: "cristal", maxDrive: 5, asym: 0.05, midF: 500, midQ: 0.7, midBase: -3, cab: 6500, low: 1 },
     brit: { label: "BRIT 59", skin: "", maxDrive: 24, asym: 0.15, midF: 800, midQ: 0.8, midBase: 2, cab: 5200, low: 0 },
     agrume: { label: "AGRUME 30", skin: "agrume", maxDrive: 38, asym: 0.2, midF: 600, midQ: 0.7, midBase: 4, cab: 4800, low: 2 },
-    bois: { label: "BOIS · ACOUSTIQUE", skin: "bois" }
+    bois: { label: "BOIS · ACOUSTIQUE", skin: "bois" },
+    basse: { label: "BASSE 300", skin: "basse", maxDrive: 6, asym: 0.08, midF: 450, midQ: 0.8, midBase: -1, cab: 3600, low: 3, bass: true }
   };
   const PEDALS = [
-    { id: "comp", label: "COMP", color: "#2f6fb5" }, { id: "drive", label: "DRIVE", color: "#1f8a4c" }, { id: "fuzz", label: "FUZZ", color: "#b8432f" },
+    { id: "oct", label: "OCT −1", color: "#6b4a1c" }, { id: "comp", label: "COMP", color: "#2f6fb5" }, { id: "drive", label: "DRIVE", color: "#1f8a4c" }, { id: "fuzz", label: "FUZZ", color: "#b8432f" },
     { id: "vibe", label: "VIBE", color: "#7a4aa0" }, { id: "chorus", label: "CHORUS", color: "#2a9aa0" }, { id: "delay", label: "ÉCHO", color: "#3a3a3a" }
   ];
   // Valeurs : gain, basses, médiums, aigus, présence, réverbe, master, écho (0 à 1)
@@ -18,7 +19,16 @@
     { name: "FUNK CLAIR", sub: "esprit Frusciante", amp: "cristal", k: [0.3, 0.45, 0.45, 0.7, 0.65, 0.2, 0.6, 0.0], fx: ["comp"] },
     { name: "CRUNCH", sub: "rythmique Brit", amp: "brit", k: [0.6, 0.55, 0.6, 0.55, 0.55, 0.2, 0.55, 0.0], fx: [] },
     { name: "LEAD CHAUD", sub: "solo, sustain", amp: "agrume", k: [0.6, 0.55, 0.6, 0.5, 0.45, 0.3, 0.5, 0.35], fx: ["drive", "delay"] },
-    { name: "ACOUSTIQUE", sub: "chaude et ronde", amp: "bois", k: [0.3, 0.55, 0.45, 0.55, 0.55, 0.3, 0.65, 0.0], fx: ["comp"] }
+    { name: "ACOUSTIQUE", sub: "chaude et ronde", amp: "bois", k: [0.3, 0.55, 0.45, 0.55, 0.55, 0.3, 0.65, 0.0], fx: ["comp"] },
+    // BASSE : avec une guitare, OCT −1 la descend d'une octave ; avec une vraie basse, éteignez OCT −1
+    { name: "BASSE BOOM BAP", sub: "ronde, années 90", amp: "basse", k: [0.25, 0.65, 0.5, 0.4, 0.35, 0.0, 0.65, 0.0], fx: ["oct", "comp"] },
+    { name: "BASSE DUB", sub: "sub profond", amp: "basse", k: [0.15, 0.8, 0.35, 0.15, 0.2, 0.05, 0.7, 0.0], fx: ["oct", "comp"] },
+    { name: "BASSE NÉO SOUL", sub: "doigts chauds", amp: "basse", k: [0.25, 0.6, 0.55, 0.45, 0.4, 0.05, 0.65, 0.0], fx: ["oct", "comp"] },
+    { name: "BASSE FUNK", sub: "claquante", amp: "basse", k: [0.3, 0.55, 0.4, 0.7, 0.65, 0.0, 0.6, 0.0], fx: ["oct", "comp"] },
+    { name: "BASSE LO-FI", sub: "sourde et feutrée", amp: "basse", k: [0.2, 0.6, 0.45, 0.15, 0.1, 0.1, 0.65, 0.0], fx: ["oct"] },
+    { name: "BASSE FKJ", sub: "ronde avec chorus", amp: "basse", k: [0.25, 0.6, 0.5, 0.5, 0.45, 0.1, 0.6, 0.0], fx: ["oct", "comp", "chorus"] },
+    { name: "BASSE SALE", sub: "saturée, esprit 20syl", amp: "basse", k: [0.7, 0.6, 0.6, 0.5, 0.45, 0.0, 0.55, 0.0], fx: ["oct", "drive"] },
+    { name: "BASSE JAZZ", sub: "boisée, contrebasse", amp: "basse", k: [0.15, 0.6, 0.55, 0.35, 0.3, 0.15, 0.65, 0.0], fx: ["oct"] }
   ];
   const AMP_LABELS = ["GAIN", "BASS", "MIDDLE", "TREBLE", "PRESENCE", "REVERB", "MASTER"];
   const G = { amp: "brit", fx: new Set(), preset: -1, on: false };
@@ -109,7 +119,9 @@
       gn.gate = new AudioWorkletNode(ctx, "nomad-gate", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
       gn.input.connect(gn.gate); head = gn.gate;
     }
-    const hpIn = bq("highpass", 70, 0.7); head.connect(hpIn);
+    const hpIn = bq("highpass", 70, 0.7); head.connect(hpIn); gn.hpIn = hpIn;
+    // OCT −1 : la guitare descend d'une octave (un peu de son direct pour l'attaque), pour jouer des lignes de basse
+    gn.oct = insert(i => { const o = gain(1), lp = bq("lowpass", 1400, 0.7), dry = gain(0.18); if (hasWorklet) { const w = new AudioWorkletNode(ctx, "nomad-oct", { outputChannelCount: [1] }); i.connect(w); w.connect(lp); } else i.connect(lp); lp.connect(o); i.connect(dry); dry.connect(o); return o; });
     // Pédales
     gn.comp = insert(i => { const c = ctx.createDynamicsCompressor(); c.threshold.value = -32; c.ratio.value = 5; c.attack.value = 0.008; c.release.value = 0.15; const mk = gain(2.2); i.connect(c); c.connect(mk); return mk; });
     gn.drive = insert(i => { const h = bq("highpass", 720, 0.5), s = ctx.createWaveShaper(); s.curve = curve(6, 0.05); s.oversample = "2x"; const pre = gain(2), l = bq("lowpass", 3800, 0.6), dryMix = gain(0.35), o = gain(0.8); i.connect(h); h.connect(pre); pre.connect(s); s.connect(l); l.connect(o); i.connect(dryMix); dryMix.connect(o); return o; });
@@ -136,7 +148,7 @@
     gn.acIn.connect(a1); a1.connect(a2); a2.connect(a3); a3.connect(a4); a4.connect(gn.acOut);
     gn.ampSel = gain(1);
     // Chaîne : entrée -> comp -> drive -> fuzz -> vibe -> (ampli | acoustique) -> chorus -> écho -> réverbe -> master
-    hpIn.connect(gn.comp.inp); gn.comp.out.connect(gn.drive.inp); gn.drive.out.connect(gn.fuzz.inp); gn.fuzz.out.connect(gn.vibe.inp);
+    hpIn.connect(gn.oct.inp); gn.oct.out.connect(gn.comp.inp); gn.comp.out.connect(gn.drive.inp); gn.drive.out.connect(gn.fuzz.inp); gn.fuzz.out.connect(gn.vibe.inp);
     gn.vibe.out.connect(gn.ampSel); gn.ampSel.connect(gn.ampIn); gn.vibe.out.connect(gn.acIn);
     gn.sum = gain(1); gn.ampOut.connect(gn.sum); gn.acOut.connect(gn.sum);
     gn.chorus = insert(i => { const d = ctx.createDelay(0.05); d.delayTime.value = 0.014; const lfo = ctx.createOscillator(); lfo.frequency.value = 0.8; const dep = gain(0.0035); lfo.connect(dep); dep.connect(d.delayTime); lfo.start(); const o = gain(1), w = gain(0.55); i.connect(o); i.connect(d); d.connect(w); w.connect(o); return o; });
@@ -166,7 +178,9 @@
     const acoustic = G.amp === "bois";
     gn.ampSel.gain.setTargetAtTime(acoustic ? 0 : 1, t, 0.02);
     gn.acIn.gain.setTargetAtTime(acoustic ? 1 : 0, t, 0.02);
-    gn.comp.set(G.fx.has("comp")); gn.drive.set(G.fx.has("drive")); gn.fuzz.set(G.fx.has("fuzz")); gn.vibe.set(G.fx.has("vibe")); gn.chorus.set(G.fx.has("chorus"));
+    gn.oct.set(G.fx.has("oct")); gn.comp.set(G.fx.has("comp"));
+    // ampli BASSE : on garde les graves profonds (entrée et baffle)
+    gn.hpIn.frequency.setTargetAtTime(a.bass ? 28 : 70, t, 0.02); gn.cab1.frequency.value = a.bass ? 35 : 80; gn.cab2.frequency.value = a.bass ? 80 : 120; gn.cab3.frequency.value = a.bass ? 1100 : 2600; gn.drive.set(G.fx.has("drive")); gn.fuzz.set(G.fx.has("fuzz")); gn.vibe.set(G.fx.has("vibe")); gn.chorus.set(G.fx.has("chorus"));
     const db = v => (v - 0.5) * 24;
     if (!acoustic) {
       const drv = 1 + Math.pow(k[0], 2) * a.maxDrive;

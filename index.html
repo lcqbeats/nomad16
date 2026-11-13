@@ -665,6 +665,25 @@ html.flipped, html.flipped body { overflow: hidden; }
 .songrow.take { grid-template-columns: 26px 1fr 34px 34px 34px !important; }
 .songrow .tk { font-size: 11px; line-height: 1.25; overflow: hidden; }
 .songrow .tk b { color: #f08a2c; }
+/* Table de mixage : boucles + voies générales */
+.mixpresets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
+.mixer { display: block !important; }
+.mixh { margin: 8px 0 6px; font-size: 10px; letter-spacing: .14em; color: var(--muted); }
+.mixrow { display: grid; gap: 5px; }
+.mixrow.lps { grid-template-columns: repeat(6, 1fr); }
+.mixrow.bus { grid-template-columns: repeat(5, 1fr); }
+.mixrow .mch { padding: 6px 2px; gap: 5px; min-width: 0; }
+.mixrow .mch .fader { height: 138px; }
+.mixrow .mch.empty { opacity: .35; }
+.mixrow .mch .pan { width: 92%; height: 16px; accent-color: #f6c945; margin: 0; }
+.mixrow .mch .nopan { height: 16px; }
+.mixrow .mch .mb { flex-wrap: wrap; justify-content: center; }
+.mixrow .mch .mb button { padding: 4px 4px; font-size: 9px; }
+.mixrow .mch .mb .h.on { background: #f6c945; color: #1a1305; }
+/* ampli BASSE */
+.amp.basse { background: linear-gradient(180deg, #2a2723, #1a1816); }
+.amp.basse .amp-head { background: linear-gradient(180deg, #3b3530, #2a2622); }
+.amp.basse .amp-model { color: #f08a2c; }
 </style>
 </head>
 <body>
@@ -1006,8 +1025,9 @@ html.flipped, html.flipped body { overflow: hidden; }
 <div class="sheet" id="mixSheet" hidden>
   <div class="sheet-in">
     <h2>TABLE DE MIXAGE <button type="button" id="mixClose">FERMER</button></h2>
+    <div class="mixpresets"><button class="btn rec" type="button" data-mixp="auto">AUTO</button><button class="btn" type="button" data-mixp="flat">À PLAT</button><button class="btn" type="button" data-mixp="wide">LARGE</button><button class="btn" type="button" data-mixp="narrow">ÉTROIT</button></div>
     <div class="mixer" id="mixer"></div>
-    <p class="help">PADS comprend la platine DIGGING. Les voies PADS, SONS et GUITARE sont réglées avant le looper : ce qui est enregistré suit leurs niveaux. MASTER règle tout ce qui sort.</p>
+    <p class="help">Boucles P1 à P6 (séquence en cours) : volume, panoramique (glissière, double-touche = centre), BAS = coupe-bas à 120 Hz pour laisser la place à la basse, M = muet, S = solo. AUTO écoute les boucles : niveaux rapprochés, boucles graves au centre, les autres écartées à gauche et à droite, coupe-bas là où il n'y a pas de basses. À retoucher ensuite à l'oreille. Le panoramique et le coupe-bas sont gardés dans le projet et dans les exports. PADS comprend la platine DIGGING. Les voies PADS, SONS et GUITARE sont réglées avant le looper : ce qui est enregistré suit leurs niveaux. MASTER règle tout ce qui sort.</p>
   </div>
 </div>
 
@@ -1528,7 +1548,15 @@ this.g+=((this.on?1:0)-this.g)*0.01;let y=[0,0];
 if(this.g>0.0005){const pi=Math.floor(this.p),fr=this.p-pi,e=Math.min(1,pi/F,(this.len-pi)/F);for(let c=0;c<2;c++){const a=this.b[c][(this.st+pi)%this.N],b=this.b[c][(this.st+pi+1)%this.N];y[c]=(a+(b-a)*fr)*e;}this.p+=this.rate;if(this.p>=this.len)this.p-=this.len;}
 for(let c=0;c<o.length;c++){const x=i&&i.length?(i[c]||i[0])[s]:0;o[c][s]=x*(1-this.g)+y[c]*this.g;}
 if(!this.on)this.w=(this.w+1)%this.N;}return true;}}
-registerProcessor('nomad-djloop',DjLoop);`;
+registerProcessor('nomad-djloop',DjLoop);
+class Oct extends AudioWorkletProcessor{constructor(){super();this.y=0;this.y2=0;this.ff=1;this.st=0;this.env=0;this.a=1-Math.exp(-2*Math.PI*500/sampleRate);this.g=0;}
+process(inputs,outputs){const i=inputs[0],o=outputs[0];const n=o[0].length;const ch=i&&i[0];
+for(let s=0;s<n;s++){const x=ch?ch[s]:0;this.y+=this.a*(x-this.y);this.y2+=this.a*(this.y-this.y2);const v=this.y2;
+const ax=Math.abs(v);this.env=ax>this.env?ax:this.env*0.9995;const th=this.env*0.12;
+if(this.st<=0&&v>th){this.st=1;this.ff=-this.ff;}else if(this.st>=0&&v<-th)this.st=-1;
+this.g+=((this.env>0.002?1:0)-this.g)*0.002;const y=this.ff*v*2*this.g;
+for(let c=0;c<o.length;c++)o[c][s]=y;}return true;}}
+registerProcessor('nomad-oct',Oct);`;
   let hasWorklet = false;
   async function setupCapture() {
     ringN = Math.floor(sr * CAP_SECONDS);
@@ -1830,7 +1858,7 @@ registerProcessor('nomad-djloop',DjLoop);`;
   function copySeq(a, b) {
     if (a === b || !SQ.list[a].length) return;
     const old = SQ.list[b].slice();
-    const make = () => SQ.list[a].map(l => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = l.muted ? 0 : l.vol; gain.connect(loopBus); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: l.muted, src: null }; });
+    const make = () => SQ.list[a].map(l => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = l.muted ? 0 : l.vol; gain.connect(loopBus); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: l.muted, src: null, pan: l.pan || 0, hp: !!l.hp }; });
     const put = arr => { const T = SQ.list[b]; if (b === SQ.cur) T.forEach(stopLayer); T.length = 0; arr.forEach(l => T.push(l)); if (b === SQ.cur) { routeFx(); if (LP.playing) T.forEach(l => startLayer(l, ctx.currentTime + 0.005)); syncLoopKnobs(); } drawSeqSel(); };
     const fresh = make(); put(fresh);
     pushHist(`copie ${SEQ_N[a]} → ${SEQ_N[b]}`, () => put(old), () => put(fresh));
@@ -1948,13 +1976,22 @@ registerProcessor('nomad-djloop',DjLoop);`;
     }
     drawSeqSel();
   }
+  // chaîne de chaque piste : coupe-bas → panoramique → volume (réglés dans la table de mixage)
+  function layerIn(l) {
+    if (!l.pn) {
+      l.hpf = ctx.createBiquadFilter(); l.hpf.type = "highpass"; l.hpf.Q.value = 0.7;
+      l.pn = ctx.createStereoPanner(); l.hpf.connect(l.pn); l.pn.connect(l.gain);
+    }
+    l.hpf.frequency.value = l.hp ? 120 : 10; l.pn.pan.value = l.pan || 0;
+    return l.hpf;
+  }
   function startLayer(l, T) {
     const Lk = l.k * LP.Lf;
     const sF = LP.t0F + l.m * LP.Lf;
     const phase = (((T * sr - sF) % Lk) + Lk) % Lk;
     const src = ctx.createBufferSource();
     src.buffer = l.buf; src.loop = true;
-    src.connect(l.gain);
+    src.connect(layerIn(l));
     src.start(T, phase / sr);
     l.src = src;
   }
@@ -2148,14 +2185,14 @@ registerProcessor('nomad-djloop',DjLoop);`;
     tk.ev.forEach((e, i) => { if (i === 0 || e.seq !== tk.ev[i - 1].seq) origin = e.t; segs.push({ ...e, origin, end: i + 1 < tk.ev.length ? tk.ev[i + 1].t : N }); });
     const seqs = [...new Set(tk.ev.map(e => e.seq))];
     seqs.forEach(sq => (SQ.list[sq] || []).forEach((l, q) => {
-      const name = SEQ_N[sq] + "_piste" + (q + 1), out = wantStems ? [new Float32Array(N), new Float32Array(N)] : null, LkL = l.k * LP.Lf, off = l.m * LP.Lf;
+      const name = SEQ_N[sq] + "_piste" + (q + 1), out = wantStems ? [new Float32Array(N), new Float32Array(N)] : null, LkL = l.k * LP.Lf, off = l.m * LP.Lf, pg = panGains(l), hk = l.hp ? Math.exp(-2 * Math.PI * 120 / sr) : 0, hs = [[0, 0], [0, 0]];
       let g = 0;
       segs.forEach(sg => {
         const tgt = sg.seq === sq && !(sg.mask[q] || false) ? l.vol * lb : 0;
         for (let t = sg.t; t < sg.end; t++) {
           g += (tgt - g) * a; if (g < 1e-5 && tgt === 0) { g = 0; continue; }
           const p = ((((t - sg.origin - off) % LkL) + LkL) % LkL);
-          for (let c = 0; c < 2; c++) { const v = (l.buf.getChannelData(Math.min(c, l.buf.numberOfChannels - 1))[p] || 0) * g; mix[c][t] += v; if (out) out[c][t] = v; }
+          for (let c = 0; c < 2; c++) { let x = l.buf.getChannelData(Math.min(c, l.buf.numberOfChannels - 1))[p] || 0; if (hk) { const y = hk * (hs[c][1] + x - hs[c][0]); hs[c][0] = x; hs[c][1] = y; x = y; } const v = x * g * pg[c]; mix[c][t] += v; if (out) out[c][t] = v; }
         }
       });
       if (out) stems[name] = out;
@@ -2608,10 +2645,11 @@ registerProcessor('nomad-djloop',DjLoop);`;
     cristal: { label: "CRISTAL 22", skin: "cristal", maxDrive: 5, asym: 0.05, midF: 500, midQ: 0.7, midBase: -3, cab: 6500, low: 1 },
     brit: { label: "BRIT 59", skin: "", maxDrive: 24, asym: 0.15, midF: 800, midQ: 0.8, midBase: 2, cab: 5200, low: 0 },
     agrume: { label: "AGRUME 30", skin: "agrume", maxDrive: 38, asym: 0.2, midF: 600, midQ: 0.7, midBase: 4, cab: 4800, low: 2 },
-    bois: { label: "BOIS · ACOUSTIQUE", skin: "bois" }
+    bois: { label: "BOIS · ACOUSTIQUE", skin: "bois" },
+    basse: { label: "BASSE 300", skin: "basse", maxDrive: 6, asym: 0.08, midF: 450, midQ: 0.8, midBase: -1, cab: 3600, low: 3, bass: true }
   };
   const PEDALS = [
-    { id: "comp", label: "COMP", color: "#2f6fb5" }, { id: "drive", label: "DRIVE", color: "#1f8a4c" }, { id: "fuzz", label: "FUZZ", color: "#b8432f" },
+    { id: "oct", label: "OCT −1", color: "#6b4a1c" }, { id: "comp", label: "COMP", color: "#2f6fb5" }, { id: "drive", label: "DRIVE", color: "#1f8a4c" }, { id: "fuzz", label: "FUZZ", color: "#b8432f" },
     { id: "vibe", label: "VIBE", color: "#7a4aa0" }, { id: "chorus", label: "CHORUS", color: "#2a9aa0" }, { id: "delay", label: "ÉCHO", color: "#3a3a3a" }
   ];
   // Valeurs : gain, basses, médiums, aigus, présence, réverbe, master, écho (0 à 1)
@@ -2623,7 +2661,16 @@ registerProcessor('nomad-djloop',DjLoop);`;
     { name: "FUNK CLAIR", sub: "esprit Frusciante", amp: "cristal", k: [0.3, 0.45, 0.45, 0.7, 0.65, 0.2, 0.6, 0.0], fx: ["comp"] },
     { name: "CRUNCH", sub: "rythmique Brit", amp: "brit", k: [0.6, 0.55, 0.6, 0.55, 0.55, 0.2, 0.55, 0.0], fx: [] },
     { name: "LEAD CHAUD", sub: "solo, sustain", amp: "agrume", k: [0.6, 0.55, 0.6, 0.5, 0.45, 0.3, 0.5, 0.35], fx: ["drive", "delay"] },
-    { name: "ACOUSTIQUE", sub: "chaude et ronde", amp: "bois", k: [0.3, 0.55, 0.45, 0.55, 0.55, 0.3, 0.65, 0.0], fx: ["comp"] }
+    { name: "ACOUSTIQUE", sub: "chaude et ronde", amp: "bois", k: [0.3, 0.55, 0.45, 0.55, 0.55, 0.3, 0.65, 0.0], fx: ["comp"] },
+    // BASSE : avec une guitare, OCT −1 la descend d'une octave ; avec une vraie basse, éteignez OCT −1
+    { name: "BASSE BOOM BAP", sub: "ronde, années 90", amp: "basse", k: [0.25, 0.65, 0.5, 0.4, 0.35, 0.0, 0.65, 0.0], fx: ["oct", "comp"] },
+    { name: "BASSE DUB", sub: "sub profond", amp: "basse", k: [0.15, 0.8, 0.35, 0.15, 0.2, 0.05, 0.7, 0.0], fx: ["oct", "comp"] },
+    { name: "BASSE NÉO SOUL", sub: "doigts chauds", amp: "basse", k: [0.25, 0.6, 0.55, 0.45, 0.4, 0.05, 0.65, 0.0], fx: ["oct", "comp"] },
+    { name: "BASSE FUNK", sub: "claquante", amp: "basse", k: [0.3, 0.55, 0.4, 0.7, 0.65, 0.0, 0.6, 0.0], fx: ["oct", "comp"] },
+    { name: "BASSE LO-FI", sub: "sourde et feutrée", amp: "basse", k: [0.2, 0.6, 0.45, 0.15, 0.1, 0.1, 0.65, 0.0], fx: ["oct"] },
+    { name: "BASSE FKJ", sub: "ronde avec chorus", amp: "basse", k: [0.25, 0.6, 0.5, 0.5, 0.45, 0.1, 0.6, 0.0], fx: ["oct", "comp", "chorus"] },
+    { name: "BASSE SALE", sub: "saturée, esprit 20syl", amp: "basse", k: [0.7, 0.6, 0.6, 0.5, 0.45, 0.0, 0.55, 0.0], fx: ["oct", "drive"] },
+    { name: "BASSE JAZZ", sub: "boisée, contrebasse", amp: "basse", k: [0.15, 0.6, 0.55, 0.35, 0.3, 0.15, 0.65, 0.0], fx: ["oct"] }
   ];
   const AMP_LABELS = ["GAIN", "BASS", "MIDDLE", "TREBLE", "PRESENCE", "REVERB", "MASTER"];
   const G = { amp: "brit", fx: new Set(), preset: -1, on: false };
@@ -2714,7 +2761,9 @@ registerProcessor('nomad-djloop',DjLoop);`;
       gn.gate = new AudioWorkletNode(ctx, "nomad-gate", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
       gn.input.connect(gn.gate); head = gn.gate;
     }
-    const hpIn = bq("highpass", 70, 0.7); head.connect(hpIn);
+    const hpIn = bq("highpass", 70, 0.7); head.connect(hpIn); gn.hpIn = hpIn;
+    // OCT −1 : la guitare descend d'une octave (un peu de son direct pour l'attaque), pour jouer des lignes de basse
+    gn.oct = insert(i => { const o = gain(1), lp = bq("lowpass", 1400, 0.7), dry = gain(0.18); if (hasWorklet) { const w = new AudioWorkletNode(ctx, "nomad-oct", { outputChannelCount: [1] }); i.connect(w); w.connect(lp); } else i.connect(lp); lp.connect(o); i.connect(dry); dry.connect(o); return o; });
     // Pédales
     gn.comp = insert(i => { const c = ctx.createDynamicsCompressor(); c.threshold.value = -32; c.ratio.value = 5; c.attack.value = 0.008; c.release.value = 0.15; const mk = gain(2.2); i.connect(c); c.connect(mk); return mk; });
     gn.drive = insert(i => { const h = bq("highpass", 720, 0.5), s = ctx.createWaveShaper(); s.curve = curve(6, 0.05); s.oversample = "2x"; const pre = gain(2), l = bq("lowpass", 3800, 0.6), dryMix = gain(0.35), o = gain(0.8); i.connect(h); h.connect(pre); pre.connect(s); s.connect(l); l.connect(o); i.connect(dryMix); dryMix.connect(o); return o; });
@@ -2741,7 +2790,7 @@ registerProcessor('nomad-djloop',DjLoop);`;
     gn.acIn.connect(a1); a1.connect(a2); a2.connect(a3); a3.connect(a4); a4.connect(gn.acOut);
     gn.ampSel = gain(1);
     // Chaîne : entrée -> comp -> drive -> fuzz -> vibe -> (ampli | acoustique) -> chorus -> écho -> réverbe -> master
-    hpIn.connect(gn.comp.inp); gn.comp.out.connect(gn.drive.inp); gn.drive.out.connect(gn.fuzz.inp); gn.fuzz.out.connect(gn.vibe.inp);
+    hpIn.connect(gn.oct.inp); gn.oct.out.connect(gn.comp.inp); gn.comp.out.connect(gn.drive.inp); gn.drive.out.connect(gn.fuzz.inp); gn.fuzz.out.connect(gn.vibe.inp);
     gn.vibe.out.connect(gn.ampSel); gn.ampSel.connect(gn.ampIn); gn.vibe.out.connect(gn.acIn);
     gn.sum = gain(1); gn.ampOut.connect(gn.sum); gn.acOut.connect(gn.sum);
     gn.chorus = insert(i => { const d = ctx.createDelay(0.05); d.delayTime.value = 0.014; const lfo = ctx.createOscillator(); lfo.frequency.value = 0.8; const dep = gain(0.0035); lfo.connect(dep); dep.connect(d.delayTime); lfo.start(); const o = gain(1), w = gain(0.55); i.connect(o); i.connect(d); d.connect(w); w.connect(o); return o; });
@@ -2771,7 +2820,9 @@ registerProcessor('nomad-djloop',DjLoop);`;
     const acoustic = G.amp === "bois";
     gn.ampSel.gain.setTargetAtTime(acoustic ? 0 : 1, t, 0.02);
     gn.acIn.gain.setTargetAtTime(acoustic ? 1 : 0, t, 0.02);
-    gn.comp.set(G.fx.has("comp")); gn.drive.set(G.fx.has("drive")); gn.fuzz.set(G.fx.has("fuzz")); gn.vibe.set(G.fx.has("vibe")); gn.chorus.set(G.fx.has("chorus"));
+    gn.oct.set(G.fx.has("oct")); gn.comp.set(G.fx.has("comp"));
+    // ampli BASSE : on garde les graves profonds (entrée et baffle)
+    gn.hpIn.frequency.setTargetAtTime(a.bass ? 28 : 70, t, 0.02); gn.cab1.frequency.value = a.bass ? 35 : 80; gn.cab2.frequency.value = a.bass ? 80 : 120; gn.cab3.frequency.value = a.bass ? 1100 : 2600; gn.drive.set(G.fx.has("drive")); gn.fuzz.set(G.fx.has("fuzz")); gn.vibe.set(G.fx.has("vibe")); gn.chorus.set(G.fx.has("chorus"));
     const db = v => (v - 0.5) * 24;
     if (!acoustic) {
       const drv = 1 + Math.pow(k[0], 2) * a.maxDrive;
@@ -5500,13 +5551,15 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (!layers.length) return null;
     const L = cycF(layers), mix = [new Float32Array(L), new Float32Array(L)];
     const stems = layers.map(l => {
-      const out = [new Float32Array(L), new Float32Array(L)], LkL = l.k * LP.Lf, off = l.m * LP.Lf, g = l.vol;
-      for (let c = 0; c < 2; c++) { const s2 = l.buf.getChannelData(Math.min(c, l.buf.numberOfChannels - 1)); for (let p = 0; p < L; p++) { const x = (s2[(((p - off) % LkL) + LkL) % LkL] || 0) * g; out[c][p] = x; if (!l.muted) mix[c][p] += x * loopBus.gain.value; } }
+      const out = [new Float32Array(L), new Float32Array(L)], LkL = l.k * LP.Lf, off = l.m * LP.Lf, pg = panGains(l), hk = l.hp ? Math.exp(-2 * Math.PI * 120 / sr) : 0;
+      for (let c = 0; c < 2; c++) { const s2 = l.buf.getChannelData(Math.min(c, l.buf.numberOfChannels - 1)), g = l.vol * pg[c]; let px = 0, py = 0; for (let p = 0; p < L; p++) { let x = (s2[(((p - off) % LkL) + LkL) % LkL] || 0); if (hk) { const y = hk * (py + x - px); px = x; py = y; x = y; } x *= g; out[c][p] = x; if (!l.muted) mix[c][p] += x * loopBus.gain.value; } }
       return out;
     });
     if (norm) normalize(mix);
     return { stems, mix, L };
   }
+  // panoramique d'une piste en gains gauche / droite (loi de balance, comme la table)
+  function panGains(l) { const p = l.pan || 0; return [p > 0 ? 1 - p : 1, p < 0 ? 1 + p : 1]; }
   function normalize(chs) { let pk = 0; chs.forEach(c => { for (let i = 0; i < c.length; i++) pk = Math.max(pk, Math.abs(c[i])); }); if (pk > 0.98) chs.forEach(c => { for (let i = 0; i < c.length; i++) c[i] *= 0.95 / pk; }); }
   // Le morceau complet (onglet SONG) en un seul fichier
   function songMix() {
@@ -5636,29 +5689,94 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     });
     store.set("mix", MIX.ch.map(c => ({ vol: c.vol })));
   }
-  function buildMixer() {
-    const el = $("mixer"); el.innerHTML = "";
-    MIX.ch.forEach(c => {
-      const d = document.createElement("div"); d.className = "mch";
-      d.innerHTML = `<b>${c.name}</b><div class="fader"><i class="meter"></i><div class="cap"></div></div><span class="val"></span><div class="mb"><button type="button" class="m">M</button>${c.id === "master" ? "" : '<button type="button" class="s">S</button>'}</div>`;
-      const fd = d.querySelector(".fader"), cap = d.querySelector(".cap"), val = d.querySelector(".val");
-      const draw = () => { cap.style.top = ((1 - c.vol) * 152) + "px"; val.textContent = c.vol <= 0.001 ? "-∞" : (20 * Math.log10(c.id === "loop" || c.id === "master" ? c.vol : Math.pow(c.vol, 2) * 1.25)).toFixed(1) + " dB"; d.querySelector(".m").classList.toggle("on", c.mute); const sb = d.querySelector(".s"); if (sb) sb.classList.toggle("on", c.solo); };
+  // Table : 6 tranches pour les boucles de la séquence en cours (volume, panoramique, coupe-bas, muet, solo)
+  // + les voies générales (PADS, SONS, GUITARE, BOUCLES, MASTER). Presets pour harmoniser vite, AUTO analyse les boucles.
+  const FH = 120;
+  function strip(o) {
+    const d = document.createElement("div"); d.className = "mch" + (o.loop ? " lp" : "") + (o.empty ? " empty" : "");
+    d.innerHTML = `<b>${o.name}</b>${o.pan ? '<input type="range" class="pan" min="-1" max="1" step="0.05" aria-label="Panoramique">' : '<span class="nopan"></span>'}<div class="fader"><i class="meter"></i><div class="cap"></div></div><span class="val"></span><div class="mb">${o.hp ? '<button type="button" class="h" title="Coupe-bas 120 Hz">BAS</button>' : ""}<button type="button" class="m">M</button>${o.hasSolo ? '<button type="button" class="s">S</button>' : ""}</div>`;
+    const fd = d.querySelector(".fader"), cap = d.querySelector(".cap"), val = d.querySelector(".val"), pan = d.querySelector(".pan");
+    const draw = () => {
+      const v = o.get(); cap.style.top = ((1 - v) * FH) + "px"; val.textContent = v <= 0.001 ? "-∞" : (20 * Math.log10(o.db ? o.db(v) : v)).toFixed(1);
+      d.querySelector(".m").classList.toggle("on", !!o.muted()); const sb = d.querySelector(".s"); if (sb) sb.classList.toggle("on", !!o.soloed());
+      if (pan) { pan.value = o.pan.get(); pan.title = panTxt(o.pan.get()); } const hb = d.querySelector(".h"); if (hb) hb.classList.toggle("on", !!o.hp.get());
+    };
+    if (!o.empty) {
       let y0 = 0, v0 = 0;
-      fd.addEventListener("pointerdown", e => { fd.setPointerCapture(e.pointerId); y0 = e.clientY; v0 = c.vol; });
-      fd.addEventListener("pointermove", e => { if (!fd.hasPointerCapture(e.pointerId)) return; c.vol = Math.min(1, Math.max(0, v0 + (y0 - e.clientY) / 152)); applyMix(); draw(); });
-      fd.addEventListener("dblclick", () => { c.vol = c.id === "loop" ? 0.9 : 0.894; applyMix(); draw(); });
-      d.querySelector(".m").addEventListener("click", () => { c.mute = !c.mute; applyMix(); draw(); });
-      const sb = d.querySelector(".s"); if (sb) sb.addEventListener("click", () => { c.solo = !c.solo; applyMix(); MIX.redraw(); });
-      c.draw = draw; c.meter = d.querySelector(".meter"); draw(); el.appendChild(d);
-    });
-    MIX.redraw = () => MIX.ch.forEach(c => c.draw());
+      fd.addEventListener("pointerdown", e => { fd.setPointerCapture(e.pointerId); y0 = e.clientY; v0 = o.get(); });
+      fd.addEventListener("pointermove", e => { if (!fd.hasPointerCapture(e.pointerId)) return; o.set(Math.min(1, Math.max(0, v0 + (y0 - e.clientY) / FH))); draw(); });
+      fd.addEventListener("dblclick", () => { o.set(o.def); draw(); });
+      d.querySelector(".m").addEventListener("click", () => { o.mute(); MIX.redraw(); });
+      const sb = d.querySelector(".s"); if (sb) sb.addEventListener("click", () => { o.solo(); MIX.redraw(); });
+      if (pan) { pan.addEventListener("input", () => { o.pan.set(+pan.value); pan.title = panTxt(+pan.value); lcd("lcdPad", "MIX", `${o.name} : ${panTxt(+pan.value)}`); }); pan.addEventListener("dblclick", () => { o.pan.set(0); draw(); }); }
+      const hb = d.querySelector(".h"); if (hb) hb.addEventListener("click", () => { o.hp.set(!o.hp.get()); draw(); lcd("lcdPad", "MIX", `${o.name} : coupe-bas ${o.hp.get() ? "oui (120 Hz)" : "non"}`); });
+    } else d.querySelectorAll("button, input").forEach(x => x.disabled = true);
+    o.draw = draw; o.meter = d.querySelector(".meter"); draw();
+    return { el: d, o };
   }
+  const panTxt = p => Math.abs(p) < 0.03 ? "centre" : (p < 0 ? "gauche " : "droite ") + Math.round(Math.abs(p) * 100) + " %";
+  function setLayerPan(l, p) { l.pan = p; if (l.pn) l.pn.pan.setTargetAtTime(p, ctx.currentTime, 0.02); }
+  function setLayerHp(l, on) { l.hp = on; if (l.hpf) l.hpf.frequency.setTargetAtTime(on ? 120 : 10, ctx.currentTime, 0.02); }
+  function setLayerVol(i, v) { const l = LP.layers[i]; if (!l) return; l.vol = v; knobVals.loops[i] = v; if (!l.muted) l.gain.gain.setTargetAtTime(v, ctx.currentTime, 0.02); }
+  let strips = [];
+  function buildMixer() {
+    const el = $("mixer"); el.innerHTML = ""; strips = [];
+    const lpBox = document.createElement("div"); lpBox.className = "mixrow lps";
+    for (let i = 0; i < 6; i++) {
+      const l = () => LP.layers[i];
+      const st = strip({ name: "P" + (i + 1), loop: true, empty: !l(), pan: { get: () => (l() && l().pan) || 0, set: v => l() && setLayerPan(l(), v) }, hp: { get: () => l() && l().hp, set: v => l() && setLayerHp(l(), v) }, hasSolo: true, def: 1,
+        get: () => l() ? l().vol : 0, set: v => setLayerVol(i, v), muted: () => l() && l().muted, soloed: () => LP.solo && LP.solo.i === i, mute: () => toggleMute(i), solo: () => soloLayer(i), node: () => l() && l().gain });
+      strips.push(st.o); lpBox.appendChild(st.el);
+    }
+    const busBox = document.createElement("div"); busBox.className = "mixrow bus";
+    MIX.ch.forEach(c => {
+      const st = strip({ name: c.id === "loop" ? "BOUCLES" : c.name, def: c.id === "loop" ? 0.9 : c.id === "master" ? 1 : 0.894, hasSolo: c.id !== "master",
+        db: v => c.id === "loop" || c.id === "master" ? v : Math.pow(v, 2) * 1.25, get: () => c.vol, set: v => { c.vol = v; applyMix(); }, muted: () => c.mute, soloed: () => c.solo,
+        mute: () => { c.mute = !c.mute; applyMix(); }, solo: () => { c.solo = !c.solo; applyMix(); }, node: () => c.id === "loop" ? loopBus : mixNode(c.id) });
+      strips.push(st.o); busBox.appendChild(st.el);
+    });
+    const h1 = document.createElement("h4"); h1.className = "mixh"; h1.textContent = `BOUCLES · SÉQUENCE ${SEQ_N[SQ.cur]}`;
+    const h2 = document.createElement("h4"); h2.className = "mixh"; h2.textContent = "GÉNÉRAL";
+    el.append(h1, lpBox, h2, busBox);
+    MIX.redraw = () => strips.forEach(o => o.draw());
+  }
+  // Presets : AUTO (analyse : niveaux rapprochés, basses au centre, le reste écarté, coupe-bas où il n'y a pas de basses),
+  // À PLAT (tout au centre, sans coupe-bas), LARGE et ÉTROIT (écartement gauche / droite en alternance)
+  const anaCache = new WeakMap();
+  function analyse(buf) {
+    if (anaCache.has(buf)) return anaCache.get(buf);
+    const d0 = buf.getChannelData(0), d1 = buf.getChannelData(buf.numberOfChannels > 1 ? 1 : 0), st = Math.max(1, Math.floor(buf.length / 200000));
+    const aL = 1 - Math.exp(-2 * Math.PI * 150 * st / buf.sampleRate), aH = Math.exp(-2 * Math.PI * 3000 * st / buf.sampleRate);
+    let e = 0, lo = 0, hi = 0, lp = 0, hx = 0, hy = 0, n = 0;
+    for (let i = 0; i < buf.length; i += st) { const x = (d0[i] + d1[i]) / 2; e += x * x; lp += aL * (x - lp); lo += lp * lp; const y = aH * (hy + x - hx); hx = x; hy = y; hi += y * y; n++; }
+    const r = { rms: Math.sqrt(e / n), low: e ? lo / e : 0, high: e ? hi / e : 0 }; anaCache.set(buf, r); return r;
+  }
+  function mixPreset(kind) {
+    if (!ctx || !LP.layers.length) { lcd("lcdPad", "MIX", "pas encore de boucles dans cette séquence"); return; }
+    const ls = LP.layers, side = i => (i % 2 ? 1 : -1);
+    if (kind === "flat") ls.forEach(l => { setLayerPan(l, 0); setLayerHp(l, false); });
+    if (kind === "wide" || kind === "narrow") ls.forEach((l, i) => setLayerPan(l, ls.length === 1 ? 0 : side(i) * (kind === "wide" ? 0.5 : 0.18)));
+    if (kind === "auto") {
+      const a = ls.map(l => analyse(l.buf)), bass = a.map(x => x.low > 0.45);
+      const dbs = a.map(x => 20 * Math.log10(Math.max(1e-5, x.rms))), mean = dbs.reduce((s, v) => s + v, 0) / dbs.length;
+      const vols = dbs.map((v, i) => Math.pow(10, (Math.max(-8, Math.min(6, -(v - mean) * 0.6)) + (bass[i] ? 1.5 : 0)) / 20)), mx = Math.max(...vols);
+      ls.forEach((l, i) => setLayerVol(i, Math.max(0.3, Math.min(1, vols[i] / mx * 0.95))));
+      const others = ls.map((l, i) => i).filter(i => !bass[i]).sort((x, y) => a[x].high - a[y].high);
+      ls.forEach((l, i) => { if (bass[i]) { setLayerPan(l, 0); setLayerHp(l, false); } });
+      others.forEach((i, k) => { const w = others.length === 1 ? 0 : 0.15 + 0.35 * (k / Math.max(1, others.length - 1)); setLayerPan(ls[i], (k % 2 ? 1 : -1) * w); setLayerHp(ls[i], a[i].low < 0.25); });
+      syncLoopKnobs();
+    }
+    if (MIX.redraw) MIX.redraw();
+    lcd("lcdPad", "MIX", { auto: "AUTO : niveaux rapprochés, basses au centre, le reste écarté", flat: "À PLAT : tout au centre, sans coupe-bas", wide: "LARGE : pistes écartées gauche / droite", narrow: "ÉTROIT : image resserrée, esprit lo-fi" }[kind]);
+  }
+  document.querySelectorAll("[data-mixp]").forEach(b => b.addEventListener("click", () => mixPreset(b.dataset.mixp)));
   function drawMixMeters() {
     if ($("mixSheet").hidden || !ctx) return;
-    MIX.ch.forEach(c => {
-      const node = c.id === "loop" ? loopBus : mixNode(c.id); if (!node) return;
-      if (!mixAn[c.id]) { mixAn[c.id] = ctx.createAnalyser(); mixAn[c.id].fftSize = 256; node.connect(mixAn[c.id]); }
-      const v = level(mixAn[c.id]); c.meter.style.height = Math.min(170, Math.sqrt(v) * 170) + "px"; c.meter.style.background = v > 0.9 ? "var(--red)" : "var(--green)";
+    strips.forEach(o => {
+      if (o.empty || !o.meter) return;
+      const node = o.node(); if (!node) return;
+      if (!o.an || o.anNode !== node) { o.an = ctx.createAnalyser(); o.an.fftSize = 256; node.connect(o.an); o.anNode = node; }
+      const v = level(o.an); o.meter.style.height = Math.min(FH + 18, Math.sqrt(v) * (FH + 18)) + "px"; o.meter.style.background = v > 0.9 ? "var(--red)" : "var(--green)";
     });
   }
   $("mixBtn").addEventListener("click", () => { buildMixer(); $("mixSheet").hidden = false; });
@@ -6439,7 +6557,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       knobs: JSON.parse(JSON.stringify(knobVals)), knobsV: 3, manualBpm, padParams: padParams.map(p => ({ ...p })), fxTarget,
       song: { steps: SONG.steps, loop: SONG.loop, cur: SQ.cur, nr: NR.idx },
       guitar: { amp: G.amp, fx: [...G.fx], preset: G.preset },
-      loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, notes: l.notes || [], buf: packBuf(l.buf) }))) }
+      loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], buf: packBuf(l.buf) }))) }
     };
     await DB.put("projects", p);
     return id;
@@ -6484,7 +6602,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       const seqs = p.loop.seqs || [p.loop.layers], cur = p.song ? p.song.cur || 0 : 0;
       seqs.forEach((arr, q) => {
         switchNow(q);
-        arr.forEach((l, i) => { addLayer(unpackBuf(l.buf), l.k, l.m, false, l.notes || []); const L = LP.layers[i]; L.vol = l.vol; L.muted = l.muted; L.gain.gain.value = l.muted ? 0 : l.vol; });
+        arr.forEach((l, i) => { addLayer(unpackBuf(l.buf), l.k, l.m, false, l.notes || []); const L = LP.layers[i]; L.vol = l.vol; L.muted = l.muted; L.pan = l.pan || 0; L.hp = !!l.hp; L.gain.gain.value = l.muted ? 0 : l.vol; if (L.pn) { L.pn.pan.value = L.pan; L.hpf.frequency.value = L.hp ? 120 : 10; } });
         if (q !== cur) LP.layers.forEach(stopLayer);
       });
       switchNow(cur); LP.playing = false; playAll();

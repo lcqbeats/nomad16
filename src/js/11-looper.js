@@ -70,7 +70,7 @@
   function copySeq(a, b) {
     if (a === b || !SQ.list[a].length) return;
     const old = SQ.list[b].slice();
-    const make = () => SQ.list[a].map(l => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = l.muted ? 0 : l.vol; gain.connect(loopBus); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: l.muted, src: null }; });
+    const make = () => SQ.list[a].map(l => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = l.muted ? 0 : l.vol; gain.connect(loopBus); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: l.muted, src: null, pan: l.pan || 0, hp: !!l.hp }; });
     const put = arr => { const T = SQ.list[b]; if (b === SQ.cur) T.forEach(stopLayer); T.length = 0; arr.forEach(l => T.push(l)); if (b === SQ.cur) { routeFx(); if (LP.playing) T.forEach(l => startLayer(l, ctx.currentTime + 0.005)); syncLoopKnobs(); } drawSeqSel(); };
     const fresh = make(); put(fresh);
     pushHist(`copie ${SEQ_N[a]} → ${SEQ_N[b]}`, () => put(old), () => put(fresh));
@@ -188,13 +188,22 @@
     }
     drawSeqSel();
   }
+  // chaîne de chaque piste : coupe-bas → panoramique → volume (réglés dans la table de mixage)
+  function layerIn(l) {
+    if (!l.pn) {
+      l.hpf = ctx.createBiquadFilter(); l.hpf.type = "highpass"; l.hpf.Q.value = 0.7;
+      l.pn = ctx.createStereoPanner(); l.hpf.connect(l.pn); l.pn.connect(l.gain);
+    }
+    l.hpf.frequency.value = l.hp ? 120 : 10; l.pn.pan.value = l.pan || 0;
+    return l.hpf;
+  }
   function startLayer(l, T) {
     const Lk = l.k * LP.Lf;
     const sF = LP.t0F + l.m * LP.Lf;
     const phase = (((T * sr - sF) % Lk) + Lk) % Lk;
     const src = ctx.createBufferSource();
     src.buffer = l.buf; src.loop = true;
-    src.connect(l.gain);
+    src.connect(layerIn(l));
     src.start(T, phase / sr);
     l.src = src;
   }

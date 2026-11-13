@@ -57,14 +57,14 @@
     tk.ev.forEach((e, i) => { if (i === 0 || e.seq !== tk.ev[i - 1].seq) origin = e.t; segs.push({ ...e, origin, end: i + 1 < tk.ev.length ? tk.ev[i + 1].t : N }); });
     const seqs = [...new Set(tk.ev.map(e => e.seq))];
     seqs.forEach(sq => (SQ.list[sq] || []).forEach((l, q) => {
-      const name = SEQ_N[sq] + "_piste" + (q + 1), out = wantStems ? [new Float32Array(N), new Float32Array(N)] : null, LkL = l.k * LP.Lf, off = l.m * LP.Lf;
+      const name = SEQ_N[sq] + "_piste" + (q + 1), out = wantStems ? [new Float32Array(N), new Float32Array(N)] : null, LkL = l.k * LP.Lf, off = l.m * LP.Lf, pg = panGains(l), hk = l.hp ? Math.exp(-2 * Math.PI * 120 / sr) : 0, hs = [[0, 0], [0, 0]];
       let g = 0;
       segs.forEach(sg => {
         const tgt = sg.seq === sq && !(sg.mask[q] || false) ? l.vol * lb : 0;
         for (let t = sg.t; t < sg.end; t++) {
           g += (tgt - g) * a; if (g < 1e-5 && tgt === 0) { g = 0; continue; }
           const p = ((((t - sg.origin - off) % LkL) + LkL) % LkL);
-          for (let c = 0; c < 2; c++) { const v = (l.buf.getChannelData(Math.min(c, l.buf.numberOfChannels - 1))[p] || 0) * g; mix[c][t] += v; if (out) out[c][t] = v; }
+          for (let c = 0; c < 2; c++) { let x = l.buf.getChannelData(Math.min(c, l.buf.numberOfChannels - 1))[p] || 0; if (hk) { const y = hk * (hs[c][1] + x - hs[c][0]); hs[c][0] = x; hs[c][1] = y; x = y; } const v = x * g * pg[c]; mix[c][t] += v; if (out) out[c][t] = v; }
         }
       });
       if (out) stems[name] = out;

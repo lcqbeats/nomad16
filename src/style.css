@@ -651,3 +651,22 @@ html.flipped, html.flipped body { overflow: hidden; }
 .songrow.take { grid-template-columns: 26px 1fr 34px 34px 34px !important; }
 .songrow .tk { font-size: 11px; line-height: 1.25; overflow: hidden; }
 .songrow .tk b { color: #f08a2c; }
+/* Table de mixage : boucles + voies générales */
+.mixpresets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
+.mixer { display: block !important; }
+.mixh { margin: 8px 0 6px; font-size: 10px; letter-spacing: .14em; color: var(--muted); }
+.mixrow { display: grid; gap: 5px; }
+.mixrow.lps { grid-template-columns: repeat(6, 1fr); }
+.mixrow.bus { grid-template-columns: repeat(5, 1fr); }
+.mixrow .mch { padding: 6px 2px; gap: 5px; min-width: 0; }
+.mixrow .mch .fader { height: 138px; }
+.mixrow .mch.empty { opacity: .35; }
+.mixrow .mch .pan { width: 92%; height: 16px; accent-color: #f6c945; margin: 0; }
+.mixrow .mch .nopan { height: 16px; }
+.mixrow .mch .mb { flex-wrap: wrap; justify-content: center; }
+.mixrow .mch .mb button { padding: 4px 4px; font-size: 9px; }
+.mixrow .mch .mb .h.on { background: #f6c945; color: #1a1305; }
+/* ampli BASSE */
+.amp.basse { background: linear-gradient(180deg, #2a2723, #1a1816); }
+.amp.basse .amp-head { background: linear-gradient(180deg, #3b3530, #2a2622); }
+.amp.basse .amp-model { color: #f08a2c; }

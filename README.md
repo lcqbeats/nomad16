@@ -22,6 +22,14 @@ Instruments de l'onglet SONS : échantillons libres (VCSL CC0, Splendid Grand Pi
 - SONS : PIANO À L'ÉCRAN ouvre un clavier collé en bas (2 octaves sur iPhone, 3 sur ordinateur, glissé d'une touche à l'autre, octaves ◀ ▶) pour jouer des notes seules sans le MPK.
 - SONS : potard 6 = dose de l'effet (à fond = effet plein), potard 7 = attaque, potard 8 = strum ; la tonalité et le style se règlent en mode ACCORDS. SIDECHAIN (léger / fort) creuse SONS à chaque kick de la boucle ou des pads, comme le Mother Ducker de la MPC.
 
+## Table de mixage
+
+MIX (en haut) : 6 tranches pour les boucles de la séquence en cours (volume, panoramique, BAS = coupe-bas 120 Hz, muet, solo) et les voies générales (PADS, SONS, GUITARE, BOUCLES, MASTER). Presets : AUTO (écoute les boucles : niveaux rapprochés, boucles graves au centre, les autres écartées à gauche et à droite, coupe-bas là où il n'y a pas de basses), À PLAT, LARGE, ÉTROIT. Panoramique et coupe-bas sont gardés dans le projet, les prises et les exports.
+
+## Guitare → basse
+
+8 presets BASSE (BOOM BAP, DUB, NÉO SOUL, FUNK, LO-FI, FKJ, SALE, JAZZ) sur l'ampli BASSE 300. La pédale OCT −1 (octaveur façon pédale analogique) descend la guitare d'une octave pour jouer des lignes de basse, une note à la fois ; avec une vraie basse, éteignez OCT −1.
+
 ## Prises (LOOPER → SONG)
 
 ● ARMER UNE PRISE (LOOPER), choisir les pistes de départ, puis PLAY : la prise commence (si les boucles tournent déjà, elle commence tout de suite, depuis le début du tour en cours). Tout ce qu'on coupe, rétablit, met en solo ou change de séquence est retenu à l'instant près. STOP termine (fin calée sur le tour le plus proche) : la prise devient UNE ligne de SONG (« PRISE 1 · 2:47 »), sans limite de durée ; une nouvelle prise ajoute la ligne suivante. La prise ne contient aucun son, seulement les gestes : elle se rejoue sur les boucles telles qu'elles sont (une boucle retouchée plus tard en profite). PRISE → WAV rend la dernière prise ; l'export MPC met chaque piste de chaque prise dans un dossier Prise_n. Les lignes de séquences classiques jouent toutes leurs pistes.

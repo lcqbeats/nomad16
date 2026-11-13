@@ -16,7 +16,7 @@
       knobs: JSON.parse(JSON.stringify(knobVals)), knobsV: 3, manualBpm, padParams: padParams.map(p => ({ ...p })), fxTarget,
       song: { steps: SONG.steps, loop: SONG.loop, cur: SQ.cur, nr: NR.idx },
       guitar: { amp: G.amp, fx: [...G.fx], preset: G.preset },
-      loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, notes: l.notes || [], buf: packBuf(l.buf) }))) }
+      loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], buf: packBuf(l.buf) }))) }
     };
     await DB.put("projects", p);
     return id;
@@ -61,7 +61,7 @@
       const seqs = p.loop.seqs || [p.loop.layers], cur = p.song ? p.song.cur || 0 : 0;
       seqs.forEach((arr, q) => {
         switchNow(q);
-        arr.forEach((l, i) => { addLayer(unpackBuf(l.buf), l.k, l.m, false, l.notes || []); const L = LP.layers[i]; L.vol = l.vol; L.muted = l.muted; L.gain.gain.value = l.muted ? 0 : l.vol; });
+        arr.forEach((l, i) => { addLayer(unpackBuf(l.buf), l.k, l.m, false, l.notes || []); const L = LP.layers[i]; L.vol = l.vol; L.muted = l.muted; L.pan = l.pan || 0; L.hp = !!l.hp; L.gain.gain.value = l.muted ? 0 : l.vol; if (L.pn) { L.pn.pan.value = L.pan; L.hpf.frequency.value = L.hp ? 120 : 10; } });
         if (q !== cur) LP.layers.forEach(stopLayer);
       });
       switchNow(cur); LP.playing = false; playAll();

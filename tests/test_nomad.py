@@ -747,6 +747,30 @@ def test_collections_fkj_dub_lofi(app):
     app.evaluate("nomadMidi([0x80, 64, 0])")
 
 
+def test_basse_octave_et_table(app):
+    # OCT −1 : une note de 220 Hz ressort à 110 Hz
+    f = app.evaluate("""() => new Promise(res => { const c = nomadDbg.sp.in.context, o = c.createOscillator(), w = new AudioWorkletNode(c, "nomad-oct", { outputChannelCount: [1] }), an = c.createAnalyser(), z = c.createGain();
+      an.fftSize = 16384; z.gain.value = 0; o.frequency.value = 220; o.connect(w); w.connect(an); an.connect(z); z.connect(c.destination); o.start();
+      setTimeout(() => { const d = new Float32Array(an.frequencyBinCount); an.getFloatFrequencyData(d); let bi = 0; for (let i = 5; i < d.length; i++) if (d[i] > d[bi]) bi = i; o.stop(); res(bi * c.sampleRate / an.fftSize); }, 700); })""")
+    assert 100 < f < 120, f
+    app.click("#tab-guitar")
+    assert app.locator("#presets .preset", has_text="BASSE DUB").count() == 1
+    app.locator("#presets .preset", has_text="BASSE DUB").click()
+    assert "on" in app.get_attribute("#pd-oct", "class")
+    # table de mixage : pistes du looper, AUTO règle panoramique et niveaux
+    fake_loop(app, 0.5)
+    for i in range(3):
+        app.evaluate(f"nomadDbg.addLayer(nomadDbg.buffers[{i}], 1, 0)")
+    app.click("#mixBtn")
+    assert app.locator(".mixrow.lps .mch:not(.empty)").count() == 3
+    app.click("[data-mixp=wide]")
+    pans = app.evaluate("nomadDbg.LP.layers.map(l => l.pan)")
+    assert pans[0] < 0 < pans[1], pans
+    app.click("[data-mixp=flat]")
+    assert app.evaluate("nomadDbg.LP.layers.every(l => !l.pan && !l.hp)")
+    app.click("#mixClose")
+
+
 def test_famille_20syl(app):
     app.click("#tab-sons")
     app.locator("#cats .cat", has_text="20SYL").click()

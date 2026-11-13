@@ -222,13 +222,15 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (!layers.length) return null;
     const L = cycF(layers), mix = [new Float32Array(L), new Float32Array(L)];
     const stems = layers.map(l => {
-      const out = [new Float32Array(L), new Float32Array(L)], LkL = l.k * LP.Lf, off = l.m * LP.Lf, g = l.vol;
-      for (let c = 0; c < 2; c++) { const s2 = l.buf.getChannelData(Math.min(c, l.buf.numberOfChannels - 1)); for (let p = 0; p < L; p++) { const x = (s2[(((p - off) % LkL) + LkL) % LkL] || 0) * g; out[c][p] = x; if (!l.muted) mix[c][p] += x * loopBus.gain.value; } }
+      const out = [new Float32Array(L), new Float32Array(L)], LkL = l.k * LP.Lf, off = l.m * LP.Lf, pg = panGains(l), hk = l.hp ? Math.exp(-2 * Math.PI * 120 / sr) : 0;
+      for (let c = 0; c < 2; c++) { const s2 = l.buf.getChannelData(Math.min(c, l.buf.numberOfChannels - 1)), g = l.vol * pg[c]; let px = 0, py = 0; for (let p = 0; p < L; p++) { let x = (s2[(((p - off) % LkL) + LkL) % LkL] || 0); if (hk) { const y = hk * (py + x - px); px = x; py = y; x = y; } x *= g; out[c][p] = x; if (!l.muted) mix[c][p] += x * loopBus.gain.value; } }
       return out;
     });
     if (norm) normalize(mix);
     return { stems, mix, L };
   }
+  // panoramique d'une piste en gains gauche / droite (loi de balance, comme la table)
+  function panGains(l) { const p = l.pan || 0; return [p > 0 ? 1 - p : 1, p < 0 ? 1 + p : 1]; }
   function normalize(chs) { let pk = 0; chs.forEach(c => { for (let i = 0; i < c.length; i++) pk = Math.max(pk, Math.abs(c[i])); }); if (pk > 0.98) chs.forEach(c => { for (let i = 0; i < c.length; i++) c[i] *= 0.95 / pk; }); }
   // Le morceau complet (onglet SONG) en un seul fichier
   function songMix() {

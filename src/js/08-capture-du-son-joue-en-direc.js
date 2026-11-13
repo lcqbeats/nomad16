@@ -103,7 +103,15 @@ this.g+=((this.on?1:0)-this.g)*0.01;let y=[0,0];
 if(this.g>0.0005){const pi=Math.floor(this.p),fr=this.p-pi,e=Math.min(1,pi/F,(this.len-pi)/F);for(let c=0;c<2;c++){const a=this.b[c][(this.st+pi)%this.N],b=this.b[c][(this.st+pi+1)%this.N];y[c]=(a+(b-a)*fr)*e;}this.p+=this.rate;if(this.p>=this.len)this.p-=this.len;}
 for(let c=0;c<o.length;c++){const x=i&&i.length?(i[c]||i[0])[s]:0;o[c][s]=x*(1-this.g)+y[c]*this.g;}
 if(!this.on)this.w=(this.w+1)%this.N;}return true;}}
-registerProcessor('nomad-djloop',DjLoop);`;
+registerProcessor('nomad-djloop',DjLoop);
+class Oct extends AudioWorkletProcessor{constructor(){super();this.y=0;this.y2=0;this.ff=1;this.st=0;this.env=0;this.a=1-Math.exp(-2*Math.PI*500/sampleRate);this.g=0;}
+process(inputs,outputs){const i=inputs[0],o=outputs[0];const n=o[0].length;const ch=i&&i[0];
+for(let s=0;s<n;s++){const x=ch?ch[s]:0;this.y+=this.a*(x-this.y);this.y2+=this.a*(this.y-this.y2);const v=this.y2;
+const ax=Math.abs(v);this.env=ax>this.env?ax:this.env*0.9995;const th=this.env*0.12;
+if(this.st<=0&&v>th){this.st=1;this.ff=-this.ff;}else if(this.st>=0&&v<-th)this.st=-1;
+this.g+=((this.env>0.002?1:0)-this.g)*0.002;const y=this.ff*v*2*this.g;
+for(let c=0;c<o.length;c++)o[c][s]=y;}return true;}}
+registerProcessor('nomad-oct',Oct);`;
   let hasWorklet = false;
   async function setupCapture() {
     ringN = Math.floor(sr * CAP_SECONDS);
