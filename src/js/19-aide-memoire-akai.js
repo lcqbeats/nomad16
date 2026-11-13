@@ -6,7 +6,7 @@
   }
   function renderGlossary() {
     const el = $("glossary"); if (!el) return;
-    const fxA = FX_PATTERNS.slice(0, 8).map(f => f.name), fxB = FX_PATTERNS.slice(8, 16).map(f => f.name);
+    const fxA = FX_PATTERNS.slice(0, 8).map(f => f.name), fxB = FX_PATTERNS.slice(8, 16).map(f => f.name), fxC = FX_PATTERNS.slice(16, 24).map(f => f.name), fxD = FX_PATTERNS.slice(24, 32).map(f => f.name);
     const kn = t => KNOB_LABELS[t].map((l, i) => `<span><b>${i + 1}</b>${l}</span>`).join("");
     const kits = PC_KITS.map(id => (kitIndex.find(k => k.id === id) || { name: id }).name);
     const sec = (title, body, open) => `<details class="gl"${open ? " open" : ""}><summary>${title}</summary><div>${body}</div></details>`;
@@ -17,7 +17,7 @@
       sec("PADS EN NOTES, SELON L'ONGLET", `<p><b>PADS, SONG, SP, GUITARE</b> : les 16 sons du kit (banque A = 1 à 8, banque B = 9 à 16).</p>
         <p class="glh">LOOPER · banque A</p>${padGrid(["Muet piste 1", "Muet piste 2", "Muet piste 3", "Tout couper", "Muet piste 4", "Muet piste 5", "Muet piste 6", "Tout rétablir"])}
         <p class="glh">LOOPER · banque B</p>${padGrid(["Solo piste 1", "Solo piste 2", "Solo piste 3", "Tape stop", "Solo piste 4", "Solo piste 5", "Solo piste 6", "▶ Lecture"], 8)}
-        <p class="glh">FX · banque A : motifs</p>${padGrid(fxA)}<p class="glh">FX · banque B : textures</p>${padGrid(fxB, 8)}
+        <p class="glh">FX · motifs 1 à 16 (banques A puis B)</p>${padGrid(fxA)}${padGrid(fxB, 8)}<p class="glh">FX · motifs 17 à 32 (DO# du clavier pour changer de page)</p>${padGrid(fxC)}${padGrid(fxD, 8)}
         <p class="glh">SP · banque A : couleur (appui court = allumé, long = tant qu'on tient)</p>${padGrid(SP_FX.slice(0, 8).map(f => f.name))}<p class="glh">SP · banque B : espace et jeu</p>${padGrid(SP_FX.slice(8).map(f => f.name), 8)}
         <p><b>DIGGING</b> : avec CHOP LIVE et le disque qui tourne, chaque pad pose sa découpe ; sinon, le kit.</p>
         <p><b>SONS</b> en mode ACCORDS : pads 1 à 7 = les accords du style choisi, pad 8 = le premier à l'octave ; banque B = une octave plus haut.</p>

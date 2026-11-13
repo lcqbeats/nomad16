@@ -612,7 +612,6 @@ html.flipped, html.flipped body { overflow: hidden; }
 #view-fx .fxpad span { font: 600 8px/1 var(--font-lcd, monospace); opacity: .55; color: #141a24; }
 #view-fx .fxpad.on { background: linear-gradient(180deg, #e8eef5, #bcc6d2); }
 #view-fx .fxpad.on i { background: #35d0f0; box-shadow: 0 0 6px #35d0f0; }
-#view-fx #fxSet { display: none; }
 #view-fx .fxbar .btn { background: linear-gradient(180deg, #3b4a64, #2b3850); color: #e3e9f2; box-shadow: inset 0 1px 0 #50617e, 0 2px 0 #0a0f18; }
 #view-fx .fxbar .btn.on { background: #e3e9f2; color: #141a24; }
 #view-fx .note { color: #9fb0c8; }
@@ -638,3 +637,11 @@ html.flipped, html.flipped body { overflow: hidden; }
 .gear.save.done { background: var(--green); color: #fff; }
 @media (max-width: 430px) { .top .gear { padding: 7px 7px; letter-spacing: .04em; } .top > span { gap: 4px !important; } }
 @media (max-width: 380px) { .top .histbtn { width: 26px; padding: 0; } .top .gear { padding: 7px 5px; font-size: 10px; } }
+/* FX : graphique du motif au-dessus du nom ; page de motifs */
+#view-fx .fxpad svg { width: 86%; height: 18px; display: block; }
+#view-fx .fxpad svg path { fill: none; stroke: #141a24; stroke-width: 1.6; vector-effect: non-scaling-stroke; opacity: .75; stroke-linejoin: round; }
+#view-fx .fxpad.on svg path { stroke: #0a6f86; opacity: 1; }
+#view-fx .fxpad { height: 70px; padding: 9px 3px 4px; gap: 2px; }
+:root.desk #view-fx .fxpad { height: 86px; }
+:root.desk #view-fx .fxpad svg { height: 26px; }
+#view-fx #fxSet.on { background: #35d0f0; color: #04121a; }

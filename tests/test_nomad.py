@@ -661,6 +661,29 @@ def test_save_du_projet_en_cours(app):
     assert len(projs) == n1 and max(projs) == 2, projs     # même projet, mis à jour (2 pistes), pas un nouveau
 
 
+def test_fx_32_motifs(app):
+    fake_loop(app, 1.0)
+    app.evaluate("""() => { const c = nomadDbg.sp.in.context, n = nomadDbg.LP.Lf, sr = c.sampleRate, b = c.createBuffer(2, n, sr);
+      for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < n; i++) d[i] = Math.sin(i / 20) * 0.3 * Math.exp(-(i % (sr / 4)) / (sr * 0.1)); }
+      nomadDbg.addLayer(b, 1, 0);
+      const o = nomadDbg.sp.out, an = c.createAnalyser(); an.fftSize = 2048; o.connect(an); window._b3 = new Float32Array(2048);
+      window._pk3 = () => { an.getFloatTimeDomainData(_b3); let m = 0, bad = 0; for (const v of _b3) { if (!isFinite(v)) bad++; m = Math.max(m, Math.abs(v)); } return [m, bad]; }; }""")
+    app.click("#tab-fx")
+    app.evaluate("nomadMidi([0x99, 36, 100]); nomadMidi([0x89, 36, 0])")
+    app.evaluate("nomadMidi([0x90, 49, 100]); nomadMidi([0x80, 49, 0])")     # DO# : page 17 à 32
+    assert "17" in app.inner_text("#fxSet")
+    assert app.locator("#fxgrid svg").count() == 16
+    for i in range(16):
+        app.evaluate(f"nomadMidi([0x99, {36 + i}, 100])")
+        worst = [0, 0]
+        for _ in range(4):
+            app.wait_for_timeout(70); m, bad = app.evaluate("_pk3()"); worst = [max(worst[0], m), worst[1] + bad]
+        app.evaluate(f"nomadMidi([0x89, {36 + i}, 0])")
+        assert worst[1] == 0 and worst[0] < 1.5, (i + 17, worst)
+    app.click("#fxSet")
+    assert "1–16" in app.inner_text("#fxSet")
+
+
 def test_famille_20syl(app):
     app.click("#tab-sons")
     app.locator("#cats .cat", has_text="20SYL").click()
