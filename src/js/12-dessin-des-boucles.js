@@ -43,8 +43,16 @@
         ring(x, y, r, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2, l.muted ? "#5d574f" : col, lw);
         const n = LP.beats * l.k;
         ticks(x, y, r + 11 * d, n, LP.playing ? Math.floor(prog * Math.min(n, 32)) : -1, l.muted ? "#5d574f" : col, 1.6 * d);
-        text(String(i + 1), x, y - 4 * d, 26 * d, l.muted ? "#5d574f" : "#ece3d3");
-        text(l.muted ? "MUET" : (l.k > 1 ? "×" + l.k : Math.round(l.vol * 100) + "%"), x, y + 18 * d, 15 * d, "#8f877a", "VT323, monospace");
+        const st = l.muted ? "MUET" : (l.k > 1 ? "×" + l.k : Math.round(l.vol * 100) + "%");
+        if (l.name) {   // nom donné à la piste (toucher le numéro pour renommer)
+          text(String(i + 1), x, y - 16 * d, 18 * d, l.muted ? "#5d574f" : "#ece3d3");
+          const fs = Math.min(18, 150 / Math.max(4, l.name.length)) * d * Math.min(1.3, r / (60 * d));
+          text(l.name, x, y + 3 * d, fs, l.muted ? "#5d574f" : col, "VT323, monospace");
+          text(st, x, y + 21 * d, 13 * d, "#8f877a", "VT323, monospace");
+        } else {
+          text(String(i + 1), x, y - 4 * d, 26 * d, l.muted ? "#5d574f" : "#ece3d3");
+          text(st, x, y + 18 * d, 15 * d, "#8f877a", "VT323, monospace");
+        }
       } else if (p && i === LP.layers.length) {
         const heard = nowF - (p.comp || 0);
         const recording = p.type === "first" ? p.phase !== "armed" : heard >= p.sF;
@@ -123,7 +131,7 @@
     for (let i = 0; i < MAX_LAYERS; i++) { const c = cellGeom(i); if (Math.hypot(px - c.x, py - c.y) < c.r * 1.25) return i; }
     return -1;
   }
-  // Toucher : muet. Appui long : effacer. Glisser un cercle sur un autre : fusionner les deux pistes.
+  // Toucher le numéro (centre du cercle) : renommer. Toucher l'anneau : muet. Appui long : effacer. Glisser un cercle sur un autre : fusionner les deux pistes.
   let dragLoop = null;
   cv.addEventListener("pointerdown", e => {
     pressCell = cellAt(e); if (pressCell < 0 || !LP.layers[pressCell]) return;
@@ -141,7 +149,10 @@
     const dl = dragLoop; dragLoop = null;
     if (!dl) return;
     if (dl.moved) { const to = cellAt(e); if (to >= 0 && to !== dl.from && LP.layers[to]) mergeLayers(dl.from, to); }
-    else if (LP.layers[dl.from]) toggleMute(dl.from);
+    else if (LP.layers[dl.from]) {
+      const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1, c = cellGeom(dl.from);
+      if (Math.hypot((e.clientX - r.left) * d - c.x, (e.clientY - r.top) * d - c.y) < c.r * 0.45) renameLayer(dl.from); else toggleMute(dl.from);
+    }
     pressCell = -1;
   });
   cv.addEventListener("pointercancel", () => { if (pressT) clearTimeout(pressT); pressCell = -1; dragLoop = null; });

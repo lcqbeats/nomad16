@@ -32,7 +32,7 @@ MIX (en haut) : 6 tranches pour les boucles de la bank choisie (sélecteur A / B
 
 ## Banks A, B, C (LOOPER)
 
-Trois banks de 6 pistes, qui jouent **ensemble** (18 pistes au plus, tempo commun). La bank affichée (BANK A / B / C en haut du LOOPER, ou do, ré, mi du clavier de l'Akai dans le LOOPER) est celle que commandent l'écran, REC, les pads de muet / solo / tout couper / tout rétablir, les potards, FX et SP (P1 à P6) et la table de mixage. Changer de bank n'arrête rien. Sous chaque lettre : pistes audibles / pistes. Glisser une bank sur une autre la copie (pistes coupées, pour ne pas doubler le son). Les anciens projets à séquences A à H sont convertis à l'ouverture : les séquences remplies vont dans A, B, C (3 au plus), celle qui jouait reste audible, les autres sont coupées, et le morceau devient des prises.
+Trois banks de 6 pistes, qui jouent **ensemble** (18 pistes au plus, tempo commun). La bank affichée (BANK A / B / C en haut du LOOPER, ou do, ré, mi du clavier de l'Akai dans le LOOPER) est celle que commandent l'écran, REC, les pads de muet / solo / tout couper / tout rétablir, les potards, FX et SP (P1 à P6) et la table de mixage. Changer de bank n'arrête rien. Sous chaque lettre : pistes audibles / pistes. Toucher le numéro d'une piste (au centre de son cercle) la renomme ; le nom suit dans la table de mixage, les boutons P1 à P6 de FX et SP, les exports et le projet. Glisser une bank sur une autre la copie (pistes coupées, pour ne pas doubler le son). Les anciens projets à séquences A à H sont convertis à l'ouverture : les séquences remplies vont dans A, B, C (3 au plus), celle qui jouait reste audible, les autres sont coupées, et le morceau devient des prises.
 
 ## Prises (LOOPER → SONG)
 
@@ -56,7 +56,7 @@ Sous iOS 9, installer d'abord le certificat racine Let's Encrypt depuis Safari :
 
 ## Hors ligne, sauvegardes, export MPC
 
-L'app et les kits restent dans l'appareil (service worker) : NOMAD démarre sans réseau. La session s'enregistre toute seule (« SESSION AUTO ») et se reprend depuis l'accueil ; RÉGLAGES propose une sauvegarde complète en un fichier .nomad. L'export MULTIPISTE + MPC contient, pour chaque séquence, les WAV, un programme .xpm et un fichier .mid des notes jouées (pads sur le canal 10 avec les notes des pads de la MPC, clavier sur le canal 1).
+L'app et les kits restent dans l'appareil (service worker) : NOMAD démarre sans réseau. La session s'enregistre toute seule (« SESSION AUTO ») et se reprend depuis l'accueil ; Dans RÉGLAGES, NOM renomme un projet enregistré ; RÉGLAGES propose une sauvegarde complète en un fichier .nomad. L'export MULTIPISTE + MPC contient, pour chaque séquence, les WAV, un programme .xpm et un fichier .mid des notes jouées (pads sur le canal 10 avec les notes des pads de la MPC, clavier sur le canal 1).
 
 ## Sur ordinateur
 

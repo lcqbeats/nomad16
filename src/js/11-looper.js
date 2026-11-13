@@ -48,7 +48,7 @@
     try { drawLenBar(); } catch (e) {}
     try { spRoute(); drawSpTargets(); } catch (e) {}
     try { scheduleKey(); } catch (e) {}
-    drawBanks();
+    drawBanks(); drawTargetNames();
     $("metroBtn").classList.toggle("on", SQ.metro); $("trMetro").classList.toggle("on", SQ.metro);
   }
   function drawBanks() {
@@ -66,7 +66,7 @@
     if (a === b || !SQ.list[a].length) return;
     const old = SQ.list[b].slice();
     // la copie arrive coupée : les banks jouent ensemble, sinon on entendrait tout en double
-    const make = () => SQ.list[a].map(l => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = 0; gain.connect(loopBus); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: true, src: null, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [] }; });
+    const make = () => SQ.list[a].map(l => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = 0; gain.connect(loopBus); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: true, src: null, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], name: l.name || "" }; });
     const put = arr => { const T = SQ.list[b]; T.forEach(l => { stopLayer(l); try { l.gain.disconnect(); } catch (e) {} }); T.length = 0; arr.forEach(l => { l.gain.gain.value = l.muted ? 0 : l.vol; T.push(l); }); routeFx(); if (LP.playing) T.forEach(l => startLayer(l, ctx.currentTime + 0.005)); if (b === SQ.cur) syncLoopKnobs(); drawSeqSel(); };
     const fresh = make(); put(fresh);
     pushHist(`copie ${SEQ_N[a]} → ${SEQ_N[b]}`, () => put(old), () => put(fresh));
@@ -285,7 +285,7 @@
     $("lenNext").textContent = "PROCHAINE : " + LEN_NAME[LP.nextLen];
     $("lcdLen").textContent = LEN_NAME[LP.nextLen]; $("lcdLen").classList.toggle("on", LP.nextLen !== "1");
     const i = selLayer();
-    $("lenSel").textContent = LP.layers.length ? "PISTE " + (i + 1) : "PISTE —";
+    $("lenSel").textContent = LP.layers.length ? layerName(i, true) : "PISTE —";
   }
   function toggleMute(i) {
     const l = LP.layers[i]; if (!l) return;

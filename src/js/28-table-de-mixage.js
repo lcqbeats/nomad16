@@ -53,7 +53,7 @@
     const lpBox = document.createElement("div"); lpBox.className = "mixrow lps";
     for (let i = 0; i < 6; i++) {
       const l = () => LP.layers[i];
-      const st = strip({ name: "P" + (i + 1), loop: true, empty: !l(), pan: { get: () => (l() && l().pan) || 0, set: v => l() && setLayerPan(l(), v) }, hp: { get: () => l() && l().hp, set: v => l() && setLayerHp(l(), v) }, hasSolo: true, def: 1,
+      const st = strip({ name: layerName(i).slice(0, 7), loop: true, empty: !l(), pan: { get: () => (l() && l().pan) || 0, set: v => l() && setLayerPan(l(), v) }, hp: { get: () => l() && l().hp, set: v => l() && setLayerHp(l(), v) }, hasSolo: true, def: 1,
         get: () => l() ? l().vol : 0, set: v => setLayerVol(i, v), muted: () => l() && l().muted, soloed: () => LP.solo && LP.solo.i === i, mute: () => toggleMute(i), solo: () => soloLayer(i), node: () => l() && l().gain });
       strips.push(st.o); lpBox.appendChild(st.el);
     }

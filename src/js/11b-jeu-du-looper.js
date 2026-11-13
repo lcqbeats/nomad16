@@ -57,7 +57,7 @@
     const segOf = sq => { const evb = tk.ev.filter(e => e.seq === sq), cur = { t: 0, mask: perfMask(sq) }, list = evb.length && evb[0].t <= 0 ? evb : [cur, ...evb];
       return list.map((e, i) => ({ mask: e.mask, t: i ? e.t : 0, end: i + 1 < list.length ? list[i + 1].t : N })); };
     SQ.list.forEach((ls, sq) => { const segs = segOf(sq); ls.forEach((l, q) => {
-      const name = SEQ_N[sq] + "_piste" + (q + 1), out = wantStems ? [new Float32Array(N), new Float32Array(N)] : null, LkL = l.k * LP.Lf, off = l.m * LP.Lf, pg = panGains(l), hk = l.hp ? Math.exp(-2 * Math.PI * 120 / sr) : 0, hs = [[0, 0], [0, 0]];
+      const name = SEQ_N[sq] + "_piste" + (q + 1) + (l.name ? "_" + l.name.replace(/[^A-Z0-9]+/g, "-") : ""), out = wantStems ? [new Float32Array(N), new Float32Array(N)] : null, LkL = l.k * LP.Lf, off = l.m * LP.Lf, pg = panGains(l), hk = l.hp ? Math.exp(-2 * Math.PI * 120 / sr) : 0, hs = [[0, 0], [0, 0]];
       let g = 0;
       segs.forEach(sg => {
         const tgt = !(sg.mask[q] || false) ? l.vol * lb : 0;

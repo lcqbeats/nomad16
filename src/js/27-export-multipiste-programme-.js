@@ -300,7 +300,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
         const st = loopStems(SQ.list[q]); if (!st) continue;
         btn.textContent = "BANK " + SEQ_N[q] + "…"; await new Promise(r => setTimeout(r, 0));
         const bars = Math.round(st.L / LP.Lf * LP.beats / 4 * 10) / 10, tag = `Bank${SEQ_N[q]}_${bpm}bpm`, dir = `${root}/Bank_${SEQ_N[q]}_${bars}mes_${bpm}bpm/`, sp = [];
-        st.stems.forEach((ch, i) => { const nm = `N16_${tag}_Piste${i + 1}`; files.push({ name: dir + nm + ".wav", data: wav24(ch, sr) }); sp[i] = { name: nm, frames: st.L, vol: 0.707946, pan: 0.5, coarse: 0, fine: 0, mute: 0, oneshot: true, release: 0, color: STEM_COLORS[i] }; });
+        st.stems.forEach((ch, i) => { const ln = (SQ.list[q][i] || {}).name, nm = `N16_${tag}_Piste${i + 1}` + (ln ? "_" + ln.replace(/[^A-Z0-9]+/g, "-") : ""); files.push({ name: dir + nm + ".wav", data: wav24(ch, sr) }); sp[i] = { name: nm, frames: st.L, vol: 0.707946, pan: 0.5, coarse: 0, fine: 0, mute: 0, oneshot: true, release: 0, color: STEM_COLORS[i] }; });
         files.push({ name: dir + `N16_${tag}_Mix.wav`, data: wav24(st.mix, sr) });
         sp[6] = { name: `N16_${tag}_Mix`, frames: st.L, vol: 0.707946, pan: 0.5, coarse: 0, fine: 0, mute: 0, oneshot: true, release: 0, color: 0xFFFFFF };
         files.push({ name: dir + `NOMAD16_${tag}.xpm`, data: makeXpm(`NOMAD16 ${tag}`, sp) });

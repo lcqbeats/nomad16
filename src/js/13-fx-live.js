@@ -118,7 +118,7 @@
   function setFxTarget(t) { if (LPR.rec) return; fxTarget = t;
     // une piste ne peut être dans les effets SP et FX à la fois : FX la reprend
     if (/^\d$/.test(t) && typeof SPX !== "undefined" && SPX.target === t) { SPX.target = "all"; spRoute(); drawSpTargets(); }
-    drawFxPrint(); fxDisp(t === "all" ? "FX" : t === "live" ? "LIV" : "P" + t, t === "all" ? "TOUT" : t === "live" ? "JEU EN DIRECT" : "PISTE " + t); routeFx(); drawFxPads(); lcd("lcdPad", "FX", "cible : " + (t === "all" ? "tout le morceau" : t === "live" ? "jeu en direct" : "piste " + t)); }
+    drawFxPrint(); fxDisp(t === "all" ? "FX" : t === "live" ? "LIV" : "P" + t, t === "all" ? "TOUT" : t === "live" ? "JEU EN DIRECT" : layerName(+t - 1, true)); routeFx(); drawFxPads(); lcd("lcdPad", "FX", "cible : " + (t === "all" ? "tout le morceau" : t === "live" ? "jeu en direct" : "piste " + t)); }
   function routeFx() {
     if (!fxDry) return;
     [liveBus, loopBus].forEach(n => { try { n.disconnect(master); } catch (e) {} try { n.disconnect(fxDry); } catch (e) {} });
@@ -136,7 +136,7 @@
     const l = fxLayer();
     if (!LPR.rec && !l && fxTarget !== "all" && fxTarget !== "live") { lcd("lcdPad", "FX", `piste ${fxTarget} vide`); return; }
     loopPrint({ who: "FX", layer: l, tap: fxMaster, gain: () => l.vol * (fxSolo ? fxSolo.gain.value || 1 : 1) * (fxMaster.gain.value || 1),
-      ui: p => { drawFxPrint(); if (p === null) fxDisp("P" + fxTarget, "PISTE " + fxTarget); else fxDisp("PRT", Math.round(p * 100) + " %"); },
+      ui: p => { drawFxPrint(); if (p === null) fxDisp("P" + fxTarget, layerName(+fxTarget - 1, true)); else fxDisp("PRT", Math.round(p * 100) + " %"); },
       done: () => { if (fxActive >= 0) fxEnd(fxActive); for (let k = 0; k < 7; k++) { knobVals.fx[k] = FX_HOME[k]; applyFxKnob(k); } if (tab === "fx") drawKnobs(); } });
   }
   function drawFxPrint() {

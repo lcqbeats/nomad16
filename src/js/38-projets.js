@@ -16,7 +16,7 @@
       knobs: JSON.parse(JSON.stringify(knobVals)), knobsV: 3, manualBpm, padParams: padParams.map(p => ({ ...p })), fxTarget,
       song: { steps: SONG.steps, loop: SONG.loop, cur: SQ.cur, nr: NR.idx }, banks: NB,
       guitar: { amp: G.amp, fx: [...G.fx], preset: G.preset },
-      loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], buf: packBuf(l.buf) }))) }
+      loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], name: l.name || "", buf: packBuf(l.buf) }))) }
     };
     await DB.put("projects", p);
     return id;
@@ -71,7 +71,7 @@
       LP.playing = false;
       seqs.slice(0, NB).forEach((arr, q) => {
         showBank(q);
-        arr.forEach((l, i) => { addLayer(unpackBuf(l.buf), l.k, l.m, false, l.notes || []); const L = LP.layers[i]; L.vol = l.vol; L.muted = l.muted || (old && q !== cur); L.pan = l.pan || 0; L.hp = !!l.hp; L.gain.gain.value = L.muted ? 0 : l.vol; if (L.pn) { L.pn.pan.value = L.pan; L.hpf.frequency.value = L.hp ? 120 : 10; } });
+        arr.forEach((l, i) => { addLayer(unpackBuf(l.buf), l.k, l.m, false, l.notes || []); const L = LP.layers[i]; L.vol = l.vol; L.muted = l.muted || (old && q !== cur); L.pan = l.pan || 0; L.hp = !!l.hp; L.name = l.name || ""; L.gain.gain.value = L.muted ? 0 : l.vol; if (L.pn) { L.pn.pan.value = L.pan; L.hpf.frequency.value = L.hp ? 120 : 10; } });
       });
       showBank(cur); playAll();
       if (old) {
@@ -99,7 +99,15 @@
       del.addEventListener("click", async () => { if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "SÛR ?"; return; } await DB.del("projects", p.id); if (CUR && CUR.id === p.id) setCur(null); renderProjects(); });
       const fb = document.createElement("button"); fb.type = "button"; fb.className = "mini"; fb.textContent = "FICHIER";
       fb.addEventListener("click", () => exportProjectFile(p.id));
-      row.appendChild(b); row.appendChild(fb); row.appendChild(del); $("projList").appendChild(row);
+      // NOM : renommer le projet enregistré (le projet en cours suit)
+      const rn = document.createElement("button"); rn.type = "button"; rn.className = "mini"; rn.textContent = "NOM";
+      rn.addEventListener("click", async () => {
+        const v = await askName("NOM DU PROJET", p.name, 40); if (!v) return;
+        const q = await DB.get("projects", p.id); if (!q) return;
+        q.name = v; await DB.put("projects", q); if (CUR && CUR.id === p.id) setCur(p.id, v);
+        lcd("lcdPad", "PROJET", "renommé : " + v); renderProjects();
+      });
+      row.appendChild(b); row.appendChild(rn); row.appendChild(fb); row.appendChild(del); $("projList").appendChild(row);
     });
   }
   drawCur();

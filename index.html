@@ -688,6 +688,14 @@ html.flipped, html.flipped body { overflow: hidden; }
 .amp.basse { background: linear-gradient(180deg, #2a2723, #1a1816); }
 .amp.basse .amp-head { background: linear-gradient(180deg, #3b3530, #2a2622); }
 .amp.basse .amp-model { color: #f08a2c; }
+
+/* fenêtre de saisie d'un nom (pistes, projets) */
+.namedlg { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.namedlg form { background: #1d1b19; border: 1px solid #3a3733; border-radius: 12px; padding: 16px; width: min(360px, 100%); display: flex; flex-direction: column; gap: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.6); }
+.namedlg b { font: 12px "Archivo Black", "Arial Black", sans-serif; letter-spacing: .08em; color: #ece3d3; }
+.namedlg input { font: 22px VT323, monospace; background: #0f0e0d; color: #7dff9a; border: 1px solid #3a3733; border-radius: 8px; padding: 8px 10px; text-transform: uppercase; }
+.namedlg div { display: flex; gap: 8px; justify-content: flex-end; }
+.namedlg .mini.on { background: #d92b2f; color: #fff; }
 </style>
 </head>
 <body>
@@ -1839,7 +1847,7 @@ registerProcessor('nomad-oct',Oct);`;
     try { drawLenBar(); } catch (e) {}
     try { spRoute(); drawSpTargets(); } catch (e) {}
     try { scheduleKey(); } catch (e) {}
-    drawBanks();
+    drawBanks(); drawTargetNames();
     $("metroBtn").classList.toggle("on", SQ.metro); $("trMetro").classList.toggle("on", SQ.metro);
   }
   function drawBanks() {
@@ -1857,7 +1865,7 @@ registerProcessor('nomad-oct',Oct);`;
     if (a === b || !SQ.list[a].length) return;
     const old = SQ.list[b].slice();
     // la copie arrive coupée : les banks jouent ensemble, sinon on entendrait tout en double
-    const make = () => SQ.list[a].map(l => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = 0; gain.connect(loopBus); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: true, src: null, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [] }; });
+    const make = () => SQ.list[a].map(l => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = 0; gain.connect(loopBus); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: true, src: null, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], name: l.name || "" }; });
     const put = arr => { const T = SQ.list[b]; T.forEach(l => { stopLayer(l); try { l.gain.disconnect(); } catch (e) {} }); T.length = 0; arr.forEach(l => { l.gain.gain.value = l.muted ? 0 : l.vol; T.push(l); }); routeFx(); if (LP.playing) T.forEach(l => startLayer(l, ctx.currentTime + 0.005)); if (b === SQ.cur) syncLoopKnobs(); drawSeqSel(); };
     const fresh = make(); put(fresh);
     pushHist(`copie ${SEQ_N[a]} → ${SEQ_N[b]}`, () => put(old), () => put(fresh));
@@ -2076,7 +2084,7 @@ registerProcessor('nomad-oct',Oct);`;
     $("lenNext").textContent = "PROCHAINE : " + LEN_NAME[LP.nextLen];
     $("lcdLen").textContent = LEN_NAME[LP.nextLen]; $("lcdLen").classList.toggle("on", LP.nextLen !== "1");
     const i = selLayer();
-    $("lenSel").textContent = LP.layers.length ? "PISTE " + (i + 1) : "PISTE —";
+    $("lenSel").textContent = LP.layers.length ? layerName(i, true) : "PISTE —";
   }
   function toggleMute(i) {
     const l = LP.layers[i]; if (!l) return;
@@ -2182,7 +2190,7 @@ registerProcessor('nomad-oct',Oct);`;
     const segOf = sq => { const evb = tk.ev.filter(e => e.seq === sq), cur = { t: 0, mask: perfMask(sq) }, list = evb.length && evb[0].t <= 0 ? evb : [cur, ...evb];
       return list.map((e, i) => ({ mask: e.mask, t: i ? e.t : 0, end: i + 1 < list.length ? list[i + 1].t : N })); };
     SQ.list.forEach((ls, sq) => { const segs = segOf(sq); ls.forEach((l, q) => {
-      const name = SEQ_N[sq] + "_piste" + (q + 1), out = wantStems ? [new Float32Array(N), new Float32Array(N)] : null, LkL = l.k * LP.Lf, off = l.m * LP.Lf, pg = panGains(l), hk = l.hp ? Math.exp(-2 * Math.PI * 120 / sr) : 0, hs = [[0, 0], [0, 0]];
+      const name = SEQ_N[sq] + "_piste" + (q + 1) + (l.name ? "_" + l.name.replace(/[^A-Z0-9]+/g, "-") : ""), out = wantStems ? [new Float32Array(N), new Float32Array(N)] : null, LkL = l.k * LP.Lf, off = l.m * LP.Lf, pg = panGains(l), hk = l.hp ? Math.exp(-2 * Math.PI * 120 / sr) : 0, hs = [[0, 0], [0, 0]];
       let g = 0;
       segs.forEach(sg => {
         const tgt = !(sg.mask[q] || false) ? l.vol * lb : 0;
@@ -2251,8 +2259,16 @@ registerProcessor('nomad-oct',Oct);`;
         ring(x, y, r, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2, l.muted ? "#5d574f" : col, lw);
         const n = LP.beats * l.k;
         ticks(x, y, r + 11 * d, n, LP.playing ? Math.floor(prog * Math.min(n, 32)) : -1, l.muted ? "#5d574f" : col, 1.6 * d);
-        text(String(i + 1), x, y - 4 * d, 26 * d, l.muted ? "#5d574f" : "#ece3d3");
-        text(l.muted ? "MUET" : (l.k > 1 ? "×" + l.k : Math.round(l.vol * 100) + "%"), x, y + 18 * d, 15 * d, "#8f877a", "VT323, monospace");
+        const st = l.muted ? "MUET" : (l.k > 1 ? "×" + l.k : Math.round(l.vol * 100) + "%");
+        if (l.name) {   // nom donné à la piste (toucher le numéro pour renommer)
+          text(String(i + 1), x, y - 16 * d, 18 * d, l.muted ? "#5d574f" : "#ece3d3");
+          const fs = Math.min(18, 150 / Math.max(4, l.name.length)) * d * Math.min(1.3, r / (60 * d));
+          text(l.name, x, y + 3 * d, fs, l.muted ? "#5d574f" : col, "VT323, monospace");
+          text(st, x, y + 21 * d, 13 * d, "#8f877a", "VT323, monospace");
+        } else {
+          text(String(i + 1), x, y - 4 * d, 26 * d, l.muted ? "#5d574f" : "#ece3d3");
+          text(st, x, y + 18 * d, 15 * d, "#8f877a", "VT323, monospace");
+        }
       } else if (p && i === LP.layers.length) {
         const heard = nowF - (p.comp || 0);
         const recording = p.type === "first" ? p.phase !== "armed" : heard >= p.sF;
@@ -2331,7 +2347,7 @@ registerProcessor('nomad-oct',Oct);`;
     for (let i = 0; i < MAX_LAYERS; i++) { const c = cellGeom(i); if (Math.hypot(px - c.x, py - c.y) < c.r * 1.25) return i; }
     return -1;
   }
-  // Toucher : muet. Appui long : effacer. Glisser un cercle sur un autre : fusionner les deux pistes.
+  // Toucher le numéro (centre du cercle) : renommer. Toucher l'anneau : muet. Appui long : effacer. Glisser un cercle sur un autre : fusionner les deux pistes.
   let dragLoop = null;
   cv.addEventListener("pointerdown", e => {
     pressCell = cellAt(e); if (pressCell < 0 || !LP.layers[pressCell]) return;
@@ -2349,7 +2365,10 @@ registerProcessor('nomad-oct',Oct);`;
     const dl = dragLoop; dragLoop = null;
     if (!dl) return;
     if (dl.moved) { const to = cellAt(e); if (to >= 0 && to !== dl.from && LP.layers[to]) mergeLayers(dl.from, to); }
-    else if (LP.layers[dl.from]) toggleMute(dl.from);
+    else if (LP.layers[dl.from]) {
+      const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1, c = cellGeom(dl.from);
+      if (Math.hypot((e.clientX - r.left) * d - c.x, (e.clientY - r.top) * d - c.y) < c.r * 0.45) renameLayer(dl.from); else toggleMute(dl.from);
+    }
     pressCell = -1;
   });
   cv.addEventListener("pointercancel", () => { if (pressT) clearTimeout(pressT); pressCell = -1; dragLoop = null; });
@@ -2378,6 +2397,36 @@ registerProcessor('nomad-oct',Oct);`;
     lcd("lcdLoop", "BOUCLE", `pistes ${a + 1} + ${b + 1} fusionnées`);
   }
 
+  // ---------- Noms : petite fenêtre de saisie (pas de prompt(), que l'app iPhone n'affiche pas) ----------
+  function askName(title, value, max = 16) {
+    return new Promise(res => {
+      const ov = document.createElement("div"); ov.className = "namedlg";
+      ov.innerHTML = `<form><b></b><input type="text" autocomplete="off" autocapitalize="characters" spellcheck="false"><div><button type="button" class="mini" data-a="x">ANNULER</button><button type="button" class="mini" data-a="clr">EFFACER</button><button type="submit" class="mini on">OK</button></div></form>`;
+      const f = ov.querySelector("form"), inp = ov.querySelector("input");
+      ov.querySelector("b").textContent = title; inp.value = value || ""; inp.maxLength = max;
+      const done = v => { ov.remove(); res(v); };
+      f.addEventListener("submit", e => { e.preventDefault(); done(inp.value.trim().toUpperCase()); });
+      ov.querySelector('[data-a="x"]').addEventListener("click", () => done(null));
+      ov.querySelector('[data-a="clr"]').addEventListener("click", () => done(""));
+      ov.addEventListener("pointerdown", e => { if (e.target === ov) done(null); });
+      inp.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") done(null); });
+      inp.addEventListener("keyup", e => e.stopPropagation());
+      document.body.appendChild(ov); setTimeout(() => { inp.focus(); inp.select(); }, 30);
+    });
+  }
+  // nom affiché d'une piste de la bank affichée : son nom, sinon « P1 » / « PISTE 1 »
+  const layerName = (i, long) => { const l = LP.layers[i]; return (l && l.name) || (long ? "PISTE " : "P") + (i + 1); };
+  async function renameLayer(i) {
+    const l = LP.layers[i]; if (!l) return;
+    const v = await askName(`NOM DE LA PISTE ${i + 1} · BANK ${SEQ_N[SQ.cur]}`, l.name, 12);
+    if (v === null) return;
+    l.name = v; drawTargetNames(); drawSeqSel();
+    lcd("lcdLoop", "PISTE " + (i + 1), v ? "s'appelle " + v : "nom effacé");
+  }
+  // les boutons P1 à P6 de FX et SP prennent le nom des pistes
+  function drawTargetNames() {
+    document.querySelectorAll(".fxt, .spt").forEach(b => { const t = b.dataset.t; if (/^\d$/.test(t)) { const l = LP.layers[+t - 1]; b.textContent = l && l.name ? l.name.slice(0, 6) : "P" + t; b.title = l && l.name ? `P${t} · ${l.name}` : "P" + t; } });
+  }
   // ---------- FX LIVE ----------
   // Motifs d'une mesure (16 doubles croches) rejoués à partir de la mesure qui vient de passer.
   // s : double croche source, d : subdivision (roll), r0→r1 : vitesse, v : à l'envers, g : niveau, s = -1 : son direct.
@@ -2498,7 +2547,7 @@ registerProcessor('nomad-oct',Oct);`;
   function setFxTarget(t) { if (LPR.rec) return; fxTarget = t;
     // une piste ne peut être dans les effets SP et FX à la fois : FX la reprend
     if (/^\d$/.test(t) && typeof SPX !== "undefined" && SPX.target === t) { SPX.target = "all"; spRoute(); drawSpTargets(); }
-    drawFxPrint(); fxDisp(t === "all" ? "FX" : t === "live" ? "LIV" : "P" + t, t === "all" ? "TOUT" : t === "live" ? "JEU EN DIRECT" : "PISTE " + t); routeFx(); drawFxPads(); lcd("lcdPad", "FX", "cible : " + (t === "all" ? "tout le morceau" : t === "live" ? "jeu en direct" : "piste " + t)); }
+    drawFxPrint(); fxDisp(t === "all" ? "FX" : t === "live" ? "LIV" : "P" + t, t === "all" ? "TOUT" : t === "live" ? "JEU EN DIRECT" : layerName(+t - 1, true)); routeFx(); drawFxPads(); lcd("lcdPad", "FX", "cible : " + (t === "all" ? "tout le morceau" : t === "live" ? "jeu en direct" : "piste " + t)); }
   function routeFx() {
     if (!fxDry) return;
     [liveBus, loopBus].forEach(n => { try { n.disconnect(master); } catch (e) {} try { n.disconnect(fxDry); } catch (e) {} });
@@ -2516,7 +2565,7 @@ registerProcessor('nomad-oct',Oct);`;
     const l = fxLayer();
     if (!LPR.rec && !l && fxTarget !== "all" && fxTarget !== "live") { lcd("lcdPad", "FX", `piste ${fxTarget} vide`); return; }
     loopPrint({ who: "FX", layer: l, tap: fxMaster, gain: () => l.vol * (fxSolo ? fxSolo.gain.value || 1 : 1) * (fxMaster.gain.value || 1),
-      ui: p => { drawFxPrint(); if (p === null) fxDisp("P" + fxTarget, "PISTE " + fxTarget); else fxDisp("PRT", Math.round(p * 100) + " %"); },
+      ui: p => { drawFxPrint(); if (p === null) fxDisp("P" + fxTarget, layerName(+fxTarget - 1, true)); else fxDisp("PRT", Math.round(p * 100) + " %"); },
       done: () => { if (fxActive >= 0) fxEnd(fxActive); for (let k = 0; k < 7; k++) { knobVals.fx[k] = FX_HOME[k]; applyFxKnob(k); } if (tab === "fx") drawKnobs(); } });
   }
   function drawFxPrint() {
@@ -5638,7 +5687,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
         const st = loopStems(SQ.list[q]); if (!st) continue;
         btn.textContent = "BANK " + SEQ_N[q] + "…"; await new Promise(r => setTimeout(r, 0));
         const bars = Math.round(st.L / LP.Lf * LP.beats / 4 * 10) / 10, tag = `Bank${SEQ_N[q]}_${bpm}bpm`, dir = `${root}/Bank_${SEQ_N[q]}_${bars}mes_${bpm}bpm/`, sp = [];
-        st.stems.forEach((ch, i) => { const nm = `N16_${tag}_Piste${i + 1}`; files.push({ name: dir + nm + ".wav", data: wav24(ch, sr) }); sp[i] = { name: nm, frames: st.L, vol: 0.707946, pan: 0.5, coarse: 0, fine: 0, mute: 0, oneshot: true, release: 0, color: STEM_COLORS[i] }; });
+        st.stems.forEach((ch, i) => { const ln = (SQ.list[q][i] || {}).name, nm = `N16_${tag}_Piste${i + 1}` + (ln ? "_" + ln.replace(/[^A-Z0-9]+/g, "-") : ""); files.push({ name: dir + nm + ".wav", data: wav24(ch, sr) }); sp[i] = { name: nm, frames: st.L, vol: 0.707946, pan: 0.5, coarse: 0, fine: 0, mute: 0, oneshot: true, release: 0, color: STEM_COLORS[i] }; });
         files.push({ name: dir + `N16_${tag}_Mix.wav`, data: wav24(st.mix, sr) });
         sp[6] = { name: `N16_${tag}_Mix`, frames: st.L, vol: 0.707946, pan: 0.5, coarse: 0, fine: 0, mute: 0, oneshot: true, release: 0, color: 0xFFFFFF };
         files.push({ name: dir + `NOMAD16_${tag}.xpm`, data: makeXpm(`NOMAD16 ${tag}`, sp) });
@@ -5733,7 +5782,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     const lpBox = document.createElement("div"); lpBox.className = "mixrow lps";
     for (let i = 0; i < 6; i++) {
       const l = () => LP.layers[i];
-      const st = strip({ name: "P" + (i + 1), loop: true, empty: !l(), pan: { get: () => (l() && l().pan) || 0, set: v => l() && setLayerPan(l(), v) }, hp: { get: () => l() && l().hp, set: v => l() && setLayerHp(l(), v) }, hasSolo: true, def: 1,
+      const st = strip({ name: layerName(i).slice(0, 7), loop: true, empty: !l(), pan: { get: () => (l() && l().pan) || 0, set: v => l() && setLayerPan(l(), v) }, hp: { get: () => l() && l().hp, set: v => l() && setLayerHp(l(), v) }, hasSolo: true, def: 1,
         get: () => l() ? l().vol : 0, set: v => setLayerVol(i, v), muted: () => l() && l().muted, soloed: () => LP.solo && LP.solo.i === i, mute: () => toggleMute(i), solo: () => soloLayer(i), node: () => l() && l().gain });
       strips.push(st.o); lpBox.appendChild(st.el);
     }
@@ -6570,7 +6619,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       knobs: JSON.parse(JSON.stringify(knobVals)), knobsV: 3, manualBpm, padParams: padParams.map(p => ({ ...p })), fxTarget,
       song: { steps: SONG.steps, loop: SONG.loop, cur: SQ.cur, nr: NR.idx }, banks: NB,
       guitar: { amp: G.amp, fx: [...G.fx], preset: G.preset },
-      loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], buf: packBuf(l.buf) }))) }
+      loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], name: l.name || "", buf: packBuf(l.buf) }))) }
     };
     await DB.put("projects", p);
     return id;
@@ -6625,7 +6674,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       LP.playing = false;
       seqs.slice(0, NB).forEach((arr, q) => {
         showBank(q);
-        arr.forEach((l, i) => { addLayer(unpackBuf(l.buf), l.k, l.m, false, l.notes || []); const L = LP.layers[i]; L.vol = l.vol; L.muted = l.muted || (old && q !== cur); L.pan = l.pan || 0; L.hp = !!l.hp; L.gain.gain.value = L.muted ? 0 : l.vol; if (L.pn) { L.pn.pan.value = L.pan; L.hpf.frequency.value = L.hp ? 120 : 10; } });
+        arr.forEach((l, i) => { addLayer(unpackBuf(l.buf), l.k, l.m, false, l.notes || []); const L = LP.layers[i]; L.vol = l.vol; L.muted = l.muted || (old && q !== cur); L.pan = l.pan || 0; L.hp = !!l.hp; L.name = l.name || ""; L.gain.gain.value = L.muted ? 0 : l.vol; if (L.pn) { L.pn.pan.value = L.pan; L.hpf.frequency.value = L.hp ? 120 : 10; } });
       });
       showBank(cur); playAll();
       if (old) {
@@ -6653,7 +6702,15 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       del.addEventListener("click", async () => { if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "SÛR ?"; return; } await DB.del("projects", p.id); if (CUR && CUR.id === p.id) setCur(null); renderProjects(); });
       const fb = document.createElement("button"); fb.type = "button"; fb.className = "mini"; fb.textContent = "FICHIER";
       fb.addEventListener("click", () => exportProjectFile(p.id));
-      row.appendChild(b); row.appendChild(fb); row.appendChild(del); $("projList").appendChild(row);
+      // NOM : renommer le projet enregistré (le projet en cours suit)
+      const rn = document.createElement("button"); rn.type = "button"; rn.className = "mini"; rn.textContent = "NOM";
+      rn.addEventListener("click", async () => {
+        const v = await askName("NOM DU PROJET", p.name, 40); if (!v) return;
+        const q = await DB.get("projects", p.id); if (!q) return;
+        q.name = v; await DB.put("projects", q); if (CUR && CUR.id === p.id) setCur(p.id, v);
+        lcd("lcdPad", "PROJET", "renommé : " + v); renderProjects();
+      });
+      row.appendChild(b); row.appendChild(rn); row.appendChild(fb); row.appendChild(del); $("projList").appendChild(row);
     });
   }
   drawCur();

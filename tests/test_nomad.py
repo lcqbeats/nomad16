@@ -909,3 +909,30 @@ def test_ancien_projet_converti_en_banks(app):
     assert steps[0]["take"]["label"] == "PARTIE A ×2" and steps[0]["take"]["len"] == 2 * app.evaluate("nomadDbg.LP.Lf")
     ev = steps[1]["take"]["ev"]
     assert [(e["t"], e["seq"]) for e in ev] == [(0, 0), (0, 1), (0, 2), (500, 0), (500, 1)] and ev[3]["mask"][0] is True
+
+
+def test_renommer_piste_et_projet(app):
+    fake_loop(app, 0.4)
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[0], 1, 0)")
+    app.click("#tab-loops")
+    app.wait_for_timeout(200)
+    box = app.locator("#loopCanvas").bounding_box()
+    app.mouse.click(box["x"] + box["width"] / 6, box["y"] + box["height"] / 4)   # centre du cercle 1 = son numéro
+    app.wait_for_selector(".namedlg input")
+    app.fill(".namedlg input", "basse dub")
+    app.click(".namedlg button[type=submit]")
+    assert app.evaluate("nomadDbg.LP.layers[0].name") == "BASSE DUB"
+    assert app.evaluate("nomadDbg.LP.layers[0].muted") is False        # renommer ne coupe pas
+    assert app.evaluate("document.querySelector('.fxt[data-t=\"1\"]').textContent").startswith("BASSE")
+    # projet : enregistrer puis renommer depuis RÉGLAGES
+    app.evaluate("document.getElementById('projName').value = 'essai'")
+    app.click("#gearBtn"); app.click("#projSave")
+    app.wait_for_selector("#projList .item-row")
+    app.click("#projList .item-row >> text=NOM")
+    app.fill(".namedlg input", "mon morceau")
+    app.click(".namedlg button[type=submit]")
+    app.wait_for_function("document.getElementById('projList').innerText.includes('MON MORCEAU')")
+    # le nom de la piste revient avec le projet
+    app.evaluate("nomadDbg.LP.layers[0].name = ''")
+    app.click("#projList .kititem")
+    app.wait_for_function("nomadDbg.LP.layers[0] && nomadDbg.LP.layers[0].name === 'BASSE DUB'")

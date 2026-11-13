@@ -674,3 +674,11 @@ html.flipped, html.flipped body { overflow: hidden; }
 .amp.basse { background: linear-gradient(180deg, #2a2723, #1a1816); }
 .amp.basse .amp-head { background: linear-gradient(180deg, #3b3530, #2a2622); }
 .amp.basse .amp-model { color: #f08a2c; }
+
+/* fenêtre de saisie d'un nom (pistes, projets) */
+.namedlg { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.namedlg form { background: #1d1b19; border: 1px solid #3a3733; border-radius: 12px; padding: 16px; width: min(360px, 100%); display: flex; flex-direction: column; gap: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.6); }
+.namedlg b { font: 12px "Archivo Black", "Arial Black", sans-serif; letter-spacing: .08em; color: #ece3d3; }
+.namedlg input { font: 22px VT323, monospace; background: #0f0e0d; color: #7dff9a; border: 1px solid #3a3733; border-radius: 8px; padding: 8px 10px; text-transform: uppercase; }
+.namedlg div { display: flex; gap: 8px; justify-content: flex-end; }
+.namedlg .mini.on { background: #d92b2f; color: #fff; }
