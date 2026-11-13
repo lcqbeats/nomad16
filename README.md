@@ -18,8 +18,13 @@ Instruments de l'onglet SONS : échantillons libres (VCSL CC0, Splendid Grand Pi
 - FX : 32 motifs sur deux pages (1–16 classiques, 17–32 plus élaborés : POLY 3, SHUFFLE, ECHO ROLL, VINYL BRAKE, BACKSPIN, TRANSFORM, CHIRPS, HALF CHOP, DUB STAB, GLITCH, BABY SCRATCH, BREAKDOWN…), chacun avec son petit graphique ; bouton MOTIFS ⇄ ou DO# du clavier pour changer de page.
 - FX : les 8 premières touches blanches du clavier (do à do) choisissent la cible : TOUT, LIVE, P1 à P6 ; les autres touches jouent SONS. Sur une piste, Sustain (ou ● IMPRIMER) grave les effets FX sur cette piste pendant un tour, en temps réel, comme dans SP.
 - Tonalité : l'écran affiche la tonalité estimée des boucles du looper (ex. « · Am » après le tempo) ; DIGGING affiche celle de l'extrait ; dans SONS (mode ACCORDS), CALER SUR LA BOUCLE règle les accords dessus (relative si le style est d'un autre mode).
+- SONS : collections 20SYL, FKJ (rhodes, wurli, guitares, lead sax…), DUB (mélodica, basse dub, skank, bubble, cuivres, sirène, syndrum…) et LO-FI (piano cassette, rhodes usé, nappe VHS, kalimba, chip…) en tête de liste.
 - SONS : PIANO À L'ÉCRAN ouvre un clavier collé en bas (2 octaves sur iPhone, 3 sur ordinateur, glissé d'une touche à l'autre, octaves ◀ ▶) pour jouer des notes seules sans le MPK.
 - SONS : potard 6 = dose de l'effet (à fond = effet plein), potard 7 = attaque, potard 8 = strum ; la tonalité et le style se règlent en mode ACCORDS. SIDECHAIN (léger / fort) creuse SONS à chaque kick de la boucle ou des pads, comme le Mother Ducker de la MPC.
+
+## Jeu du LOOPER → SONG
+
+● ENREGISTRER LE JEU (LOOPER) note les coupures et solos pendant que les boucles tournent ; à l'arrêt, tout est calé sur les tours de boucle. → SONG crée une séquence par état des pistes (copies légères, mêmes sons) et la ligne du morceau dans l'ordre joué ; → WAV rend le morceau joué tout de suite (avec le mastering choisi dans SONG). ↶ annule l'envoi dans SONG.
 
 ## Longueur des pistes (LOOPER)
 

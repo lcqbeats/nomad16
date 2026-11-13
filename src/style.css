@@ -645,3 +645,5 @@ html.flipped, html.flipped body { overflow: hidden; }
 :root.desk #view-fx .fxpad { height: 86px; }
 :root.desk #view-fx .fxpad svg { height: 26px; }
 #view-fx #fxSet.on { background: #35d0f0; color: #04121a; }
+.perfbar { grid-template-columns: 2fr 1fr 1fr !important; }
+.perfbar #perfRec.on { animation: sprec 0.9s ease-in-out infinite alternate; }

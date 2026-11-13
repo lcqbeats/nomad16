@@ -701,6 +701,40 @@ def test_doubler_aligne_les_autres_pistes(app):
     assert app.evaluate("nomadDbg.LP.layers.map(l => l.k)") == [1, 1]
 
 
+def test_jeu_du_looper_vers_song(app):
+    fake_loop(app, 0.4)
+    for i in range(3):
+        app.evaluate(f"nomadDbg.addLayer(nomadDbg.buffers[{i}], 1, 0)")
+    app.click("#tab-loops")
+    app.wait_for_timeout(60)
+    app.click("#perfRec")
+    assert "ARRÊTER" in app.inner_text("#perfRec")
+    app.wait_for_timeout(800)
+    app.evaluate("nomadMidi([0x99, 40, 100])")       # pad 5 : piste 1 muette
+    app.wait_for_timeout(800)
+    app.evaluate("nomadMidi([0x99, 49, 100])")       # pad 14 : solo piste 2
+    app.wait_for_timeout(800)
+    app.click("#perfRec")
+    assert "3 état" in app.inner_text("#perfInfo")
+    app.click("#perfSong")
+    txt = app.inner_text("#lcdPad")
+    assert "ligne SONG créée" in txt, txt
+    app.click("#undoBtn")
+    with app.expect_download() as dl:
+        app.click("#perfWav")
+    assert dl.value.suggested_filename.startswith("nomad16-jeu-")
+
+
+def test_collections_fkj_dub_lofi(app):
+    app.click("#tab-sons")
+    assert app.locator("#cats .cat").all_inner_texts()[:4] == ["20SYL", "FKJ", "DUB", "LO-FI"]
+    app.locator("#cats .cat", has_text="DUB").first.click()
+    app.locator("#insts .inst", has_text="MÉLODICA").click()
+    app.evaluate("nomadMidi([0x90, 64, 100])")
+    assert max(loud(app, 60) for _ in range(5)) > 0.003
+    app.evaluate("nomadMidi([0x80, 64, 0])")
+
+
 def test_famille_20syl(app):
     app.click("#tab-sons")
     app.locator("#cats .cat", has_text="20SYL").click()

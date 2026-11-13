@@ -286,16 +286,17 @@
     LP.solo = null;
     l.muted = !l.muted;
     l.gain.gain.setTargetAtTime(l.muted ? 0 : l.vol, ctx.currentTime, 0.01);
+    perfMark();
   }
   // Commandes du looper aux pads : tout couper, tout rétablir, solo, arrêt en ralentissant, lecture
   function setMute(l, m) { l.muted = m; l.gain.gain.setTargetAtTime(m ? 0 : l.vol, ctx.currentTime, 0.01); }
-  function muteAll(m) { if (!ctx) return; LP.solo = null; LP.layers.forEach(l => setMute(l, m)); lcd("lcdLoop", "BOUCLE", m ? "toutes les pistes coupées" : "toutes les pistes rétablies"); }
+  function muteAll(m) { if (!ctx) return; LP.solo = null; LP.layers.forEach(l => setMute(l, m)); perfMark(); lcd("lcdLoop", "BOUCLE", m ? "toutes les pistes coupées" : "toutes les pistes rétablies"); }
   function soloLayer(i) {
     if (!ctx || !LP.layers[i]) return;
-    if (LP.solo && LP.solo.i === i) { LP.layers.forEach((l, j) => setMute(l, LP.solo.saved[j] ?? false)); LP.solo = null; lcd("lcdLoop", "BOUCLE", "solo terminé"); return; }
+    if (LP.solo && LP.solo.i === i) { LP.layers.forEach((l, j) => setMute(l, LP.solo.saved[j] ?? false)); LP.solo = null; perfMark(); lcd("lcdLoop", "BOUCLE", "solo terminé"); return; }
     const saved = LP.solo ? LP.solo.saved : LP.layers.map(l => l.muted);
     LP.layers.forEach((l, j) => setMute(l, j !== i));
-    LP.solo = { i, saved };
+    LP.solo = { i, saved }; perfMark();
     lcd("lcdLoop", "BOUCLE", `solo piste ${i + 1}`);
   }
   function tapeStopAll() {
