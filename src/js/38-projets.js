@@ -14,7 +14,7 @@
       // kit de chops ou kit perso : on l'emporte dans le projet (pour qu'un .nomad ouvert ailleurs ait ses sons)
       kit: kitCur, kitEmbed: (kitCur === "chops" || km.user) ? { names: names.slice(), gains: gains.slice(), bufs: buffers.map(packBuf16) } : null,
       knobs: JSON.parse(JSON.stringify(knobVals)), knobsV: 3, manualBpm, padParams: padParams.map(p => ({ ...p })), fxTarget,
-      song: { steps: SONG.steps, loop: SONG.loop, cur: SQ.cur, nr: NR.idx }, banks: NB,
+      song: { steps: JSON.parse(JSON.stringify(SONG.steps)), loop: SONG.loop, cur: SQ.cur, nr: NR.idx, prints: Object.fromEntries(SONG.steps.map(st => st.take && st.take.pid).filter(id => id && SONG.prints.has(id)).map(id => [id, packBuf16(SONG.prints.get(id))])) }, banks: NB,
       guitar: { amp: G.amp, fx: [...G.fx], preset: G.preset },
       loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], name: l.name || "", buf: packBuf(l.buf) }))) }
     };
@@ -55,7 +55,8 @@
     if (p.padParams) { padParams = fixParams(p.padParams); select(selected); }
     if (p.fxTarget) setFxTarget(p.fxTarget);
     resetAll();
-    SONG.steps = p.song ? JSON.parse(JSON.stringify(p.song.steps)) : []; SONG.loop = !!(p.song && p.song.loop); if (p.song) NR.idx = p.song.nr ?? 2; drawNR();
+    SONG.steps = p.song ? JSON.parse(JSON.stringify(p.song.steps)) : [];
+    SONG.prints = new Map(); SONG.keep = []; if (p.song && p.song.prints) Object.entries(p.song.prints).forEach(([id, b]) => { try { SONG.prints.set(id, unpackBuf(b)); } catch (e) {} }); SONG.loop = !!(p.song && p.song.loop); if (p.song) NR.idx = p.song.nr ?? 2; drawNR();
     if (p.loop && p.loop.sr === sr) {
       LP.Lf = p.loop.Lf; LP.beats = p.loop.beats; LP.t0F = Math.round((ctx.currentTime + 0.05) * sr); LP.playing = true;
       // projet d'avant les banks (séquences A à H, une seule jouait) : les séquences remplies vont dans les banks A, B, C,

@@ -199,44 +199,46 @@
     }
   }
   // ---------- Cible : toute la sortie ou une piste du looper ; impression des couleurs sur la piste ----------
-  SPX.target = "all"; let spLayer = null;
+  SPX.target = "all"; let spLayer = null, spSongOn = false;
   let fxLayerSeen = null;
   function spRoute() {
     if (!sp) return;
-    const want = SPX.target === "all" ? null : LP.layers[+SPX.target - 1] || null;
+    const song = SPX.target === "song", want = SPX.target === "all" || song ? null : LP.layers[+SPX.target - 1] || null;
     // une piste créée ou remplacée après le choix de la cible FX : on refait les branchements
     const fl = typeof fxLayer === "function" ? fxLayer() : null;
-    if (want === spLayer) { if (fl !== fxLayerSeen) { fxLayerSeen = fl; if (fxDry) routeFx(); } return; }
+    if (want === spLayer && song === spSongOn) { if (fl !== fxLayerSeen) { fxLayerSeen = fl; if (fxDry) routeFx(); } return; }
     fxLayerSeen = fl;
-    spLayer = want;
+    spLayer = want; spSongOn = song;
+    // SONG : les boucles des 3 banks entrent par sp.lay (bus des boucles), tout le reste passe à côté des effets
     try { sp.in.disconnect(sp.head); } catch (e) {} try { sp.in.disconnect(sp.post); } catch (e) {}
-    sp.in.connect(spLayer ? sp.post : sp.head);
-    sp.lay.gain.value = loopBus.gain.value;
+    sp.in.connect(spLayer || song ? sp.post : sp.head);
+    sp.lay.gain.value = song ? 1 : loopBus.gain.value;
     if (typeof routeFx === "function" && fxDry) routeFx();
-    else allLayers().forEach(l => { try { l.gain.disconnect(); } catch (e) {} l.gain.connect(l === spLayer ? sp.lay : loopBus); if (l.an) l.gain.connect(l.an); });
+    else allLayers().forEach(l => { try { l.gain.disconnect(); } catch (e) {} l.gain.connect(l === spLayer ? sp.lay : layGate()); if (l.an) l.gain.connect(l.an); });
   }
   function setSpTarget(t) {
     if (LPR.rec) return;
-    if (/^\d$/.test(t) && fxTarget === t) { fxTarget = "all"; routeFx(); drawFxPads(); drawFxPrint(); }   // SP reprend la piste à FX
+    if ((/^\d$/.test(t) || t === "song") && fxTarget === t) { fxTarget = "all"; routeFx(); drawFxPads(); drawFxPrint(); }   // SP reprend la piste à FX
     SPX.target = t; spRoute(); drawSpTargets();
-    lcd("lcdPad", "SP", t === "all" ? "les effets colorent toute la sortie" : (LP.layers[+t - 1] ? `effets sur la piste ${t} · Sustain = imprimer` : `piste ${t} vide`));
+    lcd("lcdPad", "SP", t === "all" ? "les effets colorent toute la sortie" : t === "song" ? "effets sur toutes les boucles (song) · Sustain = imprimer la ligne choisie" : (LP.layers[+t - 1] ? `effets sur la piste ${t} · Sustain = imprimer` : `piste ${t} vide`));
   }
   function drawSpTargets() {
-    document.querySelectorAll(".spt").forEach(b => { const t = b.dataset.t; b.classList.toggle("on", t === SPX.target); b.classList.toggle("empty", t !== "all" && !LP.layers[+t - 1]); });
+    document.querySelectorAll(".spt").forEach(b => { const t = b.dataset.t; b.classList.toggle("on", t === SPX.target); b.classList.toggle("empty", t !== "all" && (t === "song" ? !SONG.steps.length : !LP.layers[+t - 1])); });
     const b = $("spPrint"); if (!b) return;
     const pr = printing("SP");
-    b.classList.toggle("on", pr); b.classList.toggle("idle", !pr && SPX.target === "all");
-    b.textContent = pr ? `■ ARRÊTER · ${Math.round(LPR.rec.pct * 100)} %` : SPX.target === "all" ? "● IMPRIMER : CHOISIS UNE PISTE" : `● IMPRIMER SUR LA PISTE ${SPX.target}`;
+    b.classList.toggle("on", pr); b.classList.toggle("idle", !pr && (SPX.target === "all" || (SPX.target === "song" && !SONG.steps.length)));
+    b.textContent = pr ? `■ ARRÊTER · ${Math.round(LPR.rec.pct * 100)} %` : SPX.target === "all" ? "● IMPRIMER : CHOISIS UNE PISTE" : SPX.target === "song" ? (SONG.steps.length ? `● IMPRIMER LA LIGNE ${Math.min(SONG.sel, SONG.steps.length - 1) + 1} DE SONG` : "● SONG VIDE : ENREGISTRE UNE PRISE") : `● IMPRIMER SUR LA PISTE ${SPX.target}`;
   }
   document.querySelectorAll(".spt").forEach(b => b.addEventListener("click", () => setSpTarget(b.dataset.t)));
   // clavier de l'Akai dans SP : les 8 premières touches blanches = TOUT, P1 à P6
   // renvoie true si la touche a servi de sélecteur ; les autres touches jouent SONS normalement
   function spKey(note) {
-    const wi = [0, 2, 4, 5, 7, 9, 11].indexOf(note - 48);
+    const wi = [0, 2, 4, 5, 7, 9, 11, 12].indexOf(note - 48);   // … et le do suivant = SONG
     if (wi < 0) return false;
-    setSpTarget(["all", "1", "2", "3", "4", "5", "6"][wi]); return true;
+    setSpTarget(["all", "1", "2", "3", "4", "5", "6", "song"][wi]); return true;
   }
   function spPrintToggle() {
+    if (!LPR.rec && SPX.target === "song") { songPrint(Math.min(SONG.sel, SONG.steps.length - 1)); return; }
     loopPrint({ who: "SP", layer: spLayer, tap: sp && sp.mix, gain: () => spLayer.vol * (sp.lay.gain.value || 1),
       ui: p => { drawSpTargets(); if (p === null) spSeg("F" + String(SPX.cur + 1).padStart(2, "0"), SP_FX[SPX.cur].name); else spSeg("PRT", Math.round(p * 100) + " %"); },
       done: () => spAllOff() });

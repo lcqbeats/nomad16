@@ -936,3 +936,48 @@ def test_renommer_piste_et_projet(app):
     app.evaluate("nomadDbg.LP.layers[0].name = ''")
     app.click("#projList .kititem")
     app.wait_for_function("nomadDbg.LP.layers[0] && nomadDbg.LP.layers[0].name === 'BASSE DUB'")
+
+
+def test_imprimer_fx_sur_une_ligne_de_song(app):
+    fake_loop(app, 0.5)
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[0], 1, 0)")
+    app.evaluate("nomadDbg.song.steps.push({ s: 0, r: 1, take: { n: 1, len: nomadDbg.LP.Lf, ev: [{ t: 0, seq: 0, mask: [false] }] } })")
+    app.click("#tab-fx")
+    app.click('.fxt[data-t="song"]')
+    assert "LIGNE 1 DE SONG" in app.inner_text("#fxPrint")
+    app.click("#fxPrint")                                    # lance la ligne 1 et enregistre
+    assert app.evaluate("!!nomadDbg.song.print")
+    app.wait_for_function("!nomadDbg.song.print", timeout=8000)
+    pid = app.evaluate("nomadDbg.song.steps[0].take.pid")
+    assert pid and app.evaluate(f"nomadDbg.song.prints.get('{pid}').length") == app.evaluate("nomadDbg.LP.Lf")
+    # le son imprimé n'est pas vide
+    assert app.evaluate(f"Math.max(...nomadDbg.song.prints.get('{pid}').getChannelData(0).slice(0, 20000).map(Math.abs))") > 0.01
+    app.click("#tab-song")
+    assert "IMPRIMÉE" in app.inner_text("#songList")
+    # la ligne imprimée joue le son figé et ferme la porte des boucles
+    app.evaluate("nomadDbg.songPlay(0)")
+    app.wait_for_timeout(150)
+    assert app.evaluate("!!nomadDbg.song.player") and app.evaluate("nomadDbg.song.gate.gain.value") < 0.1
+    app.evaluate("nomadDbg.songStop()")
+    # annuler : la ligne retrouve ses boucles
+    app.click("#undoBtn")
+    assert not app.evaluate("nomadDbg.song.steps[0].take.pid")
+
+
+def test_imprimer_sp_par_dessus_une_ligne_imprimee(app):
+    fake_loop(app, 0.5)
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[0], 1, 0)")
+    app.evaluate("nomadDbg.song.steps.push({ s: 0, r: 1, take: { n: 1, len: nomadDbg.LP.Lf, ev: [{ t: 0, seq: 0, mask: [false] }] } })")
+    app.evaluate("nomadDbg.setFxTarget('song'); nomadDbg.songPrint(0)")
+    app.wait_for_function("!nomadDbg.song.print && nomadDbg.song.steps[0].take.pid", timeout=8000)
+    first = app.evaluate("nomadDbg.song.steps[0].take.pid")
+    app.click("#tab-sp")
+    app.click('.spt[data-t="song"]')                         # SP reprend la cible SONG à FX
+    assert app.evaluate("nomadDbg.SQ && document.querySelector('.fxt.on').dataset.t") == "all"
+    app.click("#spPrint")
+    assert app.evaluate("nomadDbg.song.print.o.who") == "SP"
+    app.wait_for_function("!nomadDbg.song.print", timeout=8000)
+    second = app.evaluate("nomadDbg.song.steps[0].take.pid")
+    assert second and second != first
+    # le son déjà imprimé est passé dans SP : la nouvelle impression n'est pas vide
+    assert app.evaluate(f"Math.max(...nomadDbg.song.prints.get('{second}').getChannelData(0).slice(0, 20000).map(Math.abs))") > 0.01

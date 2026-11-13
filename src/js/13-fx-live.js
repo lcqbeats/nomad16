@@ -107,32 +107,36 @@
   // Cible des effets : tout le morceau, le jeu en direct, ou une seule piste du looper
   let fxDry = null;
   // Clavier de l'Akai dans FX : les 8 premières touches blanches (do à do) = TOUT, LIVE, P1 à P6 ; les noires ne font rien
-  const FX_KEY_T = ["all", "live", "1", "2", "3", "4", "5", "6"];
+  const FX_KEY_T = ["all", "live", "1", "2", "3", "4", "5", "6", "song"];
   // renvoie true si la touche a servi de sélecteur ; les autres touches jouent SONS normalement
   function fxKey(note) {
     if (note - 48 === 1) { setFxBank(1 - fxBank); return true; }   // DO# : motifs 1–16 ⇄ 17–32
-    const w = [0, 2, 4, 5, 7, 9, 11, 12].indexOf(note - 48);
+    const w = [0, 2, 4, 5, 7, 9, 11, 12, 14].indexOf(note - 48);   // … et le ré suivant = SONG
     if (w < 0) return false;
     setFxTarget(FX_KEY_T[w]); return true;
   }
   function setFxTarget(t) { if (LPR.rec) return; fxTarget = t;
     // une piste ne peut être dans les effets SP et FX à la fois : FX la reprend
-    if (/^\d$/.test(t) && typeof SPX !== "undefined" && SPX.target === t) { SPX.target = "all"; spRoute(); drawSpTargets(); }
-    drawFxPrint(); fxDisp(t === "all" ? "FX" : t === "live" ? "LIV" : "P" + t, t === "all" ? "TOUT" : t === "live" ? "JEU EN DIRECT" : layerName(+t - 1, true)); routeFx(); drawFxPads(); lcd("lcdPad", "FX", "cible : " + (t === "all" ? "tout le morceau" : t === "live" ? "jeu en direct" : "piste " + t)); }
+    if ((/^\d$/.test(t) || t === "song") && typeof SPX !== "undefined" && SPX.target === t) { SPX.target = "all"; spRoute(); drawSpTargets(); }
+    drawFxPrint(); fxDisp(t === "all" ? "FX" : t === "live" ? "LIV" : t === "song" ? "SNG" : "P" + t, t === "all" ? "TOUT" : t === "live" ? "JEU EN DIRECT" : t === "song" ? "SONG · 3 BANKS" : layerName(+t - 1, true)); routeFx(); drawFxPads(); lcd("lcdPad", "FX", "cible : " + (t === "all" ? "tout le morceau" : t === "live" ? "jeu en direct" : t === "song" ? "toutes les boucles (song) · Sustain = imprimer la ligne choisie" : "piste " + t)); }
   function routeFx() {
     if (!fxDry) return;
     [liveBus, loopBus].forEach(n => { try { n.disconnect(master); } catch (e) {} try { n.disconnect(fxDry); } catch (e) {} });
+    if (typeof sp !== "undefined" && sp) { try { loopBus.disconnect(sp.lay); } catch (e) {} }
+    const spSong = typeof SPX !== "undefined" && SPX.target === "song" && sp;
     allLayers().forEach(l => { try { l.gain.disconnect(); } catch (e) {} });
     const k = /^\d$/.test(fxTarget) ? +fxTarget - 1 : -1;
     liveBus.connect(fxTarget === "all" || fxTarget === "live" ? master : fxDry);
-    loopBus.connect(fxTarget === "all" ? master : fxDry);
+    // cible SONG : les boucles des 3 banks (et la song imprimée) passent dans FX, le jeu en direct non ; SP sur SONG : dans SP
+    if (spSong) loopBus.connect(sp.lay); else loopBus.connect(fxTarget === "all" || fxTarget === "song" ? master : fxDry);
     // P1 à P6 = pistes de la bank affichée ; les pistes des autres banks restent sur le bus des boucles
-    allLayers().forEach(l => { const i = LP.layers.indexOf(l); if (typeof spLayer !== "undefined" && l === spLayer && sp) l.gain.connect(sp.lay); else if (i >= 0 && i === k) { l.gain.connect(fxSolo); } else l.gain.connect(loopBus); if (l.an) l.gain.connect(l.an); });
+    allLayers().forEach(l => { const i = LP.layers.indexOf(l); if (typeof spLayer !== "undefined" && l === spLayer && sp) l.gain.connect(sp.lay); else if (i >= 0 && i === k) { l.gain.connect(fxSolo); } else l.gain.connect(layGate()); if (l.an) l.gain.connect(l.an); });
   }
   let fxSolo = null;
   // Impression des effets FX sur la piste choisie (même principe que SP)
   const fxLayer = () => /^\d$/.test(fxTarget) ? LP.layers[+fxTarget - 1] || null : null;
   function fxPrintToggle() {
+    if (!LPR.rec && fxTarget === "song") { songPrint(Math.min(SONG.sel, SONG.steps.length - 1)); return; }
     const l = fxLayer();
     if (!LPR.rec && !l && fxTarget !== "all" && fxTarget !== "live") { lcd("lcdPad", "FX", `piste ${fxTarget} vide`); return; }
     loopPrint({ who: "FX", layer: l, tap: fxMaster, gain: () => l.vol * (fxSolo ? fxSolo.gain.value || 1 : 1) * (fxMaster.gain.value || 1),
@@ -143,7 +147,8 @@
     const b = $("fxPrint"); if (!b) return;
     const pr = printing("FX"), lay = /^\d$/.test(fxTarget);
     b.classList.toggle("on", pr); b.classList.toggle("idle", !pr && !lay);
-    b.textContent = pr ? `■ ARRÊTER · ${Math.round(LPR.rec.pct * 100)} %` : lay ? `● IMPRIMER SUR LA PISTE ${fxTarget}` : "● IMPRIMER : CHOISIS UNE PISTE";
+    const sg = fxTarget === "song"; b.classList.toggle("idle", !pr && !lay && !(sg && SONG.steps.length));
+    b.textContent = pr ? `■ ARRÊTER · ${Math.round(LPR.rec.pct * 100)} %` : lay ? `● IMPRIMER SUR LA PISTE ${fxTarget}` : sg ? (SONG.steps.length ? `● IMPRIMER LA LIGNE ${Math.min(SONG.sel, SONG.steps.length - 1) + 1} DE SONG` : "● SONG VIDE : ENREGISTRE UNE PRISE") : "● IMPRIMER : CHOISIS UNE PISTE";
   }
   $("fxPrint").addEventListener("click", fxPrintToggle);
   $("fxBpmDown").addEventListener("click", () => { manualBpm = Math.max(60, manualBpm - 1); drawFxBar(); applyFxKnob(3); });

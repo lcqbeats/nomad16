@@ -53,6 +53,9 @@
   // rendu d'une prise : chaque piste suit ses coupures, avec de courts fondus ; renvoie le mix et les pistes séparées
   function renderTake(tk, wantStems) {
     const N = tk.len, mix = [new Float32Array(N), new Float32Array(N)], stems = {}, lb = loopBus.gain.value, a = 1 - Math.exp(-1 / (0.004 * sr));
+    // ligne imprimée : son figé, avec ses effets
+    const pb = tk.pid && SONG.prints.get(tk.pid);
+    if (pb) { for (let c = 0; c < 2; c++) { const d = pb.getChannelData(Math.min(c, pb.numberOfChannels - 1)); for (let j = 0; j < Math.min(N, d.length); j++) mix[c][j] = d[j] * lb; } if (wantStems) stems["imprime"] = mix; return { mix, stems }; }
     // chaque bank suit ses propres événements ; une bank sans événement garde son état actuel
     const segOf = sq => { const evb = tk.ev.filter(e => e.seq === sq), cur = { t: 0, mask: perfMask(sq) }, list = evb.length && evb[0].t <= 0 ? evb : [cur, ...evb];
       return list.map((e, i) => ({ mask: e.mask, t: i ? e.t : 0, end: i + 1 < list.length ? list[i + 1].t : N })); };
