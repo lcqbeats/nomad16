@@ -690,3 +690,12 @@ html.flipped, html.flipped body { overflow: hidden; }
 .songrow .prbtn { color: #d92b2f; }
 .songrow .prbtn.on { background: #d92b2f; color: #fff; }
 .songrow .tk { cursor: pointer; }
+
+/* FX et SP : bank visée par P1 à P6 */
+.tbanks { display: flex; align-items: center; gap: 4px; margin: 6px 0 8px; }
+.tbanks span { flex: 1; font: 700 9px/1 var(--font-display, sans-serif); letter-spacing: .08em; color: #8f8a80; }
+.tbanks button { flex: 0 0 52px; border: 0; border-radius: 4px; padding: 5px 0 4px; cursor: pointer; background: #1b1c1e; color: #a3a39d; font: 700 11px/1 var(--font-display, sans-serif); box-shadow: inset 0 0 0 1px #3a3b3e; }
+.tbanks button small { display: block; font: 9px/1 VT323, monospace; opacity: .75; margin-top: 2px; min-height: 9px; }
+.tbanks button.on { background: #ece3d3; color: #1a1a1a; box-shadow: none; }
+#view-fx .tbanks button.on { background: #35c4ef; color: #062533; }
+#view-sp .tbanks button.on { background: #f08a2c; color: #1a0f05; }

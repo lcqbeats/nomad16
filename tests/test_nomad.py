@@ -43,7 +43,7 @@ def app(browser, server):
     ctx = browser.new_context(viewport={"width": 414, "height": 896}, accept_downloads=True)
     page = ctx.new_page()
     errors = []
-    page.on("pageerror", lambda e: errors.append(str(e)))
+    page.on("pageerror", lambda e: errors.append(str(e) + " " + str(e.stack)[:600]))
     page.goto(server)
     page.wait_for_timeout(500)
     page.click("#powerBtn")
@@ -808,7 +808,7 @@ def test_ordinateur_paysage_et_touches_f(browser, server):
     ctx = browser.new_context(viewport={"width": 1440, "height": 900})
     page = ctx.new_page()
     errors = []
-    page.on("pageerror", lambda e: errors.append(str(e)))
+    page.on("pageerror", lambda e: errors.append(str(e) + " " + str(e.stack)[:600]))
     page.goto(server)
     page.wait_for_timeout(400)
     assert page.evaluate("document.documentElement.classList.contains('desk')")
@@ -975,9 +975,39 @@ def test_imprimer_sp_par_dessus_une_ligne_imprimee(app):
     app.click('.spt[data-t="song"]')                         # SP reprend la cible SONG à FX
     assert app.evaluate("nomadDbg.SQ && document.querySelector('.fxt.on').dataset.t") == "all"
     app.click("#spPrint")
-    assert app.evaluate("nomadDbg.song.print.o.who") == "SP"
+    assert app.evaluate("nomadDbg.song.print.srcs.length") == 1          # SP sur SONG : on enregistre la sortie de SP
     app.wait_for_function("!nomadDbg.song.print", timeout=8000)
     second = app.evaluate("nomadDbg.song.steps[0].take.pid")
     assert second and second != first
     # le son déjà imprimé est passé dans SP : la nouvelle impression n'est pas vide
     assert app.evaluate(f"Math.max(...nomadDbg.song.prints.get('{second}').getChannelData(0).slice(0, 20000).map(Math.abs))") > 0.01
+
+
+
+def test_imprimer_une_ligne_en_changeant_de_boucle(app):
+    fake_loop(app, 1.5)
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[0], 1, 0)")
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[1], 1, 0)")
+    app.evaluate("nomadDbg.selectSeq(1)")
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[2], 1, 0)")
+    app.evaluate("nomadDbg.selectSeq(0)")
+    app.evaluate("nomadDbg.song.steps.push({ s: 0, r: 1, take: { n: 1, len: nomadDbg.LP.Lf, ev: [0, 1, 2].map(b => ({ t: 0, seq: b, mask: [false, false] })) } })")
+    app.click("#tab-fx")
+    app.evaluate("nomadDbg.songPrint(0)")
+    assert app.evaluate("nomadDbg.song.print.srcs.length") == 1          # FX sur TOUT : les boucles passent dans FX
+    app.click('.fxt[data-t="1"]')                                        # pendant l'impression : FX sur P1 (drums)
+    assert app.evaluate("document.querySelector('.fxt.on').dataset.t") == "1"
+    assert app.evaluate("nomadDbg.song.print.srcs.length") == 2          # boucles sans effet + sortie de FX
+    app.click("#tab-sp"); app.click('.spt[data-t="2"]')                 # SP sur P2 en même temps
+    assert app.evaluate("nomadDbg.song.print.srcs.length") == 3
+    app.click('.tbanks button[data-bank="1"] >> visible=true')           # bank B : P1 = sa piste 1, sans arrêter
+    assert app.evaluate("nomadDbg.SQ.cur") == 1 and app.evaluate("!!nomadDbg.song.print")
+    assert "LIGNE 1" in app.inner_text("#spPrint")
+    app.wait_for_function("!nomadDbg.song.print", timeout=8000)
+    pid = app.evaluate("nomadDbg.song.steps[0].take.pid")
+    assert pid and app.evaluate(f"Math.max(...nomadDbg.song.prints.get('{pid}').getChannelData(0).slice(0, 40000).map(Math.abs))") > 0.01
+    # une piste dans FX ne passe pas à côté de la porte : la ligne imprimée joue seule
+    app.evaluate("nomadDbg.setFxTarget('1'); nomadDbg.songPlay(0)")
+    app.wait_for_timeout(150)
+    assert app.evaluate("nomadDbg.song.gate.gain.value") < 0.1
+    app.evaluate("nomadDbg.songStop()")

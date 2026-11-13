@@ -4,14 +4,18 @@
   // Les pistes passent par une « porte » (SONG.gate) qu'on ferme pendant une ligne imprimée ; le son imprimé, lui,
   // entre dans le bus des boucles, donc les effets FX / SP ciblés sur SONG le recolorent (impression par-dessus).
   function layGate() { if (!SONG.gate) { SONG.gate = ctx.createGain(); SONG.gate.connect(loopBus); } return SONG.gate; }
+  // même porte pour la piste envoyée seule dans FX ou dans SP (P1 à P6), qui ne passe pas par le bus des boucles
+  const GATES = {};
+  function gateOf(k) { if (!GATES[k]) { GATES[k] = ctx.createGain(); GATES[k].connect(k === "fx" ? fxSolo : sp.lay); } return GATES[k]; }
+  const allGates = () => [layGate(), ...Object.values(GATES)];
   function songStepAudio(st, F) {
     const T = Math.max(F / sr, ctx.currentTime), buf = st && st.take && st.take.pid && SONG.prints.get(st.take.pid);
     if (SONG.player) { try { SONG.player.stop(T); } catch (e) {} SONG.player = null; }
-    layGate().gain.setTargetAtTime(buf ? 0 : 1, T, 0.003);
+    allGates().forEach(g => g.gain.setTargetAtTime(buf ? 0 : 1, T, 0.003));
     if (!buf) return;
     const s = ctx.createBufferSource(); s.buffer = buf; s.connect(loopBus); s.start(T); SONG.player = s;
   }
-  function songAudioOff() { if (SONG.player) { try { SONG.player.stop(); } catch (e) {} SONG.player = null; } if (SONG.gate) { SONG.gate.gain.cancelScheduledValues(ctx.currentTime); SONG.gate.gain.setTargetAtTime(1, ctx.currentTime, 0.003); } }
+  function songAudioOff() { if (SONG.player) { try { SONG.player.stop(); } catch (e) {} SONG.player = null; } if (SONG.gate) allGates().forEach(g => { g.gain.cancelScheduledValues(ctx.currentTime); g.gain.setTargetAtTime(1, ctx.currentTime, 0.003); }); }
   const SEQ_N = "ABCDEFGH";
   // durée d'une ligne : une prise a sa longueur (les anciennes lignes « séquence × n » sont converties en prises)
   const stepDur = st => st.take ? st.take.len : st.r * cycF(SQ.list[st.s] || []);
@@ -68,7 +72,7 @@
     if (nowF < endF - 0.15 * sr) return;
     let idx = SONG.idx + 1;
     if (idx >= SONG.steps.length || SONG.print) {   // pendant une impression, le morceau s'arrête au bout de la ligne
-      if (!SONG.loop || SONG.print) { const T = endF / sr; allLayers().forEach(l => { if (l.src) { try { l.src.stop(T); } catch (e) {} } }); SONG.playing = false; layGate().gain.setTargetAtTime(1, T + 0.01, 0.003); SONG.endT = setTimeout(() => { if (!SONG.playing) stopAll(); drawSong(true); }, Math.max(0, (T - ctx.currentTime) * 1000 + 60)); drawSong(true); return; }
+      if (!SONG.loop || SONG.print) { const T = endF / sr; allLayers().forEach(l => { if (l.src) { try { l.src.stop(T); } catch (e) {} } }); SONG.playing = false; allGates().forEach(g => g.gain.setTargetAtTime(1, T + 0.01, 0.003)); SONG.endT = setTimeout(() => { if (!SONG.playing) stopAll(); drawSong(true); }, Math.max(0, (T - ctx.currentTime) * 1000 + 60)); drawSong(true); return; }
       idx = 0;
     }
     SONG.idx = idx; SONG.stepT0 = endF;
@@ -142,6 +146,7 @@
       b.addEventListener("pointerup", e => { const to = at(e); if (drag && to >= 0 && to !== drag.from) copySeq(drag.from, to); else if (drag && drag.from === i) selectSeq(i); drag = null; });
       $("seqSel").appendChild(b);
     }
+    document.querySelectorAll(".tbanks [data-bank]").forEach(b => b.addEventListener("click", () => selectSeq(+b.dataset.bank)));
     document.addEventListener("pointerup", e => { if (!drag) return; const to = at(e); if (to >= 0 && to !== drag.from) copySeq(drag.from, to); drag = null; });
     const m = document.createElement("button"); m.type = "button"; m.className = "pat metro"; m.id = "metroBtn"; m.textContent = "MÉTRO";
     m.addEventListener("click", () => { SQ.metro = !SQ.metro; SQ.metroF = 0; drawSeqSel(); lcd("lcdPad", "MÉTRONOME", SQ.metro ? "activé" : "désactivé"); });

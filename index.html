@@ -704,6 +704,15 @@ html.flipped, html.flipped body { overflow: hidden; }
 .songrow .prbtn { color: #d92b2f; }
 .songrow .prbtn.on { background: #d92b2f; color: #fff; }
 .songrow .tk { cursor: pointer; }
+
+/* FX et SP : bank visée par P1 à P6 */
+.tbanks { display: flex; align-items: center; gap: 4px; margin: 6px 0 8px; }
+.tbanks span { flex: 1; font: 700 9px/1 var(--font-display, sans-serif); letter-spacing: .08em; color: #8f8a80; }
+.tbanks button { flex: 0 0 52px; border: 0; border-radius: 4px; padding: 5px 0 4px; cursor: pointer; background: #1b1c1e; color: #a3a39d; font: 700 11px/1 var(--font-display, sans-serif); box-shadow: inset 0 0 0 1px #3a3b3e; }
+.tbanks button small { display: block; font: 9px/1 VT323, monospace; opacity: .75; margin-top: 2px; min-height: 9px; }
+.tbanks button.on { background: #ece3d3; color: #1a1a1a; box-shadow: none; }
+#view-fx .tbanks button.on { background: #35c4ef; color: #062533; }
+#view-sp .tbanks button.on { background: #f08a2c; color: #1a0f05; }
 </style>
 </head>
 <body>
@@ -839,6 +848,7 @@ html.flipped, html.flipped body { overflow: hidden; }
     <div class="sptargets" role="group" aria-label="Cible des effets SP">
       <button class="spt on" type="button" data-t="all">TOUT</button><button class="spt" type="button" data-t="1">P1</button><button class="spt" type="button" data-t="2">P2</button><button class="spt" type="button" data-t="3">P3</button><button class="spt" type="button" data-t="4">P4</button><button class="spt" type="button" data-t="5">P5</button><button class="spt" type="button" data-t="6">P6</button><button class="spt song" type="button" data-t="song">SONG</button>
     </div>
+    <div class="tbanks" role="group" aria-label="Bank visée par P1 à P6"><span>P1–P6 = BANK</span><button type="button" data-bank="0">A<small></small></button><button type="button" data-bank="1">B<small></small></button><button type="button" data-bank="2">C<small></small></button></div>
     <button class="btn rec spprint" id="spPrint" type="button">● IMPRIMER : CHOISIS UNE PISTE</button>
     <h4 class="sphead"><span>EFFETS · PADS 1 À 16</span></h4>
     <div class="spfxgrid" id="spFxGrid"></div>
@@ -884,6 +894,7 @@ html.flipped, html.flipped body { overflow: hidden; }
       <button class="fxt" type="button" data-t="1">P1</button><button class="fxt" type="button" data-t="2">P2</button><button class="fxt" type="button" data-t="3">P3</button>
       <button class="fxt" type="button" data-t="4">P4</button><button class="fxt" type="button" data-t="5">P5</button><button class="fxt" type="button" data-t="6">P6</button><button class="fxt song" type="button" data-t="song">SONG</button>
     </div>
+    <div class="tbanks" role="group" aria-label="Bank visée par P1 à P6"><span>P1–P6 = BANK</span><button type="button" data-bank="0">A<small></small></button><button type="button" data-bank="1">B<small></small></button><button type="button" data-bank="2">C<small></small></button></div>
     <button class="btn rec spprint fxprint idle" id="fxPrint" type="button">● IMPRIMER : CHOISIS UNE PISTE</button>
     <h4 class="sphead"><span>MOTIFS · PADS 1 À 16</span></h4>
     <div class="fxgrid" id="fxgrid"></div>
@@ -1829,7 +1840,7 @@ registerProcessor('nomad-oct',Oct);`;
     if (!ctx || i < 0 || i >= NB) return;
     if (i === SQ.cur) { drawSeqSel(); return; }
     if (LP.pending) { lcd("lcdPad", "BANK", "attends la fin de l'enregistrement"); return; }
-    if (LPR.rec) { lcd("lcdPad", "BANK", "impression en cours : attends la fin"); return; }
+    if (LPR.rec && !LPR.rec.song) { lcd("lcdPad", "BANK", "impression en cours : attends la fin"); return; }
     showBank(i);
     const n = SQ.list[i].length, on = SQ.list[i].filter(l => !l.muted).length;
     lcd("lcdPad", "BANK " + SEQ_N[i], n ? `${n} piste(s) · ${on} audible(s)` : "vide · REC pour la remplir");
@@ -2555,22 +2566,24 @@ registerProcessor('nomad-oct',Oct);`;
     if (w < 0) return false;
     setFxTarget(FX_KEY_T[w]); return true;
   }
-  function setFxTarget(t) { if (LPR.rec) return; fxTarget = t;
+  function setFxTarget(t) { if (LPR.rec && !LPR.rec.song) return; fxTarget = t;
     // une piste ne peut être dans les effets SP et FX à la fois : FX la reprend
     if ((/^\d$/.test(t) || t === "song") && typeof SPX !== "undefined" && SPX.target === t) { SPX.target = "all"; spRoute(); drawSpTargets(); }
     drawFxPrint(); fxDisp(t === "all" ? "FX" : t === "live" ? "LIV" : t === "song" ? "SNG" : "P" + t, t === "all" ? "TOUT" : t === "live" ? "JEU EN DIRECT" : t === "song" ? "SONG · 3 BANKS" : layerName(+t - 1, true)); routeFx(); drawFxPads(); lcd("lcdPad", "FX", "cible : " + (t === "all" ? "tout le morceau" : t === "live" ? "jeu en direct" : t === "song" ? "toutes les boucles (song) · Sustain = imprimer la ligne choisie" : "piste " + t)); }
   function routeFx() {
     if (!fxDry) return;
     [liveBus, loopBus].forEach(n => { try { n.disconnect(master); } catch (e) {} try { n.disconnect(fxDry); } catch (e) {} });
+    const prt = typeof SONG !== "undefined" && SONG.print;   // impression d'une ligne : le jeu en direct reste hors des effets
     if (typeof sp !== "undefined" && sp) { try { loopBus.disconnect(sp.lay); } catch (e) {} }
     const spSong = typeof SPX !== "undefined" && SPX.target === "song" && sp;
     allLayers().forEach(l => { try { l.gain.disconnect(); } catch (e) {} });
     const k = /^\d$/.test(fxTarget) ? +fxTarget - 1 : -1;
-    liveBus.connect(fxTarget === "all" || fxTarget === "live" ? master : fxDry);
+    liveBus.connect(!prt && (fxTarget === "all" || fxTarget === "live") ? master : fxDry);
     // cible SONG : les boucles des 3 banks (et la song imprimée) passent dans FX, le jeu en direct non ; SP sur SONG : dans SP
     if (spSong) loopBus.connect(sp.lay); else loopBus.connect(fxTarget === "all" || fxTarget === "song" ? master : fxDry);
     // P1 à P6 = pistes de la bank affichée ; les pistes des autres banks restent sur le bus des boucles
-    allLayers().forEach(l => { const i = LP.layers.indexOf(l); if (typeof spLayer !== "undefined" && l === spLayer && sp) l.gain.connect(sp.lay); else if (i >= 0 && i === k) { l.gain.connect(fxSolo); } else l.gain.connect(layGate()); if (l.an) l.gain.connect(l.an); });
+    allLayers().forEach(l => { const i = LP.layers.indexOf(l); if (typeof spLayer !== "undefined" && l === spLayer && sp) l.gain.connect(gateOf("sp")); else if (i >= 0 && i === k) { l.gain.connect(gateOf("fx")); } else l.gain.connect(layGate()); if (l.an) l.gain.connect(l.an); });
+    if (prt) songTapWire();
   }
   let fxSolo = null;
   // Impression des effets FX sur la piste choisie (même principe que SP)
@@ -2588,7 +2601,7 @@ registerProcessor('nomad-oct',Oct);`;
     const pr = printing("FX"), lay = /^\d$/.test(fxTarget);
     b.classList.toggle("on", pr); b.classList.toggle("idle", !pr && !lay);
     const sg = fxTarget === "song"; b.classList.toggle("idle", !pr && !lay && !(sg && SONG.steps.length));
-    b.textContent = pr ? `■ ARRÊTER · ${Math.round(LPR.rec.pct * 100)} %` : lay ? `● IMPRIMER SUR LA PISTE ${fxTarget}` : sg ? (SONG.steps.length ? `● IMPRIMER LA LIGNE ${Math.min(SONG.sel, SONG.steps.length - 1) + 1} DE SONG` : "● SONG VIDE : ENREGISTRE UNE PRISE") : "● IMPRIMER : CHOISIS UNE PISTE";
+    b.textContent = pr ? (LPR.rec.song ? `■ ARRÊTER · LIGNE ${LPR.rec.i + 1} · ${Math.round(LPR.rec.pct * 100)} %` : `■ ARRÊTER · ${Math.round(LPR.rec.pct * 100)} %`) : lay ? `● IMPRIMER SUR LA PISTE ${fxTarget}` : sg ? (SONG.steps.length ? `● IMPRIMER LA LIGNE ${Math.min(SONG.sel, SONG.steps.length - 1) + 1} DE SONG` : "● SONG VIDE : ENREGISTRE UNE PRISE") : "● IMPRIMER : CHOISIS UNE PISTE";
   }
   $("fxPrint").addEventListener("click", fxPrintToggle);
   $("fxBpmDown").addEventListener("click", () => { manualBpm = Math.max(60, manualBpm - 1); drawFxBar(); applyFxKnob(3); });
@@ -5024,14 +5037,18 @@ registerProcessor('nomad-oct',Oct);`;
   // Les pistes passent par une « porte » (SONG.gate) qu'on ferme pendant une ligne imprimée ; le son imprimé, lui,
   // entre dans le bus des boucles, donc les effets FX / SP ciblés sur SONG le recolorent (impression par-dessus).
   function layGate() { if (!SONG.gate) { SONG.gate = ctx.createGain(); SONG.gate.connect(loopBus); } return SONG.gate; }
+  // même porte pour la piste envoyée seule dans FX ou dans SP (P1 à P6), qui ne passe pas par le bus des boucles
+  const GATES = {};
+  function gateOf(k) { if (!GATES[k]) { GATES[k] = ctx.createGain(); GATES[k].connect(k === "fx" ? fxSolo : sp.lay); } return GATES[k]; }
+  const allGates = () => [layGate(), ...Object.values(GATES)];
   function songStepAudio(st, F) {
     const T = Math.max(F / sr, ctx.currentTime), buf = st && st.take && st.take.pid && SONG.prints.get(st.take.pid);
     if (SONG.player) { try { SONG.player.stop(T); } catch (e) {} SONG.player = null; }
-    layGate().gain.setTargetAtTime(buf ? 0 : 1, T, 0.003);
+    allGates().forEach(g => g.gain.setTargetAtTime(buf ? 0 : 1, T, 0.003));
     if (!buf) return;
     const s = ctx.createBufferSource(); s.buffer = buf; s.connect(loopBus); s.start(T); SONG.player = s;
   }
-  function songAudioOff() { if (SONG.player) { try { SONG.player.stop(); } catch (e) {} SONG.player = null; } if (SONG.gate) { SONG.gate.gain.cancelScheduledValues(ctx.currentTime); SONG.gate.gain.setTargetAtTime(1, ctx.currentTime, 0.003); } }
+  function songAudioOff() { if (SONG.player) { try { SONG.player.stop(); } catch (e) {} SONG.player = null; } if (SONG.gate) allGates().forEach(g => { g.gain.cancelScheduledValues(ctx.currentTime); g.gain.setTargetAtTime(1, ctx.currentTime, 0.003); }); }
   const SEQ_N = "ABCDEFGH";
   // durée d'une ligne : une prise a sa longueur (les anciennes lignes « séquence × n » sont converties en prises)
   const stepDur = st => st.take ? st.take.len : st.r * cycF(SQ.list[st.s] || []);
@@ -5088,7 +5105,7 @@ registerProcessor('nomad-oct',Oct);`;
     if (nowF < endF - 0.15 * sr) return;
     let idx = SONG.idx + 1;
     if (idx >= SONG.steps.length || SONG.print) {   // pendant une impression, le morceau s'arrête au bout de la ligne
-      if (!SONG.loop || SONG.print) { const T = endF / sr; allLayers().forEach(l => { if (l.src) { try { l.src.stop(T); } catch (e) {} } }); SONG.playing = false; layGate().gain.setTargetAtTime(1, T + 0.01, 0.003); SONG.endT = setTimeout(() => { if (!SONG.playing) stopAll(); drawSong(true); }, Math.max(0, (T - ctx.currentTime) * 1000 + 60)); drawSong(true); return; }
+      if (!SONG.loop || SONG.print) { const T = endF / sr; allLayers().forEach(l => { if (l.src) { try { l.src.stop(T); } catch (e) {} } }); SONG.playing = false; allGates().forEach(g => g.gain.setTargetAtTime(1, T + 0.01, 0.003)); SONG.endT = setTimeout(() => { if (!SONG.playing) stopAll(); drawSong(true); }, Math.max(0, (T - ctx.currentTime) * 1000 + 60)); drawSong(true); return; }
       idx = 0;
     }
     SONG.idx = idx; SONG.stepT0 = endF;
@@ -5162,6 +5179,7 @@ registerProcessor('nomad-oct',Oct);`;
       b.addEventListener("pointerup", e => { const to = at(e); if (drag && to >= 0 && to !== drag.from) copySeq(drag.from, to); else if (drag && drag.from === i) selectSeq(i); drag = null; });
       $("seqSel").appendChild(b);
     }
+    document.querySelectorAll(".tbanks [data-bank]").forEach(b => b.addEventListener("click", () => selectSeq(+b.dataset.bank)));
     document.addEventListener("pointerup", e => { if (!drag) return; const to = at(e); if (to >= 0 && to !== drag.from) copySeq(drag.from, to); drag = null; });
     const m = document.createElement("button"); m.type = "button"; m.className = "pat metro"; m.id = "metroBtn"; m.textContent = "MÉTRO";
     m.addEventListener("click", () => { SQ.metro = !SQ.metro; SQ.metroF = 0; drawSeqSel(); lcd("lcdPad", "MÉTRONOME", SQ.metro ? "activé" : "désactivé"); });
@@ -5903,7 +5921,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     o.ui(0);
     say(`impression sur la piste ${LP.layers.indexOf(l) + 1} : joue tes effets pendant un tour`);
   }
-  const printing = who => !!(LPR.rec && LPR.rec.o.who === who);
+  const printing = who => !!(LPR.rec && (LPR.rec.song || LPR.rec.o.who === who));
   function loopPrintStop(done) {
     const rec = LPR.rec; if (!rec) return;
     if (rec.song) { songPrintEnd(done); return; }
@@ -5927,28 +5945,39 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   }
 
   // ---------- Impression sur une ligne de SONG ----------
-  // La ligne se rejoue (boucles et gestes, ou son déjà imprimé) ; FX ou SP ciblé sur SONG colore toutes les boucles.
-  // Le son des boucles avec effets est enregistré pendant toute la ligne, puis remplace la ligne (annulable).
+  // La ligne se rejoue (boucles et gestes, ou son déjà imprimé) et TOUT le son des boucles est enregistré :
+  // boucles sans effet + boucle (ou SONG) dans FX + boucle (ou SONG) dans SP. Pendant la ligne, on peut changer
+  // de cible (P1 à P6, SONG), de bank, utiliser FX et SP sur deux boucles : l'enregistrement se rebranche à chaque fois.
+  // Le jeu en direct (pads, SONS, guitare) n'est jamais imprimé. À la fin, la ligne est remplacée (annulable).
+  function songTapWire() {
+    const rec = SONG.print; if (!rec) return;
+    rec.srcs.forEach(([s0, g]) => { try { s0.disconnect(g); } catch (e) {} g.disconnect(); }); rec.srcs = [];
+    const lb = loopBus.gain.value || 1, fm = fxMaster.gain.value || 1;
+    const add = (src, k) => { const g = ctx.createGain(); g.gain.value = k; src.connect(g); g.connect(rec.node); rec.srcs.push([src, g]); };
+    const spSong = SPX.target === "song" && !!sp, fxLoops = fxTarget === "song" || fxTarget === "all";
+    const fxLay = /^\d$/.test(fxTarget) && !!LP.layers[+fxTarget - 1], spLay = !!(sp && spLayer);
+    // chaque source est ramenée au niveau « avant le volume des boucles » : la ligne imprimée repasse par ce volume
+    if (spSong) add(sp.mix, 1 / lb); else if (fxLoops) add(fxMaster, 1 / (lb * fm)); else add(loopBus, 1 / lb);
+    if (!fxLoops && fxLay) add(fxMaster, 1 / (lb * fm));
+    if (!spSong && spLay) add(sp.mix, 1 / lb);
+  }
   function songPrint(i) {
     const st = SONG.steps[i], say = m => lcd("lcdPad", "SONG", m);
     if (!ctx || !hasWorklet) { say("impression non disponible ici"); return; }
     if (!st || !st.take) { say("choisis une ligne de SONG"); return; }
     if (LPR.rec) loopPrintStop(false);
     if (st.take.len > sr * 60 * 8) { say("ligne trop longue pour l'imprimer (8 min max)"); return; }
-    // effets : SP s'il vise déjà SONG, sinon FX
-    let who = "FX";
-    if (SPX.target === "song" && sp) who = "SP"; else if (fxTarget !== "song") setFxTarget("song");
-    const tap = who === "SP" ? sp.mix : fxMaster;
+    SONG.sel = i;
     songPlay(i); if (!SONG.playing) return;
-    const len = st.take.len, startF = SONG.stepT0;
+    const len = st.take.len, startF = SONG.stepT0, was = !!(st.take.pid && SONG.prints.has(st.take.pid));
     const node = new AudioWorkletNode(ctx, "nomad-cap", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: "explicit" });
     const silent = ctx.createGain(); silent.gain.value = 0; node.connect(silent); silent.connect(ctx.destination);
-    tap.connect(node);
-    const o = { who, tap,
-      gain: () => (loopBus.gain.value || 1) * (who === "FX" ? fxMaster.gain.value || 1 : 1),
-      ui: p => { drawSong(true); if (who === "FX") { drawFxPrint(); if (p !== null) fxDisp("PRT", Math.round(p * 100) + " %"); else fxDisp("SNG", "SONG"); } else { drawSpTargets(); if (p !== null) spSeg("PRT", Math.round(p * 100) + " %"); else spSeg("F" + String(SPX.cur + 1).padStart(2, "0"), SP_FX[SPX.cur].name); } },
-      done: () => { if (who === "FX") { if (fxActive >= 0) fxEnd(fxActive); for (let k = 0; k < 7; k++) { knobVals.fx[k] = FX_HOME[k]; applyFxKnob(k); } if (tab === "fx") drawKnobs(); } else spAllOff(); } };
-    const rec = LPR.rec = SONG.print = { song: true, i, o, node, silent, startF, endF: startF + len, L: new Float32Array(len), R: new Float32Array(len), pct: 0, last: 0, take: st.take };
+    const o = { who: "SONG",
+      gain: () => 1,
+      ui: p => { drawSong(true); drawFxPrint(); drawSpTargets(); if (p !== null) { if (tab === "fx") fxDisp("PRT", "LIGNE " + (i + 1) + " · " + Math.round(p * 100) + " %"); if (tab === "sp") spSeg("PRT", Math.round(p * 100) + " %"); } },
+      done: () => { if (fxActive >= 0) fxEnd(fxActive); for (let k = 0; k < 7; k++) { knobVals.fx[k] = FX_HOME[k]; applyFxKnob(k); } if (tab === "fx") drawKnobs(); spAllOff(); } };
+    const rec = LPR.rec = SONG.print = { song: true, i, o, node, silent, srcs: [], startF, endF: startF + len, L: new Float32Array(len), R: new Float32Array(len), pct: 0, last: 0, take: st.take };
+    routeFx(); songTapWire();
     node.port.onmessage = e => {
       const { f, l: a, r: b } = e.data;
       for (let j = 0; j < a.length; j++) { const p = f + j - rec.startF; if (p < 0 || p >= len) continue; rec.L[p] = a[j]; rec.R[p] = b[j]; }
@@ -5957,13 +5986,14 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       if (f + a.length >= rec.endF) songPrintEnd(true);
     };
     o.ui(0);
-    say(`impression de la ligne ${i + 1} (${fmtLen(len)}) : va dans ${who} (cible SONG) et joue tes effets`);
+    say(was ? `ligne ${i + 1} déjà imprimée : seule la cible SONG la colore (↶ pour retrouver ses boucles)` : `impression de la ligne ${i + 1} (${fmtLen(len)}) : FX et SP, cibles P1 à P6 ou SONG, change à volonté`);
   }
   function songPrintEnd(done) {
     const rec = SONG.print; if (!rec) return;
     SONG.print = null; if (LPR.rec === rec) LPR.rec = null;
     const o = rec.o;
-    try { o.tap.disconnect(rec.node); } catch (e) {} rec.node.disconnect(); rec.node.port.onmessage = null;
+    rec.srcs.forEach(([s0, g]) => { try { s0.disconnect(g); } catch (e) {} g.disconnect(); }); rec.srcs = [];
+    rec.node.disconnect(); rec.node.port.onmessage = null; routeFx();
     const i = SONG.steps.findIndex(st => st.take === rec.take);
     if (!done || i < 0) { o.ui(null); lcd("lcdPad", "SONG", "impression annulée"); return; }
     const n = rec.L.length, g = o.gain(), sc = g > 0.05 ? 1 / g : 1;
@@ -5980,7 +6010,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     [...SONG.prints.keys()].forEach(k => { if (!used.has(k)) SONG.prints.delete(k); });
     const set = pid => { const t = SONG.steps.find(st => st.take === tk); if (!t) return; if (pid && !SONG.prints.has(pid)) { lcd("lcdPad", "SONG", "ancienne impression plus en mémoire"); return; } if (pid) tk.pid = pid; else delete tk.pid; drawSong(true); };
     set(id);
-    pushHist(`impression ${o.who} sur la ligne ${i + 1} de SONG`, () => set(old), () => set(id), true);
+    pushHist(`impression des effets sur la ligne ${i + 1} de SONG`, () => set(old), () => set(id), true);
     o.done(); o.ui(null);
     lcd("lcdPad", "SONG", `ligne ${i + 1} imprimée · effets remis à zéro (Retour arrière = annuler)`);
   }
@@ -6200,10 +6230,10 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     sp.in.connect(spLayer || song ? sp.post : sp.head);
     sp.lay.gain.value = song ? 1 : loopBus.gain.value;
     if (typeof routeFx === "function" && fxDry) routeFx();
-    else allLayers().forEach(l => { try { l.gain.disconnect(); } catch (e) {} l.gain.connect(l === spLayer ? sp.lay : layGate()); if (l.an) l.gain.connect(l.an); });
+    else allLayers().forEach(l => { try { l.gain.disconnect(); } catch (e) {} l.gain.connect(l === spLayer ? gateOf("sp") : layGate()); if (l.an) l.gain.connect(l.an); });
   }
   function setSpTarget(t) {
-    if (LPR.rec) return;
+    if (LPR.rec && !LPR.rec.song) return;
     if ((/^\d$/.test(t) || t === "song") && fxTarget === t) { fxTarget = "all"; routeFx(); drawFxPads(); drawFxPrint(); }   // SP reprend la piste à FX
     SPX.target = t; spRoute(); drawSpTargets();
     lcd("lcdPad", "SP", t === "all" ? "les effets colorent toute la sortie" : t === "song" ? "effets sur toutes les boucles (song) · Sustain = imprimer la ligne choisie" : (LP.layers[+t - 1] ? `effets sur la piste ${t} · Sustain = imprimer` : `piste ${t} vide`));
@@ -6213,7 +6243,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     const b = $("spPrint"); if (!b) return;
     const pr = printing("SP");
     b.classList.toggle("on", pr); b.classList.toggle("idle", !pr && (SPX.target === "all" || (SPX.target === "song" && !SONG.steps.length)));
-    b.textContent = pr ? `■ ARRÊTER · ${Math.round(LPR.rec.pct * 100)} %` : SPX.target === "all" ? "● IMPRIMER : CHOISIS UNE PISTE" : SPX.target === "song" ? (SONG.steps.length ? `● IMPRIMER LA LIGNE ${Math.min(SONG.sel, SONG.steps.length - 1) + 1} DE SONG` : "● SONG VIDE : ENREGISTRE UNE PRISE") : `● IMPRIMER SUR LA PISTE ${SPX.target}`;
+    b.textContent = pr ? (LPR.rec.song ? `■ ARRÊTER · LIGNE ${LPR.rec.i + 1} · ${Math.round(LPR.rec.pct * 100)} %` : `■ ARRÊTER · ${Math.round(LPR.rec.pct * 100)} %`) : SPX.target === "all" ? "● IMPRIMER : CHOISIS UNE PISTE" : SPX.target === "song" ? (SONG.steps.length ? `● IMPRIMER LA LIGNE ${Math.min(SONG.sel, SONG.steps.length - 1) + 1} DE SONG` : "● SONG VIDE : ENREGISTRE UNE PRISE") : `● IMPRIMER SUR LA PISTE ${SPX.target}`;
   }
   document.querySelectorAll(".spt").forEach(b => b.addEventListener("click", () => setSpTarget(b.dataset.t)));
   // clavier de l'Akai dans SP : les 8 premières touches blanches = TOUT, P1 à P6

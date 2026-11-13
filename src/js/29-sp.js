@@ -214,10 +214,10 @@
     sp.in.connect(spLayer || song ? sp.post : sp.head);
     sp.lay.gain.value = song ? 1 : loopBus.gain.value;
     if (typeof routeFx === "function" && fxDry) routeFx();
-    else allLayers().forEach(l => { try { l.gain.disconnect(); } catch (e) {} l.gain.connect(l === spLayer ? sp.lay : layGate()); if (l.an) l.gain.connect(l.an); });
+    else allLayers().forEach(l => { try { l.gain.disconnect(); } catch (e) {} l.gain.connect(l === spLayer ? gateOf("sp") : layGate()); if (l.an) l.gain.connect(l.an); });
   }
   function setSpTarget(t) {
-    if (LPR.rec) return;
+    if (LPR.rec && !LPR.rec.song) return;
     if ((/^\d$/.test(t) || t === "song") && fxTarget === t) { fxTarget = "all"; routeFx(); drawFxPads(); drawFxPrint(); }   // SP reprend la piste à FX
     SPX.target = t; spRoute(); drawSpTargets();
     lcd("lcdPad", "SP", t === "all" ? "les effets colorent toute la sortie" : t === "song" ? "effets sur toutes les boucles (song) · Sustain = imprimer la ligne choisie" : (LP.layers[+t - 1] ? `effets sur la piste ${t} · Sustain = imprimer` : `piste ${t} vide`));
@@ -227,7 +227,7 @@
     const b = $("spPrint"); if (!b) return;
     const pr = printing("SP");
     b.classList.toggle("on", pr); b.classList.toggle("idle", !pr && (SPX.target === "all" || (SPX.target === "song" && !SONG.steps.length)));
-    b.textContent = pr ? `■ ARRÊTER · ${Math.round(LPR.rec.pct * 100)} %` : SPX.target === "all" ? "● IMPRIMER : CHOISIS UNE PISTE" : SPX.target === "song" ? (SONG.steps.length ? `● IMPRIMER LA LIGNE ${Math.min(SONG.sel, SONG.steps.length - 1) + 1} DE SONG` : "● SONG VIDE : ENREGISTRE UNE PRISE") : `● IMPRIMER SUR LA PISTE ${SPX.target}`;
+    b.textContent = pr ? (LPR.rec.song ? `■ ARRÊTER · LIGNE ${LPR.rec.i + 1} · ${Math.round(LPR.rec.pct * 100)} %` : `■ ARRÊTER · ${Math.round(LPR.rec.pct * 100)} %`) : SPX.target === "all" ? "● IMPRIMER : CHOISIS UNE PISTE" : SPX.target === "song" ? (SONG.steps.length ? `● IMPRIMER LA LIGNE ${Math.min(SONG.sel, SONG.steps.length - 1) + 1} DE SONG` : "● SONG VIDE : ENREGISTRE UNE PRISE") : `● IMPRIMER SUR LA PISTE ${SPX.target}`;
   }
   document.querySelectorAll(".spt").forEach(b => b.addEventListener("click", () => setSpTarget(b.dataset.t)));
   // clavier de l'Akai dans SP : les 8 premières touches blanches = TOUT, P1 à P6

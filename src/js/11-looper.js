@@ -22,7 +22,7 @@
     if (!ctx || i < 0 || i >= NB) return;
     if (i === SQ.cur) { drawSeqSel(); return; }
     if (LP.pending) { lcd("lcdPad", "BANK", "attends la fin de l'enregistrement"); return; }
-    if (LPR.rec) { lcd("lcdPad", "BANK", "impression en cours : attends la fin"); return; }
+    if (LPR.rec && !LPR.rec.song) { lcd("lcdPad", "BANK", "impression en cours : attends la fin"); return; }
     showBank(i);
     const n = SQ.list[i].length, on = SQ.list[i].filter(l => !l.muted).length;
     lcd("lcdPad", "BANK " + SEQ_N[i], n ? `${n} piste(s) · ${on} audible(s)` : "vide · REC pour la remplir");
