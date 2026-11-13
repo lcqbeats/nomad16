@@ -42,7 +42,7 @@ L'app et les kits restent dans l'appareil (service worker) : NOMAD démarre sans
 
 ## Sur ordinateur
 
-Sur un grand écran avec souris, NOMAD passe tout seul en paysage, dans l'esprit d'une MPC 1000 noire : écran, touches de mode et potards à gauche, pads à droite. Les touches & é " ' ( § è ! ç de la rangée du haut (clavier AZERTY, sans Maj), ou F1 à F9, changent d'onglet, dans l'ordre de la grille 3×3 : PADS, LOOPER, SONS / DIGGING, SCRATCH, GUITARE / FX, SP, SONG. RÉGLAGES → AFFICHAGE permet de forcer la mise en page téléphone ou ordinateur. Dans Chrome, l'Akai branché en USB fonctionne directement.
+Sur un grand écran avec souris, NOMAD passe tout seul en paysage, dans l'esprit d'une MPC 1000 noire : écran, touches de mode et potards à gauche, pads à droite. Les touches & é " ' ( § è ! ç de la rangée du haut (clavier AZERTY, sans Maj), ou F1 à F9, changent d'onglet ; Espace = play / stop, Entrée = REC (dans SP et FX : imprimer sur la piste), Cmd+S = SAVE ; dans l'ordre de la grille 3×3 : PADS, LOOPER, SONS / DIGGING, SCRATCH, GUITARE / FX, SP, SONG. RÉGLAGES → AFFICHAGE permet de forcer la mise en page téléphone ou ordinateur. Dans Chrome, l'Akai branché en USB fonctionne directement.
 
 ## Nouveautés sons
 

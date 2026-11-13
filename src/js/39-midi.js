@@ -145,7 +145,9 @@
   const KEYS = ["z","x","c","v","a","s","d","f","q","w","e","r","1","2","3","4"];
   window.addEventListener("keydown", e => {
     if (e.repeat || e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
-    if (e.key === " ") { e.preventDefault(); if (tab === "sp") spPrintToggle(); else if (tab === "fx") fxPrintToggle(); else recPress(); return; }
+    // ordinateur : Espace = play / stop, Entrée = REC (dans SP et FX : imprimer sur la piste)
+    if (e.key === " ") { e.preventDefault(); if (e.target.blur) e.target.blur(); togglePlay(); return; }
+    if (e.key === "Enter") { e.preventDefault(); if (tab === "sp") spPrintToggle(); else if (tab === "fx") fxPrintToggle(); else recPress(); return; }
     if (e.key === "Backspace") { e.preventDefault(); undo(); return; }
     const i = KEYS.indexOf(e.key.toLowerCase());
     if (i >= 0) { select(i); playPad(i, 0.9); }

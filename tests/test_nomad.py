@@ -735,6 +735,12 @@ def test_ordinateur_paysage_et_touches_f(browser, server):
     # la grille suit l'ordre jouer / matière / finition
     xs = page.evaluate("['play','loops','sons','sample','scratch','guitar','fx','sp','song'].map(t => { const r = document.getElementById('tab-' + t).getBoundingClientRect(); return [Math.round(r.top), Math.round(r.left)]; })")
     assert xs == sorted(xs), xs
+    # Espace = play / stop
+    page.evaluate("""(() => { const L = nomadDbg.LP, s = nomadState(); L.Lf = Math.round(0.5 * nomadDbg.sr); L.beats = 2; L.t0F = Math.round(s.now * nomadDbg.sr); L.playing = true; nomadDbg.addLayer(nomadDbg.buffers[0], 1, 0); })()""")
+    page.keyboard.press("Space")
+    assert page.evaluate("nomadDbg.LP.playing") is False
+    page.keyboard.press("Space")
+    assert page.evaluate("nomadDbg.LP.playing") is True
     # FX : les 16 pads s'affichent d'un coup sur ordinateur
     page.keyboard.press("F7")
     assert page.evaluate("[...document.querySelectorAll('.fxpad')].filter(e => e.offsetParent).length") == 16
