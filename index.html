@@ -659,8 +659,12 @@ html.flipped, html.flipped body { overflow: hidden; }
 :root.desk #view-fx .fxpad { height: 86px; }
 :root.desk #view-fx .fxpad svg { height: 26px; }
 #view-fx #fxSet.on { background: #35d0f0; color: #04121a; }
-.perfbar { grid-template-columns: 2fr 1fr 1fr !important; }
+.perfbar { grid-template-columns: 2fr 1fr !important; }
+.perfbar #perfRec.armed { background: #6b2b16; color: #ffd2b8; box-shadow: 0 0 0 2px #f08a2c; }
 .perfbar #perfRec.on { animation: sprec 0.9s ease-in-out infinite alternate; }
+.songrow.take { grid-template-columns: 26px 1fr 34px 34px 34px !important; }
+.songrow .tk { font-size: 11px; line-height: 1.25; overflow: hidden; }
+.songrow .tk b { color: #f08a2c; }
 </style>
 </head>
 <body>
@@ -752,9 +756,8 @@ html.flipped, html.flipped body { overflow: hidden; }
       <button class="btn" id="lenDouble" type="button">×2</button>
     </div>
     <div class="songhead perfbar">
-      <button class="btn rec" id="perfRec" type="button">● ENREGISTRER LE JEU</button>
-      <button class="btn" id="perfSong" type="button" disabled>→ SONG</button>
-      <button class="btn" id="perfWav" type="button" disabled>→ WAV</button>
+      <button class="btn rec" id="perfRec" type="button">● ARMER UNE PRISE</button>
+      <button class="btn" id="perfWav" type="button" disabled>PRISE → WAV</button>
     </div>
     <p class="note" id="perfInfo"></p>
     <div class="transport" style="grid-template-columns:1fr 1fr">
@@ -1768,6 +1771,7 @@ registerProcessor('nomad-djloop',DjLoop);`;
   function switchNow(i) {
     LP.layers.forEach(stopLayer);
     SQ.cur = i; LP.layers = SQ.list[i]; SQ.next = -1; SQ.sw = null;
+    perfMark(i);
     routeFx(); LP.layers.forEach(l => l.gain.gain.setValueAtTime(l.muted ? 0 : l.vol, ctx.currentTime));
     syncLoopKnobs(); drawSeqSel();
   }
@@ -1776,6 +1780,7 @@ registerProcessor('nomad-djloop',DjLoop);`;
     const T = Math.max(bF / sr, ctx.currentTime + 0.005);
     LP.layers.forEach(l => { if (l.src) { try { l.src.stop(T); } catch (e) {} l.src = null; } });
     SQ.cur = i; LP.layers = SQ.list[i]; LP.t0F = bF; SQ.sw = null; SQ.next = -1;
+    perfMark(i, bF);
     routeFx();
     LP.layers.forEach(l => { l.gain.gain.setValueAtTime(l.muted ? 0 : l.vol, ctx.currentTime); startLayer(l, T); });
     syncLoopKnobs(); drawSeqSel();
@@ -1954,13 +1959,14 @@ registerProcessor('nomad-djloop',DjLoop);`;
     l.src = src;
   }
   function stopLayer(l) { if (l.src) { try { l.src.stop(); } catch (e) {} l.src.disconnect(); l.src = null; } }
-  function stopAll() { LP.layers.forEach(stopLayer); LP.playing = false; SQ.sw = null; if (SONG.playing) songStop(); if (LP.pending && LP.pending.type === "layer") LP.pending = null; }
+  function stopAll() { perfOnStop(); LP.layers.forEach(stopLayer); LP.playing = false; SQ.sw = null; if (SONG.playing) songStop(); if (LP.pending && LP.pending.type === "layer") LP.pending = null; }
   function playAll() {
     if (!ctx || LP.t0F === null) return;
     const T = ctx.currentTime + 0.03;
     LP.t0F = Math.round(T * sr); SQ.metroF = 0; SQ.sw = null;
     LP.layers.forEach(l => { stopLayer(l); startLayer(l, T); });
     LP.playing = true;
+    perfOnPlay();
   }
   function togglePlay() { if (LP.playing) stopAll(); else playAll(); }
   function removeLayer(i, hist = true) {
@@ -2083,81 +2089,87 @@ registerProcessor('nomad-djloop',DjLoop);`;
   }, 700); });
   ["pointerup", "pointerleave", "pointercancel"].forEach(ev => $("btnClear").addEventListener(ev, () => { clearTimeout(clearTimer); $("btnClear").classList.remove("holding"); }));
 
-  // ---------- LOOPER : enregistrer le jeu des muets / solos, puis en faire une ligne de SONG ou un WAV ----------
-  // Pendant l'enregistrement, chaque coupure / solo est noté ; à l'arrêt, tout est calé sur les tours de boucle
-  // (un changement compte pour le tour le plus proche). → SONG crée une séquence par état et la ligne du morceau ;
-  // → WAV rend tout de suite le morceau joué.
-  const PERF = { rec: false, startF: 0, ev: [], seq: 0, layers: null, C: 0, take: null, t: null };
-  const perfMask = () => LP.layers.map(l => !!l.muted);
+  // ---------- LOOPER : PRISES. On arme, PLAY lance la prise (ou tout de suite si ça tourne déjà), STOP la termine.
+  // La prise retient les gestes (coupures, solos, changements de séquence) à l'instant près, sans aucun son :
+  // elle devient UNE ligne de SONG, rejouée sur les boucles telles qu'elles sont (une boucle retouchée plus tard en profite).
+  const PERF = { armed: false, rec: false, startF: 0, ev: [], t: null, n: store.get("takeN", 0), last: null };
+  const perfMask = seq => (SQ.list[seq] || []).map(l => !!l.muted);
   const perfNow = () => ctx.currentTime * sr - compF();
-  function perfMark() { if (!PERF.rec) return; const m = perfMask(), last = PERF.ev[PERF.ev.length - 1]; if (last && last.mask.join() === m.join()) return; PERF.ev.push({ F: perfNow(), mask: m }); }
-  function perfToggle() {
+  function perfMark(seq, F) {
+    if (!PERF.rec) return;
+    const s = seq === undefined ? SQ.cur : seq, m = perfMask(s), last = PERF.ev[PERF.ev.length - 1];
+    if (last && last.seq === s && last.mask.join() === m.join()) return;
+    PERF.ev.push({ t: Math.max(0, Math.round((F === undefined ? perfNow() : F) - PERF.startF)), seq: s, mask: m });
+  }
+  function perfBegin(startF) {
+    PERF.armed = false; PERF.rec = true; PERF.startF = startF;
+    PERF.ev = [{ t: 0, seq: SQ.cur, mask: perfMask(SQ.cur) }];
+    clearInterval(PERF.t); PERF.t = setInterval(drawPerf, 250); drawPerf();
+    lcd("lcdLoop", "PRISE", "enregistrement : coupe, rétablis, solo, change de séquence… STOP pour finir");
+  }
+  function perfArm() {
     if (!ctx) return;
-    if (PERF.rec) { perfStop(); return; }
-    if (!LP.playing || !LP.layers.length || LP.t0F === null) { lcd("lcdLoop", "JEU", "lance d'abord tes boucles (PLAY)"); return; }
-    const C = cycF(LP.layers), now = perfNow();
-    PERF.C = C; PERF.startF = LP.t0F + Math.round((now - LP.t0F) / C) * C; PERF.seq = SQ.cur; PERF.layers = LP.layers.slice();
-    PERF.ev = [{ F: PERF.startF, mask: perfMask() }]; PERF.rec = true;
-    PERF.t = setInterval(drawPerf, 250); drawPerf();
-    lcd("lcdLoop", "JEU", "enregistrement du jeu : coupe, rétablis, solo… puis ■ pour finir");
+    if (PERF.rec) { perfEnd(); return; }
+    if (PERF.armed) { PERF.armed = false; drawPerf(); lcd("lcdLoop", "PRISE", "prise désarmée"); return; }
+    if (LP.t0F === null) { lcd("lcdLoop", "PRISE", "enregistre d'abord une boucle"); return; }
+    if (LP.playing) {   // ça tourne déjà : la prise part tout de suite, depuis le début du tour en cours
+      const C = cycF(LP.layers), now = perfNow();
+      perfBegin(LP.t0F + Math.floor((now - LP.t0F) / C) * C);
+    } else { PERF.armed = true; drawPerf(); lcd("lcdLoop", "PRISE", "armée · choisis tes pistes de départ, puis PLAY"); }
   }
-  function perfStop() {
+  // appelé par le looper : la lecture démarre / s'arrête
+  function perfOnPlay() { if (PERF.armed && LP.t0F !== null) perfBegin(LP.t0F); }
+  function perfOnStop() { if (PERF.rec) perfEnd(); }
+  function perfEnd() {
     PERF.rec = false; clearInterval(PERF.t);
-    if (SQ.cur !== PERF.seq || LP.layers.length !== PERF.layers.length || LP.layers.some((l, i) => l !== PERF.layers[i])) { PERF.take = null; drawPerf(); lcd("lcdLoop", "JEU", "pistes changées pendant l'enregistrement : jeu abandonné"); return; }
-    const C = PERF.C, n = Math.max(1, Math.min(64, Math.round((perfNow() - PERF.startF) / C)));
-    const masks = [];
-    for (let c = 0; c < n; c++) { let m = PERF.ev[0].mask; PERF.ev.forEach(e => { if (Math.round((e.F - PERF.startF) / C) <= c) m = e.mask; }); masks.push(m); }
-    PERF.take = { masks, C, layers: PERF.layers.slice(), seq: PERF.seq };
-    const states = new Set(masks.map(m => m.join())).size;
+    const C = cycF(LP.layers) || LP.Lf, endRaw = perfNow();
+    const endF = LP.t0F + Math.max(1, Math.round((endRaw - LP.t0F) / C)) * C;   // fin calée sur le tour le plus proche
+    const len = Math.max(C, Math.round(endF - PERF.startF));
+    const ev = PERF.ev.filter(e => e.t < len);
+    PERF.n++; store.set("takeN", PERF.n);
+    const step = { s: ev[0].seq, r: 1, take: { n: PERF.n, len, ev } };
+    PERF.last = step;
+    songEdit("prise " + PERF.n + " → SONG", () => { SONG.steps.push(JSON.parse(JSON.stringify(step))); });
     drawPerf();
-    lcd("lcdLoop", "JEU", `${n} tours enregistrés · ${states} état(s) · → SONG ou → WAV`);
+    lcd("lcdLoop", "PRISE", `PRISE ${PERF.n} · ${fmtLen(len)} ajoutée dans SONG (ligne ${SONG.steps.length})`);
   }
+  const fmtLen = f => { const s = Math.round(f / sr); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
   function drawPerf() {
     const b = $("perfRec"); if (!b) return;
-    b.classList.toggle("on", PERF.rec);
-    b.textContent = PERF.rec ? `■ ARRÊTER · ${Math.max(0, Math.round((perfNow() - PERF.startF) / PERF.C))} tours` : "● ENREGISTRER LE JEU";
-    $("perfSong").disabled = $("perfWav").disabled = !PERF.take;
-    $("perfInfo").textContent = PERF.take ? `jeu : ${PERF.take.masks.length} tours, ${new Set(PERF.take.masks.map(m => m.join())).size} état(s) des pistes` : "Enregistre tes coupures et solos pendant que les boucles tournent, puis envoie-les dans SONG ou en WAV.";
+    b.classList.toggle("on", PERF.rec); b.classList.toggle("armed", PERF.armed);
+    b.textContent = PERF.rec ? `■ FIN DE PRISE · ${fmtLen(Math.max(0, perfNow() - PERF.startF))}` : PERF.armed ? "PRISE ARMÉE · PLAY POUR LANCER" : "● ARMER UNE PRISE";
+    $("perfWav").disabled = !PERF.last;
+    $("perfInfo").textContent = PERF.last ? `dernière prise : PRISE ${PERF.last.take.n} · ${fmtLen(PERF.last.take.len)} · ligne ajoutée dans SONG` : "Arme, choisis tes pistes de départ, PLAY : tout ce que tu coupes, rétablis ou mets en solo est enregistré. STOP termine : la prise devient une ligne de SONG.";
   }
-  // → SONG : une séquence (copie légère des pistes, mêmes sons) par état, et la ligne du morceau dans l'ordre joué
-  function perfToSong() {
-    const tk = PERF.take; if (!tk) return;
-    const keys = [...new Set(tk.masks.map(m => m.join()))];
-    const free = SQ.list.map((x, i) => i).filter(i => !SQ.list[i].length && i !== SQ.cur);
-    if (keys.length > free.length) { lcd("lcdPad", "JEU", `il faut ${keys.length} séquences libres, il y en a ${free.length} : efface-en ou simplifie le jeu`); return; }
-    const slot = {}, made = [];
-    keys.forEach((k, j) => {
-      const m = k.split(",").map(x => x === "true"), i = free[j];
-      const arr = tk.layers.map((l, q) => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = m[q] ? 0 : l.vol; gain.connect(loopBus); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: m[q], src: null, notes: l.notes }; });
-      slot[k] = i; made.push([i, arr]);
-    });
-    const steps = []; tk.masks.forEach(m => { const s = slot[m.join()], last = steps[steps.length - 1]; if (last && last.s === s) last.r++; else steps.push({ s, r: 1 }); });
-    const oldSteps = JSON.parse(JSON.stringify(SONG.steps));
-    const put = on => { made.forEach(([i, arr]) => { const T = SQ.list[i]; T.length = 0; if (on) arr.forEach(l => T.push(l)); }); SONG.steps = on ? JSON.parse(JSON.stringify(steps)) : JSON.parse(JSON.stringify(oldSteps)); drawSong(true); drawSeqSel(); };
-    put(true);
-    pushHist("jeu → SONG", () => put(false), () => put(true));
-    lcd("lcdPad", "JEU", `ligne SONG créée : ${steps.map(s => SEQ_N[s.s] + "×" + s.r).join(" ")} (séquences ${made.map(x => SEQ_N[x[0]]).join(", ")})`);
+  // rendu d'une prise : chaque piste suit ses coupures, avec de courts fondus ; renvoie le mix et les pistes séparées
+  function renderTake(tk, wantStems) {
+    const N = tk.len, mix = [new Float32Array(N), new Float32Array(N)], stems = {}, lb = loopBus.gain.value, a = 1 - Math.exp(-1 / (0.004 * sr));
+    const segs = []; let origin = 0;
+    tk.ev.forEach((e, i) => { if (i === 0 || e.seq !== tk.ev[i - 1].seq) origin = e.t; segs.push({ ...e, origin, end: i + 1 < tk.ev.length ? tk.ev[i + 1].t : N }); });
+    const seqs = [...new Set(tk.ev.map(e => e.seq))];
+    seqs.forEach(sq => (SQ.list[sq] || []).forEach((l, q) => {
+      const name = SEQ_N[sq] + "_piste" + (q + 1), out = wantStems ? [new Float32Array(N), new Float32Array(N)] : null, LkL = l.k * LP.Lf, off = l.m * LP.Lf;
+      let g = 0;
+      segs.forEach(sg => {
+        const tgt = sg.seq === sq && !(sg.mask[q] || false) ? l.vol * lb : 0;
+        for (let t = sg.t; t < sg.end; t++) {
+          g += (tgt - g) * a; if (g < 1e-5 && tgt === 0) { g = 0; continue; }
+          const p = ((((t - sg.origin - off) % LkL) + LkL) % LkL);
+          for (let c = 0; c < 2; c++) { const v = (l.buf.getChannelData(Math.min(c, l.buf.numberOfChannels - 1))[p] || 0) * g; mix[c][t] += v; if (out) out[c][t] = v; }
+        }
+      });
+      if (out) stems[name] = out;
+    }));
+    return { mix, stems };
   }
-  // → WAV : le jeu rendu tel quel, avec de courts fondus aux changements, puis le mastering choisi dans SONG
   async function perfToWav() {
-    const tk = PERF.take; if (!tk) return;
-    const st = loopStems(tk.layers, false); if (!st) return;
-    const C = st.L, n = tk.masks.length, N = C * n;
-    if (N > sr * 60 * 12) { lcd("lcdPad", "JEU", "trop long (12 min max)"); return; }
-    const out = [new Float32Array(N), new Float32Array(N)], F = Math.round(0.004 * sr), lb = loopBus.gain.value;
-    tk.layers.forEach((l, q) => {
-      for (let c = 0; c < n; c++) {
-        if (tk.masks[c][q]) continue;
-        const fin = c > 0 && tk.masks[c - 1][q], fout = c < n - 1 && tk.masks[c + 1][q];
-        for (let ch = 0; ch < 2; ch++) { const s = st.stems[q][ch], o = out[ch]; for (let j = 0; j < C; j++) { let g = lb; if (fin && j < F) g *= j / F; if (fout && j > C - F) g *= (C - j) / F; o[c * C + j] += s[j] * g; } }
-      }
-    });
-    normalize(out);
-    const m = await masterMix(out);
-    deliver(wavBlob(m, sr), `nomad16-jeu-${Math.round(curBpm())}bpm${MASTER.char !== "none" ? "-master-" + MASTER.char : ""}-${stamp()}.wav`);
+    const st = PERF.last; if (!st || !LP.Lf) return;
+    if (st.take.len > sr * 60 * 12) { lcd("lcdPad", "PRISE", "trop long (12 min max)"); return; }
+    const r = renderTake(st.take, false); normalize(r.mix);
+    const m = await masterMix(r.mix);
+    deliver(wavBlob(m, sr), `nomad16-prise${st.take.n}-${Math.round(curBpm())}bpm${MASTER.char !== "none" ? "-master-" + MASTER.char : ""}-${stamp()}.wav`);
   }
-  $("perfRec").addEventListener("click", perfToggle);
-  $("perfSong").addEventListener("click", perfToSong);
+  $("perfRec").addEventListener("click", perfArm);
   $("perfWav").addEventListener("click", perfToWav);
   drawPerf();
   // ---------- Dessin des boucles ----------
@@ -4895,28 +4907,49 @@ registerProcessor('nomad-djloop',DjLoop);`;
   // ---------- SONG : enchaînement des séquences ----------
   const SONG = { steps: [{ s: 0, r: 2 }], playing: false, idx: 0, loop: false, stepT0: 0, endT: null };
   const SEQ_N = "ABCDEFGH";
+  // durée d'une ligne : prise = sa longueur ; séquence = répétitions × cycle
+  const stepDur = st => st.take ? st.take.len : st.r * cycF(SQ.list[st.s]);
+  // prise : applique un état des pistes (et la séquence) à l'instant F
+  function takeApply(e, F) {
+    const ls = SQ.list[e.seq] || [], T = Math.max(F / sr, ctx.currentTime);
+    ls.forEach((l, q) => { const m = !!e.mask[q]; l.muted = m; if (e.seq === SQ.cur) { l.gain.gain.cancelScheduledValues(T); l.gain.gain.setTargetAtTime(m ? 0 : l.vol, T, 0.004); } });
+    if (e.seq !== SQ.cur) SQ.sw = { i: e.seq, bF: Math.round(F) };
+  }
+  function takeTick() {
+    const st = SONG.steps[SONG.idx]; if (!st || !st.take || SQ.sw) return;
+    const ev = st.take.ev, nowF = ctx.currentTime * sr;
+    while (SONG.tkI < ev.length && SONG.stepT0 + ev[SONG.tkI].t <= nowF + 0.14 * sr) { const e = ev[SONG.tkI++]; takeApply(e, SONG.stepT0 + e.t); if (SQ.sw) break; }
+  }
   function songPlay() {
     if (!ctx) return;
     if (LP.t0F === null) { lcd("lcdPad", "SONG", "enregistrez d'abord une boucle au LOOPER"); return; }
     if (!SONG.steps.length) return;
     SONG.idx = 0; SONG.endT = null;
-    switchNow(SONG.steps[0].s);
+    const s0 = SONG.steps[0];
+    if (s0.take) s0.take.ev[0].mask.forEach((m, q) => { const l = SQ.list[s0.s][q]; if (l) l.muted = !!m; });
+    else if (SONG.steps.some(x => x.take)) SQ.list[s0.s].forEach(l => { l.muted = false; });
+    switchNow(s0.s);
     playAll();
-    SONG.stepT0 = LP.t0F; SONG.playing = true; drawSong(true);
+    SONG.stepT0 = LP.t0F; SONG.tkI = 0; SONG.playing = true; drawSong(true);
   }
   function songStop() { if (!SONG.playing) return; SONG.playing = false; clearTimeout(SONG.endT); SONG.endT = null; SQ.next = -1; SQ.sw = null; drawSong(true); drawSeqSel(); }
   function songTick() {
-    if (!SONG.playing || !LP.playing || SQ.sw || LP.t0F === null) return;
+    if (!SONG.playing || !LP.playing || LP.t0F === null) return;
+    takeTick();
+    if (SQ.sw) return;
     const st = SONG.steps[SONG.idx]; if (!st) { songStop(); return; }
-    const endF = SONG.stepT0 + st.r * cycF(LP.layers), nowF = ctx.currentTime * sr;
+    const endF = SONG.stepT0 + (st.take ? st.take.len : st.r * cycF(LP.layers)), nowF = ctx.currentTime * sr;
     if (nowF < endF - 0.15 * sr) return;
     let idx = SONG.idx + 1;
     if (idx >= SONG.steps.length) {
       if (!SONG.loop) { const T = endF / sr; LP.layers.forEach(l => { if (l.src) { try { l.src.stop(T); } catch (e) {} } }); SONG.playing = false; SONG.endT = setTimeout(() => { stopAll(); drawSong(true); }, Math.max(0, (T - ctx.currentTime) * 1000)); drawSong(true); return; }
       idx = 0;
     }
-    SONG.idx = idx; SONG.stepT0 = endF;
-    const nx = SONG.steps[idx].s;
+    SONG.idx = idx; SONG.stepT0 = endF; SONG.tkI = 0;
+    const nst = SONG.steps[idx], nx = nst.s;
+    // une ligne de séquence classique rejoue toutes ses pistes ; une prise part de son premier état
+    if (nst.take) { SONG.tkI = 1; const e0 = nst.take.ev[0]; (SQ.list[nx] || []).forEach((l, q) => { l.muted = !!e0.mask[q]; if (nx === SQ.cur) l.gain.gain.setTargetAtTime(l.muted ? 0 : l.vol, endF / sr, 0.004); }); }
+    else if (SONG.steps[SONG.idx - 1 < 0 ? SONG.steps.length - 1 : SONG.idx - 1] && SONG.steps[SONG.idx - 1 < 0 ? SONG.steps.length - 1 : SONG.idx - 1].take) (SQ.list[nx] || []).forEach(l => { l.muted = false; if (nx === SQ.cur) l.gain.gain.setTargetAtTime(l.vol, endF / sr, 0.004); });
     if (nx !== SQ.cur) SQ.sw = { i: nx, bF: endF };
     drawSong(true);
   }
@@ -4924,7 +4957,7 @@ registerProcessor('nomad-djloop',DjLoop);`;
   let songKey = "";
   function drawSong(force) {
     const list = $("songList");
-    const prog = SONG.playing && LP.t0F !== null ? (() => { const st = SONG.steps[SONG.idx], C = cycF(LP.layers); const el = Math.max(0, ctx.currentTime * sr - SONG.stepT0); return { rep: Math.min(st.r, Math.floor(el / C) + 1), f: (el % C) / C }; })() : null;
+    const prog = SONG.playing && LP.t0F !== null ? (() => { const st = SONG.steps[SONG.idx], C = cycF(LP.layers); const el = Math.max(0, ctx.currentTime * sr - SONG.stepT0); if (st.take) return { rep: 1, f: Math.min(1, el / st.take.len) }; return { rep: Math.min(st.r, Math.floor(el / C) + 1), f: (el % C) / C }; })() : null;
     const key = JSON.stringify([SONG.steps, SONG.playing, SONG.idx, SONG.loop, prog && prog.rep, SQ.list.map(x => x.length)]);
     if (force || key !== songKey) {
       songKey = key;
@@ -4933,17 +4966,23 @@ registerProcessor('nomad-djloop',DjLoop);`;
       SONG.steps.forEach((st, i) => {
         const row = document.createElement("div"); row.className = "songrow" + (SONG.playing && i === SONG.idx ? " on" : "");
         const bars = n => { const L = SQ.list[n]; if (!L.length || !LP.Lf) return "vide"; return Math.round(cycF(L) / LP.Lf * LP.beats / 4 * 10) / 10 + " m"; };
+        if (st.take) {
+          const n = st.take.ev.length - 1, seqs = [...new Set(st.take.ev.map(e => SEQ_N[e.seq]))].join("→");
+          row.classList.add("take");
+          row.innerHTML = `<span class="sn">${i + 1}</span><span class="tk"><b>PRISE ${st.take.n}</b> · ${fmtLen(st.take.len)} · séquence ${seqs} · ${n} geste${n > 1 ? "s" : ""}</span>
+            <button type="button" data-a="u" aria-label="Monter">▲</button><button type="button" data-a="go" aria-label="Lancer depuis cette partie">▶</button><button type="button" data-a="x" aria-label="Supprimer">✕</button><i class="bar"></i>`;
+        } else
         row.innerHTML = `<span class="sn">${i + 1}</span><select aria-label="Séquence de la partie ${i + 1}">${[...SEQ_N].map((c, n) => `<option value="${n}"${n === st.s ? " selected" : ""}>${c} · ${bars(n)}</option>`).join("")}</select>
           <button type="button" data-a="m" aria-label="Moins de répétitions">−</button><span class="rp">×${st.r}${SONG.playing && i === SONG.idx && prog ? `<small>${prog.rep}/${st.r}</small>` : ""}</span><button type="button" data-a="p" aria-label="Plus de répétitions">+</button>
           <button type="button" data-a="u" aria-label="Monter">▲</button><button type="button" data-a="go" aria-label="Lancer depuis cette partie">▶</button><button type="button" data-a="x" aria-label="Supprimer">✕</button><i class="bar"></i>`;
-        row.querySelector("select").addEventListener("change", e => songEdit("séquence de la partie", () => { st.s = +e.target.value; }));
+        if (!st.take) row.querySelector("select").addEventListener("change", e => songEdit("séquence de la partie", () => { st.s = +e.target.value; }));
         row.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
           const a = b.dataset.a;
           if (a === "m") songEdit("répétitions", () => { st.r = Math.max(1, st.r - 1); });
           if (a === "p") songEdit("répétitions", () => { st.r = Math.min(64, st.r + 1); });
           if (a === "u" && i > 0) songEdit("ordre des parties", () => { SONG.steps.splice(i - 1, 0, SONG.steps.splice(i, 1)[0]); if (SONG.playing && SONG.idx === i) SONG.idx--; });
           if (a === "x") songEdit("supprimer une partie", () => { SONG.steps.splice(i, 1); if (SONG.idx >= SONG.steps.length) SONG.idx = 0; });
-          if (a === "go") { songPlay(); if (SONG.playing && i) { SONG.idx = i; switchNow(SONG.steps[i].s); playAll(); SONG.stepT0 = LP.t0F; drawSong(true); } }
+          if (a === "go") { songPlay(); if (SONG.playing && i) { const s2 = SONG.steps[i]; SONG.idx = i; if (s2.take) s2.take.ev[0].mask.forEach((m, q) => { const l = SQ.list[s2.s][q]; if (l) l.muted = !!m; }); switchNow(s2.s); playAll(); SONG.stepT0 = LP.t0F; SONG.tkI = s2.take ? 1 : 0; drawSong(true); } }
         }));
         list.appendChild(row);
       });
@@ -4951,7 +4990,7 @@ registerProcessor('nomad-djloop',DjLoop);`;
       $("songPlay").classList.toggle("on", SONG.playing);
       $("songLoop").textContent = "BOUCLER : " + (SONG.loop ? "OUI" : "NON");
       $("songLoop").classList.toggle("on", SONG.loop);
-      const tot = SONG.steps.reduce((a, st) => a + (LP.Lf ? st.r * cycF(SQ.list[st.s]) / sr : 0), 0);
+      const tot = SONG.steps.reduce((a, st) => a + (LP.Lf ? stepDur(st) / sr : 0), 0);
       $("songInfo").textContent = LP.Lf ? `${SONG.steps.length} partie(s) · ${Math.floor(tot / 60)} min ${String(Math.round(tot % 60)).padStart(2, "0")} s · ${curBpm().toFixed(1).replace(/\.0$/, "")} BPM` : "tempo défini par la première boucle du LOOPER";
     }
     const on = list.querySelector(".songrow.on .bar"); if (on && prog) on.style.width = (prog.f * 100) + "%";
@@ -5474,10 +5513,15 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (!SONG.steps.length || !LP.Lf) return null;
     const mixes = SQ.list.map(x => x.length ? loopStems(x, false) : null);
     const lenOf = st => mixes[st.s] ? mixes[st.s].L : LP.Lf;
-    const N = SONG.steps.reduce((a, st) => a + st.r * lenOf(st), 0);
+    const N = SONG.steps.reduce((a, st) => a + (st.take ? st.take.len : st.r * lenOf(st)), 0);
     if (N > sr * 60 * 12) return null;
     const out = [new Float32Array(N), new Float32Array(N)]; let o = 0;
-    SONG.steps.forEach(st => { const m = mixes[st.s], L = lenOf(st); for (let r = 0; r < st.r; r++) { if (m) { out[0].set(m.mix[0], o); out[1].set(m.mix[1], o); } o += L; } });
+    SONG.steps.forEach(st => {
+      if (st.take) { const r = renderTake(st.take, false); out[0].set(r.mix[0], o); out[1].set(r.mix[1], o); o += st.take.len; return; }
+      // une ligne de séquence joue toutes ses pistes
+      const m = SQ.list[st.s].length ? loopStems(SQ.list[st.s].map(l => ({ ...l, muted: false })), false) : null, L = lenOf(st);
+      for (let r = 0; r < st.r; r++) { if (m) { out[0].set(m.mix[0], o); out[1].set(m.mix[1], o); } o += L; }
+    });
     normalize(out);
     return out;
   }
@@ -5545,7 +5589,14 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       if (seqDone.length) {
         btn.textContent = "MORCEAU…"; await new Promise(r => setTimeout(r, 0));
         const sm = songMix();
-        if (sm) { files.push({ name: `${root}/NOMAD16_Morceau_${bpm}bpm.wav`, data: wav24(sm, sr) }); songTxt = `NOMAD16_Morceau_${bpm}bpm.wav : le morceau complet, dans l'ordre de l'onglet SONG :\r\n` + SONG.steps.map((st, i) => `  ${i + 1}. séquence ${SEQ_N[st.s]} x${st.r}`).join("\r\n") + "\r\n"; }
+        if (sm) { files.push({ name: `${root}/NOMAD16_Morceau_${bpm}bpm.wav`, data: wav24(sm, sr) }); songTxt = `NOMAD16_Morceau_${bpm}bpm.wav : le morceau complet, dans l'ordre de l'onglet SONG :\r\n` + SONG.steps.map((st, i) => st.take ? `  ${i + 1}. PRISE ${st.take.n} (${fmtLen(st.take.len)}) : pistes séparées dans Prise_${st.take.n}` : `  ${i + 1}. séquence ${SEQ_N[st.s]} x${st.r}`).join("\r\n") + "\r\n"; }
+        // prises : chaque piste rendue avec ses coupures, sur toute la durée de la prise
+        for (const st of SONG.steps.filter(x => x.take)) {
+          btn.textContent = "PRISE " + st.take.n + "…"; await new Promise(r => setTimeout(r, 0));
+          const r = renderTake(st.take, true);
+          Object.entries(r.stems).forEach(([nm, chs]) => files.push({ name: `${root}/Prise_${st.take.n}/NOMAD16_Prise${st.take.n}_${nm}.wav`, data: wav24(chs, sr) }));
+          normalize(r.mix); files.push({ name: `${root}/Prise_${st.take.n}/NOMAD16_Prise${st.take.n}_mix.wav`, data: wav24(r.mix, sr) });
+        }
       }
       files.push({ name: `${root}/LISEZMOI.txt`, data: `NOMAD-16 - export du ${new Date().toLocaleString("fr-FR")}\r\nTempo : ${bpm} BPM\r\n\r\nKit_${kitN} : les 16 sons (WAV 24 bits, 44,1/48 kHz) et le programme de batterie NOMAD16_${kitN}.xpm.\r\n  Pad 1 de l'Akai = pad A01 de la MPC. Tune, pan, niveau et groupes de mute sont repris dans le programme.\r\n  Filtre, saleté, attaque, decay, reverse et découpe sont déjà appliqués aux WAV. L'écho n'est pas inclus.\r\n` + (seqDone.length ? `Sequence_X : pour chaque séquence du looper (${seqDone.join(", ")}), une piste WAV par couche, toutes de la même longueur et calées au début, plus le mix.\r\n  Le programme .xpm de chaque dossier met les pistes sur les pads A01 à A06 et le mix sur A07.\r\n` : "") + (midiDone ? `  _notes.mid : les notes jouées pendant l'enregistrement de chaque piste (une piste MIDI par couche). Pads sur le canal 10, avec les notes des pads de la MPC (pad 1 = A01) : à jouer avec le programme du kit. Clavier sur le canal 1.\r\n` : "") + songTxt + `\r\nSur la MPC : copiez le dossier sur une carte SD ou une clé USB, ouvrez le .xpm depuis le navigateur de la MPC.\r\nGardez chaque .xpm dans le même dossier que ses WAV.\r\n` });
       const zip = makeZip(files);
@@ -6612,7 +6663,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   initMidi();
   try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi) { $("btBox").hidden = false; $("btPair").addEventListener("click", () => window.webkit.messageHandlers.nomadMidi.postMessage({ type: "btpair" })); } } catch (e) {}
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
-  window.nomadDbg = { loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
+  window.nomadDbg = { song: SONG, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
   let probe = null;
   window.nomadProbe = () => { if (!probe) { probe = ctx.createAnalyser(); probe.fftSize = 2048; fxMaster.connect(probe); } const a = new Float32Array(2048); probe.getFloatTimeDomainData(a); let m = 0; for (const v of a) m = Math.max(m, Math.abs(v)); return +m.toFixed(3); };
   window.nomadState = () => ({ kit: kitCur, kits: kitIndex.length, bufs: buffers.filter(Boolean).length, names: names.slice(0, 4), t0F: LP.t0F, Lf: LP.Lf, layers: LP.layers.map(l => ({ k: l.k, m: l.m })), pending: LP.pending && { ...LP.pending }, latMs, guitar: { amp: G.amp, preset: G.preset, fx: [...G.fx], on: G.on }, cap: capLatest, now: ctx && ctx.currentTime });

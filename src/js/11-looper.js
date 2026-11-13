@@ -11,6 +11,7 @@
   function switchNow(i) {
     LP.layers.forEach(stopLayer);
     SQ.cur = i; LP.layers = SQ.list[i]; SQ.next = -1; SQ.sw = null;
+    perfMark(i);
     routeFx(); LP.layers.forEach(l => l.gain.gain.setValueAtTime(l.muted ? 0 : l.vol, ctx.currentTime));
     syncLoopKnobs(); drawSeqSel();
   }
@@ -19,6 +20,7 @@
     const T = Math.max(bF / sr, ctx.currentTime + 0.005);
     LP.layers.forEach(l => { if (l.src) { try { l.src.stop(T); } catch (e) {} l.src = null; } });
     SQ.cur = i; LP.layers = SQ.list[i]; LP.t0F = bF; SQ.sw = null; SQ.next = -1;
+    perfMark(i, bF);
     routeFx();
     LP.layers.forEach(l => { l.gain.gain.setValueAtTime(l.muted ? 0 : l.vol, ctx.currentTime); startLayer(l, T); });
     syncLoopKnobs(); drawSeqSel();
@@ -197,13 +199,14 @@
     l.src = src;
   }
   function stopLayer(l) { if (l.src) { try { l.src.stop(); } catch (e) {} l.src.disconnect(); l.src = null; } }
-  function stopAll() { LP.layers.forEach(stopLayer); LP.playing = false; SQ.sw = null; if (SONG.playing) songStop(); if (LP.pending && LP.pending.type === "layer") LP.pending = null; }
+  function stopAll() { perfOnStop(); LP.layers.forEach(stopLayer); LP.playing = false; SQ.sw = null; if (SONG.playing) songStop(); if (LP.pending && LP.pending.type === "layer") LP.pending = null; }
   function playAll() {
     if (!ctx || LP.t0F === null) return;
     const T = ctx.currentTime + 0.03;
     LP.t0F = Math.round(T * sr); SQ.metroF = 0; SQ.sw = null;
     LP.layers.forEach(l => { stopLayer(l); startLayer(l, T); });
     LP.playing = true;
+    perfOnPlay();
   }
   function togglePlay() { if (LP.playing) stopAll(); else playAll(); }
   function removeLayer(i, hist = true) {

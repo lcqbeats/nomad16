@@ -1,77 +1,83 @@
-  // ---------- LOOPER : enregistrer le jeu des muets / solos, puis en faire une ligne de SONG ou un WAV ----------
-  // Pendant l'enregistrement, chaque coupure / solo est noté ; à l'arrêt, tout est calé sur les tours de boucle
-  // (un changement compte pour le tour le plus proche). → SONG crée une séquence par état et la ligne du morceau ;
-  // → WAV rend tout de suite le morceau joué.
-  const PERF = { rec: false, startF: 0, ev: [], seq: 0, layers: null, C: 0, take: null, t: null };
-  const perfMask = () => LP.layers.map(l => !!l.muted);
+  // ---------- LOOPER : PRISES. On arme, PLAY lance la prise (ou tout de suite si ça tourne déjà), STOP la termine.
+  // La prise retient les gestes (coupures, solos, changements de séquence) à l'instant près, sans aucun son :
+  // elle devient UNE ligne de SONG, rejouée sur les boucles telles qu'elles sont (une boucle retouchée plus tard en profite).
+  const PERF = { armed: false, rec: false, startF: 0, ev: [], t: null, n: store.get("takeN", 0), last: null };
+  const perfMask = seq => (SQ.list[seq] || []).map(l => !!l.muted);
   const perfNow = () => ctx.currentTime * sr - compF();
-  function perfMark() { if (!PERF.rec) return; const m = perfMask(), last = PERF.ev[PERF.ev.length - 1]; if (last && last.mask.join() === m.join()) return; PERF.ev.push({ F: perfNow(), mask: m }); }
-  function perfToggle() {
+  function perfMark(seq, F) {
+    if (!PERF.rec) return;
+    const s = seq === undefined ? SQ.cur : seq, m = perfMask(s), last = PERF.ev[PERF.ev.length - 1];
+    if (last && last.seq === s && last.mask.join() === m.join()) return;
+    PERF.ev.push({ t: Math.max(0, Math.round((F === undefined ? perfNow() : F) - PERF.startF)), seq: s, mask: m });
+  }
+  function perfBegin(startF) {
+    PERF.armed = false; PERF.rec = true; PERF.startF = startF;
+    PERF.ev = [{ t: 0, seq: SQ.cur, mask: perfMask(SQ.cur) }];
+    clearInterval(PERF.t); PERF.t = setInterval(drawPerf, 250); drawPerf();
+    lcd("lcdLoop", "PRISE", "enregistrement : coupe, rétablis, solo, change de séquence… STOP pour finir");
+  }
+  function perfArm() {
     if (!ctx) return;
-    if (PERF.rec) { perfStop(); return; }
-    if (!LP.playing || !LP.layers.length || LP.t0F === null) { lcd("lcdLoop", "JEU", "lance d'abord tes boucles (PLAY)"); return; }
-    const C = cycF(LP.layers), now = perfNow();
-    PERF.C = C; PERF.startF = LP.t0F + Math.round((now - LP.t0F) / C) * C; PERF.seq = SQ.cur; PERF.layers = LP.layers.slice();
-    PERF.ev = [{ F: PERF.startF, mask: perfMask() }]; PERF.rec = true;
-    PERF.t = setInterval(drawPerf, 250); drawPerf();
-    lcd("lcdLoop", "JEU", "enregistrement du jeu : coupe, rétablis, solo… puis ■ pour finir");
+    if (PERF.rec) { perfEnd(); return; }
+    if (PERF.armed) { PERF.armed = false; drawPerf(); lcd("lcdLoop", "PRISE", "prise désarmée"); return; }
+    if (LP.t0F === null) { lcd("lcdLoop", "PRISE", "enregistre d'abord une boucle"); return; }
+    if (LP.playing) {   // ça tourne déjà : la prise part tout de suite, depuis le début du tour en cours
+      const C = cycF(LP.layers), now = perfNow();
+      perfBegin(LP.t0F + Math.floor((now - LP.t0F) / C) * C);
+    } else { PERF.armed = true; drawPerf(); lcd("lcdLoop", "PRISE", "armée · choisis tes pistes de départ, puis PLAY"); }
   }
-  function perfStop() {
+  // appelé par le looper : la lecture démarre / s'arrête
+  function perfOnPlay() { if (PERF.armed && LP.t0F !== null) perfBegin(LP.t0F); }
+  function perfOnStop() { if (PERF.rec) perfEnd(); }
+  function perfEnd() {
     PERF.rec = false; clearInterval(PERF.t);
-    if (SQ.cur !== PERF.seq || LP.layers.length !== PERF.layers.length || LP.layers.some((l, i) => l !== PERF.layers[i])) { PERF.take = null; drawPerf(); lcd("lcdLoop", "JEU", "pistes changées pendant l'enregistrement : jeu abandonné"); return; }
-    const C = PERF.C, n = Math.max(1, Math.min(64, Math.round((perfNow() - PERF.startF) / C)));
-    const masks = [];
-    for (let c = 0; c < n; c++) { let m = PERF.ev[0].mask; PERF.ev.forEach(e => { if (Math.round((e.F - PERF.startF) / C) <= c) m = e.mask; }); masks.push(m); }
-    PERF.take = { masks, C, layers: PERF.layers.slice(), seq: PERF.seq };
-    const states = new Set(masks.map(m => m.join())).size;
+    const C = cycF(LP.layers) || LP.Lf, endRaw = perfNow();
+    const endF = LP.t0F + Math.max(1, Math.round((endRaw - LP.t0F) / C)) * C;   // fin calée sur le tour le plus proche
+    const len = Math.max(C, Math.round(endF - PERF.startF));
+    const ev = PERF.ev.filter(e => e.t < len);
+    PERF.n++; store.set("takeN", PERF.n);
+    const step = { s: ev[0].seq, r: 1, take: { n: PERF.n, len, ev } };
+    PERF.last = step;
+    songEdit("prise " + PERF.n + " → SONG", () => { SONG.steps.push(JSON.parse(JSON.stringify(step))); });
     drawPerf();
-    lcd("lcdLoop", "JEU", `${n} tours enregistrés · ${states} état(s) · → SONG ou → WAV`);
+    lcd("lcdLoop", "PRISE", `PRISE ${PERF.n} · ${fmtLen(len)} ajoutée dans SONG (ligne ${SONG.steps.length})`);
   }
+  const fmtLen = f => { const s = Math.round(f / sr); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
   function drawPerf() {
     const b = $("perfRec"); if (!b) return;
-    b.classList.toggle("on", PERF.rec);
-    b.textContent = PERF.rec ? `■ ARRÊTER · ${Math.max(0, Math.round((perfNow() - PERF.startF) / PERF.C))} tours` : "● ENREGISTRER LE JEU";
-    $("perfSong").disabled = $("perfWav").disabled = !PERF.take;
-    $("perfInfo").textContent = PERF.take ? `jeu : ${PERF.take.masks.length} tours, ${new Set(PERF.take.masks.map(m => m.join())).size} état(s) des pistes` : "Enregistre tes coupures et solos pendant que les boucles tournent, puis envoie-les dans SONG ou en WAV.";
+    b.classList.toggle("on", PERF.rec); b.classList.toggle("armed", PERF.armed);
+    b.textContent = PERF.rec ? `■ FIN DE PRISE · ${fmtLen(Math.max(0, perfNow() - PERF.startF))}` : PERF.armed ? "PRISE ARMÉE · PLAY POUR LANCER" : "● ARMER UNE PRISE";
+    $("perfWav").disabled = !PERF.last;
+    $("perfInfo").textContent = PERF.last ? `dernière prise : PRISE ${PERF.last.take.n} · ${fmtLen(PERF.last.take.len)} · ligne ajoutée dans SONG` : "Arme, choisis tes pistes de départ, PLAY : tout ce que tu coupes, rétablis ou mets en solo est enregistré. STOP termine : la prise devient une ligne de SONG.";
   }
-  // → SONG : une séquence (copie légère des pistes, mêmes sons) par état, et la ligne du morceau dans l'ordre joué
-  function perfToSong() {
-    const tk = PERF.take; if (!tk) return;
-    const keys = [...new Set(tk.masks.map(m => m.join()))];
-    const free = SQ.list.map((x, i) => i).filter(i => !SQ.list[i].length && i !== SQ.cur);
-    if (keys.length > free.length) { lcd("lcdPad", "JEU", `il faut ${keys.length} séquences libres, il y en a ${free.length} : efface-en ou simplifie le jeu`); return; }
-    const slot = {}, made = [];
-    keys.forEach((k, j) => {
-      const m = k.split(",").map(x => x === "true"), i = free[j];
-      const arr = tk.layers.map((l, q) => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = m[q] ? 0 : l.vol; gain.connect(loopBus); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: m[q], src: null, notes: l.notes }; });
-      slot[k] = i; made.push([i, arr]);
-    });
-    const steps = []; tk.masks.forEach(m => { const s = slot[m.join()], last = steps[steps.length - 1]; if (last && last.s === s) last.r++; else steps.push({ s, r: 1 }); });
-    const oldSteps = JSON.parse(JSON.stringify(SONG.steps));
-    const put = on => { made.forEach(([i, arr]) => { const T = SQ.list[i]; T.length = 0; if (on) arr.forEach(l => T.push(l)); }); SONG.steps = on ? JSON.parse(JSON.stringify(steps)) : JSON.parse(JSON.stringify(oldSteps)); drawSong(true); drawSeqSel(); };
-    put(true);
-    pushHist("jeu → SONG", () => put(false), () => put(true));
-    lcd("lcdPad", "JEU", `ligne SONG créée : ${steps.map(s => SEQ_N[s.s] + "×" + s.r).join(" ")} (séquences ${made.map(x => SEQ_N[x[0]]).join(", ")})`);
+  // rendu d'une prise : chaque piste suit ses coupures, avec de courts fondus ; renvoie le mix et les pistes séparées
+  function renderTake(tk, wantStems) {
+    const N = tk.len, mix = [new Float32Array(N), new Float32Array(N)], stems = {}, lb = loopBus.gain.value, a = 1 - Math.exp(-1 / (0.004 * sr));
+    const segs = []; let origin = 0;
+    tk.ev.forEach((e, i) => { if (i === 0 || e.seq !== tk.ev[i - 1].seq) origin = e.t; segs.push({ ...e, origin, end: i + 1 < tk.ev.length ? tk.ev[i + 1].t : N }); });
+    const seqs = [...new Set(tk.ev.map(e => e.seq))];
+    seqs.forEach(sq => (SQ.list[sq] || []).forEach((l, q) => {
+      const name = SEQ_N[sq] + "_piste" + (q + 1), out = wantStems ? [new Float32Array(N), new Float32Array(N)] : null, LkL = l.k * LP.Lf, off = l.m * LP.Lf;
+      let g = 0;
+      segs.forEach(sg => {
+        const tgt = sg.seq === sq && !(sg.mask[q] || false) ? l.vol * lb : 0;
+        for (let t = sg.t; t < sg.end; t++) {
+          g += (tgt - g) * a; if (g < 1e-5 && tgt === 0) { g = 0; continue; }
+          const p = ((((t - sg.origin - off) % LkL) + LkL) % LkL);
+          for (let c = 0; c < 2; c++) { const v = (l.buf.getChannelData(Math.min(c, l.buf.numberOfChannels - 1))[p] || 0) * g; mix[c][t] += v; if (out) out[c][t] = v; }
+        }
+      });
+      if (out) stems[name] = out;
+    }));
+    return { mix, stems };
   }
-  // → WAV : le jeu rendu tel quel, avec de courts fondus aux changements, puis le mastering choisi dans SONG
   async function perfToWav() {
-    const tk = PERF.take; if (!tk) return;
-    const st = loopStems(tk.layers, false); if (!st) return;
-    const C = st.L, n = tk.masks.length, N = C * n;
-    if (N > sr * 60 * 12) { lcd("lcdPad", "JEU", "trop long (12 min max)"); return; }
-    const out = [new Float32Array(N), new Float32Array(N)], F = Math.round(0.004 * sr), lb = loopBus.gain.value;
-    tk.layers.forEach((l, q) => {
-      for (let c = 0; c < n; c++) {
-        if (tk.masks[c][q]) continue;
-        const fin = c > 0 && tk.masks[c - 1][q], fout = c < n - 1 && tk.masks[c + 1][q];
-        for (let ch = 0; ch < 2; ch++) { const s = st.stems[q][ch], o = out[ch]; for (let j = 0; j < C; j++) { let g = lb; if (fin && j < F) g *= j / F; if (fout && j > C - F) g *= (C - j) / F; o[c * C + j] += s[j] * g; } }
-      }
-    });
-    normalize(out);
-    const m = await masterMix(out);
-    deliver(wavBlob(m, sr), `nomad16-jeu-${Math.round(curBpm())}bpm${MASTER.char !== "none" ? "-master-" + MASTER.char : ""}-${stamp()}.wav`);
+    const st = PERF.last; if (!st || !LP.Lf) return;
+    if (st.take.len > sr * 60 * 12) { lcd("lcdPad", "PRISE", "trop long (12 min max)"); return; }
+    const r = renderTake(st.take, false); normalize(r.mix);
+    const m = await masterMix(r.mix);
+    deliver(wavBlob(m, sr), `nomad16-prise${st.take.n}-${Math.round(curBpm())}bpm${MASTER.char !== "none" ? "-master-" + MASTER.char : ""}-${stamp()}.wav`);
   }
-  $("perfRec").addEventListener("click", perfToggle);
-  $("perfSong").addEventListener("click", perfToSong);
+  $("perfRec").addEventListener("click", perfArm);
   $("perfWav").addEventListener("click", perfToWav);
   drawPerf();

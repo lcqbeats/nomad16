@@ -701,28 +701,40 @@ def test_doubler_aligne_les_autres_pistes(app):
     assert app.evaluate("nomadDbg.LP.layers.map(l => l.k)") == [1, 1]
 
 
-def test_jeu_du_looper_vers_song(app):
+def test_prise_du_looper_vers_song(app):
     fake_loop(app, 0.4)
     for i in range(3):
         app.evaluate(f"nomadDbg.addLayer(nomadDbg.buffers[{i}], 1, 0)")
     app.click("#tab-loops")
-    app.wait_for_timeout(60)
+    app.click("#btnPlay")                            # stop
+    assert app.evaluate("nomadDbg.LP.playing") is False
+    app.evaluate("nomadMidi([0x99, 37, 100])")       # pad 2 : piste 5 inexistante, sans effet ; pad 6 : piste 2 coupée au départ
+    app.evaluate("nomadMidi([0x99, 41, 100])")
     app.click("#perfRec")
-    assert "ARRÊTER" in app.inner_text("#perfRec")
-    app.wait_for_timeout(800)
-    app.evaluate("nomadMidi([0x99, 40, 100])")       # pad 5 : piste 1 muette
-    app.wait_for_timeout(800)
-    app.evaluate("nomadMidi([0x99, 49, 100])")       # pad 14 : solo piste 2
-    app.wait_for_timeout(800)
-    app.click("#perfRec")
-    assert "3 état" in app.inner_text("#perfInfo")
-    app.click("#perfSong")
-    txt = app.inner_text("#lcdPad")
-    assert "ligne SONG créée" in txt, txt
-    app.click("#undoBtn")
+    assert "ARMÉE" in app.inner_text("#perfRec")
+    app.click("#btnPlay")                            # PLAY lance la prise
+    assert "FIN DE PRISE" in app.inner_text("#perfRec")
+    app.wait_for_timeout(700)
+    app.evaluate("nomadMidi([0x99, 40, 100])")       # pad 5 : piste 1 coupée
+    app.wait_for_timeout(700)
+    app.evaluate("nomadMidi([0x99, 41, 100])")       # piste 2 revient
+    app.wait_for_timeout(500)
+    app.click("#btnPlay")                            # STOP termine la prise
+    st = app.evaluate("nomadDbg.song.steps[nomadDbg.song.steps.length - 1]")
+    assert st["take"] and st["take"]["ev"][0]["mask"][:2] == [False, True] and len(st["take"]["ev"]) == 3, st
+    assert st["take"]["len"] % app.evaluate("nomadDbg.LP.Lf") == 0
+    app.click("#tab-song")
+    assert "PRISE" in app.inner_text("#songList")
+    # rejouer la prise depuis SONG : la piste 2 part coupée, puis la piste 1 se coupe au bon moment
+    app.locator(".songrow.take button[data-a='go']").click()
+    app.wait_for_timeout(150)
+    assert app.evaluate("nomadDbg.LP.layers.map(l => l.muted)")[:2] == [False, True]
+    app.wait_for_timeout(900)
+    assert app.evaluate("nomadDbg.LP.layers[0].muted") is True
+    app.click("#songPlay")
     with app.expect_download() as dl:
-        app.click("#perfWav")
-    assert dl.value.suggested_filename.startswith("nomad16-jeu-")
+        app.click("#songWav")
+    assert dl.value.suggested_filename.startswith("nomad16-morceau")
 
 
 def test_collections_fkj_dub_lofi(app):

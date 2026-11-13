@@ -235,10 +235,15 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (!SONG.steps.length || !LP.Lf) return null;
     const mixes = SQ.list.map(x => x.length ? loopStems(x, false) : null);
     const lenOf = st => mixes[st.s] ? mixes[st.s].L : LP.Lf;
-    const N = SONG.steps.reduce((a, st) => a + st.r * lenOf(st), 0);
+    const N = SONG.steps.reduce((a, st) => a + (st.take ? st.take.len : st.r * lenOf(st)), 0);
     if (N > sr * 60 * 12) return null;
     const out = [new Float32Array(N), new Float32Array(N)]; let o = 0;
-    SONG.steps.forEach(st => { const m = mixes[st.s], L = lenOf(st); for (let r = 0; r < st.r; r++) { if (m) { out[0].set(m.mix[0], o); out[1].set(m.mix[1], o); } o += L; } });
+    SONG.steps.forEach(st => {
+      if (st.take) { const r = renderTake(st.take, false); out[0].set(r.mix[0], o); out[1].set(r.mix[1], o); o += st.take.len; return; }
+      // une ligne de séquence joue toutes ses pistes
+      const m = SQ.list[st.s].length ? loopStems(SQ.list[st.s].map(l => ({ ...l, muted: false })), false) : null, L = lenOf(st);
+      for (let r = 0; r < st.r; r++) { if (m) { out[0].set(m.mix[0], o); out[1].set(m.mix[1], o); } o += L; }
+    });
     normalize(out);
     return out;
   }
@@ -306,7 +311,14 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       if (seqDone.length) {
         btn.textContent = "MORCEAU…"; await new Promise(r => setTimeout(r, 0));
         const sm = songMix();
-        if (sm) { files.push({ name: `${root}/NOMAD16_Morceau_${bpm}bpm.wav`, data: wav24(sm, sr) }); songTxt = `NOMAD16_Morceau_${bpm}bpm.wav : le morceau complet, dans l'ordre de l'onglet SONG :\r\n` + SONG.steps.map((st, i) => `  ${i + 1}. séquence ${SEQ_N[st.s]} x${st.r}`).join("\r\n") + "\r\n"; }
+        if (sm) { files.push({ name: `${root}/NOMAD16_Morceau_${bpm}bpm.wav`, data: wav24(sm, sr) }); songTxt = `NOMAD16_Morceau_${bpm}bpm.wav : le morceau complet, dans l'ordre de l'onglet SONG :\r\n` + SONG.steps.map((st, i) => st.take ? `  ${i + 1}. PRISE ${st.take.n} (${fmtLen(st.take.len)}) : pistes séparées dans Prise_${st.take.n}` : `  ${i + 1}. séquence ${SEQ_N[st.s]} x${st.r}`).join("\r\n") + "\r\n"; }
+        // prises : chaque piste rendue avec ses coupures, sur toute la durée de la prise
+        for (const st of SONG.steps.filter(x => x.take)) {
+          btn.textContent = "PRISE " + st.take.n + "…"; await new Promise(r => setTimeout(r, 0));
+          const r = renderTake(st.take, true);
+          Object.entries(r.stems).forEach(([nm, chs]) => files.push({ name: `${root}/Prise_${st.take.n}/NOMAD16_Prise${st.take.n}_${nm}.wav`, data: wav24(chs, sr) }));
+          normalize(r.mix); files.push({ name: `${root}/Prise_${st.take.n}/NOMAD16_Prise${st.take.n}_mix.wav`, data: wav24(r.mix, sr) });
+        }
       }
       files.push({ name: `${root}/LISEZMOI.txt`, data: `NOMAD-16 - export du ${new Date().toLocaleString("fr-FR")}\r\nTempo : ${bpm} BPM\r\n\r\nKit_${kitN} : les 16 sons (WAV 24 bits, 44,1/48 kHz) et le programme de batterie NOMAD16_${kitN}.xpm.\r\n  Pad 1 de l'Akai = pad A01 de la MPC. Tune, pan, niveau et groupes de mute sont repris dans le programme.\r\n  Filtre, saleté, attaque, decay, reverse et découpe sont déjà appliqués aux WAV. L'écho n'est pas inclus.\r\n` + (seqDone.length ? `Sequence_X : pour chaque séquence du looper (${seqDone.join(", ")}), une piste WAV par couche, toutes de la même longueur et calées au début, plus le mix.\r\n  Le programme .xpm de chaque dossier met les pistes sur les pads A01 à A06 et le mix sur A07.\r\n` : "") + (midiDone ? `  _notes.mid : les notes jouées pendant l'enregistrement de chaque piste (une piste MIDI par couche). Pads sur le canal 10, avec les notes des pads de la MPC (pad 1 = A01) : à jouer avec le programme du kit. Clavier sur le canal 1.\r\n` : "") + songTxt + `\r\nSur la MPC : copiez le dossier sur une carte SD ou une clé USB, ouvrez le .xpm depuis le navigateur de la MPC.\r\nGardez chaque .xpm dans le même dossier que ses WAV.\r\n` });
       const zip = makeZip(files);

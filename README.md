@@ -22,9 +22,9 @@ Instruments de l'onglet SONS : échantillons libres (VCSL CC0, Splendid Grand Pi
 - SONS : PIANO À L'ÉCRAN ouvre un clavier collé en bas (2 octaves sur iPhone, 3 sur ordinateur, glissé d'une touche à l'autre, octaves ◀ ▶) pour jouer des notes seules sans le MPK.
 - SONS : potard 6 = dose de l'effet (à fond = effet plein), potard 7 = attaque, potard 8 = strum ; la tonalité et le style se règlent en mode ACCORDS. SIDECHAIN (léger / fort) creuse SONS à chaque kick de la boucle ou des pads, comme le Mother Ducker de la MPC.
 
-## Jeu du LOOPER → SONG
+## Prises (LOOPER → SONG)
 
-● ENREGISTRER LE JEU (LOOPER) note les coupures et solos pendant que les boucles tournent ; à l'arrêt, tout est calé sur les tours de boucle. → SONG crée une séquence par état des pistes (copies légères, mêmes sons) et la ligne du morceau dans l'ordre joué ; → WAV rend le morceau joué tout de suite (avec le mastering choisi dans SONG). ↶ annule l'envoi dans SONG.
+● ARMER UNE PRISE (LOOPER), choisir les pistes de départ, puis PLAY : la prise commence (si les boucles tournent déjà, elle commence tout de suite, depuis le début du tour en cours). Tout ce qu'on coupe, rétablit, met en solo ou change de séquence est retenu à l'instant près. STOP termine (fin calée sur le tour le plus proche) : la prise devient UNE ligne de SONG (« PRISE 1 · 2:47 »), sans limite de durée ; une nouvelle prise ajoute la ligne suivante. La prise ne contient aucun son, seulement les gestes : elle se rejoue sur les boucles telles qu'elles sont (une boucle retouchée plus tard en profite). PRISE → WAV rend la dernière prise ; l'export MPC met chaque piste de chaque prise dans un dossier Prise_n. Les lignes de séquences classiques jouent toutes leurs pistes.
 
 ## Longueur des pistes (LOOPER)
 
