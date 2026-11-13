@@ -44,9 +44,13 @@
     return { el: d, o };
   }
   const panTxt = p => Math.abs(p) < 0.03 ? "centre" : (p < 0 ? "gauche " : "droite ") + Math.round(Math.abs(p) * 100) + " %";
-  function setLayerPan(l, p) { l.pan = p; if (l.pn) l.pn.pan.setTargetAtTime(p, ctx.currentTime, 0.02); }
-  function setLayerHp(l, on) { l.hp = on; if (l.hpf) l.hpf.frequency.setTargetAtTime(on ? 120 : 10, ctx.currentTime, 0.02); }
-  function setLayerVol(i, v) { const l = LP.layers[i]; if (!l) return; l.vol = v; knobVals.loops[i] = v; if (!l.muted) l.gain.gain.setTargetAtTime(v, ctx.currentTime, 0.02); }
+  // preset appliqué, par bank (en rouge) ; un réglage à la main sur une tranche l'éteint
+  SQ.mixp = SQ.mixp || [];
+  function drawMixPresets() { document.querySelectorAll("[data-mixp]").forEach(b => b.classList.toggle("rec", SQ.mixp[SQ.cur] === b.dataset.mixp)); }
+  const mixTouched = () => { if (MIX.applying || !SQ.mixp[SQ.cur]) return; SQ.mixp[SQ.cur] = null; drawMixPresets(); };
+  function setLayerPan(l, p) { mixTouched(); l.pan = p; if (l.pn) l.pn.pan.setTargetAtTime(p, ctx.currentTime, 0.02); }
+  function setLayerHp(l, on) { mixTouched(); l.hp = on; if (l.hpf) l.hpf.frequency.setTargetAtTime(on ? 120 : 10, ctx.currentTime, 0.02); }
+  function setLayerVol(i, v) { const l = LP.layers[i]; if (!l) return; mixTouched(); l.vol = v; knobVals.loops[i] = v; if (!l.muted) l.gain.gain.setTargetAtTime(v, ctx.currentTime, 0.02); }
   let strips = [];
   function buildMixer() {
     const el = $("mixer"); el.innerHTML = ""; strips = [];
@@ -85,7 +89,7 @@
   }
   function mixPreset(kind) {
     if (!ctx || !LP.layers.length) { lcd("lcdPad", "MIX", "pas encore de boucles dans cette bank"); return; }
-    const ls = LP.layers, side = i => (i % 2 ? 1 : -1);
+    const ls = LP.layers, side = i => (i % 2 ? 1 : -1); MIX.applying = true;
     if (kind === "flat") ls.forEach(l => { setLayerPan(l, 0); setLayerHp(l, false); });
     if (kind === "wide" || kind === "narrow") ls.forEach((l, i) => setLayerPan(l, ls.length === 1 ? 0 : side(i) * (kind === "wide" ? 0.5 : 0.18)));
     if (kind === "auto") {
@@ -98,6 +102,7 @@
       others.forEach((i, k) => { const w = others.length === 1 ? 0 : 0.15 + 0.35 * (k / Math.max(1, others.length - 1)); setLayerPan(ls[i], (k % 2 ? 1 : -1) * w); setLayerHp(ls[i], a[i].low < 0.25); });
       syncLoopKnobs();
     }
+    MIX.applying = false; SQ.mixp[SQ.cur] = kind; drawMixPresets();
     if (MIX.redraw) MIX.redraw();
     lcd("lcdPad", "MIX", { auto: "AUTO : niveaux rapprochés, basses au centre, le reste écarté", flat: "À PLAT : tout au centre, sans coupe-bas", wide: "LARGE : pistes écartées gauche / droite", narrow: "ÉTROIT : image resserrée, esprit lo-fi" }[kind]);
   }

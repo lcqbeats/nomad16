@@ -1055,7 +1055,7 @@ html.flipped, html.flipped body { overflow: hidden; }
 <div class="sheet" id="mixSheet" hidden>
   <div class="sheet-in">
     <h2>TABLE DE MIXAGE <button type="button" id="mixClose">FERMER</button></h2>
-    <div class="mixpresets"><button class="btn rec" type="button" data-mixp="auto">AUTO</button><button class="btn" type="button" data-mixp="flat">À PLAT</button><button class="btn" type="button" data-mixp="wide">LARGE</button><button class="btn" type="button" data-mixp="narrow">ÉTROIT</button></div>
+    <div class="mixpresets"><button class="btn" type="button" data-mixp="auto">AUTO</button><button class="btn" type="button" data-mixp="flat">À PLAT</button><button class="btn" type="button" data-mixp="wide">LARGE</button><button class="btn" type="button" data-mixp="narrow">ÉTROIT</button></div>
     <div class="mixer" id="mixer"></div>
     <p class="help">Boucles P1 à P6 de la bank choisie (A, B ou C en haut ; les 3 banks jouent ensemble) : volume, panoramique (glissière, double-touche = centre), BAS = coupe-bas à 120 Hz pour laisser la place à la basse, M = muet, S = solo. AUTO écoute les boucles : niveaux rapprochés, boucles graves au centre, les autres écartées à gauche et à droite, coupe-bas là où il n'y a pas de basses. À retoucher ensuite à l'oreille. Le panoramique et le coupe-bas sont gardés dans le projet et dans les exports. PADS comprend la platine DIGGING. Les voies PADS, SONS et GUITARE sont réglées avant le looper : ce qui est enregistré suit leurs niveaux. MASTER règle tout ce qui sort.</p>
   </div>
@@ -1866,7 +1866,7 @@ registerProcessor('nomad-oct',Oct);`;
     try { drawLenBar(); } catch (e) {}
     try { spRoute(); drawSpTargets(); } catch (e) {}
     try { scheduleKey(); } catch (e) {}
-    drawBanks(); drawTargetNames();
+    drawBanks(); drawTargetNames(); try { drawMixPresets(); } catch (e) {}
     $("metroBtn").classList.toggle("on", SQ.metro); $("trMetro").classList.toggle("on", SQ.metro);
   }
   function drawBanks() {
@@ -2048,7 +2048,7 @@ registerProcessor('nomad-oct',Oct);`;
   function resetAll() {
     songStop();
     SQ.list.forEach(x => { x.forEach(l => { stopLayer(l); l.gain.disconnect(); }); x.length = 0; });
-    SQ.cur = 0; SQ.solo = []; LP.solo = null; LP.layers = SQ.list[0]; LP.t0F = null; LP.Lf = 0; LP.pending = null; LP.playing = true; SQ.next = -1; SQ.sw = null;
+    SQ.cur = 0; SQ.solo = []; SQ.mixp = []; LP.solo = null; LP.layers = SQ.list[0]; LP.t0F = null; LP.Lf = 0; LP.pending = null; LP.playing = true; SQ.next = -1; SQ.sw = null;
     drawSeqSel();
   }
   function undo() { if (LP.pending) { LP.pending = null; return; } removeLayer(LP.layers.length - 1); }
@@ -5825,9 +5825,13 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     return { el: d, o };
   }
   const panTxt = p => Math.abs(p) < 0.03 ? "centre" : (p < 0 ? "gauche " : "droite ") + Math.round(Math.abs(p) * 100) + " %";
-  function setLayerPan(l, p) { l.pan = p; if (l.pn) l.pn.pan.setTargetAtTime(p, ctx.currentTime, 0.02); }
-  function setLayerHp(l, on) { l.hp = on; if (l.hpf) l.hpf.frequency.setTargetAtTime(on ? 120 : 10, ctx.currentTime, 0.02); }
-  function setLayerVol(i, v) { const l = LP.layers[i]; if (!l) return; l.vol = v; knobVals.loops[i] = v; if (!l.muted) l.gain.gain.setTargetAtTime(v, ctx.currentTime, 0.02); }
+  // preset appliqué, par bank (en rouge) ; un réglage à la main sur une tranche l'éteint
+  SQ.mixp = SQ.mixp || [];
+  function drawMixPresets() { document.querySelectorAll("[data-mixp]").forEach(b => b.classList.toggle("rec", SQ.mixp[SQ.cur] === b.dataset.mixp)); }
+  const mixTouched = () => { if (MIX.applying || !SQ.mixp[SQ.cur]) return; SQ.mixp[SQ.cur] = null; drawMixPresets(); };
+  function setLayerPan(l, p) { mixTouched(); l.pan = p; if (l.pn) l.pn.pan.setTargetAtTime(p, ctx.currentTime, 0.02); }
+  function setLayerHp(l, on) { mixTouched(); l.hp = on; if (l.hpf) l.hpf.frequency.setTargetAtTime(on ? 120 : 10, ctx.currentTime, 0.02); }
+  function setLayerVol(i, v) { const l = LP.layers[i]; if (!l) return; mixTouched(); l.vol = v; knobVals.loops[i] = v; if (!l.muted) l.gain.gain.setTargetAtTime(v, ctx.currentTime, 0.02); }
   let strips = [];
   function buildMixer() {
     const el = $("mixer"); el.innerHTML = ""; strips = [];
@@ -5866,7 +5870,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   }
   function mixPreset(kind) {
     if (!ctx || !LP.layers.length) { lcd("lcdPad", "MIX", "pas encore de boucles dans cette bank"); return; }
-    const ls = LP.layers, side = i => (i % 2 ? 1 : -1);
+    const ls = LP.layers, side = i => (i % 2 ? 1 : -1); MIX.applying = true;
     if (kind === "flat") ls.forEach(l => { setLayerPan(l, 0); setLayerHp(l, false); });
     if (kind === "wide" || kind === "narrow") ls.forEach((l, i) => setLayerPan(l, ls.length === 1 ? 0 : side(i) * (kind === "wide" ? 0.5 : 0.18)));
     if (kind === "auto") {
@@ -5879,6 +5883,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       others.forEach((i, k) => { const w = others.length === 1 ? 0 : 0.15 + 0.35 * (k / Math.max(1, others.length - 1)); setLayerPan(ls[i], (k % 2 ? 1 : -1) * w); setLayerHp(ls[i], a[i].low < 0.25); });
       syncLoopKnobs();
     }
+    MIX.applying = false; SQ.mixp[SQ.cur] = kind; drawMixPresets();
     if (MIX.redraw) MIX.redraw();
     lcd("lcdPad", "MIX", { auto: "AUTO : niveaux rapprochés, basses au centre, le reste écarté", flat: "À PLAT : tout au centre, sans coupe-bas", wide: "LARGE : pistes écartées gauche / droite", narrow: "ÉTROIT : image resserrée, esprit lo-fi" }[kind]);
   }
@@ -6744,7 +6749,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       // kit de chops ou kit perso : on l'emporte dans le projet (pour qu'un .nomad ouvert ailleurs ait ses sons)
       kit: kitCur, kitEmbed: (kitCur === "chops" || km.user) ? { names: names.slice(), gains: gains.slice(), bufs: buffers.map(packBuf16) } : null,
       knobs: JSON.parse(JSON.stringify(knobVals)), knobsV: 3, manualBpm, padParams: padParams.map(p => ({ ...p })), fxTarget,
-      song: { steps: JSON.parse(JSON.stringify(SONG.steps)), loop: SONG.loop, cur: SQ.cur, nr: NR.idx, prints: Object.fromEntries(SONG.steps.map(st => st.take && st.take.pid).filter(id => id && SONG.prints.has(id)).map(id => [id, packBuf16(SONG.prints.get(id))])) }, banks: NB,
+      song: { steps: JSON.parse(JSON.stringify(SONG.steps)), loop: SONG.loop, cur: SQ.cur, nr: NR.idx, mixp: SQ.mixp.slice(0, NB), prints: Object.fromEntries(SONG.steps.map(st => st.take && st.take.pid).filter(id => id && SONG.prints.has(id)).map(id => [id, packBuf16(SONG.prints.get(id))])) }, banks: NB,
       guitar: { amp: G.amp, fx: [...G.fx], preset: G.preset },
       loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], name: l.name || "", buf: packBuf(l.buf) }))) }
     };
@@ -6786,6 +6791,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (p.fxTarget) setFxTarget(p.fxTarget);
     resetAll();
     SONG.steps = p.song ? JSON.parse(JSON.stringify(p.song.steps)) : [];
+    SQ.mixp = p.song && p.song.mixp && p.banks ? p.song.mixp.slice() : [];
     SONG.prints = new Map(); SONG.keep = []; if (p.song && p.song.prints) Object.entries(p.song.prints).forEach(([id, b]) => { try { SONG.prints.set(id, unpackBuf(b)); } catch (e) {} }); SONG.loop = !!(p.song && p.song.loop); if (p.song) NR.idx = p.song.nr ?? 2; drawNR();
     if (p.loop && p.loop.sr === sr) {
       LP.Lf = p.loop.Lf; LP.beats = p.loop.beats; LP.t0F = Math.round((ctx.currentTime + 0.05) * sr); LP.playing = true;

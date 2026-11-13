@@ -48,7 +48,7 @@
     try { drawLenBar(); } catch (e) {}
     try { spRoute(); drawSpTargets(); } catch (e) {}
     try { scheduleKey(); } catch (e) {}
-    drawBanks(); drawTargetNames();
+    drawBanks(); drawTargetNames(); try { drawMixPresets(); } catch (e) {}
     $("metroBtn").classList.toggle("on", SQ.metro); $("trMetro").classList.toggle("on", SQ.metro);
   }
   function drawBanks() {
@@ -230,7 +230,7 @@
   function resetAll() {
     songStop();
     SQ.list.forEach(x => { x.forEach(l => { stopLayer(l); l.gain.disconnect(); }); x.length = 0; });
-    SQ.cur = 0; SQ.solo = []; LP.solo = null; LP.layers = SQ.list[0]; LP.t0F = null; LP.Lf = 0; LP.pending = null; LP.playing = true; SQ.next = -1; SQ.sw = null;
+    SQ.cur = 0; SQ.solo = []; SQ.mixp = []; LP.solo = null; LP.layers = SQ.list[0]; LP.t0F = null; LP.Lf = 0; LP.pending = null; LP.playing = true; SQ.next = -1; SQ.sw = null;
     drawSeqSel();
   }
   function undo() { if (LP.pending) { LP.pending = null; return; } removeLayer(LP.layers.length - 1); }

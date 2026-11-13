@@ -1011,3 +1011,19 @@ def test_imprimer_une_ligne_en_changeant_de_boucle(app):
     app.wait_for_timeout(150)
     assert app.evaluate("nomadDbg.song.gate.gain.value") < 0.1
     app.evaluate("nomadDbg.songStop()")
+
+
+def test_preset_de_mix_allume(app):
+    fake_loop(app, 0.4)
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[0], 1, 0)")
+    app.click("#mixBtn")
+    lit = lambda: app.evaluate("[...document.querySelectorAll('[data-mixp].rec')].map(b => b.dataset.mixp)")
+    assert lit() == []
+    app.click('[data-mixp="wide"]')
+    assert lit() == ["wide"]
+    app.click('[data-mixp="auto"]')
+    assert lit() == ["auto"]
+    app.evaluate("nomadDbg.selectSeq(1)")              # autre bank : aucun preset appliqué
+    assert lit() == []
+    app.evaluate("nomadDbg.selectSeq(0)")
+    assert lit() == ["auto"]
