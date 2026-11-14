@@ -65,8 +65,9 @@
       b.addEventListener("click", () => selectInst(i.id)); $("insts").appendChild(b);
     });
     $("mNotes").classList.toggle("on", !chordMode); $("mChords").classList.toggle("on", chordMode); $("mBass").classList.toggle("on", addBass); $("mFull").classList.toggle("on", sonsFull);
-    $("chordPanel").hidden = !chordMode;
+    $("chordPanel").hidden = !chordMode || isDrum(instCur);
     drawSonsFx();
+    try { drawDrums(); } catch (e) {}
     const st = STYLES[styleIdx];
     drawKeyFromLoop();
     $("keyVal").textContent = NN[tonic] + (st.minor ? "m" : ""); $("keyMode").textContent = st.minor ? "mineur" : "majeur";
@@ -211,6 +212,7 @@
   }
   function keyOn(note, vel) {
     if (!ctx) return;
+    if (isDrum(instCur)) { drKey(note); return; }
     if (!instBus) enterSons();
     if (chordMode && note < 60) {
       const pc = note % 12; const isWhite = pc in WHITE;

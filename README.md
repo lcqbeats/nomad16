@@ -102,3 +102,7 @@ PADS : + KIT (ou + NOUVEAU KIT dans la liste des kits) crée un kit vide, nommé
 ## Apparence sur ordinateur
 
 RÉGLAGES → APPARENCE SUR ORDINATEUR : NOIRE (façon MPC 1000, d'origine) ou GRISE (façon MPC 2000XL : boîtier gris chaud, touches grises, pads de caoutchouc gris, écran vert-gris).
+
+## SONS · BATTERIE (patterns par genre)
+
+Catégorie BATTERIE : BOOM BAP, NÉO SOUL, TRIP-HOP, DUB, LO-FI, BREAKBEAT, 8 patterns chacun (avec swing et jeu « en arrière » propres au genre). Ce ne sont pas des boucles audio : les coups sont joués en direct avec les sons du kit en cours (grosse caisse, caisse claire, charleston, ouvert, percussion repérés par le nom des pads ; sinon sons de NOMAD), donc quasiment aucune mémoire. Toucher un pattern le lance ; un autre prend la suite à la mesure suivante ; le même l'arrête. Calé sur la boucle du LOOPER quand elle tourne ; REC l'enregistre. Akai : pads 1 à 8 = patterns, pads 9 à 16 = le kit ; touches blanches de do à do = patterns 1 à 8. STOP du LOOPER arrête aussi la batterie.

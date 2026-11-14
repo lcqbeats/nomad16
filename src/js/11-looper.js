@@ -202,7 +202,7 @@
     l.src = src;
   }
   function stopLayer(l) { if (l.src) { try { l.src.stop(); } catch (e) {} l.src.disconnect(); l.src = null; } }
-  function stopAll() { perfOnStop(); allLayers().forEach(stopLayer); LP.playing = false; SQ.sw = null; if (SONG.playing) songStop(); if (LP.pending && LP.pending.type === "layer") LP.pending = null; }
+  function stopAll() { perfOnStop(); if (typeof drStop === "function") drStop(); allLayers().forEach(stopLayer); LP.playing = false; SQ.sw = null; if (SONG.playing) songStop(); if (LP.pending && LP.pending.type === "layer") LP.pending = null; }
   function playAll() {
     if (!ctx || LP.t0F === null) return;
     const T = ctx.currentTime + 0.03;

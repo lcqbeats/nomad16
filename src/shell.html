@@ -348,6 +348,13 @@
       <div class="chords" id="chords"></div>
       <p class="note help">Pads de l'Akai : Bank 1, pads 1 à 7 = accords 1 à 7, pad 8 = accord 1 à l'octave ; Bank 2 = les mêmes une octave plus haut. Clavier : l'octave basse du clavier de l'Akai joue la progression : touches blanches DO, RÉ, MI, FA, SOL, LA, SI = accords 1 à 7 (touches noires = même accord, renversé plus haut). L'octave haute joue des notes simples, dans la tonalité. + BASSE ajoute la fondamentale une octave en dessous.</p>
     </div>
+    <div id="drumPanel" class="stack" hidden>
+      <p class="drtitle" id="drTitle"></p>
+      <div class="drpats" id="drPats"></div>
+      <div class="drbar"><button class="btn" id="drStop" type="button">■ STOP BATTERIE</button><button class="btn" id="drKit" type="button">SONS : KIT EN COURS</button></div>
+      <p class="note" id="drMapInfo"></p>
+      <p class="note help">Touchez un pattern pour le lancer ; un autre prend la suite à la mesure suivante ; le même l'arrête en fin de mesure. Calé sur la boucle du LOOPER quand elle tourne (REC l'enregistre). Akai : pads 1 à 8 = patterns 1 à 8, pads 9 à 16 = le kit ; touches blanches de do à do = patterns 1 à 8.</p>
+    </div>
     <p class="note" id="instCredit"></p>
     <button class="btn" id="pianoBtn" type="button">PIANO À L'ÉCRAN</button>
     <div class="piano" id="piano" hidden aria-label="Piano à l'écran">

@@ -1088,3 +1088,29 @@ def test_nouveau_kit_micro_et_bibliotheque(app):
     kid = app.evaluate("nomadDbg.kitIndex.find(k => k.name === 'MES PRISES').id")
     app.evaluate(f"nomadDbg.loadKit('{kid}')")
     app.wait_for_function("nomadDbg.buffers[2] && nomadDbg.buffers[2].length > 0 && !nomadDbg.buffers[0]")
+
+
+def test_sons_batterie_patterns(app):
+    app.click("#tab-sons")
+    app.wait_for_timeout(300)
+    app.click('#cats .cat:text-is("BATTERIE")')
+    app.click('#insts .inst:has-text("BOOM BAP")')
+    assert not app.is_hidden("#drumPanel") and app.is_hidden("#chordPanel")
+    assert app.evaluate("document.querySelectorAll('#drPats .drpat').length") == 8
+    app.evaluate("nomadMidi([0x99, 36, 100])")            # pad 1 : pattern 1
+    app.wait_for_timeout(600)
+    assert app.evaluate("nomadDbg.DR.cur") == 0 and app.evaluate("nomadDbg.DR.step") > 2
+    app.evaluate("nomadMidi([0x99, 37, 100])")            # pad 2 : pattern suivant, en fin de mesure
+    assert app.evaluate("nomadDbg.DR.next") == 1
+    app.wait_for_function("nomadDbg.DR.cur === 1", timeout=5000)
+    app.click("#drStop")
+    assert app.evaluate("nomadDbg.DR.cur") == -1
+    # sons de NOMAD si on ne veut pas ceux du kit
+    app.click("#drKit")
+    assert "NOMAD" in app.inner_text("#drKit")
+    app.click('#insts .inst:has-text("DUB")')
+    app.evaluate("nomadDbg.drPlay(2)")
+    app.wait_for_timeout(400)
+    assert app.evaluate("nomadDbg.DR.genre.id") == "dub"
+    app.evaluate("nomadDbg.drStop()")
+    assert app.evaluate("nomadDbg.DR.cur") == -1
