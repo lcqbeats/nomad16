@@ -6,7 +6,7 @@
     const id = "user-" + Date.now().toString(36);
     await DB.put("kits", { id, name: v.slice(0, 30), names: new Array(16).fill(""), gains: new Array(16).fill(1), params: null, chokeAll: false, bufs: new Array(16).fill(null), created: Date.now() });
     await refreshUserKits(); $("kitSheet").hidden = true; await loadKit(id);
-    select(0); $("micPad").hidden = false; $("micPadBtn").classList.add("on"); drawMicWave();
+    select(0); $("micPad").hidden = false; $("micPadBtn").classList.add("on"); placeScrDisk(); drawMicWave();
     lcd("lcdPad", "KIT", v + " : 16 pads vides · ● MICRO, FICHIER ou BIBLIOTHÈQUE pour les remplir");
   }
   $("newKitBtn").addEventListener("click", newKit);
@@ -82,7 +82,7 @@
     drawMicWave();
     $("micTxt").textContent = `Pad ${String(i + 1).padStart(2, "0")} ← ${nm} (${(len / sr).toFixed(1)} s). Touchez un autre pad puis ● pour la prise suivante.`;
   }
-  $("micPadBtn").addEventListener("click", () => { const h = !$("micPad").hidden; $("micPad").hidden = h; $("micPadBtn").classList.toggle("on", !h); if (!h) { drawMicTxt(); drawMicWave(); } else if (MIC.rec) micStop(); });
+  $("micPadBtn").addEventListener("click", () => { const h = !$("micPad").hidden; $("micPad").hidden = h; $("micPadBtn").classList.toggle("on", !h); placeScrDisk(); if (!h) { drawMicTxt(); drawMicWave(); } else if (MIC.rec) micStop(); });
   $("micRec").addEventListener("click", micToggle);
   $("micFile").addEventListener("click", () => $("edFile").click());
   $("micLib").addEventListener("click", openSrcSheet);

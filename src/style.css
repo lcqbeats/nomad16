@@ -749,3 +749,9 @@ html.flipped, html.flipped body { overflow: hidden; }
 .padtools .btn { flex: 1 1 auto; min-width: 0; padding: 9px 3px; font-size: 10px; white-space: nowrap; text-align: center; }
 .padtools .btn:first-child { flex: 1.3 1 auto; text-align: center; }
 :root.desk .padtools .btn { font-size: 11px; padding: 9px 8px; }
+/* prise de son : compacte ; sur ordinateur, dans la colonne de gauche sous les onglets */
+#micWave { height: 64px; }
+.micpad { padding: 8px; gap: 6px; }
+.microw .btn { padding: 10px 4px; }
+:root.desk .deskside .micpad { margin: 0; }
+:root.desk .deskside #micWave { height: 72px; }

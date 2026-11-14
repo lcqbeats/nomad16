@@ -112,10 +112,14 @@
     list.forEach((x, i) => { const o = document.createElement("option"); o.value = i; o.textContent = `${i + 1}. ${x.name}`; sel.appendChild(o); });
   }
   // ordinateur : « sur le disque » passe sous les onglets, à gauche (la colonne y est vide)
+  // ordinateur : la colonne de gauche, sous les onglets, reçoit « sur le disque » (SCRATCH) et la prise de son (PADS)
   function placeScrDisk() {
-    const side = $("deskSide"), d = $("scrDisk"), desk = document.documentElement.classList.contains("desk");
-    if (desk && d.parentNode !== side) side.appendChild(d); else if (!desk && d.parentNode !== $("view-scratch")) $("view-scratch").insertBefore(d, $("view-scratch").querySelector(".help"));
-    side.hidden = !(desk && tab === "scratch");
+    const side = $("deskSide"), desk = document.documentElement.classList.contains("desk");
+    const d = $("scrDisk"), m = $("micPad");
+    const home = (el, view, before) => { if (el.parentNode !== view) view.insertBefore(el, before); };
+    if (desk && tab === "scratch") { if (d.parentNode !== side) side.appendChild(d); } else home(d, $("view-scratch"), $("view-scratch").querySelector(".help"));
+    if (desk && tab === "play") { if (m.parentNode !== side) side.appendChild(m); } else home(m, $("view-play"), $("pads"));
+    side.hidden = !(desk && ((tab === "scratch") || (tab === "play" && !m.hidden)));
   }
   function scrLoad(buf, name) {
     if (!buf || !SCR.node) return;
