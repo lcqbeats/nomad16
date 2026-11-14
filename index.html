@@ -164,14 +164,15 @@ button { font-family: var(--font-body); }
 .scrpitch { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 9px; font-weight: 700; letter-spacing: .1em; color: #3a3b3e; }
 .scrpitch input { width: 100%; accent-color: #3a3b3e; }
 /* crossfader : façade de table de mixage (plaque brossée, vis, graduations, fente, bouton strié) */
-.xfader { position: relative; height: 66px; border-radius: 6px; touch-action: none; cursor: ew-resize;
+/* course courte, comme sur une table de scratch : moitié coupée, moitié ouverte */
+.xfader { position: relative; height: 66px; width: min(100%, 230px); align-self: center; border-radius: 6px; touch-action: none; cursor: ew-resize;
   background: repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px), linear-gradient(180deg, #3b3c3f, #232427 60%, #1b1c1e);
   box-shadow: inset 0 1px 0 #55575b, inset 0 -1px 0 #0b0b0c, 0 0 0 1px #050505, 0 4px 10px rgba(0,0,0,.5); }
 .xfader::before, .xfader::after { content: ""; position: absolute; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #9a9ca0, #44464a 70%); box-shadow: inset 0 0 0 1px #1a1a1a; }
 .xfader::before { left: 6px; } .xfader::after { right: 6px; }
-.xfader .zone { position: absolute; top: 8px; bottom: 8px; background: rgba(217,43,47,.28); border-radius: 3px; margin: 0 18px; }
-.xfader .rail { position: absolute; left: 22px; right: 22px; top: 30px; height: 6px; background: #000; border-radius: 3px; box-shadow: inset 0 1px 2px #000, 0 1px 0 #4a4b4e; }
+.xfader .zone { position: absolute; top: 8px; bottom: 8px; background: rgba(217,43,47,.28); border-radius: 3px; }
+.xfader .rail { position: absolute; left: 16px; right: 16px; top: 30px; height: 6px; background: #000; border-radius: 3px; box-shadow: inset 0 1px 2px #000, 0 1px 0 #4a4b4e; }
 .xfader .rail::before { content: ""; position: absolute; left: 0; right: 0; top: -12px; height: 6px;
   background: repeating-linear-gradient(90deg, #8d8f93 0 1px, transparent 1px calc(10% - .1px)); opacity: .55; }
 .xfader .rail::after { content: ""; position: absolute; left: 0; right: 0; bottom: -12px; height: 6px;
@@ -748,6 +749,20 @@ html.flipped, html.flipped body { overflow: hidden; }
 :root.desk .deskside .scrsrc { grid-template-columns: repeat(3, 1fr); }
 :root.desk .deskside .scrsrc .btn { padding: 10px 2px; font-size: 10px; }
 .scrname:empty { display: none; }
+
+/* PADS : outils plus compacts, prise de son au micro */
+.padtools .btn:first-child { flex: 0 0 auto; }
+.padtools #micPadBtn.rec { background: var(--red); color: #fff; }
+.micpad { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; padding: 10px; border-radius: 8px; background: #1b1a18; box-shadow: inset 0 0 0 1px #2e2b27; }
+#micWave { width: 100%; height: 86px; border-radius: 6px; display: block; }
+.microw { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 6px; }
+.microw .btn { padding: 12px 4px; font-size: 11px; }
+.microw #micRec.on { background: var(--text); color: var(--ink); }
+.mictxt { margin: 0; font-size: 11px; color: var(--muted); line-height: 1.35; }
+.padtools { gap: 4px; }
+.padtools .btn { flex: 1 1 auto; min-width: 0; padding: 9px 3px; font-size: 10px; white-space: nowrap; text-align: center; }
+.padtools .btn:first-child { flex: 1.3 1 auto; text-align: center; }
+:root.desk .padtools .btn { font-size: 11px; padding: 9px 8px; }
 </style>
 </head>
 <body>
@@ -794,7 +809,7 @@ html.flipped, html.flipped body { overflow: hidden; }
   <div class="deskside" id="deskSide" hidden></div>
 
   <section class="view" id="view-play">
-    <div class="padtools"><button class="btn" id="edBtn" type="button">ÉDITER LE PAD 01</button><button class="btn" id="allPadsBtn" type="button" aria-pressed="false">TOUS</button><button class="btn" id="fullBtn" type="button">FULL</button><button class="btn" id="nrBtn" type="button">REPEAT</button><button class="btn" id="nrRate" type="button">1/16</button></div>
+    <div class="padtools"><button class="btn" id="edBtn" type="button">ÉDITER 01</button><button class="btn" id="newKitBtn" type="button">+ KIT</button><button class="btn" id="micPadBtn" type="button">● MIC</button><button class="btn" id="allPadsBtn" type="button" aria-pressed="false">TOUS</button><button class="btn" id="fullBtn" type="button">FULL</button><button class="btn" id="nrBtn" type="button">REPEAT</button><button class="btn" id="nrRate" type="button">1/16</button></div>
     <div class="editor" id="editor" hidden>
       <div class="edsrc"><label for="edSrcBtn">SON</label><button class="btn" id="edSrcBtn" type="button">REMPLACER LE SON… (avec écoute)</button><input type="file" id="edFile" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff" hidden></div>
       <canvas id="edCanvas" aria-label="Début et fin du son : glissez les bords"></canvas>
@@ -820,6 +835,15 @@ html.flipped, html.flipped body { overflow: hidden; }
         <button class="btn" id="edReset" type="button">RÉINITIAL.</button>
       </div>
       <p class="note help">Glissez les bords rouges pour le début et la fin. MAINTENU : le son s'arrête au relâchement du pad. MUTE : les pads d'un même groupe se coupent entre eux. TEMPO : cale le son sur 1, 2, 4 ou 8 temps (change la vitesse). Glissez un pad sur un autre pour copier, échanger ou fusionner.</p>
+    </div>
+    <div class="micpad" id="micPad" hidden>
+      <canvas id="micWave" aria-label="Forme d'onde de la prise de son"></canvas>
+      <div class="microw">
+        <button class="btn rec" id="micRec" type="button">● ENREGISTRER</button>
+        <button class="btn" id="micFile" type="button">FICHIER…</button>
+        <button class="btn" id="micLib" type="button">BIBLIOTHÈQUE…</button>
+      </div>
+      <p class="mictxt" id="micTxt">Le son va sur le pad 01. Touchez un pad pour changer de destination ; ● pour lancer, ■ pour arrêter : la prise est posée tout de suite (↶ pour annuler).</p>
     </div>
     <div class="pads" id="pads"></div>
   </section>
@@ -1119,6 +1143,7 @@ html.flipped, html.flipped body { overflow: hidden; }
 <div class="sheet" id="kitSheet" hidden>
   <div class="sheet-in">
     <h2>KITS <button type="button" id="kitClose">FERMER</button></h2>
+    <button class="btn" id="kitNew" type="button" style="width:100%;margin-bottom:8px">+ NOUVEAU KIT (VIDE)</button>
     <div class="saverow"><input id="kitSaveName" type="text" maxlength="30" placeholder="nom du kit actuel" aria-label="Nom du kit"><button class="btn rec" id="kitSave" type="button">ENREGISTRER</button></div>
     <div id="kitList"></div>
   </div>
@@ -1308,7 +1333,7 @@ html.flipped, html.flipped body { overflow: hidden; }
     padEls[selected].classList.remove("sel"); selected = i; padEls[i].classList.add("sel");
     const p = padParams[i];
     if (typeof syncPlayKnobs === "function" && padParams) syncPlayKnobs();
-    if ($("edBtn")) { $("edBtn").textContent = `ÉDITER LE PAD ${String(i + 1).padStart(2, "0")} · ${(names[i] || "—").toUpperCase()}`; if (!$("editor").hidden) drawEditor(); }
+    if ($("edBtn")) { $("edBtn").textContent = `ÉDITER ${String(i + 1).padStart(2, "0")}`; $("edBtn").title = (names[i] || "—").toUpperCase(); if (typeof drawMicTxt === "function") drawMicTxt(); if (!$("editor").hidden) drawEditor(); }
   }
   select(0);
   function flash(i) { const el = padEls[i]; el.classList.add("hit"); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("hit"), 110); }
@@ -1457,7 +1482,7 @@ html.flipped, html.flipped body { overflow: hidden; }
       try {
         const k = await DB.get("kits", meta.id);
         if (ticket !== kitLoading) return;
-        buffers = k.bufs.map(unpackBuf); names = k.names.slice(); gains = k.gains ? k.gains.slice() : new Array(16).fill(1);
+        buffers = k.bufs.map(b => b ? unpackBuf(b) : null); names = k.names.slice(); gains = k.gains ? k.gains.slice() : new Array(16).fill(1);
         userParams = k.params ? k.params.map(p => ({ ...p })) : null; userChoke = !!k.chokeAll;
       } catch (e) { lcd("lcdPad", "PAD", "kit perso illisible"); return; }
     } else {
@@ -4490,6 +4515,10 @@ registerProcessor('nomad-oct',Oct);`;
     ].map(([n, d]) => ({ name: n, data: d }));
   }
   const SCR_LOC = [["loc-tony-schwartz", "Old auto horns", 0, "KLAXONS"], ["loc-tony-schwartz", "Announcer - Process", 0, "SPEAKER"], ["loc-tony-schwartz", "Words & tone", 0, "MOTS"], ["loc-tony-schwartz", "How do you read?", 0, "HOW DO YOU READ"], ["loc-tony-schwartz", "It's a boy", 0, "IT'S A BOY"], ["loc-tony-schwartz", "Mothers calling children", 0, "APPELS"], ["loc-tony-schwartz", "Instant information", 0, "INFO"], ["loc-jukebox-popular", "Army bugle calls", 0, "CLAIRON"], ["loc-tony-schwartz", "Taxi to Harlem", 0, "TAXI"], ["loc-tony-schwartz", "Playground", 0, "RÉCRÉ"]];
+  // banque synthétisée, partagée avec l'onglet PADS (choix du son d'un pad)
+  let scrSynthC = null;
+  const scrSynthCache = () => scrSynthC || (scrSynthC = scrSynth(sr));
+  const scrSynthNames = () => scrSynthCache().map(x => x.name);
   async function scrCrate() {
     if (crate) return crate;
     if (!SCR.crate) { try { SCR.crate = await (await fetch("crate/crate.json")).json(); } catch (e) { SCR.crate = null; } }
@@ -4592,7 +4621,8 @@ registerProcessor('nomad-oct',Oct);`;
     else if (f < 0.5) { SCR.filt.type = "lowpass"; SCR.filt.frequency.setTargetAtTime(150 * Math.pow(120, f / 0.5), t, 0.02); SCR.filt.Q.value = 2; }
     else { SCR.filt.type = "highpass"; SCR.filt.frequency.setTargetAtTime(30 * Math.pow(130, (f - 0.5) / 0.5), t, 0.02); SCR.filt.Q.value = 2; }
   }
-  const scrZoneW = () => 0.05 + knobVals.scratch[5] * 0.3;
+  // zone coupée : la moitié du fader avec COUPURE à 30 % (réglage d'origine), de 20 % à 80 %
+  const scrZoneW = () => Math.max(0.2, Math.min(0.8, 0.2 + knobVals.scratch[5]));
   const scrFaderOpen = () => SCR.ham ? SCR.fader > scrZoneW() : SCR.fader < 1 - scrZoneW();
   function scrGate(force) {
     const g = (SCR.padCut || SCR.btnCut) ? false : (SCR.padOpen || SCR.btnOpen) ? true : scrFaderOpen();
@@ -4605,7 +4635,7 @@ registerProcessor('nomad-oct',Oct);`;
   function drawScrFader() {
     const el = $("scrFader"); if (!el) return;
     const z = scrZoneW() * 100;
-    $("scrZone").style.cssText = SCR.ham ? `left:0;width:${z}%` : `right:0;width:${z}%`;
+    $("scrZone").style.cssText = (SCR.ham ? "left:16px;" : "right:16px;") + `width:calc(${z / 100} * (100% - 32px))`;
     $("scrCap").style.left = `calc(16px + ${SCR.fader} * (100% - 32px))`;
     el.classList.toggle("open", SCR.gate !== false);
     el.setAttribute("aria-valuenow", Math.round(SCR.fader * 100));
@@ -4705,7 +4735,21 @@ registerProcessor('nomad-oct',Oct);`;
   // Pads de l'Akai dans SCRATCH (tous tenus) : 1 arrière, 5 avant, 2 ouvre, 3 coupe, 4-6-7-8 et 9-10 phrases
   // Pads de l'Akai dans SCRATCH (tenus) — banque A : 1 arrière, 5 avant, 2 ouvre, 3 coupe, 4 start/stop, 6-7-8 CUE 1 à 3 ;
   // banque B : 9-10-11 et 13-14-15 phrases, 12 repère précédent, 16 repère suivant
-  const SCR_PADPH = { 8: 0, 9: 1, 10: 2, 12: 3, 13: 4, 14: 5 }, SCR_PADCUE = { 5: 0, 6: 1, 7: 2 };
+  // Pads de l'Akai dans SCRATCH (numéro du pad = indice + 1)
+  // banque A : 1 avant, 5 arrière, 2 / 3 crossfader à gauche / à droite (tenu), 4 6 7 8 = CUE 1 à 4
+  // banque B : 9 avant, 13 arrière (comme 1 et 5), 10 11 12 14 15 16 = les 6 phrases (tenues)
+  const SCR_PADPH = { 9: 0, 10: 1, 11: 2, 13: 3, 14: 4, 15: 5 }, SCR_PADCUE = { 3: 0, 5: 1, 6: 2, 7: 3 };
+  const SCR_FWD = [0, 8], SCR_BACK = [4, 12];
+  const SCRF = { held: {}, prev: null };
+  // pads 2 et 3 : le crossfader glisse vraiment (à gauche / à droite) tant que le pad est tenu, puis revient
+  function scrPadFader(side, down) {
+    if (down) { if (SCRF.prev === null) SCRF.prev = SCR.fader; SCRF.held[side] = true; }
+    else delete SCRF.held[side];
+    const h = Object.keys(SCRF.held);
+    if (h.length) SCR.fader = h[h.length - 1] === "L" ? 0 : 1;
+    else if (SCRF.prev !== null) { SCR.fader = SCRF.prev; SCRF.prev = null; }
+    drawScrFader(); scrGate();
+  }
   const scrPadT = {};
   function scrCueStep(d) {
     const set = SCR.cues.map((c, i) => c === null ? -1 : i).filter(i => i >= 0);
@@ -4722,14 +4766,9 @@ registerProcessor('nomad-oct',Oct);`;
       else if (scrPadT[c]) { clearTimeout(scrPadT[c].t); if (!scrPadT[c].long) scrCueTap(c); delete scrPadT[c]; }
       return;
     }
-    if (i === 0 || i === 4) { scrPush(i === 4 ? 1 : -1, down, vel); return; }
-    if (i === 1) { SCR.padOpen = down; scrGate(); return; }
-    if (i === 2) { SCR.padCut = down; scrGate(); return; }
-    if (i in SCR_PADPH) { if (down) scrPhrase(SCR_PADPH[i]); else scrPhraseStop(SCR_PADPH[i]); return; }
-    if (!down) return;
-    if (i === 3) scrMotor();
-    else if (i === 11) scrCueStep(-1);
-    else if (i === 15) scrCueStep(1);
+    if (SCR_FWD.includes(i) || SCR_BACK.includes(i)) { scrPush(SCR_FWD.includes(i) ? 1 : -1, down, vel); return; }
+    if (i === 1 || i === 2) { scrPadFader(i === 1 ? "L" : "R", down); return; }
+    if (i in SCR_PADPH) { if (down) scrPhrase(SCR_PADPH[i]); else scrPhraseStop(SCR_PADPH[i]); }
   }
   function scrKnob(k) {
     const v = knobVals.scratch[k];
@@ -4971,8 +5010,8 @@ registerProcessor('nomad-oct',Oct);`;
         <p class="glh">SP · banque A : couleur (appui court = allumé, long = tant qu'on tient)</p>${padGrid(SP_FX.slice(0, 8).map(f => f.name))}<p class="glh">SP · banque B : espace et jeu</p>${padGrid(SP_FX.slice(8).map(f => f.name), 8)}
         <p><b>DIGGING</b> : avec CHOP LIVE et le disque qui tourne, chaque pad pose sa découpe ; sinon, le kit.</p>
         <p><b>SONS</b> en mode ACCORDS : pads 1 à 7 = les accords du style choisi, pad 8 = le premier à l'octave ; banque B = une octave plus haut.</p>
-        <p class="glh">SCRATCH · banque A</p>${padGrid(["◀ Arrière", "Ouvre", "Coupe", "Start / stop", "▶ Avant", "CUE 1", "CUE 2", "CUE 3"])}
-        <p class="glh">SCRATCH · banque B (phrases tenues)</p>${padGrid(["Baby", "Chirp", "Transform", "◀ Repère", "Flare", "Tear", "Stab", "Repère ▶"], 8)}`),
+        <p class="glh">SCRATCH · banque A</p>${padGrid(["▶ Avant", "Fader ◀ (tenu)", "Fader ▶ (tenu)", "CUE 1", "◀ Arrière", "CUE 2", "CUE 3", "CUE 4"])}
+        <p class="glh">SCRATCH · banque B (phrases tenues)</p>${padGrid(["▶ Avant", "Baby", "Chirp", "Transform", "◀ Arrière", "Flare", "Tear", "Stab"], 8)}`),
       sec("POTARDS, SELON L'ONGLET", [["PADS", "play"], ["LOOPER", "loops"], ["SONG", "song"], ["FX", "fx"], ["SP", "sp"], ["DIGGING", "sample"], ["SCRATCH", "scratch"], ["SONS", "sons"], ["GUITARE", "guitar"]].map(([n, t]) => `<p class="glh">${n}</p><div class="glknobs">${kn(t)}</div>`).join(""))
     ].join("");
   }
@@ -6490,7 +6529,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   // Instantané du kit en mémoire (sons, noms, réglages)
   const kitSnap = () => ({ b: buffers.slice(), n: names.slice(), g: gains.slice(), p: padParams.map(x => ({ ...x })) });
   const kitRestore = k => { buffers = k.b.slice(); names = k.n.slice(); gains = k.g.slice(); padParams = k.p.map(x => ({ ...x })); drawPads(); select(selected); };
-  function kitEdit(label, fn) { const before = kitSnap(); fn(); const after = kitSnap(); pushHist(label, () => kitRestore(before), () => kitRestore(after)); drawPads(); select(selected); }
+  function kitEdit(label, fn) { const before = kitSnap(); fn(); const after = kitSnap(); pushHist(label, () => { kitRestore(before); userKitSaveSoon(); }, () => { kitRestore(after); userKitSaveSoon(); }); drawPads(); select(selected); userKitSaveSoon(); }
 
   $("allPadsBtn").addEventListener("click", () => {
     allPads = !allPads; $("allPadsBtn").classList.toggle("on", allPads); $("allPadsBtn").setAttribute("aria-pressed", allPads);
@@ -6686,7 +6725,10 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       try { if (!edSrcCache.has(k.id)) edSrcCache.set(k.id, await (await fetch(`kits/${k.id}/kit.json`)).json()); groups.push({ label: k.name, items: edSrcCache.get(k.id).pads.map((p, i) => ({ v: `kit|${k.id}|${i}`, n: p.name })) }); } catch (e) {}
     }
     if (chopKit.buffers.length) groups.push({ label: "MES CHOPS", items: chopKit.names.map((n, i) => ({ v: `chop|${i}`, n })) });
-    try { const mine = await DB.all("kits"); mine.forEach(k => groups.push({ label: k.name, items: k.names.map((n, i) => ({ v: `user|${k.id}|${i}`, n })) })); } catch (e) {}
+    try { const mine = await DB.all("kits"); mine.forEach(k => groups.push({ label: k.name, items: k.names.map((n, i) => ({ v: `user|${k.id}|${i}`, n })).filter((x, i) => k.bufs[i]) })); } catch (e) {}
+    // sons de SCRATCH : la banque synthétisée et les sons importés / enregistrés dans SCRATCH
+    groups.push({ label: "SCRATCH · BANQUE", items: scrSynthNames().map((n, i) => ({ v: `scrb|${i}`, n })) });
+    try { const sm = (await DB.all("scratch")).sort((a, b) => a.created - b.created); if (sm.length) groups.push({ label: "SCRATCH · MES SONS", items: sm.map(m => ({ v: `scrm|${m.id}`, n: m.name })) }); } catch (e) {}
     return groups;
   }
   // Liste des sons avec écoute : toucher = écouter (sans passer par le looper), UTILISER = remplacer
@@ -6740,6 +6782,8 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (kind === "synth") return { buf: synthBuffers[+a], name: SYNTH_NAMES[+a], gain: 1 };
     if (kind === "chop") return { buf: chopKit.buffers[+a], name: chopKit.names[+a], gain: 1 };
     if (kind === "kit") { const kj = edSrcCache.get(a), p = kj.pads[+b], ab = await (await fetch(`kits/${a}/${p.file}`)).arrayBuffer(); return { buf: await new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)), name: p.name, gain: p.gain ?? 1 }; }
+    if (kind === "scrb") { const x = scrSynthCache()[+a]; return { buf: (() => { const o = ctx.createBuffer(1, x.data.length, sr); o.copyToChannel(x.data, 0); return o; })(), name: x.name, gain: 1 }; }
+    if (kind === "scrm") { const m = await DB.get("scratch", a); return { buf: unpackBuf(m.buf), name: m.name.slice(0, 16), gain: 1 }; }
     if (kind === "user") { const k = await DB.get("kits", a); return { buf: unpackBuf(k.bufs[+b]), name: k.names[+b], gain: k.gains ? k.gains[+b] : 1 }; }
     return null;
   }
@@ -6759,6 +6803,94 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     try { const buf = await new Promise(async (res, rej) => ctx.decodeAudioData(await f.arrayBuffer(), res, rej)); edSrcApply({ buf, name: f.name.replace(/\.[^.]+$/, "").slice(0, 16), gain: 1 }); }
     catch (err) { lcd("lcdPad", "PAD", "fichier illisible"); }
   });
+  // ---------- PADS : nouveau kit (vide), sauvegarde automatique des kits perso, prise de son au micro ----------
+  async function newKit() {
+    if (!ctx) return;
+    const n = (await DB.all("kits").catch(() => [])).filter(k => !k.auto).length + 1;
+    const v = await askName("NOM DU NOUVEAU KIT", "MON KIT " + n, 30); if (!v) return;
+    const id = "user-" + Date.now().toString(36);
+    await DB.put("kits", { id, name: v.slice(0, 30), names: new Array(16).fill(""), gains: new Array(16).fill(1), params: null, chokeAll: false, bufs: new Array(16).fill(null), created: Date.now() });
+    await refreshUserKits(); $("kitSheet").hidden = true; await loadKit(id);
+    select(0); $("micPad").hidden = false; $("micPadBtn").classList.add("on"); drawMicWave();
+    lcd("lcdPad", "KIT", v + " : 16 pads vides · ● MICRO, FICHIER ou BIBLIOTHÈQUE pour les remplir");
+  }
+  $("newKitBtn").addEventListener("click", newKit);
+  $("kitNew").addEventListener("click", newKit);
+  // un kit perso (créé ici, enregistré, ou chops) garde tout seul les sons posés sur ses pads
+  let ukT = null;
+  function userKitSaveSoon() {
+    const meta = kitIndex.find(k => k.id === kitCur); if (!meta || !meta.user) return;
+    clearTimeout(ukT); const id = kitCur;
+    ukT = setTimeout(async () => {
+      if (kitCur !== id) return;
+      try { const rec = await DB.get("kits", id); if (!rec) return;
+        Object.assign(rec, { names: names.slice(), gains: gains.slice(), params: padParams.map(p => ({ ...p })), chokeAll: kitChoke, bufs: buffers.map(b => b ? packBuf16(b) : null) });
+        await DB.put("kits", rec); } catch (e) {}
+    }, 800);
+  }
+  // Prise de son au micro : la forme d'onde s'affiche pendant l'enregistrement ; à l'arrêt, le son va sur le pad choisi
+  var MIC = { rec: null, peaks: [], max: 30 };   // var : lu dès le premier select() des pads
+  function drawMicTxt() { if ($("micTxt") && MIC && !MIC.rec) $("micTxt").textContent = `Le son va sur le pad ${String(selected + 1).padStart(2, "0")}. Touchez un pad pour changer de destination ; ● (ou la Sustain) pour lancer et arrêter : la prise est posée tout de suite (↶ pour annuler).`; }
+  function drawMicWave() {
+    const cv = $("micWave"); if (!cv || $("micPad").hidden) return;
+    fitCanvas(cv); const g = cv.getContext("2d"), w = cv.width, h = cv.height; if (!w) return;
+    g.fillStyle = "#0f0e0d"; g.fillRect(0, 0, w, h);
+    g.strokeStyle = "#2a2724"; g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.stroke();
+    const pk = MIC.peaks, n = Math.max(pk.length, MIC.rec ? Math.ceil(6 * sr / 4096) : 1, 1);   // pendant la prise : 6 s visibles, puis la vue se resserre
+    g.fillStyle = MIC.rec ? "#d92b2f" : "#7dff9a";
+    for (let i = 0; i < pk.length; i++) { const x = i / n * w, a = Math.min(1, pk[i] * 1.2) * h / 2; g.fillRect(x, h / 2 - a, Math.max(1, w / n), a * 2 || 1); }
+    if (MIC.rec) { const t = MIC.rec.n / sr; g.fillStyle = "#ece3d3"; g.font = `${Math.round(h * 0.16)}px VT323, monospace`; g.fillText(`● ${t.toFixed(1)} s / ${MIC.max} s`, 8, h * 0.2); }
+  }
+  async function micToggle() {
+    if (!ctx) return;
+    if (MIC.rec) return micStop();
+    try {
+      try { if (navigator.audioSession) navigator.audioSession.type = "play-and-record"; } catch (e) {}
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      const src = ctx.createMediaStreamSource(stream), chunks = [], mute = ctx.createGain(); mute.gain.value = 0;
+      const rec = MIC.rec = { stream, src, chunks, n: 0, node: null, mute, pad: selected, acc: 0, cnt: 0 };
+      MIC.peaks = [];
+      const push = d => {
+        if (rec.n >= MIC.max * sr) { micStop(); return; }
+        chunks.push(d); rec.n += d.length;
+        // un trait de forme d'onde tous les 4096 échantillons
+        for (let k = 0; k < d.length; k++) { rec.acc = Math.max(rec.acc, Math.abs(d[k])); if (++rec.cnt >= 4096) { MIC.peaks.push(rec.acc); rec.acc = 0; rec.cnt = 0; } }
+      };
+      if (hasWorklet) { rec.node = new AudioWorkletNode(ctx, "nomad-cap", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: "explicit" }); rec.node.port.onmessage = e => push(e.data.l); }
+      else { rec.node = ctx.createScriptProcessor(1024, 1, 1); rec.node.onaudioprocess = e => push(e.inputBuffer.getChannelData(0).slice()); }
+      src.connect(rec.node); rec.node.connect(mute); mute.connect(ctx.destination);
+      $("micRec").textContent = "■ ARRÊTER"; $("micRec").classList.add("on"); $("micPadBtn").classList.add("rec");
+      $("micTxt").textContent = `Enregistrement pour le pad ${String(rec.pad + 1).padStart(2, "0")}… (${MIC.max} s max)`;
+      const loop = () => { if (MIC.rec !== rec) return; drawMicWave(); requestAnimationFrame(loop); }; loop();
+      lcd("lcdPad", "MICRO", `enregistrement · pad ${rec.pad + 1}`);
+    } catch (e) { MIC.rec = null; lcd("lcdPad", "MICRO", "micro refusé (" + e.name + ")"); }
+  }
+  function micStop() {
+    const rec = MIC.rec; if (!rec) return; MIC.rec = null;
+    try { rec.src.disconnect(); rec.node.disconnect(); rec.mute.disconnect(); } catch (e) {}
+    rec.stream.getTracks().forEach(t => t.stop());
+    try { if (navigator.audioSession && !(typeof G !== "undefined" && G.on)) navigator.audioSession.type = "playback"; } catch (e) {}
+    $("micRec").textContent = "● ENREGISTRER"; $("micRec").classList.remove("on"); $("micPadBtn").classList.remove("rec");
+    const n = rec.n; if (n < sr * 0.05) { drawMicTxt(); drawMicWave(); return; }
+    const all = new Float32Array(n); let o = 0; rec.chunks.forEach(c => { all.set(c, o); o += c.length; });
+    // on coupe le silence du début et de la fin, petit fondu, niveau ramené à -1 dB
+    let pk = 0; for (let k = 0; k < n; k++) pk = Math.max(pk, Math.abs(all[k]));
+    const th = Math.max(0.01, pk * 0.06); let a = 0, b = n;
+    while (a < n && Math.abs(all[a]) < th) a++; while (b > a && Math.abs(all[b - 1]) < th * 0.5) b--;
+    a = Math.max(0, a - Math.floor(sr * 0.01)); b = Math.min(n, b + Math.floor(sr * 0.08));
+    const len = Math.max(64, b - a), buf = ctx.createBuffer(1, len, sr), d = buf.getChannelData(0), g = pk > 0.001 ? 0.89 / pk : 1, f = Math.min(Math.floor(sr * 0.005), len >> 2);
+    for (let k = 0; k < len; k++) d[k] = all[a + k] * g * Math.min(1, k / Math.max(1, f), (len - 1 - k) / Math.max(1, f));
+    MIC.peaks = []; for (let k = 0; k < len; k += 2048) { let m = 0; for (let j = k; j < Math.min(len, k + 2048); j++) m = Math.max(m, Math.abs(d[j])); MIC.peaks.push(m); }
+    const i = rec.pad, dt = new Date(), nm = "MICRO " + String(dt.getHours()).padStart(2, "0") + "H" + String(dt.getMinutes()).padStart(2, "0");
+    if (selected !== i) select(i);
+    edSrcApply({ buf, name: nm, gain: 1 });
+    drawMicWave();
+    $("micTxt").textContent = `Pad ${String(i + 1).padStart(2, "0")} ← ${nm} (${(len / sr).toFixed(1)} s). Touchez un autre pad puis ● pour la prise suivante.`;
+  }
+  $("micPadBtn").addEventListener("click", () => { const h = !$("micPad").hidden; $("micPad").hidden = h; $("micPadBtn").classList.toggle("on", !h); if (!h) { drawMicTxt(); drawMicWave(); } else if (MIC.rec) micStop(); });
+  $("micRec").addEventListener("click", micToggle);
+  $("micFile").addEventListener("click", () => $("edFile").click());
+  $("micLib").addEventListener("click", openSrcSheet);
   // ---------- Glisser un pad sur un autre ----------
   let pm = null;
   function openPadMenu(a, b) { pm = { a, b }; $("padMenuT").firstChild.textContent = `PAD ${a + 1} → PAD ${b + 1} `; $("padMenu").hidden = false; }
@@ -6941,7 +7073,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (map[n]) map[n]();
   }
   function onCC(cc, v) {
-    if (cc === 64) { const down = v >= 64; if (down && !sustainDown) { if (tab === "sp") spPrintToggle(); else if (tab === "fx") fxPrintToggle(); else recPress(); } sustainDown = down; return; }
+    if (cc === 64) { const down = v >= 64; if (down && !sustainDown) { if (tab === "sp") spPrintToggle(); else if (tab === "fx") fxPrintToggle(); else if (tab === "play" && !$("micPad").hidden) micToggle(); else recPress(); } sustainDown = down; return; }
     if (cc >= 20 && cc <= 35) { if (v > 0) padCommand(cc); return; }
     const k = knobIndex(cc);
     if (k < 0) return;
@@ -7061,7 +7193,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   initMidi();
   try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi) { $("btBox").hidden = false; $("btPair").addEventListener("click", () => window.webkit.messageHandlers.nomadMidi.postMessage({ type: "btpair" })); } } catch (e) {}
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
-  window.nomadDbg = { scrLoad, song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
+  window.nomadDbg = { scrLoad, newKit, micStop, MIC, edSrcApply, song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get names() { return names; }, get kitIndex() { return kitIndex; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
   let probe = null;
   window.nomadProbe = () => { if (!probe) { probe = ctx.createAnalyser(); probe.fftSize = 2048; fxMaster.connect(probe); } const a = new Float32Array(2048); probe.getFloatTimeDomainData(a); let m = 0; for (const v of a) m = Math.max(m, Math.abs(v)); return +m.toFixed(3); };
   window.nomadState = () => ({ kit: kitCur, kits: kitIndex.length, bufs: buffers.filter(Boolean).length, names: names.slice(0, 4), t0F: LP.t0F, Lf: LP.Lf, layers: LP.layers.map(l => ({ k: l.k, m: l.m })), pending: LP.pending && { ...LP.pending }, latMs, guitar: { amp: G.amp, preset: G.preset, fx: [...G.fx], on: G.on }, cap: capLatest, now: ctx && ctx.currentTime });

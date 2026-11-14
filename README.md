@@ -48,6 +48,8 @@ PROCHAINE : ×1, ×2, ×4 ou ÷2 (aussi au potard 8 du LOOPER) fixe la longueur 
 
 ## Onglet SCRATCH
 
+Pads de l'Akai : banque A = 1 avant, 5 arrière, 2 / 3 crossfader à gauche / à droite (tenu, il revient au relâchement), 4 6 7 8 = CUE 1 à 4 ; banque B = 9 avant, 13 arrière, 10 11 12 14 15 16 = les 6 phrases. START se lance à l'écran. Le crossfader a une course courte : moitié coupée, moitié ouverte (COUPURE à 30 %).
+
 Sur le disque : choisir une catégorie (BANQUE, VOIX, PAD, CHOP, PISTE, MES SONS), puis le son dans le menu déroulant. Le son est posé en entier (jusqu'à 90 s), pratique pour réenregistrer une boucle en la manipulant. Les phrases partent par défaut de l'endroit où se trouve le disque (PHRASES : ICI ; REPÈRE pour repartir du cue). Sur ordinateur, « sur le disque » est à gauche sous les onglets, les cue et phrases à droite de la platine, le crossfader et les coupes dessous.
 
 Platine tactile : le doigt posé sur le disque l'arrête et le fait tourner, en avant comme en arrière ; le son tourne en sillon fermé. Fader de coupure (zone rouge = coupé, HAMSTER inverse), boutons OUVRE / COUPE à maintenir, six phrases calées sur le tempo (baby, chirp, transform, flare, tear, stab). Sources : banque intégrée (voyelles et sons synthétisés, voix de la Bibliothèque du Congrès), bac VOIX, pads, chops de DIGGING, pistes du looper, et vos propres fichiers (gardés dans l'appareil). Tout passe dans le looper.
@@ -92,3 +94,7 @@ L'onglet SP colore toute la sortie, façon sampler de poche. 16 effets sur les 1
 ### DIGGING en ligne
 
 Huit bacs sont cherchés en direct sur internet, sans rien garder dans l'appareil (il faut une connexion) : SOUL & GOSPEL, JAZZ 20'S, TANGO & LATINO et MONDE 78 viennent des 78 tours d'Internet Archive enregistrés entre 1900 et 1925, domaine public aux États-Unis, avec la photo réelle du disque ; BRÉSIL, INDE, ASIE et AFRIQUE & ORIENT viennent de Wikimedia Commons, en domaine public ou sous licence CC BY / CC BY-SA (citer l'auteur, indiqué sous le titre). Un morceau entier est téléchargé une fois puis découpé en extraits de 30 s. Une barre fine montre le chargement. → PADS garde automatiquement le kit de chops dans l'appareil, nommé d'après le disque (« CHOPS · TITRE ») : on peut changer de kit et y revenir (liste des kits, flèches). Les 6 plus récents sont gardés. Dans l'extrait : − / + zooment, la glissière jaune (ou un appui long sur la forme d'onde) choisit où démarre la lecture, EFFACER retire toutes les coupes, CRÊTES coupe juste avant les sons les plus forts ; NORMALISER, − SOUFFLE, − CRAQUEMENTS nettoient l'extrait, ORIGINAL revient au son de départ. Le bouton ×1 au-dessus du cercle de l'écran choisit la longueur de la prochaine boucle (×1, ×2, ×4, ÷2).
+
+## Créer un kit, prise de son au micro
+
+PADS : + KIT (ou + NOUVEAU KIT dans la liste des kits) crée un kit vide, nommé. ● MIC ouvre la prise de son : choisir un pad, ● (ou la Sustain) pour lancer, encore pour arrêter ; la forme d'onde s'affiche pendant la prise, le silence du début et de la fin est coupé, le niveau ramené à -1 dB, et le son est posé tout de suite sur le pad (↶ pour annuler). FICHIER… importe un son de l'ordinateur ou du téléphone ; BIBLIOTHÈQUE… propose les sons de tous les kits, des chops et de SCRATCH (banque et mes sons). Les kits perso gardent tout seuls les sons posés sur leurs pads.

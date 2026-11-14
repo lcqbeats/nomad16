@@ -62,7 +62,7 @@
       try {
         const k = await DB.get("kits", meta.id);
         if (ticket !== kitLoading) return;
-        buffers = k.bufs.map(unpackBuf); names = k.names.slice(); gains = k.gains ? k.gains.slice() : new Array(16).fill(1);
+        buffers = k.bufs.map(b => b ? unpackBuf(b) : null); names = k.names.slice(); gains = k.gains ? k.gains.slice() : new Array(16).fill(1);
         userParams = k.params ? k.params.map(p => ({ ...p })) : null; userChoke = !!k.chokeAll;
       } catch (e) { lcd("lcdPad", "PAD", "kit perso illisible"); return; }
     } else {

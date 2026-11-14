@@ -93,7 +93,10 @@
       try { if (!edSrcCache.has(k.id)) edSrcCache.set(k.id, await (await fetch(`kits/${k.id}/kit.json`)).json()); groups.push({ label: k.name, items: edSrcCache.get(k.id).pads.map((p, i) => ({ v: `kit|${k.id}|${i}`, n: p.name })) }); } catch (e) {}
     }
     if (chopKit.buffers.length) groups.push({ label: "MES CHOPS", items: chopKit.names.map((n, i) => ({ v: `chop|${i}`, n })) });
-    try { const mine = await DB.all("kits"); mine.forEach(k => groups.push({ label: k.name, items: k.names.map((n, i) => ({ v: `user|${k.id}|${i}`, n })) })); } catch (e) {}
+    try { const mine = await DB.all("kits"); mine.forEach(k => groups.push({ label: k.name, items: k.names.map((n, i) => ({ v: `user|${k.id}|${i}`, n })).filter((x, i) => k.bufs[i]) })); } catch (e) {}
+    // sons de SCRATCH : la banque synthétisée et les sons importés / enregistrés dans SCRATCH
+    groups.push({ label: "SCRATCH · BANQUE", items: scrSynthNames().map((n, i) => ({ v: `scrb|${i}`, n })) });
+    try { const sm = (await DB.all("scratch")).sort((a, b) => a.created - b.created); if (sm.length) groups.push({ label: "SCRATCH · MES SONS", items: sm.map(m => ({ v: `scrm|${m.id}`, n: m.name })) }); } catch (e) {}
     return groups;
   }
   // Liste des sons avec écoute : toucher = écouter (sans passer par le looper), UTILISER = remplacer
@@ -147,6 +150,8 @@
     if (kind === "synth") return { buf: synthBuffers[+a], name: SYNTH_NAMES[+a], gain: 1 };
     if (kind === "chop") return { buf: chopKit.buffers[+a], name: chopKit.names[+a], gain: 1 };
     if (kind === "kit") { const kj = edSrcCache.get(a), p = kj.pads[+b], ab = await (await fetch(`kits/${a}/${p.file}`)).arrayBuffer(); return { buf: await new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)), name: p.name, gain: p.gain ?? 1 }; }
+    if (kind === "scrb") { const x = scrSynthCache()[+a]; return { buf: (() => { const o = ctx.createBuffer(1, x.data.length, sr); o.copyToChannel(x.data, 0); return o; })(), name: x.name, gain: 1 }; }
+    if (kind === "scrm") { const m = await DB.get("scratch", a); return { buf: unpackBuf(m.buf), name: m.name.slice(0, 16), gain: 1 }; }
     if (kind === "user") { const k = await DB.get("kits", a); return { buf: unpackBuf(k.bufs[+b]), name: k.names[+b], gain: k.gains ? k.gains[+b] : 1 }; }
     return null;
   }

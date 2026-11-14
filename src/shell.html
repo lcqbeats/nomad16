@@ -59,7 +59,7 @@
   <div class="deskside" id="deskSide" hidden></div>
 
   <section class="view" id="view-play">
-    <div class="padtools"><button class="btn" id="edBtn" type="button">ÉDITER LE PAD 01</button><button class="btn" id="allPadsBtn" type="button" aria-pressed="false">TOUS</button><button class="btn" id="fullBtn" type="button">FULL</button><button class="btn" id="nrBtn" type="button">REPEAT</button><button class="btn" id="nrRate" type="button">1/16</button></div>
+    <div class="padtools"><button class="btn" id="edBtn" type="button">ÉDITER 01</button><button class="btn" id="newKitBtn" type="button">+ KIT</button><button class="btn" id="micPadBtn" type="button">● MIC</button><button class="btn" id="allPadsBtn" type="button" aria-pressed="false">TOUS</button><button class="btn" id="fullBtn" type="button">FULL</button><button class="btn" id="nrBtn" type="button">REPEAT</button><button class="btn" id="nrRate" type="button">1/16</button></div>
     <div class="editor" id="editor" hidden>
       <div class="edsrc"><label for="edSrcBtn">SON</label><button class="btn" id="edSrcBtn" type="button">REMPLACER LE SON… (avec écoute)</button><input type="file" id="edFile" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff" hidden></div>
       <canvas id="edCanvas" aria-label="Début et fin du son : glissez les bords"></canvas>
@@ -85,6 +85,15 @@
         <button class="btn" id="edReset" type="button">RÉINITIAL.</button>
       </div>
       <p class="note help">Glissez les bords rouges pour le début et la fin. MAINTENU : le son s'arrête au relâchement du pad. MUTE : les pads d'un même groupe se coupent entre eux. TEMPO : cale le son sur 1, 2, 4 ou 8 temps (change la vitesse). Glissez un pad sur un autre pour copier, échanger ou fusionner.</p>
+    </div>
+    <div class="micpad" id="micPad" hidden>
+      <canvas id="micWave" aria-label="Forme d'onde de la prise de son"></canvas>
+      <div class="microw">
+        <button class="btn rec" id="micRec" type="button">● ENREGISTRER</button>
+        <button class="btn" id="micFile" type="button">FICHIER…</button>
+        <button class="btn" id="micLib" type="button">BIBLIOTHÈQUE…</button>
+      </div>
+      <p class="mictxt" id="micTxt">Le son va sur le pad 01. Touchez un pad pour changer de destination ; ● pour lancer, ■ pour arrêter : la prise est posée tout de suite (↶ pour annuler).</p>
     </div>
     <div class="pads" id="pads"></div>
   </section>
@@ -384,6 +393,7 @@
 <div class="sheet" id="kitSheet" hidden>
   <div class="sheet-in">
     <h2>KITS <button type="button" id="kitClose">FERMER</button></h2>
+    <button class="btn" id="kitNew" type="button" style="width:100%;margin-bottom:8px">+ NOUVEAU KIT (VIDE)</button>
     <div class="saverow"><input id="kitSaveName" type="text" maxlength="30" placeholder="nom du kit actuel" aria-label="Nom du kit"><button class="btn rec" id="kitSave" type="button">ENREGISTRER</button></div>
     <div id="kitList"></div>
   </div>

@@ -55,6 +55,10 @@
     ].map(([n, d]) => ({ name: n, data: d }));
   }
   const SCR_LOC = [["loc-tony-schwartz", "Old auto horns", 0, "KLAXONS"], ["loc-tony-schwartz", "Announcer - Process", 0, "SPEAKER"], ["loc-tony-schwartz", "Words & tone", 0, "MOTS"], ["loc-tony-schwartz", "How do you read?", 0, "HOW DO YOU READ"], ["loc-tony-schwartz", "It's a boy", 0, "IT'S A BOY"], ["loc-tony-schwartz", "Mothers calling children", 0, "APPELS"], ["loc-tony-schwartz", "Instant information", 0, "INFO"], ["loc-jukebox-popular", "Army bugle calls", 0, "CLAIRON"], ["loc-tony-schwartz", "Taxi to Harlem", 0, "TAXI"], ["loc-tony-schwartz", "Playground", 0, "RÉCRÉ"]];
+  // banque synthétisée, partagée avec l'onglet PADS (choix du son d'un pad)
+  let scrSynthC = null;
+  const scrSynthCache = () => scrSynthC || (scrSynthC = scrSynth(sr));
+  const scrSynthNames = () => scrSynthCache().map(x => x.name);
   async function scrCrate() {
     if (crate) return crate;
     if (!SCR.crate) { try { SCR.crate = await (await fetch("crate/crate.json")).json(); } catch (e) { SCR.crate = null; } }
@@ -157,7 +161,8 @@
     else if (f < 0.5) { SCR.filt.type = "lowpass"; SCR.filt.frequency.setTargetAtTime(150 * Math.pow(120, f / 0.5), t, 0.02); SCR.filt.Q.value = 2; }
     else { SCR.filt.type = "highpass"; SCR.filt.frequency.setTargetAtTime(30 * Math.pow(130, (f - 0.5) / 0.5), t, 0.02); SCR.filt.Q.value = 2; }
   }
-  const scrZoneW = () => 0.05 + knobVals.scratch[5] * 0.3;
+  // zone coupée : la moitié du fader avec COUPURE à 30 % (réglage d'origine), de 20 % à 80 %
+  const scrZoneW = () => Math.max(0.2, Math.min(0.8, 0.2 + knobVals.scratch[5]));
   const scrFaderOpen = () => SCR.ham ? SCR.fader > scrZoneW() : SCR.fader < 1 - scrZoneW();
   function scrGate(force) {
     const g = (SCR.padCut || SCR.btnCut) ? false : (SCR.padOpen || SCR.btnOpen) ? true : scrFaderOpen();
@@ -170,7 +175,7 @@
   function drawScrFader() {
     const el = $("scrFader"); if (!el) return;
     const z = scrZoneW() * 100;
-    $("scrZone").style.cssText = SCR.ham ? `left:0;width:${z}%` : `right:0;width:${z}%`;
+    $("scrZone").style.cssText = (SCR.ham ? "left:16px;" : "right:16px;") + `width:calc(${z / 100} * (100% - 32px))`;
     $("scrCap").style.left = `calc(16px + ${SCR.fader} * (100% - 32px))`;
     el.classList.toggle("open", SCR.gate !== false);
     el.setAttribute("aria-valuenow", Math.round(SCR.fader * 100));
@@ -270,7 +275,21 @@
   // Pads de l'Akai dans SCRATCH (tous tenus) : 1 arrière, 5 avant, 2 ouvre, 3 coupe, 4-6-7-8 et 9-10 phrases
   // Pads de l'Akai dans SCRATCH (tenus) — banque A : 1 arrière, 5 avant, 2 ouvre, 3 coupe, 4 start/stop, 6-7-8 CUE 1 à 3 ;
   // banque B : 9-10-11 et 13-14-15 phrases, 12 repère précédent, 16 repère suivant
-  const SCR_PADPH = { 8: 0, 9: 1, 10: 2, 12: 3, 13: 4, 14: 5 }, SCR_PADCUE = { 5: 0, 6: 1, 7: 2 };
+  // Pads de l'Akai dans SCRATCH (numéro du pad = indice + 1)
+  // banque A : 1 avant, 5 arrière, 2 / 3 crossfader à gauche / à droite (tenu), 4 6 7 8 = CUE 1 à 4
+  // banque B : 9 avant, 13 arrière (comme 1 et 5), 10 11 12 14 15 16 = les 6 phrases (tenues)
+  const SCR_PADPH = { 9: 0, 10: 1, 11: 2, 13: 3, 14: 4, 15: 5 }, SCR_PADCUE = { 3: 0, 5: 1, 6: 2, 7: 3 };
+  const SCR_FWD = [0, 8], SCR_BACK = [4, 12];
+  const SCRF = { held: {}, prev: null };
+  // pads 2 et 3 : le crossfader glisse vraiment (à gauche / à droite) tant que le pad est tenu, puis revient
+  function scrPadFader(side, down) {
+    if (down) { if (SCRF.prev === null) SCRF.prev = SCR.fader; SCRF.held[side] = true; }
+    else delete SCRF.held[side];
+    const h = Object.keys(SCRF.held);
+    if (h.length) SCR.fader = h[h.length - 1] === "L" ? 0 : 1;
+    else if (SCRF.prev !== null) { SCR.fader = SCRF.prev; SCRF.prev = null; }
+    drawScrFader(); scrGate();
+  }
   const scrPadT = {};
   function scrCueStep(d) {
     const set = SCR.cues.map((c, i) => c === null ? -1 : i).filter(i => i >= 0);
@@ -287,14 +306,9 @@
       else if (scrPadT[c]) { clearTimeout(scrPadT[c].t); if (!scrPadT[c].long) scrCueTap(c); delete scrPadT[c]; }
       return;
     }
-    if (i === 0 || i === 4) { scrPush(i === 4 ? 1 : -1, down, vel); return; }
-    if (i === 1) { SCR.padOpen = down; scrGate(); return; }
-    if (i === 2) { SCR.padCut = down; scrGate(); return; }
-    if (i in SCR_PADPH) { if (down) scrPhrase(SCR_PADPH[i]); else scrPhraseStop(SCR_PADPH[i]); return; }
-    if (!down) return;
-    if (i === 3) scrMotor();
-    else if (i === 11) scrCueStep(-1);
-    else if (i === 15) scrCueStep(1);
+    if (SCR_FWD.includes(i) || SCR_BACK.includes(i)) { scrPush(SCR_FWD.includes(i) ? 1 : -1, down, vel); return; }
+    if (i === 1 || i === 2) { scrPadFader(i === 1 ? "L" : "R", down); return; }
+    if (i in SCR_PADPH) { if (down) scrPhrase(SCR_PADPH[i]); else scrPhraseStop(SCR_PADPH[i]); }
   }
   function scrKnob(k) {
     const v = knobVals.scratch[k];

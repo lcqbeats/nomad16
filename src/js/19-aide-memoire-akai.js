@@ -21,8 +21,8 @@
         <p class="glh">SP · banque A : couleur (appui court = allumé, long = tant qu'on tient)</p>${padGrid(SP_FX.slice(0, 8).map(f => f.name))}<p class="glh">SP · banque B : espace et jeu</p>${padGrid(SP_FX.slice(8).map(f => f.name), 8)}
         <p><b>DIGGING</b> : avec CHOP LIVE et le disque qui tourne, chaque pad pose sa découpe ; sinon, le kit.</p>
         <p><b>SONS</b> en mode ACCORDS : pads 1 à 7 = les accords du style choisi, pad 8 = le premier à l'octave ; banque B = une octave plus haut.</p>
-        <p class="glh">SCRATCH · banque A</p>${padGrid(["◀ Arrière", "Ouvre", "Coupe", "Start / stop", "▶ Avant", "CUE 1", "CUE 2", "CUE 3"])}
-        <p class="glh">SCRATCH · banque B (phrases tenues)</p>${padGrid(["Baby", "Chirp", "Transform", "◀ Repère", "Flare", "Tear", "Stab", "Repère ▶"], 8)}`),
+        <p class="glh">SCRATCH · banque A</p>${padGrid(["▶ Avant", "Fader ◀ (tenu)", "Fader ▶ (tenu)", "CUE 1", "◀ Arrière", "CUE 2", "CUE 3", "CUE 4"])}
+        <p class="glh">SCRATCH · banque B (phrases tenues)</p>${padGrid(["▶ Avant", "Baby", "Chirp", "Transform", "◀ Arrière", "Flare", "Tear", "Stab"], 8)}`),
       sec("POTARDS, SELON L'ONGLET", [["PADS", "play"], ["LOOPER", "loops"], ["SONG", "song"], ["FX", "fx"], ["SP", "sp"], ["DIGGING", "sample"], ["SCRATCH", "scratch"], ["SONS", "sons"], ["GUITARE", "guitar"]].map(([n, t]) => `<p class="glh">${n}</p><div class="glknobs">${kn(t)}</div>`).join(""))
     ].join("");
   }

@@ -15,7 +15,7 @@
   // Instantané du kit en mémoire (sons, noms, réglages)
   const kitSnap = () => ({ b: buffers.slice(), n: names.slice(), g: gains.slice(), p: padParams.map(x => ({ ...x })) });
   const kitRestore = k => { buffers = k.b.slice(); names = k.n.slice(); gains = k.g.slice(); padParams = k.p.map(x => ({ ...x })); drawPads(); select(selected); };
-  function kitEdit(label, fn) { const before = kitSnap(); fn(); const after = kitSnap(); pushHist(label, () => kitRestore(before), () => kitRestore(after)); drawPads(); select(selected); }
+  function kitEdit(label, fn) { const before = kitSnap(); fn(); const after = kitSnap(); pushHist(label, () => { kitRestore(before); userKitSaveSoon(); }, () => { kitRestore(after); userKitSaveSoon(); }); drawPads(); select(selected); userKitSaveSoon(); }
 
   $("allPadsBtn").addEventListener("click", () => {
     allPads = !allPads; $("allPadsBtn").classList.toggle("on", allPads); $("allPadsBtn").setAttribute("aria-pressed", allPads);

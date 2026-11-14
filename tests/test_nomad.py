@@ -30,7 +30,7 @@ def server():
 @pytest.fixture(scope="session")
 def browser():
     with sync_playwright() as p:
-        kw = {"args": ["--autoplay-policy=no-user-gesture-required"]}
+        kw = {"args": ["--autoplay-policy=no-user-gesture-required", "--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"]}
         if os.environ.get("CHROME_PATH"):
             kw["executable_path"] = os.environ["CHROME_PATH"]
         b = p.chromium.launch(**kw)
@@ -124,19 +124,25 @@ def test_scratch_pads_avant_phrase_et_cue(app):
     app.click("#tab-scratch")
     app.wait_for_function("nomadDbg.SCR.N > 0", timeout=10000)
     p0 = app.evaluate("nomadDbg.SCR.rep.pos")
-    app.evaluate("nomadMidi([0x99, 40, 110])")          # pad 5 : avant
+    app.evaluate("nomadMidi([0x99, 36, 110])")          # pad 1 : avant
     app.wait_for_timeout(200)
-    app.evaluate("nomadMidi([0x89, 40, 0])")
+    app.evaluate("nomadMidi([0x89, 36, 0])")
     app.wait_for_timeout(100)
     assert app.evaluate("nomadDbg.SCR.rep.pos") > p0
-    app.evaluate("nomadMidi([0x99, 41, 100]); nomadMidi([0x89, 41, 0])")   # pad 6 : CUE 1
+    app.evaluate("nomadMidi([0x99, 39, 100]); nomadMidi([0x89, 39, 0])")   # pad 4 : CUE 1
     assert app.evaluate("nomadDbg.SCR.cues[0]") is not None
-    app.evaluate("nomadMidi([0x99, 44, 100])")          # pad 9 : baby, tenu
+    app.evaluate("nomadMidi([0x99, 45, 100])")          # pad 10 : baby, tenu
     app.wait_for_timeout(500)
     assert app.evaluate("nomadDbg.SCR.ph") == 0
-    app.evaluate("nomadMidi([0x89, 44, 0])")
+    app.evaluate("nomadMidi([0x89, 45, 0])")
     app.wait_for_timeout(100)
     assert app.evaluate("nomadDbg.SCR.ph") == -1
+    # pads 2 / 3 : le crossfader part à gauche / à droite tant que le pad est tenu
+    f0 = app.evaluate("nomadDbg.SCR.fader")
+    app.evaluate("nomadMidi([0x99, 38, 100])")
+    assert app.evaluate("nomadDbg.SCR.fader") == 1 and app.evaluate("nomadDbg.SCR.gate") is False
+    app.evaluate("nomadMidi([0x89, 38, 0])")
+    assert app.evaluate("nomadDbg.SCR.fader") == f0
 
 
 def test_aide_memoire(app):
@@ -351,20 +357,21 @@ def test_sons_strum(app):
 def test_scratch_reprise_immediate_moteur(app):
     app.click("#tab-scratch")
     app.wait_for_function("nomadDbg.SCR.N > 0", timeout=10000)
-    app.evaluate("nomadMidi([0x99, 39, 100])")          # pad 4 : start
+    app.click("#scrStart")                              # START à l'écran
     app.wait_for_timeout(400)
     assert app.evaluate("nomadDbg.SCR.motor") is True
-    app.evaluate("nomadMidi([0x99, 36, 100])")          # pad 1 : arrière
+    app.evaluate("nomadMidi([0x99, 40, 100])")          # pad 5 : arrière
     app.wait_for_timeout(200)
-    app.evaluate("nomadMidi([0x89, 36, 0])")
+    app.evaluate("nomadMidi([0x89, 40, 0])")
     app.wait_for_timeout(120)
     assert app.evaluate("nomadDbg.SCR.rep.vel") > 0.5    # déjà reparti en avant
-    app.evaluate("nomadMidi([0x99, 41, 100]); nomadMidi([0x89, 41, 0])")   # CUE 1
-    app.evaluate("nomadMidi([0x99, 42, 100]); nomadMidi([0x89, 42, 0])")   # CUE 2
-    app.evaluate("nomadMidi([0x99, 47, 100])")          # pad 12 : repère précédent
-    assert app.evaluate("nomadDbg.SCR.cueIdx") == 0
-    app.evaluate("nomadMidi([0x99, 51, 100])")          # pad 16 : repère suivant
-    assert app.evaluate("nomadDbg.SCR.cueIdx") == 1
+    app.evaluate("nomadMidi([0x99, 39, 100]); nomadMidi([0x89, 39, 0])")   # pad 4 : CUE 1
+    app.evaluate("nomadMidi([0x99, 43, 100]); nomadMidi([0x89, 43, 0])")   # pad 8 : CUE 4
+    assert app.evaluate("nomadDbg.SCR.cues[0] !== null && nomadDbg.SCR.cues[3] !== null")
+    app.evaluate("nomadMidi([0x99, 48, 100])")          # pad 13 (banque B) : arrière aussi
+    app.wait_for_timeout(150)
+    assert app.evaluate("nomadDbg.SCR.rep.vel") < 0
+    app.evaluate("nomadMidi([0x89, 48, 0])")
 
 
 def test_longueur_des_pistes(app):
@@ -1046,3 +1053,30 @@ def test_scratch_menu_disque_entier_et_phrases_ici(app):
     # ordinateur : « sur le disque » sous les onglets
     if app.evaluate("document.documentElement.classList.contains('desk')"):
         assert app.evaluate("document.getElementById('scrDisk').parentNode.id") == "deskSide"
+
+
+
+def test_nouveau_kit_micro_et_bibliotheque(app):
+    app.click("#newKitBtn")
+    app.fill(".namedlg input", "mes prises")
+    app.click(".namedlg button[type=submit]")
+    app.wait_for_function("document.getElementById('kitName').textContent === 'MES PRISES'")
+    assert app.evaluate("nomadDbg.buffers.every(b => !b)")
+    assert not app.is_hidden("#micPad")
+    # prise au micro (micro factice de Chrome) sur le pad 3
+    app.locator("#pads .pad", has_text="PAD 3").first.click()
+    app.click("#micRec")
+    app.wait_for_function("nomadDbg.MIC.rec && nomadDbg.MIC.rec.n > nomadDbg.sr * 0.6", timeout=8000)
+    app.click("#micRec")
+    assert app.evaluate("!!nomadDbg.buffers[2]") and app.evaluate("nomadDbg.names[2]").startswith("MICRO")
+    # bibliothèque : les sons de SCRATCH sont proposés
+    app.click("#micLib")
+    app.wait_for_function("document.getElementById('srcList').innerText.includes('SCRATCH · BANQUE')")
+    app.click("#srcClose")
+    # le kit perso garde le son tout seul
+    app.wait_for_timeout(1200)
+    app.evaluate("nomadDbg.loadKit('synth')")
+    app.wait_for_function("document.getElementById('kitName').textContent !== 'MES PRISES'")
+    kid = app.evaluate("nomadDbg.kitIndex.find(k => k.name === 'MES PRISES').id")
+    app.evaluate(f"nomadDbg.loadKit('{kid}')")
+    app.wait_for_function("nomadDbg.buffers[2] && nomadDbg.buffers[2].length > 0 && !nomadDbg.buffers[0]")

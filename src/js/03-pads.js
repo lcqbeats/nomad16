@@ -31,7 +31,7 @@
     padEls[selected].classList.remove("sel"); selected = i; padEls[i].classList.add("sel");
     const p = padParams[i];
     if (typeof syncPlayKnobs === "function" && padParams) syncPlayKnobs();
-    if ($("edBtn")) { $("edBtn").textContent = `ÉDITER LE PAD ${String(i + 1).padStart(2, "0")} · ${(names[i] || "—").toUpperCase()}`; if (!$("editor").hidden) drawEditor(); }
+    if ($("edBtn")) { $("edBtn").textContent = `ÉDITER ${String(i + 1).padStart(2, "0")}`; $("edBtn").title = (names[i] || "—").toUpperCase(); if (typeof drawMicTxt === "function") drawMicTxt(); if (!$("editor").hidden) drawEditor(); }
   }
   select(0);
   function flash(i) { const el = padEls[i]; el.classList.add("hit"); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("hit"), 110); }
