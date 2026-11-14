@@ -3,7 +3,8 @@
   // sons du kit en cours (ou ceux de NOMAD si le kit n'a pas le rôle). Quelques centaines d'octets par pattern.
   // Écriture : une ligne par rôle, un caractère par double-croche ; « . » = rien, 1 à 9 = force.
   // k grosse caisse · s caisse claire · h charleston fermé · o charleston ouvert · p percussion (rim, shaker…)
-  // sw : swing des double-croches (0 à 0,6) · lag : retard d'un rôle en fraction de double-croche (jeu « en arrière »)
+  // sw : swing des double-croches (0 à 0,6) · sw8 : swing des croches (le « et » retardé) · lag : retard d'un rôle
+  // en fraction de double-croche (jeu « en arrière ») · cat : catégorie de SONS (sinon BATTERIE)
   const DRUM_GENRES = [
     { id: "boombap", name: "BOOM BAP", bpm: 90, sw: 0.2, p: [
       { n: "BASIQUE", k: "9......79.......", s: "....9.......9...", h: "6.5.6.5.6.5.6.5." },
@@ -64,9 +65,25 @@
       { n: "DOUBLE CAISSE", k: "9.9.......9.....", s: "....9.9.....9...", h: "7676767676767676" },
       { n: "2 MESURES", k: "9.9.......9.....9.9...9...9..9..", s: "....9..6.6..9..6....9..6.6..9.99", h: "76767676767676767676767676767676" },
       { n: "ROULEMENT", k: "9.9.......9.....", s: "....9..7.7.79999", h: "76767676767....." }
+    ] },
+    // Mesuré sur « Sober » : 83 BPM ; grosse caisse 1, 1+ (double-croche 3) et 3, levée en fin de mesure ;
+    // charleston en croches sauf sur 1 et 3, le « et » joué ~45 ms en retard (swing de croches) ; grosse caisse un peu derrière
+    { id: "sober", name: "BATTERIE SOBER", cat: "SOBER", bpm: 83, sw: 0, sw8: 0.25, lag: { k: 0.06 }, p: [
+      { n: "GROOVE", k: "9.7.....8......5", s: "....9.......9...", h: "..5.4.5...5.4.5." },
+      { n: "SANS LEVÉE", k: "9.7.....8.......", s: "....9.......9...", h: "..5.4.5...5.4.5." },
+      { n: "GHOST", k: "9.7.....8......5", s: "....9..3....9...", h: "..5.4.53..5.4.5." },
+      { n: "CHARLESTON PLEIN", k: "9.7.....8.......", s: "....9.......9...", h: "..554.5.4.5.4.55", o: "..............4." }
+    ] },
+    // Mesuré sur « All Things to All Men » : 75,5 BPM, batteur jazz ; caisse sur 2 et 4 (fantôme parfois sur le 3),
+    // cymbale en « ding, ding-a » (paires de double-croches sur 1 et 3), double-croches impaires ~38 ms en retard
+    { id: "allthings", name: "BATTERIE ALL THINGS", cat: "ALL THINGS", bpm: 75, sw: 0.29, lag: { k: 0.05 }, p: [
+      { n: "BASE", k: "9...6...9.......", s: "....9.......9...", h: "76..7.6.76..7.6." },
+      { n: "KICK QUI AVANCE", k: "9...6.5.9.......", s: "....9.......9...", h: "76..7.6.76..7.6." },
+      { n: "FANTÔME SUR 3", k: "9..6....9.......", s: "....9...4...9...", h: "7...7.6.7...7..." },
+      { n: "PLEIN", k: "9..665..9.......", s: "..3.9..3....9.3.", h: "76..7.6.76..7.6.", o: "..............5." }
     ] }
   ];
-  DRUM_GENRES.forEach(g => SYNTHS.push({ id: "drum:" + g.id, name: g.name, cat: "BATTERIE", lic: `8 patterns · ${g.bpm} BPM conseillés` }));
+  DRUM_GENRES.forEach(g => SYNTHS.push({ id: "drum:" + g.id, name: g.name, cat: g.cat || "BATTERIE", lic: `${g.p.length} patterns · ${g.bpm} BPM conseillés` }));
   { const i = CATS.indexOf("CLAVIERS"); CATS.splice(i < 0 ? CATS.length : i, 0, "BATTERIE"); }
   const DR = { genre: null, cur: -1, next: -1, anchor: 0, step: 0, nextT: 0, kitSounds: store.get("drKit", true), synth: null };
   const isDrum = id => typeof id === "string" && id.startsWith("drum:");
@@ -105,7 +122,7 @@
         if (DR.next < 0) { DR.cur = -1; drawDrums(); return; }
         DR.cur = DR.next; DR.step = 0; drawDrums(); continue;
       }
-      const map = DR.map, base = DR.nextT + (i % 2 ? g.sw * st * 0.66 : 0);
+      const map = DR.map, base = DR.nextT + (i % 2 ? g.sw * st * 0.66 : 0) + (i % 4 === 2 ? (g.sw8 || 0) * st : 0);
       ["k", "s", "h", "o", "p"].forEach(r => {
         const c = (p[r] || "")[i]; if (!c || c === ".") return;
         const when = Math.max(ctx.currentTime, base + ((g.lag && g.lag[r]) || 0) * st);
@@ -119,7 +136,7 @@
   // lancer / changer / arrêter : au début de la mesure suivante (calé sur la boucle du LOOPER quand elle tourne)
   function drPlay(i) {
     if (!ctx) return;
-    const g = drGenre();
+    const g = drGenre(); if (!g.p[i]) return;
     if (DR.cur >= 0 && DR.genre === g) {
       DR.next = (DR.next === i && DR.cur === i) ? -1 : i;
       if (DR.cur === i && DR.next === i) DR.next = -1;
@@ -140,9 +157,9 @@
     if (on) $("chordPanel").hidden = true;
     if (!on) return;
     const g = drGenre(), live = DR.genre === g;
-    $("drTitle").textContent = `${g.name} · ${g.bpm} BPM conseillés · swing ${Math.round(g.sw * 100)} %`;
+    $("drTitle").textContent = `${g.name} · ${g.bpm} BPM conseillés · swing ${Math.round(Math.max(g.sw, g.sw8 || 0) * 100)} %${g.sw8 ? " (croches)" : ""}`;
     const box = $("drPats"); box.innerHTML = "";
-    [4, 5, 6, 7, 0, 1, 2, 3].forEach(i => {
+    (g.p.length > 4 ? [4, 5, 6, 7, 0, 1, 2, 3] : [0, 1, 2, 3]).forEach(i => {
       const p = g.p[i], b = document.createElement("button"); b.type = "button"; b.className = "drpat";
       b.classList.toggle("on", live && DR.cur === i); b.classList.toggle("next", live && DR.next === i && DR.cur !== i);
       const n = drLen(p), cells = Array.from({ length: Math.min(n, 16) }, (_, j) => { const k = (p.k || "")[j], s = (p.s || "")[j]; return `<i class="${k && k !== "." ? "k" : s && s !== "." ? "s" : ""}"></i>`; }).join("");

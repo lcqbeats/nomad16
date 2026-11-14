@@ -18,9 +18,9 @@
   const Q = {
     maj: [0, 4, 7], min: [0, 3, 7], maj7: [0, 4, 7, 11], m7: [0, 3, 7, 10], "7": [0, 4, 7, 10], maj9: [0, 4, 7, 11, 14], m9: [0, 3, 7, 10, 14],
     "9": [0, 4, 7, 10, 14], "13": [0, 4, 10, 14, 21], m11: [0, 3, 7, 10, 14, 17], "6/9": [0, 4, 7, 9, 14], dim7: [0, 3, 6, 9], m7b5: [0, 3, 6, 10],
-    add9: [0, 4, 7, 14], "7sus": [0, 5, 7, 10], "7#9": [0, 4, 7, 10, 15], "7b9": [0, 4, 7, 10, 13], m6: [0, 3, 7, 9]
+    add9: [0, 4, 7, 14], sus2: [0, 2, 7, 14], "7sus": [0, 5, 7, 10], "7#9": [0, 4, 7, 10, 15], "7b9": [0, 4, 7, 10, 13], m6: [0, 3, 7, 9]
   };
-  const SYM = { maj: "", min: "m", maj7: "maj7", m7: "m7", "7": "7", maj9: "maj9", m9: "m9", "9": "9", "13": "13", m11: "m11", "6/9": "6/9", dim7: "°7", m7b5: "ø7", add9: "add9", "7sus": "7sus4", "7#9": "7#9", "7b9": "7b9", m6: "m6" };
+  const SYM = { maj: "", min: "m", maj7: "maj7", m7: "m7", "7": "7", maj9: "maj9", m9: "m9", "9": "9", "13": "13", m11: "m11", "6/9": "6/9", dim7: "°7", m7b5: "ø7", add9: "add9", sus2: "sus2", "7sus": "7sus4", "7#9": "7#9", "7b9": "7b9", m6: "m6" };
   const STYLES = [
     { name: "NÉO SOUL", minor: false, p: [[2, "m9", "ii9"], [7, "13", "V13"], [0, "maj9", "Imaj9"], [9, "m9", "vi9"], [5, "maj9", "IVmaj9"], [4, "m7", "iii7"], [10, "9", "♭VII9"]] },
     { name: "JAZZ", minor: false, p: [[2, "m7", "ii7"], [7, "7b9", "V7♭9"], [0, "maj7", "Imaj7"], [9, "7", "VI7"], [4, "m7b5", "iiiø"], [5, "maj7", "IVmaj7"], [6, "dim7", "♯iv°7"]] },
@@ -30,6 +30,9 @@
     { name: "BLUES", minor: false, p: [[0, "9", "I9"], [5, "9", "IV9"], [7, "9", "V9"], [0, "7#9", "I7♯9"], [6, "dim7", "♯iv°7"], [2, "m7", "ii7"], [8, "7", "♭VI7"]] },
     { name: "REGGAE DUB", minor: true, p: [[0, "min", "i"], [5, "min", "iv"], [10, "maj", "♭VII"], [3, "maj", "♭III"], [8, "maj", "♭VI"], [7, "min", "v"], [2, "min", "ii"]] },
     { name: "SOUL 60s", minor: false, p: [[0, "maj", "I"], [9, "min", "vi"], [5, "maj", "IV"], [7, "maj", "V"], [2, "m7", "ii7"], [4, "m7", "iii7"], [7, "7", "V7"]] },
+    // couleurs tirées des morceaux analysés (types d'accords, pas leur grille) : transposables, à jouer dans l'ordre qu'on veut
+    { name: "COULEUR SOBER", minor: true, p: [[0, "m9", "i9"], [10, "maj9", "♭VIImaj9"], [7, "m11", "v11"], [8, "maj9", "♭VImaj9"], [5, "m9", "iv9"], [3, "maj7", "♭IIImaj7"], [0, "m11", "i11"]] },
+    { name: "COULEUR ALL THINGS", minor: true, p: [[0, "sus2", "isus2"], [5, "m9", "iv9"], [3, "maj7", "♭IIImaj7"], [10, "sus2", "♭VIIsus2"], [0, "m11", "i11"], [8, "maj7", "♭VImaj7"], [7, "7sus", "V7sus"]] },
     { name: "CINÉ SOMBRE", minor: true, p: [[0, "m9", "i9"], [8, "maj7", "♭VImaj7"], [3, "maj7", "♭IIImaj7"], [10, "add9", "♭VII"], [5, "m6", "iv6"], [7, "7b9", "V7♭9"], [1, "maj7", "♭IImaj7"]] }
   ];
   const WHITE = { 0: 0, 2: 1, 4: 2, 5: 3, 7: 4, 9: 5, 11: 6 };

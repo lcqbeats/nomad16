@@ -3911,9 +3911,9 @@ registerProcessor('nomad-oct',Oct);`;
   const Q = {
     maj: [0, 4, 7], min: [0, 3, 7], maj7: [0, 4, 7, 11], m7: [0, 3, 7, 10], "7": [0, 4, 7, 10], maj9: [0, 4, 7, 11, 14], m9: [0, 3, 7, 10, 14],
     "9": [0, 4, 7, 10, 14], "13": [0, 4, 10, 14, 21], m11: [0, 3, 7, 10, 14, 17], "6/9": [0, 4, 7, 9, 14], dim7: [0, 3, 6, 9], m7b5: [0, 3, 6, 10],
-    add9: [0, 4, 7, 14], "7sus": [0, 5, 7, 10], "7#9": [0, 4, 7, 10, 15], "7b9": [0, 4, 7, 10, 13], m6: [0, 3, 7, 9]
+    add9: [0, 4, 7, 14], sus2: [0, 2, 7, 14], "7sus": [0, 5, 7, 10], "7#9": [0, 4, 7, 10, 15], "7b9": [0, 4, 7, 10, 13], m6: [0, 3, 7, 9]
   };
-  const SYM = { maj: "", min: "m", maj7: "maj7", m7: "m7", "7": "7", maj9: "maj9", m9: "m9", "9": "9", "13": "13", m11: "m11", "6/9": "6/9", dim7: "°7", m7b5: "ø7", add9: "add9", "7sus": "7sus4", "7#9": "7#9", "7b9": "7b9", m6: "m6" };
+  const SYM = { maj: "", min: "m", maj7: "maj7", m7: "m7", "7": "7", maj9: "maj9", m9: "m9", "9": "9", "13": "13", m11: "m11", "6/9": "6/9", dim7: "°7", m7b5: "ø7", add9: "add9", sus2: "sus2", "7sus": "7sus4", "7#9": "7#9", "7b9": "7b9", m6: "m6" };
   const STYLES = [
     { name: "NÉO SOUL", minor: false, p: [[2, "m9", "ii9"], [7, "13", "V13"], [0, "maj9", "Imaj9"], [9, "m9", "vi9"], [5, "maj9", "IVmaj9"], [4, "m7", "iii7"], [10, "9", "♭VII9"]] },
     { name: "JAZZ", minor: false, p: [[2, "m7", "ii7"], [7, "7b9", "V7♭9"], [0, "maj7", "Imaj7"], [9, "7", "VI7"], [4, "m7b5", "iiiø"], [5, "maj7", "IVmaj7"], [6, "dim7", "♯iv°7"]] },
@@ -3923,6 +3923,9 @@ registerProcessor('nomad-oct',Oct);`;
     { name: "BLUES", minor: false, p: [[0, "9", "I9"], [5, "9", "IV9"], [7, "9", "V9"], [0, "7#9", "I7♯9"], [6, "dim7", "♯iv°7"], [2, "m7", "ii7"], [8, "7", "♭VI7"]] },
     { name: "REGGAE DUB", minor: true, p: [[0, "min", "i"], [5, "min", "iv"], [10, "maj", "♭VII"], [3, "maj", "♭III"], [8, "maj", "♭VI"], [7, "min", "v"], [2, "min", "ii"]] },
     { name: "SOUL 60s", minor: false, p: [[0, "maj", "I"], [9, "min", "vi"], [5, "maj", "IV"], [7, "maj", "V"], [2, "m7", "ii7"], [4, "m7", "iii7"], [7, "7", "V7"]] },
+    // couleurs tirées des morceaux analysés (types d'accords, pas leur grille) : transposables, à jouer dans l'ordre qu'on veut
+    { name: "COULEUR SOBER", minor: true, p: [[0, "m9", "i9"], [10, "maj9", "♭VIImaj9"], [7, "m11", "v11"], [8, "maj9", "♭VImaj9"], [5, "m9", "iv9"], [3, "maj7", "♭IIImaj7"], [0, "m11", "i11"]] },
+    { name: "COULEUR ALL THINGS", minor: true, p: [[0, "sus2", "isus2"], [5, "m9", "iv9"], [3, "maj7", "♭IIImaj7"], [10, "sus2", "♭VIIsus2"], [0, "m11", "i11"], [8, "maj7", "♭VImaj7"], [7, "7sus", "V7sus"]] },
     { name: "CINÉ SOMBRE", minor: true, p: [[0, "m9", "i9"], [8, "maj7", "♭VImaj7"], [3, "maj7", "♭IIImaj7"], [10, "add9", "♭VII"], [5, "m6", "iv6"], [7, "7b9", "V7♭9"], [1, "maj7", "♭IImaj7"]] }
   ];
   const WHITE = { 0: 0, 2: 1, 4: 2, 5: 3, 7: 4, 9: 5, 11: 6 };
@@ -4451,13 +4454,21 @@ registerProcessor('nomad-oct',Oct);`;
       ["dubstab", "STAB", "accord sec, à passer dans l'écho"], ["dubflute", "FLÛTE", "flûte soufflée"]],
     "LO-FI": [["lofipiano", "PIANO CASSETTE", "piano qui pleure un peu"], ["lofiep", "RHODES USÉ", "piano électrique fatigué"], ["lofipad", "NAPPE VHS", "nappe qui ondule"], ["lofibass", "BASSE FEUTRÉE", "basse douce, sans attaque"],
       ["lofiguitar", "GUITARE JAZZ", "corde pincée sombre"], ["lofivibes", "VIBRAPHONE", "lames avec trémolo"], ["lofiflute", "FLÛTE LO-FI", "flûte et souffle"], ["lofikalimba", "KALIMBA", "lames pincées"],
-      ["lofichip", "CHIP 8-BIT", "petite console"], ["lofisynth", "SYNTH DOUX", "lead rond qui dérive"]]
+      ["lofichip", "CHIP 8-BIT", "petite console"], ["lofisynth", "SYNTH DOUX", "lead rond qui dérive"]],
+    // d'après l'analyse de « Sober » (Mahalia) : soul acoustique intime, grave chaud, accords m9 / maj9 / m11
+    SOBER: [["sobgtr", "GUITARE FOLK", "cordes acier, caisse chaude"], ["sobpalm", "GUITARE ÉTOUFFÉE", "pincé court, paume sur les cordes"], ["sobpiano", "PIANO FEUTRÉ", "marteaux doux, intime"], ["sobrhodes", "RHODES NUIT", "piano électrique sombre, trémolo"],
+      ["sobbass", "BASSE CHAUDE", "ronde, un peu de grain"], ["sobsub", "SUB DOUX", "808 sans claquer, longue"], ["sobpad", "NAPPE SOIE", "nappe aérée qui respire"], ["sobchoir", "CHŒUR HUMMÉ", "voix bouche fermée"],
+      ["sobstrings", "CORDES DOUCES", "cordes qui gonflent lentement"], ["sobharp", "HARPE", "cordes pincées, longues"]],
+    // d'après l'analyse de « All Things to All Men » (The Cinematic Orchestra) : trip-hop orchestral, contrebasse profonde, accords sus2 / mineurs
+    "ALL THINGS": [["atcontre", "CONTREBASSE", "pincée, profonde, bois"], ["atarco", "CONTREBASSE ARCHET", "frottée, sombre"], ["atstrings", "CORDES CINÉ", "ensemble qui monte, vibrato"], ["atcello", "VIOLONCELLE", "solo chantant"],
+      ["atpiano", "PIANO GRAVE", "piano sombre, résonance longue"], ["atharp", "HARPE CINÉ", "arpèges clairs"], ["atrhodes", "RHODES SOMBRE", "piano électrique feutré"], ["athorn", "CUIVRES FEUTRÉS", "cor doux qui s'ouvre"],
+      ["atclar", "CLARINETTE BASSE", "bois grave, soufflé"], ["atdrone", "BOURDON SUS2", "fondamentale, quinte et neuvième"]]
   };
   const NCOL_ID = {};
   Object.entries(NCOL).forEach(([cat, list]) => { list.forEach(([id, name, d]) => { SYNTHS.push({ id, name, cat, lic: d }); NCOL_ID[id] = 1; }); if (!CATS.includes(cat)) CATS.push(cat); });
   // ordre des collections : 20SYL, FKJ, DUB, LO-FI, puis les autres
-  { const front = ["20SYL", "FKJ", "DUB", "LO-FI"].filter(c => CATS.includes(c)), rest = CATS.filter(c => !front.includes(c)); CATS.length = 0; front.concat(rest).forEach(c => CATS.push(c)); }
-  const NV_LVL = {"fkjrhodes": 0.4, "fkjwurli": 0.32, "fkjkeys": 1.39, "fkjbass": 0.46, "fkjgtr": 2.58, "fkjfunk": 2.05, "fkjpad": 2.58, "fkjsax": 2.08, "fkjbell": 0.68, "fkjmarimba": 0.54, "dubmelodica": 1.0, "dubbass": 0.49, "dubskank": 1.1, "dubbubble": 0.74, "dubhorn": 1.51, "dubsiren": 2.16, "dubsyndrum": 0.45, "dubpiano": 0.92, "dubstab": 1.11, "dubflute": 0.7, "lofipiano": 0.85, "lofiep": 0.75, "lofipad": 1.63, "lofibass": 0.44, "lofiguitar": 1.78, "lofivibes": 0.58, "lofiflute": 0.69, "lofikalimba": 0.47, "lofichip": 1.72, "lofisynth": 0.7};   // niveaux mesurés pour s'aligner sur 20SYL
+  { const front = ["20SYL", "FKJ", "DUB", "LO-FI", "SOBER", "ALL THINGS"].filter(c => CATS.includes(c)), rest = CATS.filter(c => !front.includes(c)); CATS.length = 0; front.concat(rest).forEach(c => CATS.push(c)); }
+  const NV_LVL = {"fkjrhodes": 0.4, "fkjwurli": 0.32, "fkjkeys": 1.39, "fkjbass": 0.46, "fkjgtr": 2.58, "fkjfunk": 2.05, "fkjpad": 2.58, "fkjsax": 2.08, "fkjbell": 0.68, "fkjmarimba": 0.54, "dubmelodica": 1.0, "dubbass": 0.49, "dubskank": 1.1, "dubbubble": 0.74, "dubhorn": 1.51, "dubsiren": 2.16, "dubsyndrum": 0.45, "dubpiano": 0.92, "dubstab": 1.11, "dubflute": 0.7, "lofipiano": 0.85, "lofiep": 0.75, "lofipad": 1.63, "lofibass": 0.44, "lofiguitar": 1.78, "lofivibes": 0.58, "lofiflute": 0.69, "lofikalimba": 0.47, "lofichip": 1.72, "lofisynth": 0.7, "sobgtr": 1.2, "sobpalm": 1.11, "sobpiano": 0.98, "sobrhodes": 0.37, "sobbass": 0.61, "sobsub": 0.74, "sobpad": 1.56, "sobchoir": 1.23, "sobstrings": 1.33, "sobharp": 1.05, "atcontre": 1.12, "atarco": 1.36, "atstrings": 1.79, "atcello": 1.09, "atpiano": 0.68, "atharp": 1.07, "atrhodes": 0.63, "athorn": 1.29, "atclar": 1.36, "atdrone": 1.85};   // niveaux mesurés pour s'aligner sur 20SYL
   let nvNoise = null;
   const ksCache = new Map();
   // corde pincée (Karplus-Strong) calculée une fois par note et par caractère
@@ -4524,6 +4535,28 @@ registerProcessor('nomad-oct',Oct);`;
       case "lofiflute": { const lp = bq("lowpass", Math.min(6000, f * 5), 0.7, g); const o = [osc("sine", f, 0, lp, 0.8), osc("triangle", f * 2, 0, lp, 0.05)]; noise(lp, 0.1, Math.min(7000, f * 2.5), 1); wow(o, 10); env(0.07, 0.85, 0.75, 0.5); return { g, srcs, rel: 0.12 + relTime * 0.3 }; }
       case "lofikalimba": { const lp = bq("lowpass", Math.min(7000, f * 8), 0.7, g); fm(5.4, 1.1, 0.08, lp, 0.6); osc("sine", f, 0, lp, 0.5); env(0.002, 1, 0, 0.35); return { g, srcs, rel: 0.2 + relTime * 0.3 }; }
       case "lofichip": { const lp = bq("lowpass", 6000, 0.7, g); const o = osc("pulse", f, 0, lp, 0.4); osc("square", f / 2, 0, lp, 0.1); lfo(6, 15, [o.detune], 0.25); env(0.002, 0.8, 0.55, 0.25); return { g, srcs, rel: 0.05 + relTime * 0.15 }; }
+      // ----- SOBER -----
+      case "sobgtr": { const lp = bq("lowpass", Math.min(8000, f * 9), 0.6, g), b1 = bq("peaking", 190, 1.2, lp), b2 = bq("peaking", 2600, 1.5, b1); b1.gain.value = 4; b2.gain.value = 3; pluck(0.9965, 0.4, 3.5, b2, 1); pluck(0.996, 0.35, 3.5, b2, 0.35).detune.value = 6; env(0.002, 1, null); return { g, srcs, rel: 0.3 + relTime * 0.5 }; }
+      case "sobpalm": { const lp = bq("lowpass", Math.min(2500, f * 4), 0.9, g), b1 = bq("peaking", 200, 1.2, lp); b1.gain.value = 3; pluck(0.97, 0.3, 0.6, b1, 1.3); env(0.002, 1, null); return { g, srcs, rel: 0.05 + relTime * 0.1 }; }
+      case "sobpiano": { const lp = bq("lowpass", Math.min(2800, f * 4), 0.6, g); const a = fm(1, 1.3, 1.6, lp, 0.6), b = fm(2, 0.35, 0.6, lp, 0.15); a.detune.value = -3; b.detune.value = 3; noise(lp, 0.01, 1200, 0.8); env(0.008, 1, 0.25, 1.6); return { g, srcs, rel: 0.25 + relTime * 0.5 }; }
+      case "sobrhodes": { const lp = bq("lowpass", Math.min(3000, f * 5), 0.7, g); fm(1, 1.2, 1.2, lp, 0.6, -4); fm(1, 1.0, 1.0, lp, 0.5, 4); lfo(4.2, 0.18, [g.gain]); env(0.005, 1, 0.45, 1.6); return { g, srcs, rel: 0.3 + relTime * 0.5 }; }
+      case "sobbass": { const lp = bq("lowpass", 650, 0.8, g), s = sat(0.18, lp); osc("sine", f, 0, s, 0.9); osc("triangle", f, 0, s, 0.35); osc("sine", f * 2, 0, s, 0.06); env(0.008, 1, 0.75, 0.9); return { g, srcs, rel: 0.12 + relTime * 0.3 }; }
+      case "sobsub": { const o = osc("sine", f, 0, g, 1); osc("sine", f * 2, 0, g, 0.05); o.frequency.setValueAtTime(f * 1.03, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.08); env(0.012, 1, 0.7, 2.2); return { g, srcs, rel: 0.25 + relTime * 0.4 }; }
+      case "sobpad": { const lp = bq("lowpass", 1100, 0.6, g); const o = [osc("sawtooth", f, -9, lp, 0.18), osc("sawtooth", f, 9, lp, 0.18), osc("triangle", f * 2, 0, lp, 0.08), osc("sine", f / 2, 0, lp, 0.2)]; lfo(0.18, 7, o.map(x => x.detune)); lfo(0.12, 400, [lp.frequency]); noise(lp, 0.015, 3000, 0.5); env(0.9, 0.85, null); return { g, srcs, rel: 1.4 + relTime }; }
+      case "sobchoir": { const sum = ctx.createGain(); sum.gain.value = 1.6; sum.connect(g); const src = ctx.createGain(); [[300, 5, 1], [800, 7, 0.35], [2300, 9, 0.1]].forEach(([fr, q, l]) => { const b = bq("bandpass", fr, q, sum); const bg = ctx.createGain(); bg.gain.value = l; src.connect(bg); bg.connect(b); }); const o = [osc("sawtooth", f, -6, src, 0.5), osc("sawtooth", f, 6, src, 0.5)]; lfo(5, 9, o.map(x => x.detune), 0.4); env(0.35, 0.9, 0.85, 0.5); return { g, srcs, rel: 0.6 + relTime }; }
+      case "sobstrings": { const lp = bq("lowpass", Math.min(3500, f * 4), 0.6, g); const o = [osc("sawtooth", f, -7, lp, 0.22), osc("sawtooth", f, 7, lp, 0.22), osc("sawtooth", f, 0, lp, 0.18)]; lfo(5, 10, o.map(x => x.detune), 0.6); env(0.6, 0.85, 0.8, 0.5); return { g, srcs, rel: 0.9 + relTime }; }
+      case "sobharp": { const lp = bq("lowpass", Math.min(9000, f * 12), 0.6, g); pluck(0.998, 0.55, 4, lp, 1); osc("sine", f * 2, 0, lp, 0.04); env(0.001, 1, null); return { g, srcs, rel: 0.6 + relTime }; }
+      // ----- ALL THINGS -----
+      case "atcontre": { const lp = bq("lowpass", Math.min(1400, f * 6), 0.8, g), b1 = bq("peaking", 110, 1, lp); b1.gain.value = 5; pluck(0.993, 0.18, 2.5, b1, 1.4); osc("sine", f, 0, lp, 0.25); env(0.003, 1, 0.3, 0.9); return { g, srcs, rel: 0.2 + relTime * 0.4 }; }
+      case "atarco": { const lp = bq("lowpass", Math.min(1600, f * 5), 0.9, g); const o = [osc("sawtooth", f, -4, lp, 0.35), osc("sawtooth", f, 4, lp, 0.3)]; noise(lp, 0.04, Math.min(3000, f * 6), 1.5); lfo(4.8, 7, o.map(x => x.detune), 0.5); env(0.25, 0.95, 0.85, 0.4); return { g, srcs, rel: 0.4 + relTime * 0.6 }; }
+      case "atstrings": { const lp = bq("lowpass", Math.min(4500, f * 5), 0.6, g); const o = [-12, -5, 0, 5, 12].map(d => osc("sawtooth", f, d, lp, 0.13)); lfo(5.3, 9, o.map(x => x.detune), 0.7); lp.frequency.setValueAtTime(Math.min(1200, f * 2), t); lp.frequency.linearRampToValueAtTime(Math.min(4500, f * 5), t + 1.2); env(1.0, 0.9, null); return { g, srcs, rel: 1.2 + relTime }; }
+      case "atcello": { const sum = ctx.createGain(); sum.gain.value = 2; sum.connect(g); const src = ctx.createGain(); [[280, 4, 1], [1000, 5, 0.5], [2400, 6, 0.15]].forEach(([fr, q, l]) => { const b = bq("bandpass", fr, q, sum); const bg = ctx.createGain(); bg.gain.value = l; src.connect(bg); bg.connect(b); }); const o = [osc("sawtooth", f, 0, src, 0.7)]; noise(src, 0.03, Math.min(4000, f * 6), 1); lfo(5.5, 14, o.map(x => x.detune), 0.35); env(0.18, 0.95, 0.85, 0.5); return { g, srcs, rel: 0.35 + relTime * 0.6 }; }
+      case "atpiano": { const lp = bq("lowpass", Math.min(3200, f * 5), 0.6, g); fm(1, 1.8, 2.2, lp, 0.6, -2); fm(1, 1.4, 2.0, lp, 0.4, 3); fm(3, 0.4, 0.4, lp, 0.1); env(0.004, 1, 0.3, 2.5); return { g, srcs, rel: 0.5 + relTime * 0.6 }; }
+      case "atharp": { const lp = bq("lowpass", Math.min(10000, f * 14), 0.6, g); pluck(0.9985, 0.6, 5, lp, 1); env(0.001, 1, null); return { g, srcs, rel: 0.8 + relTime }; }
+      case "atrhodes": { const lp = bq("lowpass", Math.min(2400, f * 4), 0.7, g); fm(1, 1.0, 1.4, lp, 0.6, -3); fm(1, 0.9, 1.2, lp, 0.5, 3); env(0.006, 1, 0.5, 1.8); return { g, srcs, rel: 0.35 + relTime * 0.5 }; }
+      case "athorn": { const lp = bq("lowpass", Math.min(900, f * 2), 1.2, g); const o = [osc("sawtooth", f, -5, lp, 0.32), osc("sawtooth", f, 5, lp, 0.32)]; lp.frequency.setValueAtTime(Math.min(600, f * 1.2), t); lp.frequency.linearRampToValueAtTime(Math.min(2400, f * 4), t + 0.5); lfo(4.5, 5, o.map(x => x.detune), 0.6); env(0.22, 0.95, 0.85, 0.5); return { g, srcs, rel: 0.3 + relTime * 0.5 }; }
+      case "atclar": { const lp = bq("lowpass", Math.min(2200, f * 4), 1, g); const o = [osc("square", f, 0, lp, 0.35), osc("sine", f, 0, lp, 0.3)]; noise(lp, 0.035, Math.min(3000, f * 4), 1.2); lfo(4.6, 6, o.map(x => x.detune), 0.5); env(0.06, 0.9, 0.8, 0.4); return { g, srcs, rel: 0.15 + relTime * 0.3 }; }
+      case "atdrone": { const lp = bq("lowpass", Math.min(2000, f * 3), 0.6, g); const o = [osc("sawtooth", f, -6, lp, 0.18), osc("sawtooth", f, 6, lp, 0.18), osc("sawtooth", f * 1.5, 0, lp, 0.12), osc("triangle", f * 2.245, 0, lp, 0.08), osc("sine", f / 2, 0, lp, 0.18)]; lfo(0.15, 8, o.map(x => x.detune)); env(1.4, 0.85, null); return { g, srcs, rel: 1.6 + relTime }; }
       case "lofisynth": { const lp = bq("lowpass", Math.min(4000, f * 5), 0.9, g); const o = [osc("triangle", f, -4, lp, 0.5), osc("sine", f, 4, lp, 0.4)]; wow(o, 12); env(0.02, 0.9, 0.75, 0.6); return { g, srcs, rel: 0.2 + relTime * 0.4 }; }
     }
     return null;
@@ -4540,7 +4573,8 @@ registerProcessor('nomad-oct',Oct);`;
   // sons du kit en cours (ou ceux de NOMAD si le kit n'a pas le rôle). Quelques centaines d'octets par pattern.
   // Écriture : une ligne par rôle, un caractère par double-croche ; « . » = rien, 1 à 9 = force.
   // k grosse caisse · s caisse claire · h charleston fermé · o charleston ouvert · p percussion (rim, shaker…)
-  // sw : swing des double-croches (0 à 0,6) · lag : retard d'un rôle en fraction de double-croche (jeu « en arrière »)
+  // sw : swing des double-croches (0 à 0,6) · sw8 : swing des croches (le « et » retardé) · lag : retard d'un rôle
+  // en fraction de double-croche (jeu « en arrière ») · cat : catégorie de SONS (sinon BATTERIE)
   const DRUM_GENRES = [
     { id: "boombap", name: "BOOM BAP", bpm: 90, sw: 0.2, p: [
       { n: "BASIQUE", k: "9......79.......", s: "....9.......9...", h: "6.5.6.5.6.5.6.5." },
@@ -4601,9 +4635,25 @@ registerProcessor('nomad-oct',Oct);`;
       { n: "DOUBLE CAISSE", k: "9.9.......9.....", s: "....9.9.....9...", h: "7676767676767676" },
       { n: "2 MESURES", k: "9.9.......9.....9.9...9...9..9..", s: "....9..6.6..9..6....9..6.6..9.99", h: "76767676767676767676767676767676" },
       { n: "ROULEMENT", k: "9.9.......9.....", s: "....9..7.7.79999", h: "76767676767....." }
+    ] },
+    // Mesuré sur « Sober » : 83 BPM ; grosse caisse 1, 1+ (double-croche 3) et 3, levée en fin de mesure ;
+    // charleston en croches sauf sur 1 et 3, le « et » joué ~45 ms en retard (swing de croches) ; grosse caisse un peu derrière
+    { id: "sober", name: "BATTERIE SOBER", cat: "SOBER", bpm: 83, sw: 0, sw8: 0.25, lag: { k: 0.06 }, p: [
+      { n: "GROOVE", k: "9.7.....8......5", s: "....9.......9...", h: "..5.4.5...5.4.5." },
+      { n: "SANS LEVÉE", k: "9.7.....8.......", s: "....9.......9...", h: "..5.4.5...5.4.5." },
+      { n: "GHOST", k: "9.7.....8......5", s: "....9..3....9...", h: "..5.4.53..5.4.5." },
+      { n: "CHARLESTON PLEIN", k: "9.7.....8.......", s: "....9.......9...", h: "..554.5.4.5.4.55", o: "..............4." }
+    ] },
+    // Mesuré sur « All Things to All Men » : 75,5 BPM, batteur jazz ; caisse sur 2 et 4 (fantôme parfois sur le 3),
+    // cymbale en « ding, ding-a » (paires de double-croches sur 1 et 3), double-croches impaires ~38 ms en retard
+    { id: "allthings", name: "BATTERIE ALL THINGS", cat: "ALL THINGS", bpm: 75, sw: 0.29, lag: { k: 0.05 }, p: [
+      { n: "BASE", k: "9...6...9.......", s: "....9.......9...", h: "76..7.6.76..7.6." },
+      { n: "KICK QUI AVANCE", k: "9...6.5.9.......", s: "....9.......9...", h: "76..7.6.76..7.6." },
+      { n: "FANTÔME SUR 3", k: "9..6....9.......", s: "....9...4...9...", h: "7...7.6.7...7..." },
+      { n: "PLEIN", k: "9..665..9.......", s: "..3.9..3....9.3.", h: "76..7.6.76..7.6.", o: "..............5." }
     ] }
   ];
-  DRUM_GENRES.forEach(g => SYNTHS.push({ id: "drum:" + g.id, name: g.name, cat: "BATTERIE", lic: `8 patterns · ${g.bpm} BPM conseillés` }));
+  DRUM_GENRES.forEach(g => SYNTHS.push({ id: "drum:" + g.id, name: g.name, cat: g.cat || "BATTERIE", lic: `${g.p.length} patterns · ${g.bpm} BPM conseillés` }));
   { const i = CATS.indexOf("CLAVIERS"); CATS.splice(i < 0 ? CATS.length : i, 0, "BATTERIE"); }
   const DR = { genre: null, cur: -1, next: -1, anchor: 0, step: 0, nextT: 0, kitSounds: store.get("drKit", true), synth: null };
   const isDrum = id => typeof id === "string" && id.startsWith("drum:");
@@ -4642,7 +4692,7 @@ registerProcessor('nomad-oct',Oct);`;
         if (DR.next < 0) { DR.cur = -1; drawDrums(); return; }
         DR.cur = DR.next; DR.step = 0; drawDrums(); continue;
       }
-      const map = DR.map, base = DR.nextT + (i % 2 ? g.sw * st * 0.66 : 0);
+      const map = DR.map, base = DR.nextT + (i % 2 ? g.sw * st * 0.66 : 0) + (i % 4 === 2 ? (g.sw8 || 0) * st : 0);
       ["k", "s", "h", "o", "p"].forEach(r => {
         const c = (p[r] || "")[i]; if (!c || c === ".") return;
         const when = Math.max(ctx.currentTime, base + ((g.lag && g.lag[r]) || 0) * st);
@@ -4656,7 +4706,7 @@ registerProcessor('nomad-oct',Oct);`;
   // lancer / changer / arrêter : au début de la mesure suivante (calé sur la boucle du LOOPER quand elle tourne)
   function drPlay(i) {
     if (!ctx) return;
-    const g = drGenre();
+    const g = drGenre(); if (!g.p[i]) return;
     if (DR.cur >= 0 && DR.genre === g) {
       DR.next = (DR.next === i && DR.cur === i) ? -1 : i;
       if (DR.cur === i && DR.next === i) DR.next = -1;
@@ -4677,9 +4727,9 @@ registerProcessor('nomad-oct',Oct);`;
     if (on) $("chordPanel").hidden = true;
     if (!on) return;
     const g = drGenre(), live = DR.genre === g;
-    $("drTitle").textContent = `${g.name} · ${g.bpm} BPM conseillés · swing ${Math.round(g.sw * 100)} %`;
+    $("drTitle").textContent = `${g.name} · ${g.bpm} BPM conseillés · swing ${Math.round(Math.max(g.sw, g.sw8 || 0) * 100)} %${g.sw8 ? " (croches)" : ""}`;
     const box = $("drPats"); box.innerHTML = "";
-    [4, 5, 6, 7, 0, 1, 2, 3].forEach(i => {
+    (g.p.length > 4 ? [4, 5, 6, 7, 0, 1, 2, 3] : [0, 1, 2, 3]).forEach(i => {
       const p = g.p[i], b = document.createElement("button"); b.type = "button"; b.className = "drpat";
       b.classList.toggle("on", live && DR.cur === i); b.classList.toggle("next", live && DR.next === i && DR.cur !== i);
       const n = drLen(p), cells = Array.from({ length: Math.min(n, 16) }, (_, j) => { const k = (p.k || "")[j], s = (p.s || "")[j]; return `<i class="${k && k !== "." ? "k" : s && s !== "." ? "s" : ""}"></i>`; }).join("");
@@ -7523,7 +7573,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   initMidi();
   try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi) { $("btBox").hidden = false; $("btPair").addEventListener("click", () => window.webkit.messageHandlers.nomadMidi.postMessage({ type: "btpair" })); } } catch (e) {}
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
-  window.nomadDbg = { DR, drPlay, drStop, scrLoad, newKit, micStop, MIC, edSrcApply, song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get names() { return names; }, get kitIndex() { return kitIndex; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
+  window.nomadDbg = { sonsT: { selectInst, keyOn, releaseKey: k => activeKeys.forEach((v, key) => releaseKey(key)) }, DR, drPlay, drStop, scrLoad, newKit, micStop, MIC, edSrcApply, song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get names() { return names; }, get kitIndex() { return kitIndex; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
   let probe = null;
   window.nomadProbe = () => { if (!probe) { probe = ctx.createAnalyser(); probe.fftSize = 2048; fxMaster.connect(probe); } const a = new Float32Array(2048); probe.getFloatTimeDomainData(a); let m = 0; for (const v of a) m = Math.max(m, Math.abs(v)); return +m.toFixed(3); };
   window.nomadState = () => ({ kit: kitCur, kits: kitIndex.length, bufs: buffers.filter(Boolean).length, names: names.slice(0, 4), t0F: LP.t0F, Lf: LP.Lf, layers: LP.layers.map(l => ({ k: l.k, m: l.m })), pending: LP.pending && { ...LP.pending }, latMs, guitar: { amp: G.amp, preset: G.preset, fx: [...G.fx], on: G.on }, cap: capLatest, now: ctx && ctx.currentTime });

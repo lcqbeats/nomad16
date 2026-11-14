@@ -106,3 +106,7 @@ RÉGLAGES → APPARENCE SUR ORDINATEUR : NOIRE (façon MPC 1000, d'origine) ou G
 ## SONS · BATTERIE (patterns par genre)
 
 Catégorie BATTERIE : BOOM BAP, NÉO SOUL, TRIP-HOP, DUB, LO-FI, BREAKBEAT, 8 patterns chacun (avec swing et jeu « en arrière » propres au genre). Ce ne sont pas des boucles audio : les coups sont joués en direct avec les sons du kit en cours (grosse caisse, caisse claire, charleston, ouvert, percussion repérés par le nom des pads ; sinon sons de NOMAD), donc quasiment aucune mémoire. Toucher un pattern le lance ; un autre prend la suite à la mesure suivante ; le même l'arrête. Calé sur la boucle du LOOPER quand elle tourne ; REC l'enregistre. Akai : pads 1 à 8 = patterns, pads 9 à 16 = le kit ; touches blanches de do à do = patterns 1 à 8. STOP du LOOPER arrête aussi la batterie.
+
+## SONS · collections d'après un morceau
+
+SOBER (d'après « Sober », Mahalia) et ALL THINGS (d'après « All Things to All Men », The Cinematic Orchestra feat. Roots Manuva) : 10 sons synthétisés chacune, dans la palette mesurée sur le morceau (tempo, swing, grave, couleurs d'accords), et une batterie de 4 patterns calés sur le groove mesuré. Rien de l'enregistrement n'est dans NOMAD. Dans ACCORDS, COULEUR SOBER et COULEUR ALL THINGS proposent les types d'accords du morceau (m9, maj9, m11 / sus2, m9, mineur), transposables, sans en reprendre la grille.

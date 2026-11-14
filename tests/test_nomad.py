@@ -1114,3 +1114,22 @@ def test_sons_batterie_patterns(app):
     assert app.evaluate("nomadDbg.DR.genre.id") == "dub"
     app.evaluate("nomadDbg.drStop()")
     assert app.evaluate("nomadDbg.DR.cur") == -1
+
+
+def test_collections_sober_et_all_things(app):
+    app.click("#tab-sons")
+    app.wait_for_timeout(300)
+    for cat, n in [("SOBER", 11), ("ALL THINGS", 11)]:
+        app.click(f'#cats .cat:text-is("{cat}")')
+        assert app.evaluate("document.querySelectorAll('#insts .inst').length") == n   # 10 sons + la batterie
+    app.click('#insts .inst:has-text("BATTERIE ALL THINGS")')
+    assert app.evaluate("document.querySelectorAll('#drPats .drpat').length") == 4
+    app.evaluate("nomadDbg.drPlay(0)")
+    app.wait_for_timeout(500)
+    assert app.evaluate("nomadDbg.DR.genre.id") == "allthings" and app.evaluate("nomadDbg.DR.step") > 1
+    app.evaluate("nomadDbg.drStop()")
+    app.click('#insts .inst:has-text("CONTREBASSE")')
+    app.evaluate("nomadProbe()")
+    app.evaluate("nomadMidi([0x90, 62, 100])")
+    app.wait_for_function("nomadProbe() > 0.02", timeout=3000)
+    app.evaluate("nomadMidi([0x80, 62, 0])")
