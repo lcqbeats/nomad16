@@ -124,25 +124,28 @@ def test_scratch_pads_avant_phrase_et_cue(app):
     app.click("#tab-scratch")
     app.wait_for_function("nomadDbg.SCR.N > 0", timeout=10000)
     p0 = app.evaluate("nomadDbg.SCR.rep.pos")
-    app.evaluate("nomadMidi([0x99, 36, 110])")          # pad 1 : avant
+    app.evaluate("nomadMidi([0x99, 37, 30])")           # pad 2 : avant (vitesse constante, frappe douce)
     app.wait_for_timeout(200)
-    app.evaluate("nomadMidi([0x89, 36, 0])")
+    app.evaluate("nomadMidi([0x89, 37, 0])")
     app.wait_for_timeout(100)
     assert app.evaluate("nomadDbg.SCR.rep.pos") > p0
-    app.evaluate("nomadMidi([0x99, 39, 100]); nomadMidi([0x89, 39, 0])")   # pad 4 : CUE 1
+    app.evaluate("nomadMidi([0x99, 40, 100]); nomadMidi([0x89, 40, 0])")   # pad 5 : CUE 1
     assert app.evaluate("nomadDbg.SCR.cues[0]") is not None
-    app.evaluate("nomadMidi([0x99, 45, 100])")          # pad 10 : baby, tenu
+    app.evaluate("nomadMidi([0x90, 49, 100])")          # do#3 : baby, tenu
     app.wait_for_timeout(500)
     assert app.evaluate("nomadDbg.SCR.ph") == 0
-    app.evaluate("nomadMidi([0x89, 45, 0])")
+    app.evaluate("nomadMidi([0x80, 49, 0])")
     app.wait_for_timeout(100)
     assert app.evaluate("nomadDbg.SCR.ph") == -1
-    # pads 2 / 3 : le crossfader part à gauche / à droite tant que le pad est tenu
-    f0 = app.evaluate("nomadDbg.SCR.fader")
-    app.evaluate("nomadMidi([0x99, 38, 100])")
-    assert app.evaluate("nomadDbg.SCR.fader") == 1 and app.evaluate("nomadDbg.SCR.gate") is False
-    app.evaluate("nomadMidi([0x89, 38, 0])")
-    assert app.evaluate("nomadDbg.SCR.fader") == f0
+    app.evaluate("nomadMidi([0x90, 70, 100])")          # la#4 : 10e phrase
+    app.wait_for_timeout(300)
+    assert app.evaluate("nomadDbg.SCR.ph") == 9
+    app.evaluate("nomadMidi([0x80, 70, 0])")
+    # pad 3 : crossfader fermé, puis ouvert au coup suivant
+    app.evaluate("nomadMidi([0x99, 38, 100]); nomadMidi([0x89, 38, 0])")
+    assert app.evaluate("nomadDbg.SCR.gate") is False
+    app.evaluate("nomadMidi([0x99, 38, 100]); nomadMidi([0x89, 38, 0])")
+    assert app.evaluate("nomadDbg.SCR.gate") is True
 
 
 def test_aide_memoire(app):
@@ -357,21 +360,26 @@ def test_sons_strum(app):
 def test_scratch_reprise_immediate_moteur(app):
     app.click("#tab-scratch")
     app.wait_for_function("nomadDbg.SCR.N > 0", timeout=10000)
-    app.click("#scrStart")                              # START à l'écran
+    app.evaluate("nomadMidi([0x99, 39, 100]); nomadMidi([0x89, 39, 0])")   # pad 4 : play
     app.wait_for_timeout(400)
     assert app.evaluate("nomadDbg.SCR.motor") is True
-    app.evaluate("nomadMidi([0x99, 40, 100])")          # pad 5 : arrière
+    app.evaluate("nomadMidi([0x99, 36, 100])")          # pad 1 : arrière
     app.wait_for_timeout(200)
-    app.evaluate("nomadMidi([0x89, 40, 0])")
+    app.evaluate("nomadMidi([0x89, 36, 0])")
     app.wait_for_timeout(120)
     assert app.evaluate("nomadDbg.SCR.rep.vel") > 0.5    # déjà reparti en avant
-    app.evaluate("nomadMidi([0x99, 39, 100]); nomadMidi([0x89, 39, 0])")   # pad 4 : CUE 1
     app.evaluate("nomadMidi([0x99, 43, 100]); nomadMidi([0x89, 43, 0])")   # pad 8 : CUE 4
-    assert app.evaluate("nomadDbg.SCR.cues[0] !== null && nomadDbg.SCR.cues[3] !== null")
-    app.evaluate("nomadMidi([0x99, 48, 100])")          # pad 13 (banque B) : arrière aussi
+    assert app.evaluate("nomadDbg.SCR.cues[3] !== null")
+    app.evaluate("nomadMidi([0x99, 44, 100])")          # pad 9 (banque B) = pad 1 : arrière
     app.wait_for_timeout(150)
     assert app.evaluate("nomadDbg.SCR.rep.vel") < 0
-    app.evaluate("nomadMidi([0x89, 48, 0])")
+    app.evaluate("nomadMidi([0x89, 44, 0])")
+    # potards : écho, delay, reverb existent et réagissent
+    app.evaluate("for (const cc of [72, 73, 74]) for (let v = 0; v <= 127; v += 8) nomadMidi([0xB0, cc, Math.min(127, v)])")
+    app.wait_for_timeout(200)
+    assert app.evaluate("nomadDbg.SCR.fx.es.gain.value > 0.3 && nomadDbg.SCR.fx.ds.gain.value > 0.3 && nomadDbg.SCR.fx.rs.gain.value > 0.3")
+    app.evaluate("nomadMidi([0x99, 39, 100]); nomadMidi([0x89, 39, 0])")   # pad 4 : stop
+    assert app.evaluate("nomadDbg.SCR.motor") is False
 
 
 def test_longueur_des_pistes(app):

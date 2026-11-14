@@ -3,7 +3,7 @@
   function setTab(t) {
     tab = t;
     TABS.forEach(x => { $("tab-" + x).setAttribute("aria-selected", x === t); $("view-" + x).hidden = x !== t; });
-    $("knobs").hidden = t === "guitar" || t === "scratch";
+    $("knobs").hidden = t === "guitar";
     drawKnobs();
     if (t === "loops") resizeCanvas();
     if (t === "sample") enterDig();

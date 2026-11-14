@@ -48,7 +48,7 @@ PROCHAINE : ×1, ×2, ×4 ou ÷2 (aussi au potard 8 du LOOPER) fixe la longueur 
 
 ## Onglet SCRATCH
 
-Pads de l'Akai : banque A = 1 avant, 5 arrière, 2 / 3 crossfader à gauche / à droite (tenu, il revient au relâchement), 4 6 7 8 = CUE 1 à 4 ; banque B = 9 avant, 13 arrière, 10 11 12 14 15 16 = les 6 phrases. START se lance à l'écran. Le crossfader a une course courte : moitié coupée, moitié ouverte (COUPURE à 30 %).
+Pads de l'Akai (pareil sur les deux banques) : 1 vinyle arrière, 2 vinyle avant (vitesse constante), 3 crossfader ouvert / fermé (un coup sur deux), 4 play / stop, 5 à 8 = CUE 1 à 4. Les 10 phrases (BABY, CHIRP, TRANSFORM, FLARE, TEAR, STAB, SCRIBBLE, CRAB, ORBIT, DRAG) sont sur les 10 touches noires du clavier, tenues ; les touches blanches transposent le disque. Potards : volume, filtre, écho (slapback), delay (croche pointée calée sur le tempo), reverb, pitch, frein (démarrage / arrêt du plateau), coupure (zone coupée du crossfader).
 
 Sur le disque : choisir une catégorie (BANQUE, VOIX, PAD, CHOP, PISTE, MES SONS), puis le son dans le menu déroulant. Le son est posé en entier (jusqu'à 90 s), pratique pour réenregistrer une boucle en la manipulant. Les phrases partent par défaut de l'endroit où se trouve le disque (PHRASES : ICI ; REPÈRE pour repartir du cue). Sur ordinateur, « sur le disque » est à gauche sous les onglets, les cue et phrases à droite de la platine, le crossfader et les coupes dessous.
 
@@ -98,3 +98,7 @@ Huit bacs sont cherchés en direct sur internet, sans rien garder dans l'apparei
 ## Créer un kit, prise de son au micro
 
 PADS : + KIT (ou + NOUVEAU KIT dans la liste des kits) crée un kit vide, nommé. ● MIC ouvre la prise de son : choisir un pad, ● (ou la Sustain) pour lancer, encore pour arrêter ; la forme d'onde s'affiche pendant la prise, le silence du début et de la fin est coupé, le niveau ramené à -1 dB, et le son est posé tout de suite sur le pad (↶ pour annuler). FICHIER… importe un son de l'ordinateur ou du téléphone ; BIBLIOTHÈQUE… propose les sons de tous les kits, des chops et de SCRATCH (banque et mes sons). Les kits perso gardent tout seuls les sons posés sur leurs pads.
+
+## Apparence sur ordinateur
+
+RÉGLAGES → APPARENCE SUR ORDINATEUR : NOIRE (façon MPC 1000, d'origine) ou GRISE (façon MPC 2000XL : boîtier gris chaud, touches grises, pads de caoutchouc gris, écran vert-gris).

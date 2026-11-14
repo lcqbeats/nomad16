@@ -9,8 +9,19 @@
     ["TRANSFORM", 1, [[2, 1.1, "10101010"], [2, -1.1, "10101010"]]],
     ["FLARE", 1, [[2, 1.4, "11011"], [2, -1.4, "11011"]]],
     ["TEAR", 1, [[1, 2, 1], [1, -1, 1], [1, -1, 1], [1, 0, 0]]],
-    ["STAB", 1, [[1, 3, "1100"], [1, -3, 0]]]
+    ["STAB", 1, [[1, 3, "1100"], [1, -3, 0]]],
+    ["SCRIBBLE", 2, [[0.5, 1.6, 1], [0.5, -1.6, 1], [0.5, 1.6, 1], [0.5, -1.6, 1]]],
+    ["CRAB", 1, [[2, 1.2, "10101010"], [2, -1.2, 1]]],
+    ["ORBIT", 1, [[1, 2.2, "10"], [1, -2.2, "01"], [1, 2.2, 1], [1, -2.2, 0]]],
+    ["DRAG", 1, [[2, 0.45, 1], [2, -0.45, 1]]]
   ];
+  // 10 phrases sur les 10 touches noires du clavier (do#3 à la#4), tenues
+  const SCR_BLACK = [49, 51, 54, 56, 58, 61, 63, 66, 68, 70];
+  function scrBlackKey(note, down) {
+    const i = SCR_BLACK.indexOf(note); if (i < 0) return false;
+    if (down) { scrInit().then(ok => { if (ok) scrPhrase(i); }); } else scrPhraseStop(i);
+    return true;
+  }
   // Banque de sons à scratcher : synthèse maison (voyelles, tons de battle, frappes) + voix libres de droits
   function scrSynth(rate) {
     const mk = sec => new Float32Array(Math.floor(rate * sec));
@@ -145,7 +156,7 @@
     SCR.node = new AudioWorkletNode(ctx, "nomad-scratch", { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] });
     SCR.filt = ctx.createBiquadFilter(); SCR.filt.type = "lowpass"; SCR.filt.frequency.value = 20000;
     SCR.out = ctx.createGain();
-    SCR.node.connect(SCR.filt); SCR.filt.connect(SCR.out); SCR.out.connect(liveBus);
+    SCR.node.connect(SCR.filt); SCR.filt.connect(SCR.out); SCR.out.connect(liveBus); scrFxBuild();
     SCR.node.port.onmessage = e => { const m = e.data; if (!SCR.hand) SCR.rep = { pos: m.pos, vel: m.vel, t: performance.now() }; if (m.phEnd) scrPhDone(); };
     scrApply(); scrGate(true);
     const st = store.get("scr", { src: "bank", idx: 0 });
@@ -156,17 +167,18 @@
   const scrRate = () => (SCR.speed === 45 ? 1.35 : 1) * (1 + SCR.pitch / 100) * Math.pow(2, (SCR.semi || 0) / 12) * SCR.bsr / sr;
   function scrApply() {
     if (!SCR.node) return;
-    const v = knobVals.scratch, r = scrRate(), ts = 0.03 + v[3] * v[3] * 1.5, tb = 0.05 + v[4] * v[4] * 3, t = ctx.currentTime;
+    const v = knobVals.scratch, r = scrRate(), ts = 0.03 + v[6] * v[6] * 1.5, tb = 0.05 + v[6] * v[6] * 3, t = ctx.currentTime;
     SCR.node.port.postMessage({ type: "rate", rate: r });
     SCR.node.port.postMessage({ type: "times", up: r / (ts * sr), dn: r / (tb * sr) });
     SCR.out.gain.setTargetAtTime(v[0] * 1.2, t, 0.02);
-    const f = v[2];
+    scrFxApply(v, t);
+    const f = v[1];
     if (Math.abs(f - 0.5) < 0.03) { SCR.filt.type = "lowpass"; SCR.filt.frequency.setTargetAtTime(20000, t, 0.02); SCR.filt.Q.value = 0.7; }
     else if (f < 0.5) { SCR.filt.type = "lowpass"; SCR.filt.frequency.setTargetAtTime(150 * Math.pow(120, f / 0.5), t, 0.02); SCR.filt.Q.value = 2; }
     else { SCR.filt.type = "highpass"; SCR.filt.frequency.setTargetAtTime(30 * Math.pow(130, (f - 0.5) / 0.5), t, 0.02); SCR.filt.Q.value = 2; }
   }
   // zone coupée : la moitié du fader avec COUPURE à 30 % (réglage d'origine), de 20 % à 80 %
-  const scrZoneW = () => Math.max(0.2, Math.min(0.8, 0.2 + knobVals.scratch[5]));
+  const scrZoneW = () => Math.max(0.2, Math.min(0.8, 0.2 + knobVals.scratch[7]));
   const scrFaderOpen = () => SCR.ham ? SCR.fader > scrZoneW() : SCR.fader < 1 - scrZoneW();
   function scrGate(force) {
     const g = (SCR.padCut || SCR.btnCut) ? false : (SCR.padOpen || SCR.btnOpen) ? true : scrFaderOpen();
@@ -197,7 +209,7 @@
     $("scrStart").classList.toggle("on", SCR.motor);
     if (SCR.motor) onFirstNote(ctx.currentTime);
   }
-  function scrSetPitch(p) { SCR.pitch = Math.max(-10, Math.min(10, Math.round(p * 10) / 10)); $("scrPitch").value = SCR.pitch; $("scrPitchV").textContent = (SCR.pitch > 0 ? "+" : "") + SCR.pitch.toFixed(1) + " %"; $("scrQuartz").classList.toggle("on", SCR.pitch === 0); knobVals.scratch[1] = (SCR.pitch + 10) / 20; scrApply(); }
+  function scrSetPitch(p) { SCR.pitch = Math.max(-10, Math.min(10, Math.round(p * 10) / 10)); knobVals.scratch[5] = SCR.pitch / 20 + 0.5; if (tab === "scratch" && $("dial5")) $("dial5").style.setProperty("--v", knobVals.scratch[5]); $("scrPitch").value = SCR.pitch; $("scrPitchV").textContent = (SCR.pitch > 0 ? "+" : "") + SCR.pitch.toFixed(1) + " %"; $("scrQuartz").classList.toggle("on", SCR.pitch === 0); knobVals.scratch[1] = (SCR.pitch + 10) / 20; scrApply(); }
   function scrKey(note) {
     SCR.semi = note === null ? null : note - 60;
     $("scrKey").textContent = SCR.semi === null ? "NOTE : —" : "NOTE : " + NN[((note % 12) + 12) % 12] + (SCR.semi > 0 ? " +" : " ") + (SCR.semi || "");
@@ -276,32 +288,18 @@
     $("scrPhMode").textContent = SCR.phMode === "cue" ? "PHRASES : REPÈRE" : "PHRASES : ICI";
   }
   function scrToCue() { if (!SCR.node || !SCR.N) return; const p = scrPosNow(), base = SCR.cue + Math.round((p - SCR.cue) / SCR.N) * SCR.N; SCR.node.port.postMessage({ type: "seek", pos: base }); SCR.rep = { pos: base, vel: SCR.rep.vel, t: performance.now() }; }
-  // Pads de l'Akai dans SCRATCH (tous tenus) : 1 arrière, 5 avant, 2 ouvre, 3 coupe, 4-6-7-8 et 9-10 phrases
-  // Pads de l'Akai dans SCRATCH (tenus) — banque A : 1 arrière, 5 avant, 2 ouvre, 3 coupe, 4 start/stop, 6-7-8 CUE 1 à 3 ;
-  // banque B : 9-10-11 et 13-14-15 phrases, 12 repère précédent, 16 repère suivant
-  // Pads de l'Akai dans SCRATCH (numéro du pad = indice + 1)
-  // banque A : 1 avant, 5 arrière, 2 / 3 crossfader à gauche / à droite (tenu), 4 6 7 8 = CUE 1 à 4
-  // banque B : 9 avant, 13 arrière (comme 1 et 5), 10 11 12 14 15 16 = les 6 phrases (tenues)
-  const SCR_PADPH = { 9: 0, 10: 1, 11: 2, 13: 3, 14: 4, 15: 5 }, SCR_PADCUE = { 3: 0, 5: 1, 6: 2, 7: 3 };
-  const SCR_FWD = [0, 8], SCR_BACK = [4, 12];
-  const SCRF = { held: {}, prev: null };
-  // pads 2 et 3 : le crossfader glisse vraiment (à gauche / à droite) tant que le pad est tenu, puis revient
-  function scrPadFader(side, down) {
-    if (down) { if (SCRF.prev === null) SCRF.prev = SCR.fader; SCRF.held[side] = true; }
-    else delete SCRF.held[side];
-    const h = Object.keys(SCRF.held);
-    if (h.length) SCR.fader = h[h.length - 1] === "L" ? 0 : 1;
-    else if (SCRF.prev !== null) { SCR.fader = SCRF.prev; SCRF.prev = null; }
+  // Pads de l'Akai dans SCRATCH (même chose sur les deux banques : 1-8 et 9-16)
+  // 1 vinyle arrière, 2 vinyle avant (vitesse constante), 3 crossfader ouvert / fermé (un coup sur deux),
+  // 4 play / stop, 5 à 8 = CUE 1 à 4. Les phrases sont sur les touches noires du clavier.
+  const SCR_PADCUE = { 4: 0, 5: 1, 6: 2, 7: 3 }, scrPadT = {};
+  function scrFaderToggle() {
+    const open = scrFaderOpen();
+    SCR.fader = open ? (SCR.ham ? 0 : 1) : (SCR.ham ? 1 : 0);
     drawScrFader(); scrGate();
-  }
-  const scrPadT = {};
-  function scrCueStep(d) {
-    const set = SCR.cues.map((c, i) => c === null ? -1 : i).filter(i => i >= 0);
-    if (!set.length) { lcd("lcdPad", "REPÈRE", "aucun repère posé"); return; }
-    const k = set.indexOf(SCR.cueIdx), next = set[k < 0 ? (d > 0 ? 0 : set.length - 1) : (k + d + set.length) % set.length];
-    scrCueTap(next);
+    lcd("lcdPad", "CROSSFADER", open ? "fermé" : "ouvert");
   }
   function scrPad(i, down, vel) {
+    i = i % 8;
     if (!SCR.node) { if (down) scrInit(); return; }
     if (SCR_PADCUE[i] !== undefined) {
       // CUE : frappe = poser / rappeler, tenu plus d'une demi-seconde = effacer
@@ -310,28 +308,49 @@
       else if (scrPadT[c]) { clearTimeout(scrPadT[c].t); if (!scrPadT[c].long) scrCueTap(c); delete scrPadT[c]; }
       return;
     }
-    if (SCR_FWD.includes(i) || SCR_BACK.includes(i)) { scrPush(SCR_FWD.includes(i) ? 1 : -1, down, vel); return; }
-    if (i === 1 || i === 2) { scrPadFader(i === 1 ? "L" : "R", down); return; }
-    if (i in SCR_PADPH) { if (down) scrPhrase(SCR_PADPH[i]); else scrPhraseStop(SCR_PADPH[i]); }
+    if (i === 0 || i === 1) { scrPush(i === 1 ? 1 : -1, down, 0.6); return; }   // vitesse constante, sans vélocité
+    if (!down) return;
+    if (i === 2) scrFaderToggle();
+    else if (i === 3) scrMotor();
   }
+  // Potards : 1 volume, 2 filtre (bas / haut), 3 écho (slapback court), 4 delay (calé sur le tempo), 5 reverb,
+  // 6 pitch (±10 %), 7 frein (démarrage et arrêt du plateau), 8 coupure (largeur de la zone coupée du crossfader)
   function scrKnob(k) {
     const v = knobVals.scratch[k];
-    if (k === 1) { scrSetPitch((v - 0.5) * 20); return; }
-    if (k === 7) { SCR.fader = v; scrGate(); return; }
-    if (k === 6) { scrHandKnob(v); return; }
-    const inp = $("scrS" + k); if (inp) inp.value = v;
-    scrApply(); if (k === 5) scrGate();
+    if (k === 5) { scrSetPitch((v - 0.5) * 20); return; }
+    scrApply(); if (k === 7) { scrGate(); drawScrFader(); }
     lcd("lcdPad", "SCRATCH", `${KNOB_LABELS.scratch[k].toLowerCase()} ${Math.round(v * 100)} %`);
   }
+  // effets de la platine : envois depuis la sortie, chacun sur son propre bus
+  function scrFxBuild() {
+    const out = SCR.out, fx = SCR.fx = {};
+    const send = () => { const g = ctx.createGain(); g.gain.value = 0; out.connect(g); return g; };
+    // écho : slapback court, un peu sale (bande)
+    fx.es = send(); fx.ed = ctx.createDelay(1); fx.ed.delayTime.value = 0.11; fx.efb = ctx.createGain(); fx.efb.gain.value = 0.3;
+    fx.elp = ctx.createBiquadFilter(); fx.elp.type = "lowpass"; fx.elp.frequency.value = 3200;
+    fx.es.connect(fx.ed); fx.ed.connect(fx.elp); fx.elp.connect(fx.efb); fx.efb.connect(fx.ed); fx.elp.connect(liveBus);
+    // delay : croche pointée calée sur le tempo, filtré
+    fx.ds = send(); fx.dd = ctx.createDelay(3); fx.dfb = ctx.createGain(); fx.dfb.gain.value = 0.4;
+    fx.dhp = ctx.createBiquadFilter(); fx.dhp.type = "highpass"; fx.dhp.frequency.value = 280;
+    fx.ds.connect(fx.dd); fx.dd.connect(fx.dhp); fx.dhp.connect(fx.dfb); fx.dfb.connect(fx.dd); fx.dhp.connect(liveBus);
+    // reverb : salle de 2,4 s (réponse calculée)
+    fx.rs = send(); fx.cv = ctx.createConvolver();
+    const n = Math.floor(sr * 2.4), ir = ctx.createBuffer(2, n, sr);
+    for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3.2) * (i < sr * 0.012 ? i / (sr * 0.012) : 1); }
+    fx.cv.buffer = ir; fx.rs.connect(fx.cv); fx.cv.connect(liveBus);
+  }
+  function scrFxApply(v, t) {
+    const fx = SCR.fx; if (!fx) return;
+    fx.es.gain.setTargetAtTime(v[2] * 0.8, t, 0.03); fx.efb.gain.setTargetAtTime(0.15 + v[2] * 0.35, t, 0.03);
+    fx.ds.gain.setTargetAtTime(v[3] * 0.75, t, 0.03); fx.dfb.gain.setTargetAtTime(0.25 + v[3] * 0.4, t, 0.03);
+    fx.dd.delayTime.setTargetAtTime(Math.min(2.9, 0.75 * 60 / curBpm()), t, 0.05);
+    fx.rs.gain.setTargetAtTime(v[4] * 0.9, t, 0.03);
+  }
+
   // Interface
-  SCR_PH.forEach(([nm], i) => { const b = document.createElement("button"); b.className = "btn hold"; b.type = "button"; b.textContent = nm; b.addEventListener("pointerdown", async e => { e.preventDefault(); b.setPointerCapture(e.pointerId); b._held = true; if (await scrInit() && b._held) scrPhrase(i); }); ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => b.addEventListener(ev, () => { b._held = false; scrPhraseStop(i); })); $("scrPh").appendChild(b); });
+  const SCR_KN = ["do#", "ré#", "fa#", "sol#", "la#", "do#", "ré#", "fa#", "sol#", "la#"];
+  SCR_PH.forEach(([nm], i) => { const b = document.createElement("button"); b.className = "btn hold"; b.type = "button"; b.innerHTML = `${nm}<small>${SCR_KN[i]}${i < 5 ? 3 : 4}</small>`; b.addEventListener("pointerdown", async e => { e.preventDefault(); b.setPointerCapture(e.pointerId); b._held = true; if (await scrInit() && b._held) scrPhrase(i); }); ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => b.addEventListener(ev, () => { b._held = false; scrPhraseStop(i); })); $("scrPh").appendChild(b); });
   SCR_SRCS.forEach(([id, nm]) => { const b = document.createElement("button"); b.className = "btn"; b.type = "button"; b.textContent = nm; b.dataset.s = id; b.addEventListener("click", async () => { SCR.src = id; drawScrSrc(); if (await scrInit()) scrPick(0, 0); }); $("scrSrc").appendChild(b); });
-  [[0, "VOLUME"], [2, "FILTRE"], [3, "DÉMARRAGE"], [4, "FREINAGE"], [5, "COUPURE"]].forEach(([k, nm]) => {
-    const l = document.createElement("label"); l.htmlFor = "scrS" + k; l.textContent = nm;
-    const r = document.createElement("input"); r.type = "range"; r.id = "scrS" + k; r.min = 0; r.max = 1; r.step = 0.01; r.value = knobVals.scratch[k];
-    r.addEventListener("input", () => { knobVals.scratch[k] = +r.value; scrKnob(k); });
-    $("scrSet").append(l, r);
-  });
   $("scrStart").addEventListener("click", async () => { if (await scrInit()) scrMotor(); });
   $("scrSpeed").addEventListener("click", () => { SCR.speed = SCR.speed === 33 ? 45 : 33; $("scrSpeed").textContent = SCR.speed; scrApply(); });
   $("scrQuartz").addEventListener("click", () => scrSetPitch(0));
@@ -379,7 +398,7 @@
   // Fader : glisser du doigt, la zone rouge coupe
   (() => {
     const el = $("scrFader");
-    const set = e => { const r = el.getBoundingClientRect(); SCR.fader = Math.max(0, Math.min(1, (e.clientX - r.left - 16) / (r.width - 32))); knobVals.scratch[7] = SCR.fader; scrGate(); };
+    const set = e => { const r = el.getBoundingClientRect(); SCR.fader = Math.max(0, Math.min(1, (e.clientX - r.left - 16) / (r.width - 32))); scrGate(); };
     el.addEventListener("pointerdown", async e => { e.preventDefault(); el.setPointerCapture(e.pointerId); SCR.faderDrag = true; await scrInit(); set(e); });
     el.addEventListener("pointermove", e => { if (el.hasPointerCapture(e.pointerId)) set(e); });
     ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => el.addEventListener(ev, () => { SCR.faderDrag = false; }));
@@ -449,31 +468,85 @@
   slc.addEventListener("pointerdown", async e => { e.preventDefault(); if (await scrInit()) scrRecTap(); });
   // Dessin : plateau alu à points stroboscopiques, vinyle, rond central, bras ; écran vert
   let scrStatic = null;
+  // Rendu de la platine : socle graphite brossé, plateau alu, disque à sillons, reflets fixes, bras en S
   function scrBuildStatic(W) {
     const c = document.createElement("canvas"); c.width = c.height = W; const g = c.getContext("2d");
-    const lg = g.createLinearGradient(0, 0, W, W); lg.addColorStop(0, "#cfd2d6"); lg.addColorStop(1, "#a7aaaf"); g.fillStyle = lg; g.fillRect(0, 0, W, W);
-    g.globalAlpha = 0.18; for (let y = 0; y < W; y += 3) { g.fillStyle = y % 6 ? "#ffffff" : "#7d8086"; g.fillRect(0, y, W, 1); } g.globalAlpha = 1;
-    const cx = W / 2, R = W * 0.485;
-    g.beginPath(); g.arc(cx, cx, R, 0, 7); g.fillStyle = "#8c8f94"; g.fill();
-    for (let k = 0; k < 4; k++) { g.beginPath(); g.arc(cx, cx, R - W * (0.006 + k * 0.006), 0, 7); g.strokeStyle = k % 2 ? "#c9ccd1" : "#6f7277"; g.lineWidth = W * 0.002; g.stroke(); }
-    g.beginPath(); g.arc(cx, cx, R * 0.9, 0, 7); g.fillStyle = "#0b0b0d"; g.fill();
-    for (let r = R * 0.9; r > R * 0.37; r -= W * 0.0045) { g.beginPath(); g.arc(cx, cx, r, 0, 7); g.strokeStyle = (Math.round(r) % 3) ? "#141417" : "#1c1c20"; g.lineWidth = W * 0.0018; g.stroke(); }
-    g.beginPath(); g.arc(cx, cx, R * 0.36, 0, 7); g.fillStyle = "#101012"; g.fill();
+    const cx = W / 2, R = W * 0.485, ring = (r, fill) => { g.beginPath(); g.arc(cx, cx, r, 0, 7); g.fillStyle = fill; g.fill(); };
+    // socle : graphite, brossé à l'horizontale, lumière venant d'en haut à gauche
+    const pl = g.createLinearGradient(0, 0, W * 0.6, W); pl.addColorStop(0, "#3a3c40"); pl.addColorStop(0.5, "#24262a"); pl.addColorStop(1, "#16171a");
+    g.fillStyle = pl; g.fillRect(0, 0, W, W);
+    for (let y = 0; y < W; y += 2) { g.fillStyle = `rgba(255,255,255,${0.012 + 0.018 * Math.random()})`; g.fillRect(0, y, W, 1); }
+    // ombre portée du plateau
+    const sh = g.createRadialGradient(cx + W * 0.012, cx + W * 0.02, R * 0.9, cx + W * 0.012, cx + W * 0.02, R * 1.06);
+    sh.addColorStop(0, "rgba(0,0,0,.65)"); sh.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = sh; g.fillRect(0, 0, W, W);
+    // plateau aluminium : tranche biseautée
+    const al = g.createLinearGradient(cx - R, cx - R, cx + R, cx + R); al.addColorStop(0, "#e9ebee"); al.addColorStop(0.45, "#a9adb3"); al.addColorStop(0.55, "#c8cbd0"); al.addColorStop(1, "#6c7076");
+    ring(R, al);
+    const al2 = g.createLinearGradient(cx + R, cx + R, cx - R, cx - R); al2.addColorStop(0, "#d8dbdf"); al2.addColorStop(1, "#7d8187");
+    ring(R * 0.975, al2); ring(R * 0.968, al);
+    // feutrine sous le disque (fine bande sombre)
+    ring(R * 0.925, "#1a1a1c");
+    // disque : sillons, plages entre les morceaux, zone lisse avant l'étiquette
+    ring(R * 0.915, "#070708");
+    const gaps = [0.82, 0.71, 0.6, 0.5].map(x => R * x);
+    for (let r = R * 0.905; r > R * 0.42; r -= W * 0.0016) {
+      const gap = gaps.some(x => Math.abs(r - x) < W * 0.003);
+      g.beginPath(); g.arc(cx, cx, r, 0, 7);
+      g.strokeStyle = gap ? "rgba(255,255,255,.035)" : `rgba(${18 + Math.random() * 10},${18 + Math.random() * 10},${21 + Math.random() * 10},1)`;
+      g.lineWidth = gap ? W * 0.004 : W * 0.0011; g.stroke();
+    }
+    g.beginPath(); g.arc(cx, cx, R * 0.913, 0, 7); g.strokeStyle = "rgba(255,255,255,.18)"; g.lineWidth = W * 0.002; g.stroke();   // bord du disque
+    const ro = g.createRadialGradient(cx, cx, R * 0.36, cx, cx, R * 0.42); ro.addColorStop(0, "#0c0c0e"); ro.addColorStop(1, "#111114");
+    ring(R * 0.42, ro);
     const top = document.createElement("canvas"); top.width = top.height = W; const t = top.getContext("2d");
-    t.save(); t.beginPath(); t.arc(cx, cx, R * 0.9, 0, 7); t.clip();
-    [[-0.95, -0.55], [2.2, 2.6]].forEach(([a0, a1]) => { t.beginPath(); t.moveTo(cx, cx); t.arc(cx, cx, R * 0.9, a0, a1); t.closePath(); t.fillStyle = "rgba(255,255,255,0.07)"; t.fill(); });
+    // reflets de la lumière sur le vinyle : ils restent fixes pendant que le disque tourne
+    t.save(); t.beginPath(); t.arc(cx, cx, R * 0.913, 0, 7); t.arc(cx, cx, R * 0.36, 0, 7, true); t.clip();
+    const N = 60;
+    [[-2.25, 0.62, 0.16], [0.9, 0.5, 0.11]].forEach(([mid, wid, amp]) => {
+      for (let k = 0; k < N; k++) {
+        const a0 = mid - wid / 2 + k / N * wid, a1 = a0 + wid / N + 0.002, w = Math.sin(k / (N - 1) * Math.PI);
+        t.beginPath(); t.moveTo(cx, cx); t.arc(cx, cx, R * 0.913, a0, a1); t.closePath();
+        t.fillStyle = `rgba(225,232,240,${amp * w * w})`; t.fill();
+      }
+    });
     t.restore();
-    // bras : socle en haut à droite, tête de lecture posée sur le bord du disque
+    // bras de lecture : socle, contrepoids, anti-skating, tube en S, coquille, repose-bras
+    const px = W * 0.865, py = W * 0.15;
+    const bs = t.createRadialGradient(px - W * 0.02, py - W * 0.02, W * 0.01, px, py, W * 0.08); bs.addColorStop(0, "#4a4c51"); bs.addColorStop(1, "#18191c");
+    t.beginPath(); t.arc(px, py, W * 0.078, 0, 7); t.fillStyle = bs; t.fill(); t.strokeStyle = "rgba(255,255,255,.12)"; t.lineWidth = W * 0.003; t.stroke();
+    t.save(); t.translate(px, py); t.rotate(-2.6);   // contrepoids derrière le pivot
+    const cw = t.createLinearGradient(0, -W * 0.03, 0, W * 0.03); cw.addColorStop(0, "#8d9096"); cw.addColorStop(0.4, "#eef0f2"); cw.addColorStop(1, "#5d6066");
+    t.fillStyle = "#2a2b2e"; t.fillRect(0, -W * 0.007, W * 0.05, W * 0.014);
+    t.fillStyle = cw; t.beginPath(); t.roundRect ? t.roundRect(W * 0.045, -W * 0.03, W * 0.055, W * 0.06, W * 0.008) : t.rect(W * 0.045, -W * 0.03, W * 0.055, W * 0.06); t.fill();
+    t.fillStyle = "rgba(0,0,0,.35)"; for (let k = 1; k < 6; k++) t.fillRect(W * 0.045 + k * W * 0.009, -W * 0.03, W * 0.0015, W * 0.06);
+    t.restore();
+    const pv = t.createRadialGradient(px - W * 0.01, py - W * 0.012, W * 0.004, px, py, W * 0.035); pv.addColorStop(0, "#f4f5f7"); pv.addColorStop(1, "#7a7d83");
+    t.beginPath(); t.arc(px, py, W * 0.034, 0, 7); t.fillStyle = pv; t.fill();
+    t.beginPath(); t.arc(W * 0.955, W * 0.3, W * 0.02, 0, 7); t.fillStyle = "#1c1d20"; t.fill(); t.strokeStyle = "#8d9096"; t.lineWidth = W * 0.003; t.stroke();   // anti-skating
+    // repose-bras
+    t.fillStyle = "#121315"; t.beginPath(); t.arc(W * 0.93, W * 0.62, W * 0.018, 0, 7); t.fill();
+    const tx = W * 0.775, ty = W * 0.735, path = () => { t.beginPath(); t.moveTo(px, py); t.bezierCurveTo(W * 0.915, W * 0.36, W * 0.915, W * 0.55, tx, ty); };
     t.lineCap = "round";
-    t.beginPath(); t.arc(W * 0.9, W * 0.1, W * 0.065, 0, 7); t.fillStyle = "#2a2b2e"; t.fill(); t.beginPath(); t.arc(W * 0.9, W * 0.1, W * 0.035, 0, 7); t.fillStyle = "#b8bbc0"; t.fill();
-    t.beginPath(); t.moveTo(W * 0.9, W * 0.1); t.bezierCurveTo(W * 0.93, W * 0.4, W * 0.9, W * 0.55, W * 0.8, W * 0.7); t.strokeStyle = "#d9dce0"; t.lineWidth = W * 0.016; t.stroke();
-    t.strokeStyle = "#7d8086"; t.lineWidth = W * 0.004; t.stroke();
-    t.save(); t.translate(W * 0.8, W * 0.7); t.rotate(0.9); t.fillStyle = "#c9ccd1"; t.fillRect(-W * 0.02, -W * 0.012, W * 0.07, W * 0.03); t.fillStyle = "#d92b2f"; t.fillRect(W * 0.03, -W * 0.008, W * 0.018, W * 0.022); t.restore();
-    t.beginPath(); t.arc(W * 0.955, W * 0.04, W * 0.022, 0, 7); t.fillStyle = "#1d1e20"; t.fill();
-    // lampe stroboscopique rouge à gauche
-    t.beginPath(); t.arc(W * 0.012, W * 0.62, W * 0.02, 0, 7); t.fillStyle = "rgba(255,40,40,.75)"; t.fill();
+    t.save(); t.translate(W * 0.008, W * 0.014); path(); t.strokeStyle = "rgba(0,0,0,.45)"; t.lineWidth = W * 0.02; t.stroke(); t.restore();   // ombre du bras
+    path(); t.strokeStyle = "#7f8288"; t.lineWidth = W * 0.017; t.stroke();
+    path(); t.strokeStyle = "#d7dade"; t.lineWidth = W * 0.011; t.stroke();
+    t.save(); t.translate(-W * 0.003, -W * 0.002); path(); t.strokeStyle = "rgba(255,255,255,.9)"; t.lineWidth = W * 0.003; t.stroke(); t.restore();
+    // coquille noire + cellule + lève-bras
+    t.save(); t.translate(tx, ty); t.rotate(0.95);
+    t.fillStyle = "rgba(0,0,0,.4)"; t.fillRect(-W * 0.012, -W * 0.008, W * 0.085, W * 0.04);
+    t.fillStyle = "#1b1c1f"; t.beginPath(); t.moveTo(-W * 0.012, -W * 0.018); t.lineTo(W * 0.06, -W * 0.022); t.lineTo(W * 0.066, W * 0.02); t.lineTo(-W * 0.012, W * 0.016); t.closePath(); t.fill();
+    t.strokeStyle = "rgba(255,255,255,.2)"; t.lineWidth = W * 0.002; t.stroke();
+    t.fillStyle = "#c8cbd0"; t.fillRect(W * 0.008, -W * 0.034, W * 0.006, W * 0.018);   // lève-bras
+    t.fillStyle = "#d92b2f"; t.fillRect(W * 0.03, -W * 0.012, W * 0.026, W * 0.024); t.fillStyle = "#f2f2f2"; t.fillRect(W * 0.036, -W * 0.004, W * 0.012, W * 0.008);
+    t.restore();
+    // lampe stroboscopique (escamotable) à gauche, allumée
+    const lx = W * 0.045, ly = W * 0.045;
+    t.beginPath(); t.arc(lx, ly, W * 0.024, 0, 7); t.fillStyle = "#121315"; t.fill();
+    const lg = t.createRadialGradient(lx, ly, 0, lx, ly, W * 0.05); lg.addColorStop(0, "rgba(255,70,50,1)"); lg.addColorStop(0.3, "rgba(255,40,30,.6)"); lg.addColorStop(1, "rgba(255,0,0,0)");
+    t.beginPath(); t.arc(lx, ly, W * 0.05, 0, 7); t.fillStyle = lg; t.fill();
     return { base: c, top };
   }
+
   function drawScratch() {
     if (tab !== "scratch") { SCR.raf = 0; return; }
     SCR.raf = requestAnimationFrame(drawScratch);
@@ -488,7 +561,9 @@
     const NEEDLE = Math.atan2(0.2, 0.3), cueA = c => NEEDLE - c / (SCR_REV * SCR.bsr) * 2 * Math.PI;
     scg.save(); scg.rotate(cueA(SCR.cue)); scg.fillStyle = "rgba(255,255,255,.85)"; scg.fillRect(R * 0.36, -W * 0.004, R * 0.53, W * 0.008); scg.fillStyle = "#f1ece0"; scg.fillRect(R * 0.2, -W * 0.018, R * 0.14, W * 0.036); scg.restore();
     SCR.cues.forEach((c, i) => { if (c === null) return; const a = cueA(c); scg.beginPath(); scg.arc(Math.cos(a) * R * 0.87, Math.sin(a) * R * 0.87, W * 0.012, 0, 7); scg.fillStyle = SCR_CUEC[i]; scg.fill(); });
-    scg.beginPath(); scg.arc(0, 0, R * 0.34, 0, 7); scg.fillStyle = "#d92b2f"; scg.fill();
+    { const lb = scg.createRadialGradient(-R * 0.08, -R * 0.1, R * 0.02, 0, 0, R * 0.34); lb.addColorStop(0, "#e8463f"); lb.addColorStop(0.75, "#c9241f"); lb.addColorStop(1, "#9e1a16");
+      scg.beginPath(); scg.arc(0, 0, R * 0.34, 0, 7); scg.fillStyle = lb; scg.fill();
+      scg.strokeStyle = "rgba(255,235,215,.35)"; scg.lineWidth = W * 0.002; [0.32, 0.3, 0.13].forEach(k => { scg.beginPath(); scg.arc(0, 0, R * k, 0, 7); scg.stroke(); }); }
     scg.fillStyle = "#fff"; scg.textAlign = "center"; scg.textBaseline = "middle";
     scg.font = `900 ${Math.round(W * 0.05)}px Archivo, "Arial Black", sans-serif`; scg.fillText("NOMAD", 0, -W * 0.035);
     scg.font = `700 ${Math.round(W * 0.026)}px Arimo, Arial, sans-serif`; scg.fillText((SCR.name || "").slice(0, 18), 0, W * 0.025);

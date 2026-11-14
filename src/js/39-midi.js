@@ -31,7 +31,7 @@
   const knobOwner = Array(8).fill(null), knobPhys = Array(8).fill(null);
   function pickup(k, v) {
     const val = v / 127, prev = knobPhys[k]; knobPhys[k] = val;
-    if ((tab === "sample" && k === 0) || (tab === "loops" && k === 7) || (tab === "scratch" && k >= 6) || !knobVals[tab]) return true;
+    if ((tab === "sample" && k === 0) || (tab === "loops" && k === 7) || !knobVals[tab]) return true;
     const cur = knobVals[tab][k], o = knobOwner[k];
     const dial = $("dial" + k), lab = KNOB_LABELS[tab][k];
     if (o && o.tab === tab && Math.abs(o.val - cur) < 1e-6) return true;
@@ -94,7 +94,7 @@
       else if (isPad && idx >= 0 && idx < 16 && tab === "sp") { spPad(idx, true); flash(idx); }
       else if (isPad && idx >= 0 && idx < 16 && tab === "loops") loopPad(idx);
       else if (isPad && idx >= 0 && idx < 16) playPad(idx, d2 / 127);
-      else if (!isPad && tab === "scratch") scrKey(d1);
+      else if (!isPad && tab === "scratch") { if (!scrBlackKey(d1, true)) scrKey(d1); }
       else if (!isPad && tab === "fx" && fxKey(d1)) {}
       else if (!isPad && tab === "sp" && spKey(d1)) {}
       else if (!isPad && tab === "loops" && bankKey(d1)) {}
@@ -104,7 +104,7 @@
       if (idx >= 0 && idx < 16 && (ch === 10 || !padsOnCh10) && fxActive === idx) fxStop(idx);
       const isPadOff = ch === 10 || (!padsOnCh10 && idx >= 0 && idx < 16);
       if (isPadOff && idx >= 0 && idx < 16 && spDown[idx]) spPad(idx, false);
-      if (!isPadOff) { if (tab !== "scratch") keyOff(d1); } else if (idx >= 0 && idx < 16) { if (tab === "scratch") scrPad(idx, false); releaseKey("p" + idx); padRelease(idx); padUp(idx); }
+      if (!isPadOff) { if (tab !== "scratch") keyOff(d1); else scrBlackKey(d1, false); } else if (idx >= 0 && idx < 16) { if (tab === "scratch") scrPad(idx, false); releaseKey("p" + idx); padRelease(idx); padUp(idx); }
     } else if (type === 0xb0) {
       onCC(d1, d2);
     } else if (type === 0xc0) {

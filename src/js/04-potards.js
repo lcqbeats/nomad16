@@ -25,7 +25,7 @@
       knobEls[k].classList.toggle("off", label === "—");
       const dial = $("dial" + k);
       dial.style.setProperty("--v", knobVals[tab][k]);
-      dial.style.setProperty("--kc", tab === "loops" && k < 6 ? COLORS[k] : tab === "fx" ? "var(--green)" : tab === "guitar" ? "#d9b968" : "var(--red)");
+      dial.style.setProperty("--kc", tab === "loops" && k < 6 ? COLORS[k] : tab === "fx" ? "var(--green)" : tab === "guitar" ? "#d9b968" : tab === "scratch" ? "#a8dd3a" : "var(--red)");
     }
   }
   drawKnobs();

@@ -13,7 +13,7 @@
       id, name: name.toUpperCase().slice(0, 40), created: Date.now(), origin: fixedId === "proj-auto" ? CUR : null,
       // kit de chops ou kit perso : on l'emporte dans le projet (pour qu'un .nomad ouvert ailleurs ait ses sons)
       kit: kitCur, kitEmbed: (kitCur === "chops" || km.user) ? { names: names.slice(), gains: gains.slice(), bufs: buffers.map(packBuf16) } : null,
-      knobs: JSON.parse(JSON.stringify(knobVals)), knobsV: 3, manualBpm, padParams: padParams.map(p => ({ ...p })), fxTarget,
+      knobs: JSON.parse(JSON.stringify(knobVals)), knobsV: 4, manualBpm, padParams: padParams.map(p => ({ ...p })), fxTarget,
       song: { steps: JSON.parse(JSON.stringify(SONG.steps)), loop: SONG.loop, cur: SQ.cur, nr: NR.idx, mixp: SQ.mixp.slice(0, NB), prints: Object.fromEntries(SONG.steps.map(st => st.take && st.take.pid).filter(id => id && SONG.prints.has(id)).map(id => [id, packBuf16(SONG.prints.get(id))])) }, banks: NB,
       guitar: { amp: G.amp, fx: [...G.fx], preset: G.preset },
       loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], name: l.name || "", buf: packBuf(l.buf) }))) }
@@ -41,7 +41,8 @@
     const p = await DB.get("projects", id); if (!p || !ctx) return;
     Object.keys(p.knobs).forEach(t => { if (knobVals[t]) knobVals[t] = p.knobs[t].slice(); });
     if (!p.knobsV) { knobVals.sons[5] = 1; knobVals.sons[6] = 0; }
-    if (!p.knobsV || p.knobsV < 3) { knobVals.sp[6] = 0; knobVals.sp[7] = 1; }   // anciens potards SP : sortie et rien
+    if (!p.knobsV || p.knobsV < 3) { knobVals.sp[6] = 0; knobVals.sp[7] = 1; }
+    if (!p.knobsV || p.knobsV < 4) knobVals.scratch = [0.85, 0.5, 0, 0, 0, 0.5, 0.3, 0.3];   // nouveaux potards SCRATCH   // anciens potards SP : sortie et rien
     if (typeof sonsFxDose === "function") sonsFxDose(true);
     { const f = SP_FX[SPX.cur]; knobVals.sp[0] = f.a; knobVals.sp[1] = f.b; knobVals.sp[2] = SPX.dose; }   // les effets SP gardent leurs propres réglages
     manualBpm = p.manualBpm || 90;
