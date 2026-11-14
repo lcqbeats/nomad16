@@ -588,8 +588,8 @@ def test_digging_zoom_cretes_nettoyage(app):
     assert app.inner_text("#wStartVal").startswith("0:02")
     quiet = "(() => { const d = nomadDbg.clip.buf.getChannelData(0), sr = nomadDbg.sr; let s = 0; for (let i = Math.floor(sr * 3.95); i < sr * 4 - 10; i++) s += d[i] * d[i]; return Math.sqrt(s / (sr * 0.05)); })()"
     q0 = app.evaluate(quiet)
-    app.click("#clClick"); app.wait_for_function("document.getElementById('digLoad').hidden", timeout=8000)
-    assert "craquements enlevés" in app.inner_text("#lcdPad")
+    # le bac en ligne peut écrire sur l'écran en arrière-plan : on attend le message du nettoyage
+    app.click("#clClick"); app.wait_for_function("document.getElementById('digLoad').hidden && /craquements enlevés/.test(document.getElementById('lcdPad').textContent)", timeout=8000)
     app.click("#clHiss"); app.wait_for_function("document.getElementById('digLoad').hidden && /souffle/.test(document.getElementById('lcdPad').textContent)", timeout=15000)
     assert app.evaluate(quiet) < q0 * 0.6
     app.click("#clNorm")
