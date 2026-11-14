@@ -813,3 +813,4 @@ html.flipped, html.flipped body { overflow: hidden; }
 .drbar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .drbar #drStop.on { background: var(--text); color: var(--ink); }
 #view-sons [hidden] { display: none !important; }
+#ambBtn { width: 100%; font-size: 11px; } #ambBtn.on { background: #2b2620; box-shadow: inset 0 0 0 1px #f08a2c; color: #f6c48f; }

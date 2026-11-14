@@ -1133,3 +1133,19 @@ def test_collections_sober_et_all_things(app):
     app.evaluate("nomadMidi([0x90, 62, 100])")
     app.wait_for_function("nomadProbe() > 0.02", timeout=3000)
     app.evaluate("nomadMidi([0x80, 62, 0])")
+
+
+def test_ambiance_de_collection(app):
+    app.click("#tab-sons")
+    app.wait_for_timeout(300)
+    app.click('#cats .cat:text-is("ALL THINGS")')
+    app.click('#insts .inst:has-text("CORDES CINÉ")')
+    app.wait_for_function("nomadDbg.AMB.cur === 'ALL THINGS'")
+    assert "GRANDE SALLE" in app.inner_text("#ambBtn")
+    assert app.evaluate("nomadDbg.AMB.n.send.gain.value") > 0.1 or app.wait_for_function("nomadDbg.AMB.n.send.gain.value > 0.1")
+    app.click("#ambBtn")                                  # libre
+    assert app.evaluate("nomadDbg.AMB.cur") is None and "LIBRE" in app.inner_text("#ambBtn")
+    app.click("#ambBtn")
+    app.click('#cats .cat:text-is("FKJ")')
+    app.click('#insts .inst >> nth=0')
+    assert app.is_hidden("#ambBtn") and app.evaluate("nomadDbg.AMB.cur") is None

@@ -827,6 +827,7 @@ html.flipped, html.flipped body { overflow: hidden; }
 .drbar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .drbar #drStop.on { background: var(--text); color: var(--ink); }
 #view-sons [hidden] { display: none !important; }
+#ambBtn { width: 100%; font-size: 11px; } #ambBtn.on { background: #2b2620; box-shadow: inset 0 0 0 1px #f08a2c; color: #f6c48f; }
 </style>
 </head>
 <body>
@@ -1162,6 +1163,7 @@ html.flipped, html.flipped body { overflow: hidden; }
       <div class="chords" id="chords"></div>
       <p class="note help">Pads de l'Akai : Bank 1, pads 1 à 7 = accords 1 à 7, pad 8 = accord 1 à l'octave ; Bank 2 = les mêmes une octave plus haut. Clavier : l'octave basse du clavier de l'Akai joue la progression : touches blanches DO, RÉ, MI, FA, SOL, LA, SI = accords 1 à 7 (touches noires = même accord, renversé plus haut). L'octave haute joue des notes simples, dans la tonalité. + BASSE ajoute la fondamentale une octave en dessous.</p>
     </div>
+    <button class="btn" id="ambBtn" type="button" hidden>AMBIANCE</button>
     <div id="drumPanel" class="stack" hidden>
       <p class="drtitle" id="drTitle"></p>
       <div class="drpats" id="drPats"></div>
@@ -3963,7 +3965,7 @@ registerProcessor('nomad-oct',Oct);`;
     $("mNotes").classList.toggle("on", !chordMode); $("mChords").classList.toggle("on", chordMode); $("mBass").classList.toggle("on", addBass); $("mFull").classList.toggle("on", sonsFull);
     $("chordPanel").hidden = !chordMode || isDrum(instCur);
     drawSonsFx();
-    try { drawDrums(); } catch (e) {}
+    try { drawDrums(); ambApply(); } catch (e) {}
     const st = STYLES[styleIdx];
     drawKeyFromLoop();
     $("keyVal").textContent = NN[tonic] + (st.minor ? "m" : ""); $("keyMode").textContent = st.minor ? "mineur" : "majeur";
@@ -4749,6 +4751,54 @@ registerProcessor('nomad-oct',Oct);`;
     const w = [0, 2, 4, 5, 7, 9, 11, 12].indexOf(note - 48); if (w < 0) return false;
     drPlay(w); return true;
   }
+  // ---------- SONS : ambiance de collection (mesurée sur le morceau) ----------
+  // Placée entre les sons et le reste de SONS (filtre, effets, réverbe du potard) : timbre (grave, aigus),
+  // largeur stéréo (effet Haas sur les sons mono) et une réverbe propre. LIBRE la retire.
+  //   SOBER  : son assez étroit (corrélation G/D 0,94), aigus doux, grave chaud ; petite pièce chaude, réverbe courte.
+  //   ALL THINGS : médiums larges (cordes), aigus très tombés au-dessus de 4 kHz, réverbe ~2,5 fois plus longue.
+  const AMB_PRESETS = {
+    SOBER: { name: "PIÈCE CHAUDE", lp: 9000, shelf: 2, shelfF: 160, width: 0.22, rev: 1.4, revDecay: 3, revDamp: 0.22, send: 0.22, pre: 0.015 },
+    "ALL THINGS": { name: "GRANDE SALLE SOMBRE", lp: 5200, shelf: 2.5, shelfF: 120, width: 0.6, rev: 3.4, revDecay: 2.4, revDamp: 0.12, send: 0.34, pre: 0.035 }
+  };
+  const AMB = { on: store.get("sonsAmb", true), cur: null, n: null };
+  const ambOf = id => { const s = allInsts().find(i => i.id === id); return s && AMB_PRESETS[s.cat] ? s.cat : null; };
+  function ambBuild() {
+    if (AMB.n || !instBus) return;
+    const n = AMB.n = {};
+    n.shelf = ctx.createBiquadFilter(); n.shelf.type = "lowshelf"; n.shelf.gain.value = 0;
+    n.lp = ctx.createBiquadFilter(); n.lp.type = "lowpass"; n.lp.frequency.value = 20000; n.lp.Q.value = 0.5;
+    // largeur : gauche = le son, droite = mélange du son et d'une copie retardée de 13 ms
+    n.split = ctx.createGain(); n.mer = ctx.createChannelMerger(2);
+    n.dry = ctx.createGain(); n.hz = ctx.createDelay(0.05); n.hz.delayTime.value = 0.013; n.wet = ctx.createGain(); n.wet.gain.value = 0;
+    n.rDry = ctx.createGain(); n.rDry.gain.value = 1;
+    n.split.connect(n.dry); n.dry.connect(n.mer, 0, 0);
+    n.split.connect(n.rDry); n.rDry.connect(n.mer, 0, 1);
+    n.split.connect(n.hz); n.hz.connect(n.wet); n.wet.connect(n.mer, 0, 1);
+    n.out = ctx.createGain();
+    n.send = ctx.createGain(); n.send.gain.value = 0; n.pre = ctx.createDelay(0.2); n.cv = ctx.createConvolver();
+    instBus.disconnect(); instBus.connect(n.shelf); n.shelf.connect(n.lp); n.lp.connect(n.split); n.mer.connect(n.out); n.out.connect(instFilt);
+    n.lp.connect(n.send); n.send.connect(n.pre); n.pre.connect(n.cv); n.cv.connect(chSons);
+  }
+  function ambApply() {
+    if (!ctx || !instBus) return;
+    ambBuild();
+    const col = AMB.on ? ambOf(instCur) : null, p = col && AMB_PRESETS[col], n = AMB.n, t = ctx.currentTime;
+    if (p && AMB.cur !== col) { n.cv.buffer = impulse(p.rev, p.revDecay, p.revDamp); n.pre.delayTime.value = p.pre; }
+    AMB.cur = p ? col : null;
+    n.shelf.frequency.value = p ? p.shelfF : 150; n.shelf.gain.setTargetAtTime(p ? p.shelf : 0, t, 0.05);
+    n.lp.frequency.setTargetAtTime(p ? p.lp : 20000, t, 0.05);
+    n.wet.gain.setTargetAtTime(p ? p.width : 0, t, 0.05); n.rDry.gain.setTargetAtTime(p ? 1 - p.width * 0.5 : 1, t, 0.05);
+    n.send.gain.setTargetAtTime(p ? p.send : 0, t, 0.05);
+    drawAmb();
+  }
+  function drawAmb() {
+    const b = $("ambBtn"), col = ambOf(instCur); if (!b) return;
+    b.hidden = !col || isDrum(instCur);
+    if (col) b.textContent = AMB.on ? `AMBIANCE : ${col} · ${AMB_PRESETS[col].name}` : "AMBIANCE : LIBRE";
+    b.classList.toggle("on", AMB.on && !!col);
+  }
+  $("ambBtn").addEventListener("click", () => { AMB.on = !AMB.on; store.set("sonsAmb", AMB.on); ambApply();
+    lcd("lcdPad", "AMBIANCE", AMB.on ? "celle du morceau (timbre, largeur, réverbe)" : "libre : tes réglages seulement"); });
   // ---------- SCRATCH : platine tactile, fader de coupure, phrases, sillon fermé ----------
   const SCR = { node: null, src: "bank", idx: 0, name: "—", N: 0, bsr: 48000, cue: 0, motor: false, speed: 33, pitch: 0, semi: null, hand: null, rep: { pos: 0, vel: 0, t: 0 }, fader: 0.2, ham: false, padOpen: false, padCut: false, btnOpen: false, btnCut: false, gate: null, bank: null, voix: null, mine: [], ph: -1, raf: 0, loading: 0 };
   const SCR_REV = 1.8; // secondes de son par tour de disque (33 tours)
@@ -7573,7 +7623,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   initMidi();
   try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi) { $("btBox").hidden = false; $("btPair").addEventListener("click", () => window.webkit.messageHandlers.nomadMidi.postMessage({ type: "btpair" })); } } catch (e) {}
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
-  window.nomadDbg = { sonsT: { selectInst, keyOn, releaseKey: k => activeKeys.forEach((v, key) => releaseKey(key)) }, DR, drPlay, drStop, scrLoad, newKit, micStop, MIC, edSrcApply, song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get names() { return names; }, get kitIndex() { return kitIndex; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
+  window.nomadDbg = { AMB, sonsT: { selectInst, keyOn, releaseKey: k => activeKeys.forEach((v, key) => releaseKey(key)) }, DR, drPlay, drStop, scrLoad, newKit, micStop, MIC, edSrcApply, song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get names() { return names; }, get kitIndex() { return kitIndex; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
   let probe = null;
   window.nomadProbe = () => { if (!probe) { probe = ctx.createAnalyser(); probe.fftSize = 2048; fxMaster.connect(probe); } const a = new Float32Array(2048); probe.getFloatTimeDomainData(a); let m = 0; for (const v of a) m = Math.max(m, Math.abs(v)); return +m.toFixed(3); };
   window.nomadState = () => ({ kit: kitCur, kits: kitIndex.length, bufs: buffers.filter(Boolean).length, names: names.slice(0, 4), t0F: LP.t0F, Lf: LP.Lf, layers: LP.layers.map(l => ({ k: l.k, m: l.m })), pending: LP.pending && { ...LP.pending }, latMs, guitar: { amp: G.amp, preset: G.preset, fx: [...G.fx], on: G.on }, cap: capLatest, now: ctx && ctx.currentTime });
