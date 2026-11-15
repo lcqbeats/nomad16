@@ -1232,3 +1232,24 @@ def test_batterie_tempo_swing_et_pads(app):
     sel.select_option("auto")
     app.click("#drSwingReset")
     assert app.evaluate("nomadDbg.drSwPct(nomadDbg.DR_GENRES[0])") == 20
+
+
+def test_batterie_rec_boucle_et_anneau(app):
+    app.click("#tab-sons")
+    app.wait_for_timeout(300)
+    app.click('#cats .cat:text-is("BATTERIE")')
+    app.click('#insts .inst:has-text("BREAKBEAT")')
+    app.click("#drBpmSet")                                 # 96 BPM
+    app.click("#drRec")                                    # lance le pattern 1 et enregistre un tour exact
+    assert app.evaluate("nomadDbg.DR.cur") == 0
+    app.wait_for_function("nomadDbg.LP.t0F !== null && nomadDbg.LP.layers.length === 1", timeout=8000)
+    assert abs(app.evaluate("60 * nomadDbg.LP.beats / (nomadDbg.LP.Lf / nomadDbg.sr)") - 96) < 0.2
+    # l'anneau du pattern qui joue tourne
+    p1 = app.evaluate("+document.querySelector('#drPats .drpat.on .drring').style.getPropertyValue('--p')")
+    app.wait_for_timeout(500)
+    p2 = app.evaluate("+document.querySelector('#drPats .drpat.on .drring').style.getPropertyValue('--p')")
+    assert p1 != p2
+    # avec une boucle : une nouvelle piste de la longueur du pattern
+    app.click("#drRec")
+    app.wait_for_function("nomadDbg.LP.layers.length === 2", timeout=8000)
+    app.evaluate("nomadDbg.drStop()")

@@ -134,6 +134,7 @@
         if (DR.next < 0) { DR.cur = -1; drawDrums(); return; }
         DR.cur = DR.next; DR.step = 0; drawDrums(); continue;
       }
+      if (i === 0) { DR.cycT0 = DR.nextT; DR.cycDur = n * st; DR.cycPat = DR.cur; drRecTick(); }   // début d'un tour du pattern
       const map = DR.map, w = drSw(g), base = DR.nextT + (i % 2 ? w.sw * st * 0.66 : 0) + (i % 4 === 2 ? w.sw8 * st : 0);
       ["k", "s", "h", "o", "p"].forEach(r => {
         const c = (p[r] || "")[i]; if (!c || c === ".") return;
@@ -152,16 +153,68 @@
     if (!ctx) return;
     const g = drGenre(); if (!g.p[i]) return;
     if (DR.cur >= 0 && DR.genre === g) {
-      DR.next = (DR.next === i && DR.cur === i) ? -1 : i;
+      DR.next = (DR.next === i && DR.cur === i) ? -1 : i; DR.last = i;
       if (DR.cur === i && DR.next === i) DR.next = -1;
       drawDrums(); lcd("lcdPad", g.name, DR.next < 0 ? "arrêt en fin de mesure" : "ensuite : " + g.p[i].n); return;
     }
-    DR.genre = g; DR.map = drMap(); DR.cur = i; DR.next = i; DR.step = 0;
+    DR.genre = g; DR.map = drMap(); DR.cur = i; DR.next = i; DR.step = 0; DR.last = i;
     const st = 60 / curBpm() / 4, bar = st * 16, now = ctx.currentTime + 0.04;
     if (LP.t0F !== null && LP.playing) { const a = LP.t0F / sr; DR.nextT = a + Math.ceil((now - a) / bar) * bar; } else DR.nextT = now;
     drawDrums(); lcd("lcdPad", g.name, g.p[i].n + (LP.playing ? " · départ à la mesure" : ""));
   }
-  function drStop() { if (DR.cur < 0) return; DR.cur = -1; DR.next = -1; drawDrums(); }
+  function drStop() { if (DR.cur < 0) return; DR.cur = -1; DR.next = -1; if (DR.rec && DR.rec.phase === "wait") DR.rec = null; drawDrums(); }
+  // ---------- REC : enregistrer un tour exact du pattern dans le LOOPER ----------
+  // Sans boucle : la première boucle prend la longueur du pattern (et donc son tempo). Avec une boucle : une nouvelle
+  // piste dans la bank affichée, de la longueur du pattern (arrondie en nombre de tours de la boucle).
+  function drRec() {
+    if (!ctx) return;
+    if (DR.rec) { DR.rec = null; drawDrums(); lcd("lcdPad", "BATTERIE", "enregistrement annulé"); return; }
+    if (LP.pending) { lcd("lcdPad", "BATTERIE", "le LOOPER enregistre déjà"); return; }
+    if (LP.t0F !== null && LP.layers.length >= MAX_LAYERS) { lcd("lcdPad", "BATTERIE", "bank pleine (6 pistes)"); return; }
+    if (DR.cur < 0) drPlay(DR.last >= 0 ? DR.last : 0);
+    DR.rec = { phase: "wait" };
+    drawDrums(); lcd("lcdPad", "BATTERIE", "REC au début du prochain tour du pattern");
+  }
+  // appelé au moment où un tour du pattern est programmé (DR.cycT0 = son heure de départ)
+  function drRecTick() {
+    const r = DR.rec; if (!r || r.phase !== "wait") return;
+    const sF = Math.round(DR.cycT0 * sr), len = Math.round(DR.cycDur * sr), nSteps = drLen(DR.genre.p[DR.cur]);
+    r.phase = "rec"; r.sF = sF; r.len = len;
+    if (LP.t0F === null) {
+      const fin = () => {
+        if (DR.rec !== r) return;
+        if (capLatest < sF + len) return setTimeout(fin, 20);
+        const buf = extract(sF, len); DR.rec = null;
+        if (!buf) { drawDrums(); return; }
+        LP.t0F = sF; LP.Lf = len; LP.beats = nSteps / 4; LP.playing = true;
+        addLayer(buf, 1, 0, true, []);
+        drawDrums(); lcd("lcdPad", "BATTERIE", `boucle de ${nSteps / 16} mesure(s) enregistrée · tempo ${curBpm().toFixed(1)} BPM`);
+      };
+      setTimeout(fin, Math.max(0, (sF + len) / sr - ctx.currentTime) * 1000);
+    } else {
+      // nouvelle piste : on prend le tour de boucle qui commence le plus près du départ du pattern
+      const m = Math.round((sF - LP.t0F) / LP.Lf), k = Math.max(1, Math.min(8, Math.round(len / LP.Lf)));
+      if (!LP.playing) playAll();
+      LP.pending = { type: "layer", m, sF: LP.t0F + m * LP.Lf, k, half: false, comp: 0 };
+      DR.rec = null; drawDrums();
+      lcd("lcdPad", "BATTERIE", `nouvelle piste : ${k} tour(s) de boucle`);
+    }
+  }
+  $("drRec").addEventListener("click", drRec);
+  // anneau de progression : un tour complet par tour du pattern qui joue
+  (function drRing() {
+    requestAnimationFrame(drRing);
+    if (tab !== "sons" || !ctx || $("drumPanel").hidden) return;
+    const live = DR.cur >= 0 && DR.cycDur && DR.genre === drGenre();
+    document.querySelectorAll("#drPats .drpat").forEach(b => {
+      const i = +b.dataset.i, on = live && i === DR.cycPat, ring = b.querySelector(".drring");
+      const p = on ? Math.max(0, Math.min(1, ((ctx.currentTime - DR.cycT0) % DR.cycDur + DR.cycDur) % DR.cycDur / DR.cycDur)) : 0;
+      ring.style.setProperty("--p", p.toFixed(3)); ring.classList.toggle("on", on);
+    });
+    const r = DR.rec, b = $("drRec");
+    b.textContent = !r ? "● REC BOUCLE" : r.phase === "wait" ? "● REC · ATTEND LE TOUR" : `● REC ${Math.min(100, Math.round((ctx.currentTime * sr - r.sF) / r.len * 100))} %`;
+    b.classList.toggle("on", !!r);
+  })();
   function drawDrums() {
     const on = isDrum(instCur);
     ["drumPanel"].forEach(id => { $(id).hidden = !on; });
@@ -182,12 +235,13 @@
       const p = g.p[i], b = document.createElement("button"); b.type = "button"; b.className = "drpat";
       b.classList.toggle("on", live && DR.cur === i); b.classList.toggle("next", live && DR.next === i && DR.cur !== i);
       const n = drLen(p), cells = Array.from({ length: Math.min(n, 16) }, (_, j) => { const k = (p.k || "")[j], s = (p.s || "")[j]; return `<i class="${k && k !== "." ? "k" : s && s !== "." ? "s" : ""}"></i>`; }).join("");
-      b.innerHTML = `<b>${p.n}</b><span>pad ${i + 1}${n > 16 ? " · 2 mes." : ""}</span><em>${cells}</em>`;
+      b.dataset.i = i;
+      b.innerHTML = `<s class="drring${n > 16 ? " two" : ""}" title="${n / 16} mesure(s)"></s><b>${p.n}</b><span>pad ${i + 1}${n > 16 ? " · 2 mes." : ""}</span><em>${cells}</em>`;
       b.addEventListener("click", () => drPlay(i));
       box.appendChild(b);
     });
     $("drStop").classList.toggle("on", DR.cur >= 0);
-    $("drKit").textContent = DR.kitSounds ? "SONS : KIT EN COURS" : "SONS : NOMAD";
+    $("drKit").textContent = DR.kitSounds ? "SONS : KIT" : "SONS : NOMAD";
     // rôles → pads du kit, modifiables (gardés pour ce kit)
     const m = drMap(), ov = ((store.get("drRoles", {}) || {})[kitCur]) || {}, box2 = $("drRoles");
     box2.hidden = !DR.kitSounds;
