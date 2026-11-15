@@ -1240,16 +1240,23 @@ def test_batterie_rec_boucle_et_anneau(app):
     app.click('#cats .cat:text-is("BATTERIE")')
     app.click('#insts .inst:has-text("BREAKBEAT")')
     app.click("#drBpmSet")                                 # 96 BPM
-    app.click("#drRec")                                    # lance le pattern 1 et enregistre un tour exact
+    app.click("#drRec")                                    # lance le pattern 1 et la prise
     assert app.evaluate("nomadDbg.DR.cur") == 0
+    app.wait_for_timeout(2900)                             # une mesure à 96 BPM = 2,5 s : on est dans la 2e
+    app.evaluate("nomadDbg.drPlay(7)")                     # le break à la fin
+    app.click("#drRec")                                    # fin à la fin de la 2e mesure
     app.wait_for_function("nomadDbg.LP.t0F !== null && nomadDbg.LP.layers.length === 1", timeout=8000)
+    assert app.evaluate("nomadDbg.LP.beats") == 8
     assert abs(app.evaluate("60 * nomadDbg.LP.beats / (nomadDbg.LP.Lf / nomadDbg.sr)") - 96) < 0.2
     # l'anneau du pattern qui joue tourne
     p1 = app.evaluate("+document.querySelector('#drPats .drpat.on .drring').style.getPropertyValue('--p')")
     app.wait_for_timeout(500)
     p2 = app.evaluate("+document.querySelector('#drPats .drpat.on .drring').style.getPropertyValue('--p')")
     assert p1 != p2
-    # avec une boucle : une nouvelle piste de la longueur du pattern
+    # avec une boucle : une nouvelle piste, ici d'un tour
     app.click("#drRec")
-    app.wait_for_function("nomadDbg.LP.layers.length === 2", timeout=8000)
+    app.wait_for_function("nomadDbg.DR.rec && nomadDbg.ctx.currentTime * nomadDbg.sr > nomadDbg.DR.rec.sF + 0.3 * nomadDbg.sr", timeout=8000)
+    app.click("#drRec")
+    app.wait_for_function("nomadDbg.LP.layers.length === 2", timeout=12000)
+    assert app.evaluate("nomadDbg.LP.layers[1].k") == 1
     app.evaluate("nomadDbg.drStop()")

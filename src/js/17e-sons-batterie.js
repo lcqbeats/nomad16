@@ -134,6 +134,7 @@
         if (DR.next < 0) { DR.cur = -1; drawDrums(); return; }
         DR.cur = DR.next; DR.step = 0; drawDrums(); continue;
       }
+      if (i % 16 === 0) DR.barT = DR.nextT;   // grille des mesures (pour caler le départ d'une prise)
       if (i === 0) { DR.cycT0 = DR.nextT; DR.cycDur = n * st; DR.cycPat = DR.cur; drRecTick(); }   // début d'un tour du pattern
       const map = DR.map, w = drSw(g), base = DR.nextT + (i % 2 ? w.sw * st * 0.66 : 0) + (i % 4 === 2 ? w.sw8 * st : 0);
       ["k", "s", "h", "o", "p"].forEach(r => {
@@ -162,44 +163,49 @@
     if (LP.t0F !== null && LP.playing) { const a = LP.t0F / sr; DR.nextT = a + Math.ceil((now - a) / bar) * bar; } else DR.nextT = now;
     drawDrums(); lcd("lcdPad", g.name, g.p[i].n + (LP.playing ? " · départ à la mesure" : ""));
   }
-  function drStop() { if (DR.cur < 0) return; DR.cur = -1; DR.next = -1; if (DR.rec && DR.rec.phase === "wait") DR.rec = null; drawDrums(); }
-  // ---------- REC : enregistrer un tour exact du pattern dans le LOOPER ----------
-  // Sans boucle : la première boucle prend la longueur du pattern (et donc son tempo). Avec une boucle : une nouvelle
-  // piste dans la bank affichée, de la longueur du pattern (arrondie en nombre de tours de la boucle).
+  function drStop() { if (DR.cur < 0) return; DR.cur = -1; DR.next = -1; if (DR.rec && DR.rec.phase === "rec") drRec(); drawDrums(); }
+  // ---------- REC : enregistrer la batterie dans le LOOPER, sur la longueur qu'on veut ----------
+  // 1er appui : départ à la mesure suivante (au tour de boucle suivant s'il y a une boucle) ; on peut changer de pattern
+  // pendant la prise (syncopé ×3 puis break…) ; 2e appui : arrêt à la fin de la mesure (du tour de boucle) en cours.
+  // Sans boucle : la première boucle prend cette longueur et le tempo. Avec une boucle : nouvelle piste de n tours.
+  const drUnit = () => LP.t0F !== null && LP.Lf ? LP.Lf : Math.round(16 * 60 / curBpm() / 4 * sr);
   function drRec() {
     if (!ctx) return;
-    if (DR.rec) { DR.rec = null; drawDrums(); lcd("lcdPad", "BATTERIE", "enregistrement annulé"); return; }
-    if (LP.pending) { lcd("lcdPad", "BATTERIE", "le LOOPER enregistre déjà"); return; }
-    if (LP.t0F !== null && LP.layers.length >= MAX_LAYERS) { lcd("lcdPad", "BATTERIE", "bank pleine (6 pistes)"); return; }
-    if (DR.cur < 0) drPlay(DR.last >= 0 ? DR.last : 0);
-    DR.rec = { phase: "wait" };
-    drawDrums(); lcd("lcdPad", "BATTERIE", "REC au début du prochain tour du pattern");
-  }
-  // appelé au moment où un tour du pattern est programmé (DR.cycT0 = son heure de départ)
-  function drRecTick() {
-    const r = DR.rec; if (!r || r.phase !== "wait") return;
-    const sF = Math.round(DR.cycT0 * sr), len = Math.round(DR.cycDur * sr), nSteps = drLen(DR.genre.p[DR.cur]);
-    r.phase = "rec"; r.sF = sF; r.len = len;
-    if (LP.t0F === null) {
+    const r = DR.rec, nowF = ctx.currentTime * sr;
+    if (r && r.phase === "stopping") return;
+    if (r) {
+      if (nowF < r.sF) { DR.rec = null; drawDrums(); lcd("lcdPad", "BATTERIE", "enregistrement annulé"); return; }
+      const U = drUnit(), n = Math.max(1, Math.min(16, Math.ceil((nowF - r.sF - 0.15 * U) / U)));
+      r.phase = "stopping"; r.n = n; r.len = n * U;
       const fin = () => {
         if (DR.rec !== r) return;
-        if (capLatest < sF + len) return setTimeout(fin, 20);
-        const buf = extract(sF, len); DR.rec = null;
+        if (capLatest < r.sF + r.len) return setTimeout(fin, 20);
+        const buf = extract(r.sF, r.len); DR.rec = null;
         if (!buf) { drawDrums(); return; }
-        LP.t0F = sF; LP.Lf = len; LP.beats = nSteps / 4; LP.playing = true;
-        addLayer(buf, 1, 0, true, []);
-        drawDrums(); lcd("lcdPad", "BATTERIE", `boucle de ${nSteps / 16} mesure(s) enregistrée · tempo ${curBpm().toFixed(1)} BPM`);
+        if (LP.t0F === null) {
+          LP.t0F = r.sF; LP.Lf = r.len; LP.beats = n * 4; LP.playing = true;
+          addLayer(buf, 1, 0, true, []);
+          lcd("lcdPad", "BATTERIE", `boucle de ${n} mesure(s) · ${curBpm().toFixed(1)} BPM`);
+        } else {
+          addLayer(buf, n, Math.round((r.sF - LP.t0F) / LP.Lf), true, []);
+          lcd("lcdPad", "BATTERIE", `nouvelle piste de ${n} tour(s) de boucle`);
+        }
+        drawDrums();
       };
-      setTimeout(fin, Math.max(0, (sF + len) / sr - ctx.currentTime) * 1000);
-    } else {
-      // nouvelle piste : on prend le tour de boucle qui commence le plus près du départ du pattern
-      const m = Math.round((sF - LP.t0F) / LP.Lf), k = Math.max(1, Math.min(8, Math.round(len / LP.Lf)));
-      if (!LP.playing) playAll();
-      LP.pending = { type: "layer", m, sF: LP.t0F + m * LP.Lf, k, half: false, comp: 0 };
-      DR.rec = null; drawDrums();
-      lcd("lcdPad", "BATTERIE", `nouvelle piste : ${k} tour(s) de boucle`);
+      setTimeout(fin, Math.max(0, (r.sF + r.len) / sr - ctx.currentTime) * 1000);
+      lcd("lcdPad", "BATTERIE", `fin de la prise dans ${(Math.max(0, (r.sF + r.len - nowF) / sr)).toFixed(1)} s (${n} ${LP.t0F !== null ? "tour(s)" : "mesure(s)"})`);
+      return;
     }
+    if (LP.pending) { lcd("lcdPad", "BATTERIE", "le LOOPER enregistre déjà"); return; }
+    if (LP.t0F !== null && LP.layers.length >= MAX_LAYERS) { lcd("lcdPad", "BATTERIE", "bank pleine (6 pistes)"); return; }
+    let sF;
+    if (LP.t0F !== null && LP.Lf) { if (!LP.playing) playAll(); sF = LP.t0F + Math.ceil((nowF + 0.06 * sr - LP.t0F) / LP.Lf) * LP.Lf; if (DR.cur < 0) drPlay(DR.last >= 0 ? DR.last : 0); }
+    else if (DR.cur < 0) { drPlay(DR.last >= 0 ? DR.last : 0); sF = Math.round(DR.nextT * sr); }
+    else { const bar = 16 * 60 / curBpm() / 4; sF = Math.round((DR.barT + Math.ceil((ctx.currentTime + 0.06 - DR.barT) / bar) * bar) * sr); }
+    DR.rec = { phase: "rec", sF };
+    drawDrums(); lcd("lcdPad", "BATTERIE", "REC à la prochaine mesure · change de pattern à volonté · REC pour finir");
   }
+  function drRecTick() {}
   $("drRec").addEventListener("click", drRec);
   // anneau de progression : un tour complet par tour du pattern qui joue
   (function drRing() {
@@ -211,8 +217,8 @@
       const p = on ? Math.max(0, Math.min(1, ((ctx.currentTime - DR.cycT0) % DR.cycDur + DR.cycDur) % DR.cycDur / DR.cycDur)) : 0;
       ring.style.setProperty("--p", p.toFixed(3)); ring.classList.toggle("on", on);
     });
-    const r = DR.rec, b = $("drRec");
-    b.textContent = !r ? "● REC BOUCLE" : r.phase === "wait" ? "● REC · ATTEND LE TOUR" : `● REC ${Math.min(100, Math.round((ctx.currentTime * sr - r.sF) / r.len * 100))} %`;
+    const r = DR.rec, b = $("drRec"), nowF = ctx.currentTime * sr, U = drUnit();
+    b.textContent = !r ? "● REC BOUCLE" : nowF < r.sF ? "● REC · ATTEND LA MESURE" : r.phase === "stopping" ? `■ FIN · ${r.n} ${LP.t0F !== null ? "TOUR" : "MES."}` : `■ STOP · ${Math.floor((nowF - r.sF) / U) + 1} ${LP.t0F !== null ? "TOUR" : "MES."}`;
     b.classList.toggle("on", !!r);
   })();
   function drawDrums() {
