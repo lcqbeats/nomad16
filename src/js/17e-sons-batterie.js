@@ -93,15 +93,27 @@
     k: /kick|kik|\bbd\b|bass ?drum|grosse/i, s: /snare|\bsd\b|caisse|clap/i,
     h: /hat|\bhh\b|charl/i, o: /open|ouvert|\boh\b|ride/i, p: /rim|shaker|tamb|conga|perc|snap|cowbell|cloche|clave/i
   };
-  function drMap() {
+  const drMapAuto = () => drMap(true);
+  function drMap(auto) {
     const m = {};
     if (!DR.kitSounds) return m;
     const find = (rx, not) => names.findIndex((n, i) => buffers[i] && rx.test(n || "") && !(not && not.test(n || "")));
     m.k = find(DR_RX.k); m.s = find(/snare|\bsd\b|caisse/i); if (m.s < 0) m.s = find(DR_RX.s);
     m.o = find(DR_RX.o); m.h = find(DR_RX.h, /open|ouvert|\boh\b/i); m.p = find(DR_RX.p);
-    Object.keys(m).forEach(r => { if (m[r] < 0) delete m[r]; });
+    // choix faits à la main pour ce kit : un pad précis, ou le son de NOMAD (-1)
+    const ov = auto ? {} : (store.get("drRoles", {}) || {})[kitCur] || {};
+    Object.keys(ov).forEach(r => { m[r] = ov[r]; });
+    Object.keys(m).forEach(r => { if (m[r] < 0 || !buffers[m[r]]) delete m[r]; });
     return m;
   }
+  function drSetRole(r, v) {
+    const all = store.get("drRoles", {}) || {}, ov = all[kitCur] || (all[kitCur] = {});
+    if (v === "auto") delete ov[r]; else ov[r] = +v;
+    store.set("drRoles", all); DR.map = drMap(); drawDrums();
+  }
+  // swing réglable par genre (remplace celui du genre ; croches pour les genres « croches », sinon double-croches)
+  const drSw = g => { const v = (store.get("drSwing", {}) || {})[g.id]; return v === undefined ? { sw: g.sw, sw8: g.sw8 || 0 } : g.sw8 ? { sw: 0, sw8: v } : { sw: v, sw8: 0 }; };
+  const drSwPct = g => { const w = drSw(g); return Math.round(Math.max(w.sw, w.sw8) * 100); };
   function drSynth() {
     if (DR.synth) return DR.synth;
     const r = render(sr), mk = x => { const b = ctx.createBuffer(1, x.length, sr); b.copyToChannel(x, 0); return b; };
@@ -122,7 +134,7 @@
         if (DR.next < 0) { DR.cur = -1; drawDrums(); return; }
         DR.cur = DR.next; DR.step = 0; drawDrums(); continue;
       }
-      const map = DR.map, base = DR.nextT + (i % 2 ? g.sw * st * 0.66 : 0) + (i % 4 === 2 ? (g.sw8 || 0) * st : 0);
+      const map = DR.map, w = drSw(g), base = DR.nextT + (i % 2 ? w.sw * st * 0.66 : 0) + (i % 4 === 2 ? w.sw8 * st : 0);
       ["k", "s", "h", "o", "p"].forEach(r => {
         const c = (p[r] || "")[i]; if (!c || c === ".") return;
         const when = Math.max(ctx.currentTime, base + ((g.lag && g.lag[r]) || 0) * st);
@@ -133,6 +145,8 @@
     }
   }
   setInterval(drTick, 25);
+  // kit changé : les rôles suivent (et le panneau se met à jour)
+  setInterval(() => { if (DR.mapKit !== kitCur || DR.mapN !== names.join("|")) { DR.mapKit = kitCur; DR.mapN = names.join("|"); DR.map = drMap(); if (tab === "sons" && isDrum(instCur)) drawDrums(); } }, 400);
   // lancer / changer / arrêter : au début de la mesure suivante (calé sur la boucle du LOOPER quand elle tourne)
   function drPlay(i) {
     if (!ctx) return;
@@ -157,7 +171,12 @@
     if (on) $("chordPanel").hidden = true;
     if (!on) return;
     const g = drGenre(), live = DR.genre === g;
-    $("drTitle").textContent = `${g.name} · ${g.bpm} BPM conseillés · swing ${Math.round(Math.max(g.sw, g.sw8 || 0) * 100)} %${g.sw8 ? " (croches)" : ""}`;
+    $("drTitle").textContent = `${g.name} · ${g.bpm} BPM conseillés`;
+    const locked = LP.t0F !== null && LP.Lf;
+    $("drBpm").textContent = curBpm().toFixed(1).replace(/\.0$/, "") + " BPM";
+    ["drBpmDown", "drBpmUp", "drBpmSet"].forEach(id => { $(id).disabled = !!locked; });
+    $("drBpmInfo").textContent = locked ? "calé sur la boucle du LOOPER" : "";
+    $("drSwing").value = drSwPct(g); $("drSwingVal").textContent = drSwPct(g) + " %" + (g.sw8 ? " croches" : "");
     const box = $("drPats"); box.innerHTML = "";
     (g.p.length > 4 ? [4, 5, 6, 7, 0, 1, 2, 3] : [0, 1, 2, 3]).forEach(i => {
       const p = g.p[i], b = document.createElement("button"); b.type = "button"; b.className = "drpat";
@@ -169,10 +188,32 @@
     });
     $("drStop").classList.toggle("on", DR.cur >= 0);
     $("drKit").textContent = DR.kitSounds ? "SONS : KIT EN COURS" : "SONS : NOMAD";
-    const m = drMap(), lab = { k: "GC", s: "CC", h: "CH", o: "OUV", p: "PERC" };
-    $("drMapInfo").textContent = DR.kitSounds ? "Kit : " + Object.keys(lab).map(r => `${lab[r]} ${r in m ? "pad " + (m[r] + 1) : "NOMAD"}`).join(" · ") : "Sons de batterie de NOMAD, quel que soit le kit.";
+    // rôles → pads du kit, modifiables (gardés pour ce kit)
+    const m = drMap(), ov = ((store.get("drRoles", {}) || {})[kitCur]) || {}, box2 = $("drRoles");
+    box2.hidden = !DR.kitSounds;
+    $("drMapInfo").textContent = DR.kitSounds ? "Choix gardés pour ce kit · AUTO = repéré d'après le nom des pads" : "Sons de batterie de NOMAD, quel que soit le kit.";
+    if (DR.kitSounds) {
+      const LAB = { k: "GROSSE CAISSE", s: "CAISSE CLAIRE", h: "CHARLESTON", o: "OUVERT / RIDE", p: "PERCUSSION" };
+      box2.innerHTML = "";
+      Object.keys(LAB).forEach(r => {
+        const auto = drMapAuto()[r];
+        const l = document.createElement("label"), sel = document.createElement("select");
+        sel.innerHTML = `<option value="auto">AUTO · ${auto !== undefined ? "pad " + (auto + 1) : "NOMAD"}</option><option value="-1">SON DE NOMAD</option>` +
+          names.map((n, i) => buffers[i] ? `<option value="${i}">pad ${i + 1} · ${(n || "").toUpperCase().slice(0, 18)}</option>` : "").join("");
+        sel.value = r in ov ? String(ov[r]) : "auto";
+        sel.addEventListener("change", () => { drSetRole(r, sel.value); if (sel.value >= 0) { flash(+sel.value); playPad(+sel.value, 0.8); } });
+        l.innerHTML = `<span>${LAB[r]}</span>`; l.appendChild(sel); box2.appendChild(l);
+      });
+    }
   }
   $("drStop").addEventListener("click", drStop);
+  // tempo (sans boucle au LOOPER ; même tempo que FX) et swing
+  const drBpmSet = v => { manualBpm = Math.max(50, Math.min(180, Math.round(v))); try { drawFxBar(); applyFxKnob(3); } catch (e) {} drawDrums(); };
+  $("drBpmDown").addEventListener("click", () => drBpmSet(manualBpm - 1));
+  $("drBpmUp").addEventListener("click", () => drBpmSet(manualBpm + 1));
+  $("drBpmSet").addEventListener("click", () => drBpmSet(drGenre().bpm));
+  $("drSwing").addEventListener("input", e => { const g = drGenre(), all = store.get("drSwing", {}) || {}; all[g.id] = e.target.value / 100; store.set("drSwing", all); $("drSwingVal").textContent = e.target.value + " %" + (g.sw8 ? " croches" : ""); });
+  $("drSwingReset").addEventListener("click", () => { const g = drGenre(), all = store.get("drSwing", {}) || {}; delete all[g.id]; store.set("drSwing", all); drawDrums(); });
   $("drKit").addEventListener("click", () => { DR.kitSounds = !DR.kitSounds; store.set("drKit", DR.kitSounds); DR.map = drMap(); drawDrums(); });
   // clavier dans SONS avec une batterie : do à do (touches blanches de l'octave basse) = patterns 1 à 8
   function drKey(note) {

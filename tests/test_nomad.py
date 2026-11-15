@@ -1209,3 +1209,26 @@ def test_sp_bank_b_et_dosage_par_effet(app):
     app.evaluate("nomadDbg.SP_FX.forEach((f, i) => { if (f.on) { nomadDbg.SPX.bank = Math.floor(i / 16); nomadDbg.spPad(i % 16, true); nomadDbg.spPad(i % 16, false); } })")
     app.wait_for_timeout(2500)
     assert app.evaluate("nomadProbeOut()") < 0.02
+
+
+def test_batterie_tempo_swing_et_pads(app):
+    app.click("#tab-sons")
+    app.wait_for_timeout(300)
+    app.click('#cats .cat:text-is("BATTERIE")')
+    app.click('#insts .inst:has-text("BOOM BAP")')
+    app.click("#drBpmSet")
+    assert "90 BPM" in app.inner_text("#drBpm")
+    app.click("#drBpmUp"); app.click("#drBpmUp")
+    assert "92 BPM" in app.inner_text("#drBpm")
+    app.fill("#drSwing", "45")
+    app.dispatch_event("#drSwing", "input")
+    assert app.evaluate("nomadDbg.drSwPct(nomadDbg.DR_GENRES[0])") == 45
+    # grosse caisse sur le pad 9 au lieu de celle trouvée automatiquement
+    sel = app.locator("#drRoles select").first
+    sel.select_option("8")
+    assert app.evaluate("nomadDbg.drMap().k") == 8
+    sel.select_option("-1")
+    assert "k" not in app.evaluate("nomadDbg.drMap()")
+    sel.select_option("auto")
+    app.click("#drSwingReset")
+    assert app.evaluate("nomadDbg.drSwPct(nomadDbg.DR_GENRES[0])") == 20

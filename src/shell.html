@@ -354,6 +354,11 @@
       <p class="drtitle" id="drTitle"></p>
       <div class="drpats" id="drPats"></div>
       <div class="drbar"><button class="btn" id="drStop" type="button">■ STOP BATTERIE</button><button class="btn" id="drKit" type="button">SONS : KIT EN COURS</button></div>
+      <div class="drtempo">
+        <span>TEMPO</span><button class="btn" id="drBpmDown" type="button" aria-label="Tempo moins">−</button><b id="drBpm">90 BPM</b><button class="btn" id="drBpmUp" type="button" aria-label="Tempo plus">+</button><button class="btn" id="drBpmSet" type="button">CONSEILLÉ</button><em id="drBpmInfo"></em>
+      </div>
+      <label class="drswing"><span>SWING</span><input type="range" id="drSwing" min="0" max="60" value="20" aria-label="Swing"><b id="drSwingVal">20 %</b><button class="btn" id="drSwingReset" type="button">D'ORIGINE</button></label>
+      <div class="drroles" id="drRoles"></div>
       <p class="note" id="drMapInfo"></p>
       <p class="note help">Touchez un pattern pour le lancer ; un autre prend la suite à la mesure suivante ; le même l'arrête en fin de mesure. Calé sur la boucle du LOOPER quand elle tourne (REC l'enregistre). Akai : pads 1 à 8 = patterns 1 à 8, pads 9 à 16 = le kit ; touches blanches de do à do = patterns 1 à 8.</p>
     </div>
