@@ -828,6 +828,17 @@ html.flipped, html.flipped body { overflow: hidden; }
 .drbar #drStop.on { background: var(--text); color: var(--ink); }
 #view-sons [hidden] { display: none !important; }
 #ambBtn { width: 100%; font-size: 11px; } #ambBtn.on { background: #2b2620; box-shadow: inset 0 0 0 1px #f08a2c; color: #f6c48f; }
+
+/* SP : banque A / B, dosage global, dosage de chaque effet (barre sous le nom) */
+.spbankrow { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; margin-bottom: 8px; }
+.spbankrow .btn { font-size: 10px; padding: 9px 10px; }
+.spbankrow #spBankBtn.on { background: #f08a2c; color: #1a0f05; }
+.spdose { display: flex; align-items: center; gap: 8px; font: 700 9px/1 var(--font-display, sans-serif); letter-spacing: .06em; color: #8f8a80; }
+.spdose input { flex: 1; accent-color: #f08a2c; min-width: 0; }
+.spdose b { font: 11px VT323, monospace; color: #f6c48f; min-width: 34px; text-align: right; }
+.spfx em { position: absolute; left: 8px; right: 8px; bottom: 5px; height: 3px; border-radius: 2px; background: rgba(0,0,0,.25); overflow: hidden; }
+.spfx em::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--m, 1) * 100%); background: #3e3f40; }
+.spfx.on em::after { background: #f08a2c; }
 </style>
 </head>
 <body>
@@ -976,6 +987,7 @@ html.flipped, html.flipped body { overflow: hidden; }
     <div class="tbanks" role="group" aria-label="Bank visée par P1 à P6"><span>P1–P6 = BANK</span><button type="button" data-bank="0">A<small></small></button><button type="button" data-bank="1">B<small></small></button><button type="button" data-bank="2">C<small></small></button></div>
     <button class="btn rec spprint" id="spPrint" type="button">● IMPRIMER : CHOISIS UNE PISTE</button>
     <h4 class="sphead"><span>EFFETS · PADS 1 À 16</span></h4>
+    <div class="spbankrow"><button class="btn" id="spBankBtn" type="button">BANK A · 1–16 ⇄</button><label class="spdose">DOSE GLOBALE <input type="range" id="spDoseAll" min="0" max="100" value="100" aria-label="Dosage global des effets SP"><b id="spDoseVal">100 %</b></label></div>
     <div class="spfxgrid" id="spFxGrid"></div>
     <div class="songhead spbar">
       <button class="btn" id="spAllOff" type="button">TOUT COUPER</button>
@@ -1676,14 +1688,14 @@ else if(this.mode==='half'){ri=this.anchor+t*0.5;}
 else if(this.mode==='gate'){const k=t%(this.seg*2);g=k<this.seg?Math.min(1,k/48,(this.seg-k)/48):0;live=true;}
 else if(this.mode==='pattern'){const sl0=this.stepLen,bl=sl0*16,ns=this.steps.length,pl=sl0*ns;if(this.one&&t>=pl)this.rel=true;const T=t%pl,j=Math.min(ns-1,Math.floor(T/sl0)),p=T-j*sl0,st=this.steps[j],sl=sl0/(st.d||1),q=p%sl,r0=(st.r0===undefined?1:st.r0),r1=(st.r1===undefined?r0:st.r1);
 let pos=r0*q+(r1-r0)*q*q/(2*sl);if(st.v)pos=sl*Math.abs(r0)-pos;g=(st.g===undefined?1:st.g)*Math.min(1,q/48,(sl-q)/48);if(st.s<0)live=true;else ri=this.anchor-bl+st.s*sl0+pos;
-const f0=st.f||0,f1=(st.f1===undefined?f0:st.f1),fv=f0+(f1-f0)*(p/sl0);this.flt=fv;this.cr=st.x||0;}}
-if(!this.mode||this.mode!=='pattern'){this.flt=0;this.cr=0;}
+const f0=st.f||0,f1=(st.f1===undefined?f0:st.f1),fv=f0+(f1-f0)*(p/sl0);this.flt=fv;this.cr=st.x||0;this.sm=st.m===undefined?1:st.m;this.pn=st.p||0;}}
+if(!this.mode||this.mode!=='pattern'){this.flt=0;this.cr=0;this.sm=1;this.pn=0;}const sm=this.sm===undefined?1:this.sm,pn=this.pn||0,M=this.mix*sm;
 const fv=this.flt||0,ca=fv<0?1-Math.exp(-6.283*Math.min(18000,20000*Math.pow(2,fv*9))/sampleRate):1-Math.exp(-6.283*Math.min(8000,25*Math.pow(2,fv*8.5))/sampleRate);
 if(!this.lp)this.lp=[0,0];
 for(let c=0;c<2;c++){const dry=this.b[c][w];let wet=this.mode?(live?dry*g:this.rd(c,ri)*g):dry;
 if(this.mode&&fv!==0){this.lp[c]+=ca*(wet-this.lp[c]);wet=fv<0?this.lp[c]:wet-this.lp[c];}else this.lp[c]=wet;
 if(this.mode&&this.cr>0){const qq=Math.pow(2,15-this.cr*12);wet=Math.round(wet*qq)/qq;}
-out[c][s]=dry*(1-this.mix)+wet*this.mix;}}
+if(pn)wet*=(c===0?(pn>0?1-pn:1):(pn<0?1+pn:1));out[c][s]=dry*(1-M)+wet*M;}}
 return true;}}
 registerProcessor('nomad-fx',Fx);
 class Scr extends AudioWorkletProcessor{constructor(){super();this.N=0;this.pos=0;this.vel=0;this.motor=false;this.rate=1;this.up=1e-4;this.dn=1e-4;this.hand=false;this.tp=0;this.tv=0;this.tl=0;this.g=0;this.gt=0;this.ph=null;this.pend=null;this.cnt=0;this.d=[0,0,0,0];
@@ -2639,7 +2651,43 @@ registerProcessor('nomad-oct',Oct);`;
     { name: "PITCH RISE", sub: "monte peu à peu", steps: (() => { const out = []; let pos = 0; for (let j = 0; j < 16; j++) { const r0 = 0.8 + j * 0.025, r1 = 0.8 + (j + 1) * 0.025; out.push({ s: pos, r0, r1, f: j * 0.015 }); pos += (r0 + r1) / 2; } return out; })() },
     { name: "CUT & REVERSE", sub: "2e temps à l'envers, 4e en roulement", steps: R16(j => { const b = j >> 2, k = j & 3; if (b === 1) return { s: 7 - k, v: 1 }; if (b === 3) return { s: 12, d: [1, 2, 4, 8][k] }; return { s: j }; }) },
     { name: "BABY SCRATCH", sub: "va-et-vient sur le premier temps", steps: R32(j => (j & 7) >= 6 ? { s: -1 } : j % 2 ? { s: (j >> 4) * 8, v: 1, r0: 1.8, r1: 0.3 } : { s: (j >> 4) * 8, r0: 0.3, r1: 1.8 }) },
-    { name: "BREAKDOWN", sub: "s'éteint, ralentit, repart", steps: R32(j => j < 16 ? { s: j, f: -j * 0.04, f1: -(j + 1) * 0.04 } : j < 24 ? { s: 8 + (j - 16) * 0.5, r0: 0.5, f: -0.7 } : j < 28 ? { s: 12, d: 4, f: -0.6 + (j - 24) * 0.15 } : { s: 12 + (j - 28), d: [1, 2, 4, 8][j - 28], r0: 1 + (j - 28) * 0.03 }) }
+    { name: "BREAKDOWN", sub: "s'éteint, ralentit, repart", steps: R32(j => j < 16 ? { s: j, f: -j * 0.04, f1: -(j + 1) * 0.04 } : j < 24 ? { s: 8 + (j - 16) * 0.5, r0: 0.5, f: -0.7 } : j < 28 ? { s: 12, d: 4, f: -0.6 + (j - 24) * 0.15 } : { s: 12 + (j - 28), d: [1, 2, 4, 8][j - 28], r0: 1 + (j - 28) * 0.03 }) },
+    // MOTIFS 33 À 48 : VARIATIONS DE BATTERIE — changements marqués mais discrets ; le reste du temps, le son passe en direct.
+    // Champs en plus : m = part de l'effet (le direct reste dessous), p = placement gauche / droite.
+    // s = j + 16 - k : le son d'il y a k double-croches (s = j : celui de la mesure précédente)
+    { name: "GHOST NOTES", sub: "petits coups fantômes avant chaque temps", steps: R16(j => j % 4 === 3 ? { s: j + 15, m: 0.35, f: -0.2 } : { s: -1 }) },
+    { name: "FLAM 2 & 4", sub: "la caisse claire doublée", steps: R16(j => j === 4 || j === 12 ? { s: j + 16, d: 2, g: 0.95 } : { s: -1 }) },
+    { name: "SWING LÉGER", sub: "les double-croches traînent un peu", steps: R16(j => j % 2 ? { s: j + 16 - 0.22 } : { s: -1 }) },
+    { name: "SWING LOURD", sub: "groove très en arrière", steps: R16(j => j % 2 ? { s: j + 16 - 0.4 } : { s: -1 }) },
+    { name: "EN AVANT", sub: "les contretemps poussent", steps: R16(j => j % 4 === 2 ? { s: j + 0.18 } : { s: -1 }) },
+    { name: "CAISSE INVERSÉE", sub: "la caisse aspirée avant le 2 et le 4", steps: R16(j => j === 3 || j === 11 ? { s: j + 1, v: 1, g: 0.75, f: 0.05 } : { s: -1 }) },
+    { name: "TURNAROUND", sub: "dernier temps relancé, 2 mesures", steps: R32(j => j < 28 ? { s: -1 } : { s: j + 12, d: [1, 2, 1, 3][j - 28], g: [1, 0.95, 1, 0.9][j - 28] }) },
+    { name: "BREAK 2 TEMPS", sub: "le début de mesure rejoué, 2 mesures", steps: R32(j => j < 24 ? { s: -1 } : { s: j + 8 }) },
+    { name: "SILENCE SUR LE 1", sub: "le premier temps manque, 2 mesures", steps: R32(j => j === 16 || j === 17 ? { s: -1, g: 0 } : j === 18 ? { s: -1, f: -0.4, f1: 0 } : { s: -1 }) },
+    { name: "ROULEMENT FIN", sub: "petit roulement en fin de 2e mesure", steps: R32(j => j < 29 ? { s: -1 } : { s: j + 15, d: [2, 3, 4][j - 29], g: [0.9, 0.8, 0.75][j - 29] }) },
+    { name: "TRAÎNE", sub: "le dernier temps ralentit à peine", steps: R16(j => j < 12 ? { s: -1 } : { s: 12 + (j - 12) * 0.94, r0: 0.94, f: -0.08 }) },
+    { name: "AIGUS AUX CONTRETEMPS", sub: "les contretemps s'éclaircissent", steps: R16(j => j % 4 === 2 ? { s: -1, f: 0.28, m: 0.7 } : { s: -1 }) },
+    { name: "CHARLESTON ÉCARTÉ", sub: "les double-croches à gauche et à droite", steps: R16(j => j % 2 ? { s: -1, p: j % 4 === 1 ? -0.6 : 0.6 } : { s: -1 }) },
+    { name: "POUSSIÈRE", sub: "la 2e mesure s'abîme un peu", steps: R32(j => j < 16 ? { s: -1 } : { s: -1, x: 0.35, f: -0.22, m: 0.6 }) },
+    { name: "DOUBLE TEMPS FANTÔME", sub: "un double temps léger dessous", steps: R16(j => ({ s: 2 * j, r0: 2, m: 0.3, f: 0.18 })) },
+    { name: "POMPE", sub: "chaque temps respire (sidechain)", steps: R16(j => ({ s: -1, g: [0.55, 0.78, 0.92, 1][j % 4] })) },
+    // MOTIFS 49 À 64 : MÉLODIQUE — synthés, samples de vinyle : couleur, espace, harmonie
+    { name: "FILTRE QUI RESPIRE", sub: "s'assombrit et revient, 2 mesures", steps: R32(j => ({ s: -1, f: -0.55 * Math.sin(Math.PI * j / 32), f1: -0.55 * Math.sin(Math.PI * (j + 1) / 32) })) },
+    { name: "TRÉMOLO CROCHES", sub: "le volume ondule en croches", steps: R16(j => ({ s: -1, g: j % 4 < 2 ? 1 : 0.5 })) },
+    { name: "BALANCE", sub: "le son se promène gauche / droite", steps: R16(j => ({ s: -1, p: [0, -0.45, -0.75, -0.45, 0, 0.45, 0.75, 0.45][j % 8] })) },
+    { name: "OCTAVE GRAVE", sub: "une octave dessous, mêlée", steps: R32(j => ({ s: j * 0.5, r0: 0.5, m: 0.45, f: -0.35 })) },
+    { name: "OCTAVE AIGUË", sub: "une octave dessus, légère", steps: R16(j => ({ s: 2 * j, r0: 2, m: 0.3, f: 0.2 })) },
+    { name: "QUARTE GRAVE", sub: "une quarte dessous, harmonie", steps: R16(j => ({ s: j * 0.75, r0: 0.75, m: 0.42, f: -0.15 })) },
+    { name: "QUINTE AIGUË", sub: "une quinte dessus, harmonie", steps: R16(j => ({ s: j * 1.5, r0: 1.5, m: 0.32 })) },
+    { name: "BANDE QUI PLEURE", sub: "pleurage de cassette", steps: R16(j => ({ s: j + 15.5, r0: 1 + 0.012 * Math.sin(j * 0.8), r1: 1 + 0.012 * Math.sin((j + 1) * 0.8), f: -0.08 })) },
+    { name: "INVERSE QUI MONTE", sub: "2 temps à l'envers en fin de 2e mesure", steps: R32(j => j < 24 ? { s: -1 } : { s: 39 - (j - 24), v: 1, g: 0.45 + (j - 24) * 0.075 }) },
+    { name: "FIGER", sub: "le premier temps tenu, filtre qui se ferme", steps: R16(j => ({ s: (j % 4) + 16, f: -j / 30, f1: -(j + 1) / 30 })) },
+    { name: "GATE POINTÉ", sub: "coupures en croches pointées", steps: R16(j => ({ s: -1, g: [1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0][j] })) },
+    { name: "ÉCHO POINTÉ", sub: "écho à la croche pointée", steps: R16(j => ({ s: j + 13, m: 0.38, f: -0.25 })) },
+    { name: "ÉCHO PING-PONG", sub: "écho à la noire, de gauche à droite", steps: R16(j => ({ s: j + 12, m: 0.4, p: (j >> 2) % 2 ? 0.7 : -0.7, f: -0.2 })) },
+    { name: "RALENTI VINYLE", sub: "la platine ralentit puis repart, 2 mesures", steps: (() => { const out = []; let pos = 0; for (let j = 0; j < 32; j++) { if (j >= 16) { out.push({ s: -1 }); continue; } const r0 = 1 - 0.22 * j / 16, r1 = 1 - 0.22 * (j + 1) / 16; out.push({ s: pos, r0, r1, f: -j * 0.015 }); pos += (r0 + r1) / 2; } return out; })() },
+    { name: "RADIO LOINTAINE", sub: "petit poste au loin", steps: R16(j => ({ s: -1, f: -0.45, x: 0.35, m: 0.85 })) },
+    { name: "VOLUME QUI GONFLE", sub: "chaque temps monte comme à l'envers", steps: R16(j => ({ s: -1, g: [0.25, 0.5, 0.75, 1][j % 4] })) }
   ];
   // Petit graphique du motif au-dessus du nom : la position lue dans le son par rapport à une lecture normale.
   // Ligne plate = lecture normale ; marches = répétitions ; pente = scratch, ralenti ou envers ; trous = coupures.
@@ -2668,7 +2716,9 @@ registerProcessor('nomad-oct',Oct);`;
     pts.forEach(p => { if (!p) { pen = false; return; } const x = (4 + p[0] * 92).toFixed(1), y = Y(p[1]).toFixed(1); d += (pen ? "L" : "M") + x + " " + y; pen = true; prev = p; });
     return `<svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><path d="${d}"/></svg>`;
   }
-  let fxBank = store.get("fxPage", 0);   // page de motifs : 0 = 1 à 16, 1 = 17 à 32
+  // pages de motifs : 0 = 1 à 16, 1 = 17 à 32, 2 = variations de batterie (33 à 48), 3 = mélodique (49 à 64)
+  const FX_PAGES = [["MOTIFS 1–16", "1–16"], ["MOTIFS 17–32", "17+"], ["VARIATIONS DRUMS", "DRM"], ["MÉLODIQUE", "MÉL"]];
+  let fxBank = Math.min(3, store.get("fxPage", 0));
   let fxNode = null, fxFilt, fxCrush, fxPost, echoSend, echoDly, echoFb, springSend, fxMaster;
   let fxActive = -1, fxQuant = true, manualBpm = 90, fxTrig = store.get("fxTrig", "hold"), fxTarget = "all", fxOneT = null;
   const FXS = FX_PATTERNS;
@@ -2687,12 +2737,12 @@ registerProcessor('nomad-oct',Oct);`;
     if (b === fxBank) return;
     if (fxActive >= 0) fxEnd(fxActive);
     fxBank = b; store.set("fxPage", b); drawFxPads();
-    lcd("lcdPad", "FX", b ? "motifs 17 à 32 (élaborés)" : "motifs 1 à 16");
-    if (typeof fxDisp === "function") fxDisp(b ? "17+" : "1–16", b ? "MOTIFS 17 À 32" : "MOTIFS 1 À 16");
+    lcd("lcdPad", "FX", ["motifs 1 à 16", "motifs 17 à 32 (élaborés)", "variations de batterie (33 à 48)", "mélodique (49 à 64)"][b]);
+    if (typeof fxDisp === "function") fxDisp(FX_PAGES[b][1], FX_PAGES[b][0]);
   }
   function drawFxPads() {
     for (let i = 0; i < 16; i++) { const n = fxBank * 16 + i, f = FXS[n], b = fxEls[i]; b.innerHTML = `<i></i>${fxCurve(f)}<b>${f.name}</b><span>${n + 1}</span>`; b.title = f.sub; b.classList.toggle("on", fxActive === i); b.classList.toggle("hold", fxTrig === "hold"); }
-    $("fxSet").textContent = fxBank ? "MOTIFS 17–32 ⇄" : "MOTIFS 1–16 ⇄";
+    $("fxSet").textContent = FX_PAGES[fxBank][0] + " ⇄";
     $("fxSet").classList.toggle("on", !!fxBank);
     $("fxTrig").textContent = { hold: "MAINTIEN", one: "1 MESURE", latch: "VERROU" }[fxTrig];
     document.querySelectorAll(".fxt").forEach(b => b.classList.toggle("on", b.dataset.t === fxTarget));
@@ -2700,7 +2750,7 @@ registerProcessor('nomad-oct',Oct);`;
   function curBpm() { return LP.t0F !== null && LP.Lf ? 60 * LP.beats / loopLen() : manualBpm; }
   function drawFxBar() { $("fxBpm").textContent = curBpm().toFixed(1).replace(/\.0$/, "") + " BPM"; $("fxQuant").textContent = fxQuant ? "CALÉ 1/16" : "LIBRE"; $("fxQuant").classList.toggle("on", fxQuant); }
   $("fxQuant").addEventListener("click", () => { fxQuant = !fxQuant; drawFxBar(); });
-  $("fxSet").addEventListener("click", () => setFxBank(1 - fxBank));
+  $("fxSet").addEventListener("click", () => setFxBank((fxBank + 1) % 4));
   $("fxTrig").addEventListener("click", () => { if (fxActive >= 0) fxEnd(fxActive); fxTrig = { hold: "one", one: "latch", latch: "hold" }[fxTrig]; store.set("fxTrig", fxTrig); drawFxPads(); });
   document.querySelectorAll(".fxt").forEach(b => b.addEventListener("click", () => setFxTarget(b.dataset.t)));
   // Cible des effets : tout le morceau, le jeu en direct, ou une seule piste du looper
@@ -2709,7 +2759,7 @@ registerProcessor('nomad-oct',Oct);`;
   const FX_KEY_T = ["all", "live", "1", "2", "3", "4", "5", "6", "song"];
   // renvoie true si la touche a servi de sélecteur ; les autres touches jouent SONS normalement
   function fxKey(note) {
-    if (note - 48 === 1) { setFxBank(1 - fxBank); return true; }   // DO# : motifs 1–16 ⇄ 17–32
+    if (note - 48 === 1) { setFxBank((fxBank + 1) % 4); return true; }   // DO# : page suivante (1–16, 17–32, drums, mélodique)
     const w = [0, 2, 4, 5, 7, 9, 11, 12, 14].indexOf(note - 48);   // … et le ré suivant = SONG
     if (w < 0) return false;
     setFxTarget(FX_KEY_T[w]); return true;
@@ -5426,8 +5476,8 @@ registerProcessor('nomad-oct',Oct);`;
       sec("PADS EN NOTES, SELON L'ONGLET", `<p><b>PADS, SONG, SP, GUITARE</b> : les 16 sons du kit (banque A = 1 à 8, banque B = 9 à 16).</p>
         <p class="glh">LOOPER · banque A</p>${padGrid(["Muet piste 4", "Muet piste 5", "Muet piste 6", "Tout couper", "Muet piste 1", "Muet piste 2", "Muet piste 3", "Tout rétablir"])}
         <p class="glh">LOOPER · banque B</p>${padGrid(["Solo piste 4", "Solo piste 5", "Solo piste 6", "Tape stop", "Solo piste 1", "Solo piste 2", "Solo piste 3", "▶ Lecture"], 8)}
-        <p class="glh">FX · motifs 1 à 16 (banques A puis B)</p>${padGrid(fxA)}${padGrid(fxB, 8)}<p class="glh">FX · motifs 17 à 32 (DO# du clavier pour changer de page)</p>${padGrid(fxC)}${padGrid(fxD, 8)}
-        <p class="glh">SP · banque A : couleur (appui court = allumé, long = tant qu'on tient)</p>${padGrid(SP_FX.slice(0, 8).map(f => f.name))}<p class="glh">SP · banque B : espace et jeu</p>${padGrid(SP_FX.slice(8).map(f => f.name), 8)}
+        <p class="glh">FX · motifs 1 à 16 (banques A puis B)</p>${padGrid(fxA)}${padGrid(fxB, 8)}<p class="glh">FX · motifs 17 à 32 (DO# du clavier : page suivante)</p>${padGrid(fxC)}${padGrid(fxD, 8)}<p class="glh">FX · variations de batterie (33 à 48)</p>${padGrid(FXS.slice(32, 40).map(f => f.name))}${padGrid(FXS.slice(40, 48).map(f => f.name), 8)}<p class="glh">FX · mélodique (49 à 64)</p>${padGrid(FXS.slice(48, 56).map(f => f.name))}${padGrid(FXS.slice(56, 64).map(f => f.name), 8)}
+        <p class="glh">SP · banque A : couleur (appui court = allumé, long = tant qu'on tient)</p>${padGrid(SP_FX.slice(0, 8).map(f => f.name))}<p class="glh">SP · banque B : espace et jeu</p>${padGrid(SP_FX.slice(8, 16).map(f => f.name), 8)}<p class="glh">SP · BANK B (DO# du clavier) : couleur, mouvement, stéréo</p>${padGrid(SP_FX.slice(16, 24).map(f => f.name))}${padGrid(SP_FX.slice(24, 32).map(f => f.name), 8)}
         <p><b>DIGGING</b> : avec CHOP LIVE et le disque qui tourne, chaque pad pose sa découpe ; sinon, le kit.</p>
         <p><b>SONS</b> en mode ACCORDS : pads 1 à 7 = les accords du style choisi, pad 8 = le premier à l'octave ; banque B = une octave plus haut.</p>
         <p class="glh">SCRATCH · banque A</p>${padGrid(["▶ Avant", "Fader ◀ (tenu)", "Fader ▶ (tenu)", "CUE 1", "◀ Arrière", "CUE 2", "CUE 3", "CUE 4"])}
@@ -6562,11 +6612,31 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     { id: "kbass", name: "KILL BASSES", sub: "plus de basses", p: ["Fréquence", "—"], a: 0.45, b: 0 },
     { id: "khigh", name: "KILL AIGUS", sub: "plus d'aigus", p: ["Fréquence", "—"], a: 0.45, b: 0 },
     { id: "flang", name: "FLANGER", sub: "avion qui passe", p: ["Vitesse", "Profondeur"], a: 0.3, b: 0.6 },
-    { id: "chorus", name: "DÉSACCORD", sub: "bande qui dérive", p: ["Vitesse", "Profondeur"], a: 0.35, b: 0.5 }
+    { id: "chorus", name: "DÉSACCORD", sub: "bande qui dérive", p: ["Vitesse", "Profondeur"], a: 0.35, b: 0.5 },
+    // BANK B (17 à 32) : compléments de couleur — mouvement, harmoniques, matière, stéréo
+    { id: "warm", name: "CHALEUR", sub: "grave arrondi, aigus adoucis", p: ["Rondeur", "Douceur"], a: 0.5, b: 0.4 },
+    { id: "bright", name: "BRILLANCE", sub: "harmoniques dans le haut", p: ["Quantité", "Fréquence"], a: 0.4, b: 0.5 },
+    { id: "sub", name: "SUB +", sub: "grave renforcé, audible partout", p: ["Grave", "Harmoniques"], a: 0.45, b: 0.35 },
+    { id: "glue", name: "COLLE", sub: "compression douce qui soude", p: ["Quantité", "Relâche"], a: 0.5, b: 0.4 },
+    { id: "fuzz", name: "FUZZ", sub: "transistor qui craque", p: ["Fuzz", "Tonalité"], a: 0.5, b: 0.45 },
+    { id: "ring", name: "MODULATION EN ANNEAU", sub: "métal et cloches", p: ["Fréquence", "Dérive"], a: 0.35, b: 0.2 },
+    { id: "reso", name: "RÉSONATEUR", sub: "le son chante sur une note", p: ["Note", "Résonance"], a: 0.33, b: 0.55 },
+    { id: "voyel", name: "VOYELLE", sub: "filtre qui parle (a, é, i, o, ou)", p: ["Voyelle", "Mouvement"], a: 0.2, b: 0.3 },
+    { id: "wah", name: "WAH AU TEMPO", sub: "filtre qui couine en rythme", p: ["Division", "Profondeur"], a: 0.5, b: 0.6 },
+    { id: "phaser", name: "PHASER", sub: "tourbillon doux", p: ["Vitesse", "Profondeur"], a: 0.3, b: 0.6 },
+    { id: "vib", name: "VIBRATO", sub: "la hauteur ondule", p: ["Vitesse", "Profondeur"], a: 0.5, b: 0.35 },
+    { id: "trem", name: "TRÉMOLO", sub: "volume qui ondule au tempo", p: ["Division", "Profondeur"], a: 0.5, b: 0.6 },
+    { id: "pan", name: "AUTO-PAN", sub: "gauche / droite au tempo", p: ["Division", "Largeur"], a: 0.35, b: 0.7 },
+    { id: "wide", name: "STÉRÉO LARGE", sub: "écarte le son", p: ["Largeur", "Décalage"], a: 0.5, b: 0.3 },
+    { id: "pingpong", name: "PING-PONG", sub: "écho qui saute d'un côté à l'autre", p: ["Temps", "Retours"], a: 0.5, b: 0.45 },
+    { id: "spring", name: "RESSORT", sub: "réverbe à ressort d'ampli", p: ["Tonalité", "Éclat"], a: 0.5, b: 0.3 }
   ];
-  const SP_ORDER = ["lofi", "vinyl", "tape", "filt", "hpf", "radio", "sat", "kbass", "khigh", "flang", "chorus", "slice", "loop", "echo", "verb", "comp"];
+  const SP_ORDER = ["lofi", "vinyl", "tape", "warm", "fuzz", "filt", "hpf", "radio", "sat", "ring", "wah", "voyel", "reso", "kbass", "khigh", "sub", "bright", "phaser", "flang", "chorus", "vib", "trem", "slice", "pan", "loop", "glue", "echo", "pingpong", "spring", "verb", "wide", "comp"];
+  // banque affichée sur les 16 pads (0 = A, effets 1 à 16 ; 1 = B, effets 17 à 32)
+  SPX.bank = store.get("spBank", 0);
   const spState = store.get("spFx", null);
-  SP_FX.forEach((f, i) => { f.on = false; f.m = 1; if (spState && spState[i]) { f.a = spState[i].a; f.b = spState[i].b; } f.m = 1; });
+  // chaque effet garde son propre dosage (f.m : 0 = rien, 1 = effet plein), mémorisé
+  SP_FX.forEach((f, i) => { f.on = false; f.m = 1; if (spState && spState[i]) { f.a = spState[i].a; f.b = spState[i].b; if (spState[i].m !== undefined) f.m = spState[i].m; } });
   SPX.dose = store.get("spDose", 1);
   const spSave = () => store.set("spFx", SP_FX.map(f => ({ a: f.a, b: f.b, m: f.m })));
   let sp = null;
@@ -6625,6 +6695,26 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       x = unit("echo", dl, hp, true); Object.assign(x, { dl, fb }); }
     // RÉVERBE
     { const cv = ctx.createConvolver(), lp = BQ("lowpass", 4000); cv.buffer = impulse(2.2, 2.6, 0.4); cv.connect(lp); x = unit("verb", cv, lp, true); Object.assign(x, { cv, lp, size: 2.2 }); }
+    // ----- BANK B -----
+    { const ls = BQ("lowshelf", 140), hs = BQ("highshelf", 6500), d = DRV(); d.po.connect(ls); ls.connect(hs); x = unit("warm", d.pg, hs); Object.assign(x, { ls, hs, d }); }
+    { const inp = G(1), mix = G(1), hp = BQ("highpass", 3000, 0.7), d = DRV(), amt = G(0.3); inp.connect(mix); inp.connect(hp); hp.connect(d.pg); d.po.connect(amt); amt.connect(mix); x = unit("bright", inp, mix); Object.assign(x, { hp, d, amt }); }
+    { const inp = G(1), mix = G(1), ls = BQ("lowshelf", 70), lp = BQ("lowpass", 140), d = DRV(), hp = BQ("highpass", 90), sg = G(0); inp.connect(ls); ls.connect(mix); inp.connect(lp); lp.connect(d.pg); d.po.connect(hp); hp.connect(sg); sg.connect(mix); x = unit("sub", inp, mix); Object.assign(x, { ls, d, sg }); }
+    { const cp = ctx.createDynamicsCompressor(), mk = G(1); cp.knee.value = 12; cp.ratio.value = 2.5; cp.attack.value = 0.03; cp.connect(mk); x = unit("glue", cp, mk); Object.assign(x, { cp, mk }); }
+    { const pg = G(1), w = WS(makeDriveCurve(1)), lp = BQ("lowpass", 4000), po = G(0.3); pg.connect(w); w.connect(lp); lp.connect(po); x = unit("fuzz", pg, po); Object.assign(x, { pg, lp, po }); }
+    { const rm = G(0), o = ctx.createOscillator(); o.frequency.value = 200; o.connect(rm.gain); o.start(); x = unit("ring", rm, rm); Object.assign(x, { osc: o, l: LFO(0.35, 0, o.frequency) }); }
+    { const inp = G(1), mix = G(1), dl = ctx.createDelay(0.1), fb = G(0.8), lp = BQ("lowpass", 5000), wg = G(0.4); inp.connect(mix); inp.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(wg); wg.gain.value = 0.25; wg.connect(mix); x = unit("reso", inp, mix); Object.assign(x, { dl, fb }); }
+    { const inp = G(1), b1 = BQ("bandpass", 700, 6), b2 = BQ("bandpass", 1200, 8), out = G(2.6); inp.connect(b1); inp.connect(b2); b1.connect(out); b2.connect(out); out.gain.value = 4.6; x = unit("voyel", inp, out); Object.assign(x, { b1, b2, l1: LFO(0.3, 0, b1.frequency), l2: LFO(0.3, 0, b2.frequency) }); }
+    { const bp = BQ("bandpass", 900, 4), g = G(3.2); bp.connect(g); x = unit("wah", bp, g); Object.assign(x, { bp, l: LFO(1, 600, bp.frequency, "triangle") }); }
+    { const inp = G(1), mix = G(0.6), aps = [0, 1, 2, 3].map(() => BQ("allpass", 800, 0.6)); inp.connect(mix); inp.connect(aps[0]); for (let k = 0; k < 3; k++) aps[k].connect(aps[k + 1]); aps[3].connect(mix); const l = LFO(0.4, 600, aps[0].frequency); for (let k = 1; k < 4; k++) l.g.connect(aps[k].frequency); x = unit("phaser", inp, mix); Object.assign(x, { aps, l }); }
+    { const dl = ctx.createDelay(0.03); dl.delayTime.value = 0.006; x = unit("vib", dl, dl); x.l = LFO(5, 0.002, dl.delayTime); }
+    { const g = G(1), d = G(0), o = ctx.createOscillator(); o.connect(d); d.connect(g.gain); o.start(); x = unit("trem", g, g); Object.assign(x, { g, d, osc: o }); }
+    { const pn = ctx.createStereoPanner(), d = G(0), o = ctx.createOscillator(); o.connect(d); d.connect(pn.pan); o.start(); x = unit("pan", pn, pn); Object.assign(x, { d, osc: o }); }
+    { const inp = G(1), spl = ctx.createChannelSplitter(2), mg = ctx.createChannelMerger(2), ll = G(1), lr = G(0), rl = G(0), rr = G(1), hz = ctx.createDelay(0.05), hzg = G(0);
+      inp.connect(spl); spl.connect(ll, 0); spl.connect(lr, 0); spl.connect(rl, 1); spl.connect(rr, 1); ll.connect(mg, 0, 0); rl.connect(mg, 0, 0); lr.connect(mg, 0, 1); rr.connect(mg, 0, 1); spl.connect(hz, 0); hz.connect(hzg); hzg.connect(mg, 0, 1);
+      x = unit("wide", inp, mg); Object.assign(x, { ll, lr, rl, rr, hz, hzg }); }
+    { const inp = G(1), dl1 = ctx.createDelay(4), dl2 = ctx.createDelay(4), fb = G(0.4), lp = BQ("lowpass", 4500), mg = ctx.createChannelMerger(2); inp.connect(dl1); dl1.connect(lp); lp.connect(dl2); dl2.connect(fb); fb.connect(dl1); lp.connect(mg, 0, 0); dl2.connect(mg, 0, 1);
+      x = unit("pingpong", inp, mg, true); Object.assign(x, { dl1, dl2, fb }); }
+    { const hp = BQ("highpass", 200), cv = ctx.createConvolver(), lp = BQ("lowpass", 4000), g = G(1.4); cv.buffer = springIR(); hp.connect(cv); cv.connect(lp); lp.connect(g); x = unit("spring", hp, g, true); Object.assign(x, { hp, lp }); }
     // SP COMP : compresseur qui pompe + gain de rattrapage
     { const cp = ctx.createDynamicsCompressor(), mk = G(1); cp.knee.value = 2; cp.attack.value = 0.002; cp.connect(mk); x = unit("comp", cp, mk); Object.assign(x, { cp, mk }); }
     // chaîne
@@ -6683,10 +6773,29 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (f.id === "khigh") u.f.forEach(x => set(x.frequency, 300 * Math.pow(20, 1 - a)));
     if (f.id === "flang") { set(u.l.o.frequency, 0.05 + a * a * 4); set(u.l.g.gain, 0.0005 + b * 0.0028); set(u.fb.gain, 0.3 + b * 0.55); }
     if (f.id === "chorus") { set(u.l.o.frequency, 0.1 + a * 3); set(u.l.g.gain, 0.0005 + b * 0.008); }
-    const feel = spFeel();
+    const feel = spFeel(), feelMul = feel[1];
     if (f.id === "slice") { const div = [4, 8, 16, 32][Math.min(3, Math.floor(a * 4))]; if (f.on) sliceOsc(u, beat * 4 / div); set(u.d.gain, f.on ? b * 0.5 : 0); set(u.g.gain, f.on ? 1 - b * 0.5 : 1); }
     if (f.id === "loop") { if (u.node) u.node.port.postMessage({ len: Math.round(beat * feel[1] * [1, 0.5, 0.25, 0.125, 0.0625][Math.min(4, Math.floor(a * 5))] * ctx.sampleRate), rate: b < 0.45 ? 0.5 + b / 0.45 * 0.5 : b > 0.55 ? 1 + (b - 0.55) / 0.45 : 1 }); }
     if (f.id === "echo") { set(u.dl.delayTime, Math.min(3.9, beat * feel[1] * feel[2] * 2 * [0.25, 0.375, 0.5, 0.75, 1][Math.min(4, Math.floor(a * 5))])); set(u.fb.gain, b * 0.85); }
+    // ----- BANK B -----
+    const sync = () => beat * 4 / [2, 4, 8, 16][Math.min(3, Math.floor(a * 4))] * feelMul;   // période au tempo : 1/2, 1/4, 1/8, 1/16
+    if (f.id === "warm") { set(u.ls.gain, a * 6); set(u.d.pg.gain, 1 + a * 2); set(u.d.po.gain, 0.8 / (1 + a * 2)); set(u.hs.gain, -b * 12); }
+    if (f.id === "bright") { set(u.amt.gain, a * 0.9); spDrive(u.d, 0.3 + a * 0.5, t); set(u.hp.frequency, 1500 * Math.pow(5, b)); }
+    if (f.id === "sub") { set(u.ls.gain, a * 9); spDrive(u.d, 0.6, t); set(u.sg.gain, b * 0.6); }
+    if (f.id === "glue") { set(u.cp.threshold, -8 - a * 22); set(u.cp.release, 0.08 + b * 0.5); set(u.mk.gain, 0.5 + a * 0.1); }
+    if (f.id === "fuzz") { set(u.pg.gain, 3 + a * 30); set(u.lp.frequency, 1200 * Math.pow(8, b)); set(u.po.gain, 0.11 / (1 + a * 0.6)); }
+    if (f.id === "ring") { const fr = 30 * Math.pow(40, a); set(u.osc.frequency, fr); set(u.l.g.gain, b * fr * 0.3); }
+    if (f.id === "reso") { const fr = 55 * Math.pow(2, Math.round(a * 36) / 12); set(u.dl.delayTime, 1 / fr); set(u.fb.gain, 0.6 + b * 0.37); }
+    if (f.id === "voyel") { const V = [[800, 1150], [400, 1600], [300, 2300], [450, 800], [325, 700]], x0 = a * 4, k = Math.min(3, Math.floor(x0)), fr = x0 - k, F1 = V[k][0] + (V[k + 1][0] - V[k][0]) * fr, F2 = V[k][1] + (V[k + 1][1] - V[k][1]) * fr;
+      set(u.b1.frequency, F1); set(u.b2.frequency, F2); set(u.l1.o.frequency, 0.1 + b * 2); set(u.l2.o.frequency, 0.13 + b * 2.2); set(u.l1.g.gain, b * F1 * 0.4); set(u.l2.g.gain, b * F2 * 0.3); }
+    if (f.id === "wah") { set(u.l.o.frequency, 1 / sync()); set(u.l.g.gain, 200 + b * 1400); set(u.bp.frequency, 500 + b * 900); }
+    if (f.id === "phaser") { set(u.l.o.frequency, 0.05 + a * a * 3); set(u.l.g.gain, 200 + b * 1400); u.aps.forEach(x => set(x.frequency, 300 + b * 900)); }
+    if (f.id === "vib") { set(u.l.o.frequency, 1 + a * 7); set(u.l.g.gain, 0.0003 + b * 0.004); }
+    if (f.id === "trem") { set(u.osc.frequency, 1 / sync()); set(u.g.gain, 1 - b * 0.5); set(u.d.gain, b * 0.5); }
+    if (f.id === "pan") { set(u.osc.frequency, 1 / sync()); set(u.d.gain, b); }
+    if (f.id === "wide") { const w = 1 + a * 1.2, n = 1; set(u.ll.gain, 0.5 * (1 + w) * n); set(u.rr.gain, 0.5 * (1 + w) * n); set(u.lr.gain, 0.5 * (1 - w) * n); set(u.rl.gain, 0.5 * (1 - w) * n); set(u.hz.delayTime, 0.006 + b * 0.014); set(u.hzg.gain, b * 0.45); }
+    if (f.id === "pingpong") { const T = Math.min(3.9, beat * feel[1] * [0.25, 0.375, 0.5, 0.75, 1][Math.min(4, Math.floor(a * 5))]); set(u.dl1.delayTime, T); set(u.dl2.delayTime, T); set(u.fb.gain, b * 0.8); }
+    if (f.id === "spring") { set(u.lp.frequency, 1500 * Math.pow(5, a)); set(u.hp.frequency, 100 + b * 700); }
     if (f.id === "verb") { const s = 0.8 + a * 3.5; if (Math.abs(s - u.size) > 0.25) { u.size = s; u.cv.buffer = impulse(s, 2.4, 0.4); } set(u.lp.frequency, 1500 * Math.pow(8, b)); }
     spMix(i);
   }
@@ -6706,8 +6815,8 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     if (!sp) return;
     const t = ctx.currentTime, x = knobVals.sp[k], f = SP_FX[SPX.cur];
     const isoDb = y => y < 0.5 ? -40 * Math.pow((0.5 - y) * 2, 1.5) : (y - 0.5) * 12;
-    // potard 3 : dosage de TOUTE la couleur SP (0 = son d'origine, à fond = effets pleins) ; c'est aussi ce qui s'imprime
-    if (k === 2) { SPX.dose = x; store.set("spDose", x); spDose(); if (tab === "sp") { lcd("lcdPad", "SP", `dosage ${Math.round(x * 100)} % · ${100 - Math.round(x * 100)} % de son d'origine`); spSeg("DOS", Math.round(x * 100) + " %"); } return; }
+    // potard 3 : dosage de l'effet choisi (chaque effet a le sien) ; le dosage global est le curseur sous les pads
+    if (k === 2) { f.m = x; spMix(SPX.cur); spSave(); drawSpFx(); if (tab === "sp") { lcd("lcdPad", "SP", `${f.name} · dosage ${Math.round(x * 100)} %`); spSeg("DOS", Math.round(x * 100) + " %"); } return; }
     if (k <= 1) { if (k === 0) f.a = x; if (k === 1) { if (f.p[1] === "—") return; f.b = x; } spParams(SPX.cur); spSave();
       if (tab === "sp") { lcd("lcdPad", "SP", `${f.name} · ${f.p[k].toLowerCase()} ${Math.round(x * 100)} %`); spSeg("F" + String(SPX.cur + 1).padStart(2, "0"), f.name); } return; }
     if (k >= 3 && k <= 5) { sp.iso[k - 3].gain.setTargetAtTime(SPX.on ? isoDb(x) : 0, t, 0.02); if (tab === "sp") lcd("lcdPad", "SP", `${["graves", "médiums", "aigus"][k - 3]} ${isoDb(x) > 0 ? "+" : ""}${isoDb(x).toFixed(0)} dB`); }
@@ -6721,20 +6830,20 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   function spDose() { if (!sp) return; const t = ctx.currentTime, x = SPX.dose; sp.wetAll.gain.setTargetAtTime(x, t, 0.02); sp.dryAll.gain.setTargetAtTime(1 - x, t, 0.02); }
   function spSelect(i) {
     SPX.cur = i; const f = SP_FX[i];
-    knobVals.sp[0] = f.a; knobVals.sp[1] = f.b; knobVals.sp[2] = SPX.dose;
-    KNOB_LABELS.sp[0] = f.p[0]; KNOB_LABELS.sp[1] = f.p[1]; KNOB_LABELS.sp[2] = "Dosage";
+    knobVals.sp[0] = f.a; knobVals.sp[1] = f.b; knobVals.sp[2] = f.m;
+    KNOB_LABELS.sp[0] = f.p[0]; KNOB_LABELS.sp[1] = f.p[1]; KNOB_LABELS.sp[2] = "Dose effet";
     if (tab === "sp") drawKnobs();
   }
   // pads : appui court = verrou (marche / arrêt), appui long = tant qu'on tient
   const spDown = {};
-  function spPad(i, down) {
-    const f = SP_FX[i]; if (!f) return;
+  function spPad(p, down) {
+    const i = down ? SPX.bank * 16 + p : (spDown[p] ? spDown[p].k : SPX.bank * 16 + p), f = SP_FX[i]; if (!f) return;
     if (down) {
-      spDown[i] = { t: performance.now(), was: f.on }; SPX.killed = null;
+      spDown[p] = { t: performance.now(), was: f.on, k: i }; SPX.killed = null;
       f.on = true; spSelect(i); spParams(i); drawSpFx();
       spSeg("F" + String(i + 1).padStart(2, "0"), f.name); lcd("lcdPad", "SP", `${f.name} · ${f.sub}`);
     } else {
-      const d = spDown[i]; delete spDown[i]; if (!d) return;
+      const d = spDown[p]; delete spDown[p]; if (!d) return;
       const held = performance.now() - d.t > 380;
       f.on = held ? false : !d.was; spMix(i); drawSpFx();
       if (!f.on) lcd("lcdPad", "SP", `${f.name} coupé`);
@@ -6775,6 +6884,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   // clavier de l'Akai dans SP : les 8 premières touches blanches = TOUT, P1 à P6
   // renvoie true si la touche a servi de sélecteur ; les autres touches jouent SONS normalement
   function spKey(note) {
+    if (note - 48 === 1) { setSpBank(1 - SPX.bank); return true; }   // DO# : bank A ⇄ B
     const wi = [0, 2, 4, 5, 7, 9, 11, 12].indexOf(note - 48);   // … et le do suivant = SONG
     if (wi < 0) return false;
     setSpTarget(["all", "1", "2", "3", "4", "5", "6", "song"][wi]); return true;
@@ -6789,16 +6899,30 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   function spAllOff() { SPX.killed = null; SP_FX.forEach((f, i) => { f.on = false; spMix(i); }); drawSpFx(); lcd("lcdPad", "SP", "tous les effets coupés"); }
   const spFxEls = [];
   [12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3].forEach(i => {
-    const b = document.createElement("button"); b.type = "button"; b.className = "spfx"; b.innerHTML = `<i></i><b>${SP_FX[i].name}</b><span>${i + 1}</span>`;
+    const b = document.createElement("button"); b.type = "button"; b.className = "spfx";
     b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture(e.pointerId); spPad(i, true); });
     ["pointerup", "pointercancel"].forEach(ev => b.addEventListener(ev, () => spPad(i, false)));
     $("spFxGrid").appendChild(b); spFxEls[i] = b;
   });
-  function drawSpFx() { spFxEls.forEach((b, i) => { b.classList.toggle("on", SP_FX[i].on); b.classList.toggle("cur", i === SPX.cur); }); }
+  function drawSpFx() {
+    spFxEls.forEach((b, p) => { const i = SPX.bank * 16 + p, f = SP_FX[i];
+      if (b.dataset.k !== String(i)) { b.dataset.k = i; b.innerHTML = `<i></i><b>${f.name}</b><span>${i + 1}</span><em></em>`; b.title = f.sub; }
+      b.classList.toggle("on", f.on); b.classList.toggle("cur", i === SPX.cur); b.style.setProperty("--m", f.m); });
+    // effets allumés dans l'autre banque : signalés sur le bouton
+    const other = SP_FX.filter((f, i) => f.on && Math.floor(i / 16) !== SPX.bank).length;
+    $("spBankBtn").textContent = (SPX.bank ? "BANK B · 17–32" : "BANK A · 1–16") + (other ? ` (+${other})` : "") + " ⇄";
+    $("spBankBtn").classList.toggle("on", !!SPX.bank);
+  }
+  function setSpBank(b) { SPX.bank = b; store.set("spBank", b); drawSpFx(); lcd("lcdPad", "SP", b ? "bank B : effets 17 à 32 (couleur, mouvement, stéréo)" : "bank A : effets 1 à 16"); spSeg(b ? "B" : "A", b ? "BANK B" : "BANK A"); }
+  $("spBankBtn").addEventListener("click", () => setSpBank(1 - SPX.bank));
+  // dosage global de toute la couleur SP (c'est aussi ce qui s'imprime)
+  $("spDoseAll").value = Math.round(SPX.dose * 100);
+  $("spDoseAll").addEventListener("input", e => { SPX.dose = e.target.value / 100; store.set("spDose", SPX.dose); spDose(); $("spDoseVal").textContent = e.target.value + " %"; });
+  $("spDoseVal").textContent = Math.round(SPX.dose * 100) + " %";
   $("spAllOff").addEventListener("click", spAllOff);
   $("spBypass").addEventListener("click", () => { SPX.on = !SPX.on; SP_FX.forEach((f, i) => spMix(i)); for (let k = 3; k < 6; k++) applySp(k); $("spBypass").textContent = "EFFETS SP : " + (SPX.on ? "OUI" : "NON"); $("spBypass").classList.toggle("on", !SPX.on); });
   // le tempo change : on recale écho, slicer et looper
-  setInterval(() => { if (sp) ["echo", "slice", "loop"].forEach(id => { const i = SP_FX.findIndex(f => f.id === id); if (SP_FX[i].on || id === "echo") spParams(i); }); }, 2000);
+  setInterval(() => { if (sp) ["echo", "slice", "loop", "wah", "trem", "pan", "pingpong"].forEach(id => { const i = SP_FX.findIndex(f => f.id === id); if (SP_FX[i].on || id === "echo") spParams(i); }); }, 2000);
   spSelect(0); drawSpFx();
 
   // Rééchantillonnage : la sortie complète vers un pad du kit (enregistré en kit perso « … · RÉÉCH »)
@@ -7623,8 +7747,10 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   initMidi();
   try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi) { $("btBox").hidden = false; $("btPair").addEventListener("click", () => window.webkit.messageHandlers.nomadMidi.postMessage({ type: "btpair" })); } } catch (e) {}
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
-  window.nomadDbg = { AMB, sonsT: { selectInst, keyOn, releaseKey: k => activeKeys.forEach((v, key) => releaseKey(key)) }, DR, drPlay, drStop, scrLoad, newKit, micStop, MIC, edSrcApply, song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get names() { return names; }, get kitIndex() { return kitIndex; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
+  window.nomadDbg = { get sp() { return sp; }, FXS, setFxBank, SP_FX, SPX, setSpBank, spPad, AMB, sonsT: { selectInst, keyOn, releaseKey: k => activeKeys.forEach((v, key) => releaseKey(key)) }, DR, drPlay, drStop, scrLoad, newKit, micStop, MIC, edSrcApply, song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get names() { return names; }, get kitIndex() { return kitIndex; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
   let probe = null;
+  let probeOut = null;
+  window.nomadProbeOut = () => { if (!probeOut) { probeOut = ctx.createAnalyser(); probeOut.fftSize = 2048; mixOut.connect(probeOut); } const a = new Float32Array(2048); probeOut.getFloatTimeDomainData(a); let m = 0; for (const v of a) { if (!isFinite(v)) return NaN; m = Math.max(m, Math.abs(v)); } return +m.toFixed(3); };
   window.nomadProbe = () => { if (!probe) { probe = ctx.createAnalyser(); probe.fftSize = 2048; fxMaster.connect(probe); } const a = new Float32Array(2048); probe.getFloatTimeDomainData(a); let m = 0; for (const v of a) m = Math.max(m, Math.abs(v)); return +m.toFixed(3); };
   window.nomadState = () => ({ kit: kitCur, kits: kitIndex.length, bufs: buffers.filter(Boolean).length, names: names.slice(0, 4), t0F: LP.t0F, Lf: LP.Lf, layers: LP.layers.map(l => ({ k: l.k, m: l.m })), pending: LP.pending && { ...LP.pending }, latMs, guitar: { amp: G.amp, preset: G.preset, fx: [...G.fx], on: G.on }, cap: capLatest, now: ctx && ctx.currentTime });
 

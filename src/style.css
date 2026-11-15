@@ -814,3 +814,14 @@ html.flipped, html.flipped body { overflow: hidden; }
 .drbar #drStop.on { background: var(--text); color: var(--ink); }
 #view-sons [hidden] { display: none !important; }
 #ambBtn { width: 100%; font-size: 11px; } #ambBtn.on { background: #2b2620; box-shadow: inset 0 0 0 1px #f08a2c; color: #f6c48f; }
+
+/* SP : banque A / B, dosage global, dosage de chaque effet (barre sous le nom) */
+.spbankrow { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; margin-bottom: 8px; }
+.spbankrow .btn { font-size: 10px; padding: 9px 10px; }
+.spbankrow #spBankBtn.on { background: #f08a2c; color: #1a0f05; }
+.spdose { display: flex; align-items: center; gap: 8px; font: 700 9px/1 var(--font-display, sans-serif); letter-spacing: .06em; color: #8f8a80; }
+.spdose input { flex: 1; accent-color: #f08a2c; min-width: 0; }
+.spdose b { font: 11px VT323, monospace; color: #f6c48f; min-width: 34px; text-align: right; }
+.spfx em { position: absolute; left: 8px; right: 8px; bottom: 5px; height: 3px; border-radius: 2px; background: rgba(0,0,0,.25); overflow: hidden; }
+.spfx em::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--m, 1) * 100%); background: #3e3f40; }
+.spfx.on em::after { background: #f08a2c; }

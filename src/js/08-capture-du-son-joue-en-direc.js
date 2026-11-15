@@ -53,14 +53,14 @@ else if(this.mode==='half'){ri=this.anchor+t*0.5;}
 else if(this.mode==='gate'){const k=t%(this.seg*2);g=k<this.seg?Math.min(1,k/48,(this.seg-k)/48):0;live=true;}
 else if(this.mode==='pattern'){const sl0=this.stepLen,bl=sl0*16,ns=this.steps.length,pl=sl0*ns;if(this.one&&t>=pl)this.rel=true;const T=t%pl,j=Math.min(ns-1,Math.floor(T/sl0)),p=T-j*sl0,st=this.steps[j],sl=sl0/(st.d||1),q=p%sl,r0=(st.r0===undefined?1:st.r0),r1=(st.r1===undefined?r0:st.r1);
 let pos=r0*q+(r1-r0)*q*q/(2*sl);if(st.v)pos=sl*Math.abs(r0)-pos;g=(st.g===undefined?1:st.g)*Math.min(1,q/48,(sl-q)/48);if(st.s<0)live=true;else ri=this.anchor-bl+st.s*sl0+pos;
-const f0=st.f||0,f1=(st.f1===undefined?f0:st.f1),fv=f0+(f1-f0)*(p/sl0);this.flt=fv;this.cr=st.x||0;}}
-if(!this.mode||this.mode!=='pattern'){this.flt=0;this.cr=0;}
+const f0=st.f||0,f1=(st.f1===undefined?f0:st.f1),fv=f0+(f1-f0)*(p/sl0);this.flt=fv;this.cr=st.x||0;this.sm=st.m===undefined?1:st.m;this.pn=st.p||0;}}
+if(!this.mode||this.mode!=='pattern'){this.flt=0;this.cr=0;this.sm=1;this.pn=0;}const sm=this.sm===undefined?1:this.sm,pn=this.pn||0,M=this.mix*sm;
 const fv=this.flt||0,ca=fv<0?1-Math.exp(-6.283*Math.min(18000,20000*Math.pow(2,fv*9))/sampleRate):1-Math.exp(-6.283*Math.min(8000,25*Math.pow(2,fv*8.5))/sampleRate);
 if(!this.lp)this.lp=[0,0];
 for(let c=0;c<2;c++){const dry=this.b[c][w];let wet=this.mode?(live?dry*g:this.rd(c,ri)*g):dry;
 if(this.mode&&fv!==0){this.lp[c]+=ca*(wet-this.lp[c]);wet=fv<0?this.lp[c]:wet-this.lp[c];}else this.lp[c]=wet;
 if(this.mode&&this.cr>0){const qq=Math.pow(2,15-this.cr*12);wet=Math.round(wet*qq)/qq;}
-out[c][s]=dry*(1-this.mix)+wet*this.mix;}}
+if(pn)wet*=(c===0?(pn>0?1-pn:1):(pn<0?1+pn:1));out[c][s]=dry*(1-M)+wet*M;}}
 return true;}}
 registerProcessor('nomad-fx',Fx);
 class Scr extends AudioWorkletProcessor{constructor(){super();this.N=0;this.pos=0;this.vel=0;this.motor=false;this.rate=1;this.up=1e-4;this.dn=1e-4;this.hand=false;this.tp=0;this.tv=0;this.tl=0;this.g=0;this.gt=0;this.ph=null;this.pend=null;this.cnt=0;this.d=[0,0,0,0];

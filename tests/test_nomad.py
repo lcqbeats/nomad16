@@ -490,7 +490,7 @@ def test_sp_station_effets(app):
     app.evaluate("nomadMidi([0x89, 44, 0])")         # appui long : s'éteint au relâché
     assert "on" not in app.get_attribute("#spFxGrid .spfx >> nth=4", "class").split()
     labels = app.evaluate("[...document.querySelectorAll('#knobs label')].map(e => e.textContent)")
-    assert labels[0] == "Longueur" and labels[2] == "Dosage"
+    assert labels[0] == "Longueur" and labels[2] == "Dose effet"
     for n in range(36, 52):                          # tous les effets ensemble : la sortie reste propre
         app.evaluate(f"nomadMidi([0x99, {n}, 100]); nomadMidi([0x89, {n}, 0])")
     app.evaluate("nomadMidi([0xB0, 64, 0])")
@@ -697,6 +697,16 @@ def test_fx_32_motifs(app):
             app.wait_for_timeout(70); m, bad = app.evaluate("_pk3()"); worst = [max(worst[0], m), worst[1] + bad]
         app.evaluate(f"nomadMidi([0x89, {36 + i}, 0])")
         assert worst[1] == 0 and worst[0] < 1.5, (i + 17, worst)
+    # pages 3 (variations de batterie) et 4 (mélodique) : mêmes garanties
+    for page in (2, 3):
+        app.click("#fxSet")
+        for i in range(16):
+            app.evaluate(f"nomadMidi([0x99, {36 + i}, 100])")
+            worst = [0, 0]
+            for _ in range(4):
+                app.wait_for_timeout(70); m, bad = app.evaluate("_pk3()"); worst = [max(worst[0], m), worst[1] + bad]
+            app.evaluate(f"nomadMidi([0x89, {36 + i}, 0])")
+            assert worst[1] == 0 and worst[0] < 1.5, (page * 16 + i + 1, worst)
     app.click("#fxSet")
     assert "1–16" in app.inner_text("#fxSet")
 
@@ -1149,3 +1159,53 @@ def test_ambiance_de_collection(app):
     app.click('#cats .cat:text-is("FKJ")')
     app.click('#insts .inst >> nth=0')
     assert app.is_hidden("#ambBtn") and app.evaluate("nomadDbg.AMB.cur") is None
+
+
+def test_fx_quatre_pages_et_motifs_valides(app):
+    assert app.evaluate("nomadDbg.FXS.length") == 64
+    # aucun motif ne lit l'avenir ni trop loin dans le passé (tampon de 12 s ≈ 64 double-croches à 80 BPM)
+    bad = app.evaluate("""nomadDbg.FXS.flatMap((f, n) => (f.steps || []).map((st, j) => {
+        if (st.s < 0) return null;
+        const r = Math.max(st.r0 ?? 1, st.r1 ?? st.r0 ?? 1), d = st.d || 1;
+        const late = st.s + r / d - (j + 16 + 1 / d), back = j + 16 - st.s;
+        return late > 1e-6 || back > 60 ? `${n + 1} ${f.name} pas ${j}` : null; })).filter(Boolean)""")
+    assert bad == [], bad
+    app.click("#tab-fx")
+    app.evaluate("nomadMidi([0x99, 36, 1]); nomadMidi([0x89, 36, 0])")
+    for k in range(4):
+        app.evaluate("nomadMidi([0x90, 49, 100]); nomadMidi([0x80, 49, 0])")     # do# : page suivante
+    assert "MOTIFS 1–16" in app.inner_text("#fxSet")
+    app.evaluate("nomadMidi([0x90, 49, 100]); nomadMidi([0x80, 49, 0])"); app.evaluate("nomadMidi([0x90, 49, 100]); nomadMidi([0x80, 49, 0])")
+    assert "VARIATIONS DRUMS" in app.inner_text("#fxSet") and "GHOST NOTES" in app.inner_text("#fxgrid")
+    app.evaluate("nomadDbg.setFxBank(3)")
+    assert "ÉCHO PING-PONG" in app.inner_text("#fxgrid")
+
+
+def test_sp_bank_b_et_dosage_par_effet(app):
+    app.click("#tab-sp")
+    app.wait_for_timeout(300)
+    assert app.evaluate("nomadDbg.SP_FX.length") == 32
+    app.evaluate("nomadMidi([0x99, 36, 1]); nomadMidi([0x89, 36, 0])")
+    app.evaluate("nomadMidi([0x90, 49, 100]); nomadMidi([0x80, 49, 0])")          # do# : bank B
+    assert app.evaluate("nomadDbg.SPX.bank") == 1 and "CHALEUR" in app.inner_text("#spFxGrid")
+    app.evaluate("nomadDbg.spPad(0, true); nomadDbg.spPad(0, false)")            # pad 1 en bank B = effet 17
+    assert app.evaluate("nomadDbg.SP_FX[16].on") is True and app.evaluate("nomadDbg.SPX.cur") == 16
+    # potard 3 : dosage de CET effet seulement
+    app.evaluate("for (let v = 127; v >= 40; v -= 8) nomadMidi([0xB0, 72, v])")
+    assert 0.3 < app.evaluate("nomadDbg.SP_FX[16].m") < 0.4 and app.evaluate("nomadDbg.SP_FX[0].m") == 1
+    app.evaluate("nomadDbg.spPad(0, true); nomadDbg.spPad(0, false)")
+    # chaque effet de la bank B, seul, laisse passer un son propre (ni silence ni NaN)
+    app.evaluate("nomadProbeOut()")
+    out = app.evaluate("""(async () => { const r = []; await nomadDbg.sonsT.selectInst('fkjrhodes');
+        for (let i = 16; i < 32; i++) { nomadDbg.SP_FX.forEach(f => f.on = false); nomadDbg.spPad(i - 16, true); nomadDbg.spPad(i - 16, false);
+          nomadDbg.sonsT.keyOn(48 + (i % 12), 0.8);
+          let m = 0; for (let k = 0; k < 8; k++) { await new Promise(z => setTimeout(z, 50)); m = Math.max(m, nomadProbeOut()); }
+          nomadDbg.sonsT.releaseKey();
+          r.push([nomadDbg.SP_FX[i].id, m]); nomadDbg.spPad(i - 16, true); nomadDbg.spPad(i - 16, false); }
+        return r; })()""")
+    bad = [x for x in out if not (x[1] > 0.005 and x[1] < 4)]
+    assert bad == [], out
+    # au repos, la sortie est silencieuse (aucun oscillateur d'effet ne fuit)
+    app.evaluate("nomadDbg.SP_FX.forEach((f, i) => { if (f.on) { nomadDbg.SPX.bank = Math.floor(i / 16); nomadDbg.spPad(i % 16, true); nomadDbg.spPad(i % 16, false); } })")
+    app.wait_for_timeout(2500)
+    assert app.evaluate("nomadProbeOut()") < 0.02

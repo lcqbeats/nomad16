@@ -40,7 +40,43 @@
     { name: "PITCH RISE", sub: "monte peu à peu", steps: (() => { const out = []; let pos = 0; for (let j = 0; j < 16; j++) { const r0 = 0.8 + j * 0.025, r1 = 0.8 + (j + 1) * 0.025; out.push({ s: pos, r0, r1, f: j * 0.015 }); pos += (r0 + r1) / 2; } return out; })() },
     { name: "CUT & REVERSE", sub: "2e temps à l'envers, 4e en roulement", steps: R16(j => { const b = j >> 2, k = j & 3; if (b === 1) return { s: 7 - k, v: 1 }; if (b === 3) return { s: 12, d: [1, 2, 4, 8][k] }; return { s: j }; }) },
     { name: "BABY SCRATCH", sub: "va-et-vient sur le premier temps", steps: R32(j => (j & 7) >= 6 ? { s: -1 } : j % 2 ? { s: (j >> 4) * 8, v: 1, r0: 1.8, r1: 0.3 } : { s: (j >> 4) * 8, r0: 0.3, r1: 1.8 }) },
-    { name: "BREAKDOWN", sub: "s'éteint, ralentit, repart", steps: R32(j => j < 16 ? { s: j, f: -j * 0.04, f1: -(j + 1) * 0.04 } : j < 24 ? { s: 8 + (j - 16) * 0.5, r0: 0.5, f: -0.7 } : j < 28 ? { s: 12, d: 4, f: -0.6 + (j - 24) * 0.15 } : { s: 12 + (j - 28), d: [1, 2, 4, 8][j - 28], r0: 1 + (j - 28) * 0.03 }) }
+    { name: "BREAKDOWN", sub: "s'éteint, ralentit, repart", steps: R32(j => j < 16 ? { s: j, f: -j * 0.04, f1: -(j + 1) * 0.04 } : j < 24 ? { s: 8 + (j - 16) * 0.5, r0: 0.5, f: -0.7 } : j < 28 ? { s: 12, d: 4, f: -0.6 + (j - 24) * 0.15 } : { s: 12 + (j - 28), d: [1, 2, 4, 8][j - 28], r0: 1 + (j - 28) * 0.03 }) },
+    // MOTIFS 33 À 48 : VARIATIONS DE BATTERIE — changements marqués mais discrets ; le reste du temps, le son passe en direct.
+    // Champs en plus : m = part de l'effet (le direct reste dessous), p = placement gauche / droite.
+    // s = j + 16 - k : le son d'il y a k double-croches (s = j : celui de la mesure précédente)
+    { name: "GHOST NOTES", sub: "petits coups fantômes avant chaque temps", steps: R16(j => j % 4 === 3 ? { s: j + 15, m: 0.35, f: -0.2 } : { s: -1 }) },
+    { name: "FLAM 2 & 4", sub: "la caisse claire doublée", steps: R16(j => j === 4 || j === 12 ? { s: j + 16, d: 2, g: 0.95 } : { s: -1 }) },
+    { name: "SWING LÉGER", sub: "les double-croches traînent un peu", steps: R16(j => j % 2 ? { s: j + 16 - 0.22 } : { s: -1 }) },
+    { name: "SWING LOURD", sub: "groove très en arrière", steps: R16(j => j % 2 ? { s: j + 16 - 0.4 } : { s: -1 }) },
+    { name: "EN AVANT", sub: "les contretemps poussent", steps: R16(j => j % 4 === 2 ? { s: j + 0.18 } : { s: -1 }) },
+    { name: "CAISSE INVERSÉE", sub: "la caisse aspirée avant le 2 et le 4", steps: R16(j => j === 3 || j === 11 ? { s: j + 1, v: 1, g: 0.75, f: 0.05 } : { s: -1 }) },
+    { name: "TURNAROUND", sub: "dernier temps relancé, 2 mesures", steps: R32(j => j < 28 ? { s: -1 } : { s: j + 12, d: [1, 2, 1, 3][j - 28], g: [1, 0.95, 1, 0.9][j - 28] }) },
+    { name: "BREAK 2 TEMPS", sub: "le début de mesure rejoué, 2 mesures", steps: R32(j => j < 24 ? { s: -1 } : { s: j + 8 }) },
+    { name: "SILENCE SUR LE 1", sub: "le premier temps manque, 2 mesures", steps: R32(j => j === 16 || j === 17 ? { s: -1, g: 0 } : j === 18 ? { s: -1, f: -0.4, f1: 0 } : { s: -1 }) },
+    { name: "ROULEMENT FIN", sub: "petit roulement en fin de 2e mesure", steps: R32(j => j < 29 ? { s: -1 } : { s: j + 15, d: [2, 3, 4][j - 29], g: [0.9, 0.8, 0.75][j - 29] }) },
+    { name: "TRAÎNE", sub: "le dernier temps ralentit à peine", steps: R16(j => j < 12 ? { s: -1 } : { s: 12 + (j - 12) * 0.94, r0: 0.94, f: -0.08 }) },
+    { name: "AIGUS AUX CONTRETEMPS", sub: "les contretemps s'éclaircissent", steps: R16(j => j % 4 === 2 ? { s: -1, f: 0.28, m: 0.7 } : { s: -1 }) },
+    { name: "CHARLESTON ÉCARTÉ", sub: "les double-croches à gauche et à droite", steps: R16(j => j % 2 ? { s: -1, p: j % 4 === 1 ? -0.6 : 0.6 } : { s: -1 }) },
+    { name: "POUSSIÈRE", sub: "la 2e mesure s'abîme un peu", steps: R32(j => j < 16 ? { s: -1 } : { s: -1, x: 0.35, f: -0.22, m: 0.6 }) },
+    { name: "DOUBLE TEMPS FANTÔME", sub: "un double temps léger dessous", steps: R16(j => ({ s: 2 * j, r0: 2, m: 0.3, f: 0.18 })) },
+    { name: "POMPE", sub: "chaque temps respire (sidechain)", steps: R16(j => ({ s: -1, g: [0.55, 0.78, 0.92, 1][j % 4] })) },
+    // MOTIFS 49 À 64 : MÉLODIQUE — synthés, samples de vinyle : couleur, espace, harmonie
+    { name: "FILTRE QUI RESPIRE", sub: "s'assombrit et revient, 2 mesures", steps: R32(j => ({ s: -1, f: -0.55 * Math.sin(Math.PI * j / 32), f1: -0.55 * Math.sin(Math.PI * (j + 1) / 32) })) },
+    { name: "TRÉMOLO CROCHES", sub: "le volume ondule en croches", steps: R16(j => ({ s: -1, g: j % 4 < 2 ? 1 : 0.5 })) },
+    { name: "BALANCE", sub: "le son se promène gauche / droite", steps: R16(j => ({ s: -1, p: [0, -0.45, -0.75, -0.45, 0, 0.45, 0.75, 0.45][j % 8] })) },
+    { name: "OCTAVE GRAVE", sub: "une octave dessous, mêlée", steps: R32(j => ({ s: j * 0.5, r0: 0.5, m: 0.45, f: -0.35 })) },
+    { name: "OCTAVE AIGUË", sub: "une octave dessus, légère", steps: R16(j => ({ s: 2 * j, r0: 2, m: 0.3, f: 0.2 })) },
+    { name: "QUARTE GRAVE", sub: "une quarte dessous, harmonie", steps: R16(j => ({ s: j * 0.75, r0: 0.75, m: 0.42, f: -0.15 })) },
+    { name: "QUINTE AIGUË", sub: "une quinte dessus, harmonie", steps: R16(j => ({ s: j * 1.5, r0: 1.5, m: 0.32 })) },
+    { name: "BANDE QUI PLEURE", sub: "pleurage de cassette", steps: R16(j => ({ s: j + 15.5, r0: 1 + 0.012 * Math.sin(j * 0.8), r1: 1 + 0.012 * Math.sin((j + 1) * 0.8), f: -0.08 })) },
+    { name: "INVERSE QUI MONTE", sub: "2 temps à l'envers en fin de 2e mesure", steps: R32(j => j < 24 ? { s: -1 } : { s: 39 - (j - 24), v: 1, g: 0.45 + (j - 24) * 0.075 }) },
+    { name: "FIGER", sub: "le premier temps tenu, filtre qui se ferme", steps: R16(j => ({ s: (j % 4) + 16, f: -j / 30, f1: -(j + 1) / 30 })) },
+    { name: "GATE POINTÉ", sub: "coupures en croches pointées", steps: R16(j => ({ s: -1, g: [1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0][j] })) },
+    { name: "ÉCHO POINTÉ", sub: "écho à la croche pointée", steps: R16(j => ({ s: j + 13, m: 0.38, f: -0.25 })) },
+    { name: "ÉCHO PING-PONG", sub: "écho à la noire, de gauche à droite", steps: R16(j => ({ s: j + 12, m: 0.4, p: (j >> 2) % 2 ? 0.7 : -0.7, f: -0.2 })) },
+    { name: "RALENTI VINYLE", sub: "la platine ralentit puis repart, 2 mesures", steps: (() => { const out = []; let pos = 0; for (let j = 0; j < 32; j++) { if (j >= 16) { out.push({ s: -1 }); continue; } const r0 = 1 - 0.22 * j / 16, r1 = 1 - 0.22 * (j + 1) / 16; out.push({ s: pos, r0, r1, f: -j * 0.015 }); pos += (r0 + r1) / 2; } return out; })() },
+    { name: "RADIO LOINTAINE", sub: "petit poste au loin", steps: R16(j => ({ s: -1, f: -0.45, x: 0.35, m: 0.85 })) },
+    { name: "VOLUME QUI GONFLE", sub: "chaque temps monte comme à l'envers", steps: R16(j => ({ s: -1, g: [0.25, 0.5, 0.75, 1][j % 4] })) }
   ];
   // Petit graphique du motif au-dessus du nom : la position lue dans le son par rapport à une lecture normale.
   // Ligne plate = lecture normale ; marches = répétitions ; pente = scratch, ralenti ou envers ; trous = coupures.
@@ -69,7 +105,9 @@
     pts.forEach(p => { if (!p) { pen = false; return; } const x = (4 + p[0] * 92).toFixed(1), y = Y(p[1]).toFixed(1); d += (pen ? "L" : "M") + x + " " + y; pen = true; prev = p; });
     return `<svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><path d="${d}"/></svg>`;
   }
-  let fxBank = store.get("fxPage", 0);   // page de motifs : 0 = 1 à 16, 1 = 17 à 32
+  // pages de motifs : 0 = 1 à 16, 1 = 17 à 32, 2 = variations de batterie (33 à 48), 3 = mélodique (49 à 64)
+  const FX_PAGES = [["MOTIFS 1–16", "1–16"], ["MOTIFS 17–32", "17+"], ["VARIATIONS DRUMS", "DRM"], ["MÉLODIQUE", "MÉL"]];
+  let fxBank = Math.min(3, store.get("fxPage", 0));
   let fxNode = null, fxFilt, fxCrush, fxPost, echoSend, echoDly, echoFb, springSend, fxMaster;
   let fxActive = -1, fxQuant = true, manualBpm = 90, fxTrig = store.get("fxTrig", "hold"), fxTarget = "all", fxOneT = null;
   const FXS = FX_PATTERNS;
@@ -88,12 +126,12 @@
     if (b === fxBank) return;
     if (fxActive >= 0) fxEnd(fxActive);
     fxBank = b; store.set("fxPage", b); drawFxPads();
-    lcd("lcdPad", "FX", b ? "motifs 17 à 32 (élaborés)" : "motifs 1 à 16");
-    if (typeof fxDisp === "function") fxDisp(b ? "17+" : "1–16", b ? "MOTIFS 17 À 32" : "MOTIFS 1 À 16");
+    lcd("lcdPad", "FX", ["motifs 1 à 16", "motifs 17 à 32 (élaborés)", "variations de batterie (33 à 48)", "mélodique (49 à 64)"][b]);
+    if (typeof fxDisp === "function") fxDisp(FX_PAGES[b][1], FX_PAGES[b][0]);
   }
   function drawFxPads() {
     for (let i = 0; i < 16; i++) { const n = fxBank * 16 + i, f = FXS[n], b = fxEls[i]; b.innerHTML = `<i></i>${fxCurve(f)}<b>${f.name}</b><span>${n + 1}</span>`; b.title = f.sub; b.classList.toggle("on", fxActive === i); b.classList.toggle("hold", fxTrig === "hold"); }
-    $("fxSet").textContent = fxBank ? "MOTIFS 17–32 ⇄" : "MOTIFS 1–16 ⇄";
+    $("fxSet").textContent = FX_PAGES[fxBank][0] + " ⇄";
     $("fxSet").classList.toggle("on", !!fxBank);
     $("fxTrig").textContent = { hold: "MAINTIEN", one: "1 MESURE", latch: "VERROU" }[fxTrig];
     document.querySelectorAll(".fxt").forEach(b => b.classList.toggle("on", b.dataset.t === fxTarget));
@@ -101,7 +139,7 @@
   function curBpm() { return LP.t0F !== null && LP.Lf ? 60 * LP.beats / loopLen() : manualBpm; }
   function drawFxBar() { $("fxBpm").textContent = curBpm().toFixed(1).replace(/\.0$/, "") + " BPM"; $("fxQuant").textContent = fxQuant ? "CALÉ 1/16" : "LIBRE"; $("fxQuant").classList.toggle("on", fxQuant); }
   $("fxQuant").addEventListener("click", () => { fxQuant = !fxQuant; drawFxBar(); });
-  $("fxSet").addEventListener("click", () => setFxBank(1 - fxBank));
+  $("fxSet").addEventListener("click", () => setFxBank((fxBank + 1) % 4));
   $("fxTrig").addEventListener("click", () => { if (fxActive >= 0) fxEnd(fxActive); fxTrig = { hold: "one", one: "latch", latch: "hold" }[fxTrig]; store.set("fxTrig", fxTrig); drawFxPads(); });
   document.querySelectorAll(".fxt").forEach(b => b.addEventListener("click", () => setFxTarget(b.dataset.t)));
   // Cible des effets : tout le morceau, le jeu en direct, ou une seule piste du looper
@@ -110,7 +148,7 @@
   const FX_KEY_T = ["all", "live", "1", "2", "3", "4", "5", "6", "song"];
   // renvoie true si la touche a servi de sélecteur ; les autres touches jouent SONS normalement
   function fxKey(note) {
-    if (note - 48 === 1) { setFxBank(1 - fxBank); return true; }   // DO# : motifs 1–16 ⇄ 17–32
+    if (note - 48 === 1) { setFxBank((fxBank + 1) % 4); return true; }   // DO# : page suivante (1–16, 17–32, drums, mélodique)
     const w = [0, 2, 4, 5, 7, 9, 11, 12, 14].indexOf(note - 48);   // … et le ré suivant = SONG
     if (w < 0) return false;
     setFxTarget(FX_KEY_T[w]); return true;
