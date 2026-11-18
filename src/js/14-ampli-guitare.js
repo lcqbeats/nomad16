@@ -120,7 +120,7 @@
       gn.aec = new AudioWorkletNode(ctx, "nomad-aec", { numberOfInputs: 2, numberOfOutputs: 1, outputChannelCount: [1] });
       gn.aecRef = ctx.createDelay(0.01); gn.aecRef.delayTime.value = 128 / ctx.sampleRate;
       mixOut.connect(gn.aecRef); gn.aecRef.connect(gn.aec, 0, 1); gn.aec.connect(gn.input); gn.aecIn = gn.aec;
-      gn.aec.port.onmessage = e => { if (e.data.type === "calib" && AEC.done) AEC.done(e.data); };
+      gn.aec.port.onmessage = e => { if (e.data.type === "calib" && AEC.done) AEC.done(e.data); if (e.data.type === "stat") AEC.stat = e.data; };
     }
     gn.onAn = ctx.createAnalyser(); gn.onAn.fftSize = 256; gn.input.connect(gn.onAn);
     let head = gn.input;
@@ -268,32 +268,56 @@
   }
   $("inBtn").addEventListener("click", () => { if (G.on) stopInput(); else startInput(); });
   // calibrage : un souffle discret de 0,6 s (cordes étouffées) mesure le chemin de la fuite, puis le filtre la retire en continu
+  function fft(re, im, inv) {
+    const n = re.length;
+    for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+    for (let len = 2; len <= n; len <<= 1) {
+      const ang = 2 * Math.PI / len * (inv ? 1 : -1), wr = Math.cos(ang), wi = Math.sin(ang), h = len >> 1;
+      for (let i = 0; i < n; i += len) { let cr = 1, ci = 0;
+        for (let k = 0; k < h; k++) { const a = i + k, b = a + h, xr = re[b] * cr - im[b] * ci, xi = re[b] * ci + im[b] * cr;
+          re[b] = re[a] - xr; im[b] = im[a] - xi; re[a] += xr; im[a] += xi; const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t; } }
+    }
+  }
   var AEC = { on: false, busy: false, done: null, route: "" };
   async function aecCalibrate() {
     if (!gn || !gn.aec || AEC.busy) return false;
     AEC.busy = true; applyGuitar(); drawAec();
     lcd("lcdPad", "ANTI-LARSEN", "calibrage · étouffez les cordes une seconde");
     await new Promise(r => setTimeout(r, 250));
-    const n = Math.round(sr * 0.7), nb = ctx.createBuffer(1, n, sr), d = nb.getChannelData(0);
+    const n = Math.round(sr * 1.6), nb = ctx.createBuffer(1, n, sr), d = nb.getChannelData(0);
     for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (i < 480 ? i / 480 : i > n - 480 ? (n - i) / 480 : 1);
-    const src = ctx.createBufferSource(), g = ctx.createGain(); g.gain.value = 0.05; src.buffer = nb; src.connect(g); g.connect(mixOut);
+    const src = ctx.createBufferSource(), g = ctx.createGain(); g.gain.value = 0.09; src.buffer = nb; src.connect(g); g.connect(mixOut);
     const got = new Promise(r => { AEC.done = r; });
     gn.aec.port.postMessage({ type: "calib", n }); src.start();
     const { m, r } = await got; AEC.done = null; g.disconnect();
-    const maxLag = Math.min(4096, n >> 1), N = n - maxLag, xc = new Float32Array(maxLag);
-    let Er = 0; for (let i = 0; i < N; i++) Er += r[i] * r[i];
-    for (let lag = 0; lag < maxLag; lag++) { let s = 0; for (let i = 0; i < N; i++) s += m[i + lag] * r[i]; xc[lag] = s; }
-    let P = 0; for (let lag = 1; lag < maxLag; lag++) if (Math.abs(xc[lag]) > Math.abs(xc[P])) P = lag;
-    const mags = Array.from(xc, Math.abs).sort((a, b) => a - b), med = mags[maxLag >> 1] || 1e-12;
+    // corrélation par FFT : on cherche le retour jusqu'à 0,5 s (le micro de la page iPhone arrive bien après la sortie)
+    const maxLag = Math.min(Math.round(sr * 0.5), n >> 1);
+    const xcOf = (a, b) => { const N = a.length - maxLag; let P = 1; while (P < N + maxLag) P <<= 1;
+      const ar = new Float64Array(P), ai = new Float64Array(P), br = new Float64Array(P), bi = new Float64Array(P);
+      for (let i = 0; i < a.length; i++) ar[i] = a[i]; for (let i = 0; i < N; i++) br[i] = b[i];
+      fft(ar, ai, false); fft(br, bi, false);
+      for (let i = 0; i < P; i++) { const xr = ar[i] * br[i] + ai[i] * bi[i], xi = ai[i] * br[i] - ar[i] * bi[i]; ar[i] = xr; ai[i] = xi; }
+      fft(ar, ai, true); const xc = new Float32Array(maxLag); for (let l = 0; l < maxLag; l++) xc[l] = ar[l] / P;
+      let E = 0; for (let i = 0; i < N; i++) E += b[i] * b[i];
+      let pk = 0; for (let l = 1; l < maxLag; l++) if (Math.abs(xc[l]) > Math.abs(xc[pk])) pk = l;
+      const mags = Array.from(xc, Math.abs).sort((x, y) => x - y), med = mags[maxLag >> 1] || 1e-12;
+      return { xc, E, pk, ratio: Math.abs(xc[pk]) / med }; };
+    const all = xcOf(m, r), h1 = n >> 1;
+    const A = xcOf(m.subarray(0, h1), r.subarray(0, h1)), B = xcOf(m.subarray(h1), r.subarray(h1));
     AEC.busy = false;
-    if (Math.abs(xc[P]) < 10 * med || Er < 1e-6) {
+    const ms = l => Math.round(l / sr * 1000), drift = Math.abs(A.pk - B.pk);
+    AEC.diag = "pic " + ms(all.pk) + " ms · netteté " + all.ratio.toFixed(1) + " · stabilité " + drift + " éch.";
+    const li = $("latInfo"); if (li) li.textContent = "Anti-larsen : " + AEC.diag;
+    if (all.ratio < 8 || all.E < 1e-6) {
       gn.aec.port.postMessage({ type: "off" }); AEC.on = false; applyGuitar(); drawAec();
-      lcd("lcdPad", "ANTI-LARSEN", "aucune fuite mesurée · rien à retirer"); return false;
+      lcd("lcdPad", "ANTI-LARSEN", "aucune fuite nette · " + AEC.diag); return false;
     }
-    const D = Math.max(0, P - 16), h = new Float32Array(128);
-    for (let k = 0; k < 128 && D + k < maxLag; k++) h[k] = xc[D + k] / Er;
+    const L = 256, D = Math.max(0, all.pk - 32), h = new Float32Array(L);
+    // le chemin exact de la fuite, calculé directement autour du pic trouvé
+    { const N = n - D - L; let E = 0; for (let i = 0; i < N; i++) E += r[i] * r[i];
+      for (let k = 0; k < L; k++) { let acc = 0; const o = D + k; for (let i = 0; i < N; i++) acc += m[i + o] * r[i]; h[k] = acc / (E || 1); } }
     gn.aec.port.postMessage({ type: "run", D, h }); AEC.on = true; applyGuitar(); drawAec();
-    lcd("lcdPad", "ANTI-LARSEN", "fuite mesurée (" + (Math.round(D / sr * 10000) / 10) + " ms, " + Math.round(20 * Math.log10(Math.max(...Array.from(h, Math.abs))) ) + " dB) · retirée en continu");
+    lcd("lcdPad", "ANTI-LARSEN", "fuite " + Math.round(20 * Math.log10(Math.max(...Array.from(h, Math.abs)))) + " dB · " + AEC.diag + (drift > 24 ? " · INSTABLE" : ""));
     return true;
   }
   function drawAec() { const b = $("aecBtn"); if (!b) return; b.classList.toggle("on", AEC.on); b.textContent = AEC.busy ? "MESURE…" : AEC.on ? "ANTI-LARSEN ON" : "ANTI-LARSEN"; }

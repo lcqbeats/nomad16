@@ -134,10 +134,10 @@ this.k=0;this.ss=0;this.zc=0;}
 this.m+=(this.mt-this.m)*(this.mt<this.m?0.02:0.0005);
 const g=this.env>this.ceil?this.ceil/this.env:1;for(let c=0;c<o.length;c++)o[c][s]=v*g*this.m;}return true;}}
 registerProcessor('nomad-guard',Guard);
-class Aec extends AudioWorkletProcessor{constructor(){super();this.M=16383;this.R=new Float32Array(16384);this.w=0;this.L=128;this.h=new Float32Array(128);this.h0=null;this.D=0;this.run=false;this.rec=null;this.frz=0;this.E=0;this.g=0;this.mx=[0,0,0,0,0,0,0,0];this.mi=0;
+class Aec extends AudioWorkletProcessor{constructor(){super();this.M=32767;this.R=new Float32Array(32768);this.w=0;this.L=256;this.h=new Float32Array(256);this.h0=null;this.D=0;this.run=false;this.rec=null;this.frz=0;this.E=0;this.g=0;this.mx=[0,0,0,0,0,0,0,0];this.mi=0;
 this.port.onmessage=e=>{const d=e.data;if(d.type==='calib')this.rec={m:new Float32Array(d.n),r:new Float32Array(d.n),i:0};
 if(d.type==='run'){this.D=d.D;this.h.set(d.h);this.h0=Float32Array.from(d.h);this.g=d.h.reduce((a,b)=>a+Math.abs(b),0);this.run=true;this.frz=0;}
-if(d.type==='off')this.run=false;};}
+if(d.type==='off')this.run=false;if(d.type==='stat')this.port.postMessage({type:'stat',run:this.run,D:this.D,g:this.g,E:this.E,frz:this.frz,w:this.w,h0:this.h[this.L>>3]});};}
 process(inputs,outputs){const mi=inputs[0]&&inputs[0][0],ri=inputs[1]&&inputs[1][0],o=outputs[0],out=o[0],n=out.length,R=this.R,M=this.M,h=this.h,L=this.L;
 let bm=0;if(ri)for(let s=0;s<n;s++)bm=Math.max(bm,Math.abs(ri[s]));this.mx[this.mi=(this.mi+1)&7]=bm;const mr=Math.max(...this.mx);
 if(this.run){let E=0;const b0=this.w-this.D;for(let k=0;k<L;k++){const x=R[(b0-k)&M];E+=x*x;}this.E=E;}

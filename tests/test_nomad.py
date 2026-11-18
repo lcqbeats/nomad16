@@ -1300,13 +1300,13 @@ def test_garde_oreilles_plafond_et_larsen(app):
 
 
 def test_anti_larsen_ecouteurs_annule_la_fuite(app):
-    # simulation de l'iRig : 20 % du son de sortie revient dans l'entrée guitare 9 ms plus tard ; avec COMP + FUZZ ça s'emballe
+    # simulation de l'iRig : 20 % du son de sortie revient dans l'entrée guitare 150 ms plus tard (micro de la page iPhone) ; avec COMP + FUZZ ça s'emballe
     app.click("#tab-guitar")
     app.wait_for_function("nomadDbg.gn && nomadDbg.gn.aec")
     app.click("#pd-comp"); app.click("#pd-fuzz")
     r = app.evaluate("""(async () => {
       const ctx = nomadDbg.ctx, gn = nomadDbg.gn, wait = ms => new Promise(r => setTimeout(r, ms));
-      const leak = ctx.createDelay(0.05); leak.delayTime.value = 0.009; const lg = ctx.createGain(); lg.gain.value = 0.2;
+      const leak = ctx.createDelay(0.5); leak.delayTime.value = 0.15; const lg = ctx.createGain(); lg.gain.value = 0.2;
       nomadDbg.gn.aecRef.context; // même contexte
       const out = gn.aecRef; // la sortie générale passe déjà par ici ; on prend la même source pour la fuite
       const mix = ctx.createGain(); out.connect(mix); mix.connect(leak); leak.connect(lg); lg.connect(gn.aec, 0, 0);
