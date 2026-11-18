@@ -1781,7 +1781,23 @@ process(inputs,outputs){const i=inputs[0],o=outputs[0];if(!i||!i[0]){for(const c
 for(let s=0;s<n;s++){let v=0;for(let c=0;c<i.length;c++)v=Math.max(v,Math.abs(i[c][s]));this.env=v>this.env?this.a*this.env+(1-this.a)*v:this.r*this.env+(1-this.r)*v;
 const db=20*Math.log10(this.env+1e-9),red=db>-8?0.033*Math.pow(db+8,1.35):0,g=mk*Math.pow(10,-red/20);
 for(let c=0;c<o.length;c++)o[c][s]=(i[c]||i[0])[s]*g;}return true;}}
-registerProcessor('nomad-comp',Comp);`;
+registerProcessor('nomad-comp',Comp);
+class Guard extends AudioWorkletProcessor{constructor(){super();this.ceil=0.35;this.env=0;this.rel=Math.exp(-1/(0.06*sampleRate));this.m=1;this.mt=1;
+this.B=Math.round(sampleRate*0.01);this.k=0;this.ss=0;this.zc=0;this.last=0;this.h=[];this.stab=0;
+this.port.onmessage=e=>{const d=e.data;if(d.type==='reset'){this.mt=1;this.h=[];this.stab=0;}if(d.type==='ceil')this.ceil=d.v;};}
+process(inputs,outputs){const i=inputs[0],o=outputs[0];const x=i&&i[0];if(!x){for(const ch of o)ch.fill(0);return true;}const n=o[0].length;
+for(let s=0;s<n;s++){const v=x[s],a=Math.abs(v);this.env=a>this.env?a:this.rel*this.env+(1-this.rel)*a;
+this.ss+=v*v;if((v>=0)!==(this.last>=0))this.zc++;this.last=v;
+if(++this.k>=this.B){const r=Math.sqrt(this.ss/this.B),z=this.zc,h=this.h,p=h.length?h[h.length-1]:null;
+if(p&&r>0.03&&z>=2&&Math.abs(z-p.z)<=Math.max(1,p.z*0.06)&&r<p.r*1.6)this.stab++;else this.stab=0;
+h.push({r,z});if(h.length>40)h.shift();
+// larsen : son pur et régulier qui monte tout seul (pas d'attaque de corde) pendant 0,2 s, ou qui reste plaqué fort, sans bouger, 2,5 s
+const old=h.length>20?h[h.length-21]:null;
+if(this.mt>0&&((this.stab>=20&&old&&r>old.r*1.4&&r>0.06)||(this.stab>=250&&r>0.25))){this.mt=0;this.port.postMessage({type:'larsen',hz:Math.round(z*sampleRate/this.B/2)});}
+this.k=0;this.ss=0;this.zc=0;}
+this.m+=(this.mt-this.m)*(this.mt<this.m?0.02:0.0005);
+const g=this.env>this.ceil?this.ceil/this.env:1;for(let c=0;c<o.length;c++)o[c][s]=v*g*this.m;}return true;}}
+registerProcessor('nomad-guard',Guard);`;
   let hasWorklet = false;
   async function setupCapture() {
     ringN = Math.floor(sr * CAP_SECONDS);
@@ -3121,7 +3137,12 @@ registerProcessor('nomad-comp',Comp);`;
     gn.duck = gain(1);
     gn.master.connect(gn.notch[0]); gn.notch[0].connect(gn.notch[1]); gn.notch[1].connect(gn.notch[2]); gn.notch[2].connect(gn.notch[3]); gn.notch[3].connect(gn.duck); gn.duck.connect(gn.lim);
     gn.fbAn = ctx.createAnalyser(); gn.fbAn.fftSize = 4096; gn.fbAn.smoothingTimeConstant = 0.5; gn.duck.connect(gn.fbAn);
-    gn.lim.connect(chGtr);
+    // garde-oreilles : plafond de niveau sans dépassement possible (−9 dB) et coupure immédiate d'un larsen qui s'emballe
+    if (hasWorklet) {
+      gn.guard = new AudioWorkletNode(ctx, "nomad-guard", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+      gn.lim.connect(gn.guard); gn.guard.connect(chGtr);
+      gn.guard.port.onmessage = e => { if (e.data.type === "larsen") larsenCut(e.data.hz); };
+    } else gn.lim.connect(chGtr);
     setGate(store.get("gate", -55)); setTrim(store.get("trim", 1));
     const saved = store.get("gpreset", 0);
     loadPreset(saved >= 0 && saved < PRESETS.length ? saved : 0);
@@ -3170,6 +3191,7 @@ registerProcessor('nomad-comp',Comp);`;
     const ext = !/MicrophoneBuiltIn/i.test(a.input || "");
     const txt = "latence ≈ " + tot + " ms · " + (ext ? "" : "MICRO DE L'IPHONE ! · ") + String(a.input || "?").split(" · ")[0];
     if (G.on) lcd("lcdPad", "GUITARE", txt);
+    if (/HeadsetMic/i.test(a.input || "") && !G.tipHs) { G.tipHs = 1; setTimeout(() => G.on && lcd("lcdPad", "GUITARE", "écouteurs sur l'iRig : volume iPhone bas avant COMP, DRIVE, FUZZ"), 2500); }
     const li = $("latInfo"); if (li) li.textContent = "iPhone : " + txt + " · sortie " + String(a.output || "?").split(" · ")[0];
   };
   async function startInput(deviceId) {
@@ -3179,6 +3201,7 @@ registerProcessor('nomad-comp',Comp);`;
       if (micStream) micStream.getTracks().forEach(tr => tr.stop());
       try { if (navigator.audioSession) navigator.audioSession.type = "play-and-record"; } catch (e) {}
       nativeAudio("record");
+      if (gn.guard) gn.guard.port.postMessage({ type: "reset" });
       micStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: deviceId ? { exact: deviceId } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false, latency: 0 } });
       micSrc = ctx.createMediaStreamSource(micStream);
       micSrc.connect(gn.input);
@@ -3204,6 +3227,11 @@ registerProcessor('nomad-comp',Comp);`;
     G.on = false; applyGuitar();
   }
   $("inBtn").addEventListener("click", () => { if (G.on) stopInput(); else startInput(); });
+  function larsenCut(hz) {
+    stopInput();
+    lcd("lcdPad", "ANTI-LARSEN", "guitare coupée (" + hz + " Hz) · baissez le volume de l'iPhone ou le niveau d'entrée");
+    G.larsen = (G.larsen || 0) + 1;
+  }
   const FB = { bin: -1, n: 0, slot: 0, hot: 0, spec: null };
   setInterval(() => {
     if (!gn || !gn.fbAn || !G.on) return;
@@ -3216,7 +3244,7 @@ registerProcessor('nomad-comp',Comp);`;
     const ringing = pv > -26 && pv - sum / Math.max(1, cnt) > 24;
     if (ringing && Math.abs(pk - FB.bin) <= 2) FB.n++; else { FB.n = ringing ? 1 : 0; FB.bin = ringing ? pk : -1; FB.lv0 = pv; }
     const t = ctx.currentTime;
-    if (FB.n >= 16 && pv >= FB.lv0 - 2 && t - gOnset.last > 0.8) {
+    if (FB.n >= 8 && pv >= FB.lv0 - 2 && t - gOnset.last > 0.4) {
       const f = pk * binHz, already = gn.notch.find(n => n.gain.value < -1 && Math.abs(n.frequency.value - f) < f * 0.04);
       if (already) { FB.hot++; gn.duck.gain.setTargetAtTime(Math.max(0.15, 0.5 / FB.hot), t, 0.02); lcd("lcdPad", "ANTI-LARSEN", "volume guitare réduit"); }
       else { const n = gn.notch[FB.slot++ % 4]; n.frequency.setValueAtTime(f, t); n.gain.setTargetAtTime(-26, t, 0.01); lcd("lcdPad", "ANTI-LARSEN", `${Math.round(f)} Hz creusé`); }
@@ -7900,7 +7928,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   initMidi();
   try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi) { $("btBox").hidden = false; $("btPair").addEventListener("click", () => window.webkit.messageHandlers.nomadMidi.postMessage({ type: "btpair" })); } } catch (e) {}
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
-  window.nomadDbg = { get ctx() { return ctx; }, drRec, drMap, drSwPct, DR_GENRES: DRUM_GENRES, get sp() { return sp; }, FXS, setFxBank, SP_FX, SPX, setSpBank, spPad, AMB, sonsT: { selectInst, keyOn, releaseKey: k => activeKeys.forEach((v, key) => releaseKey(key)) }, DR, drPlay, drStop, scrLoad, newKit, micStop, MIC, edSrcApply, song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get names() { return names; }, get kitIndex() { return kitIndex; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
+  window.nomadDbg = { get ctx() { return ctx; }, get gn() { return gn; }, get G() { return G; }, drRec, drMap, drSwPct, DR_GENRES: DRUM_GENRES, get sp() { return sp; }, FXS, setFxBank, SP_FX, SPX, setSpBank, spPad, AMB, sonsT: { selectInst, keyOn, releaseKey: k => activeKeys.forEach((v, key) => releaseKey(key)) }, DR, drPlay, drStop, scrLoad, newKit, micStop, MIC, edSrcApply, song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get names() { return names; }, get kitIndex() { return kitIndex; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
   let probe = null;
   let probeOut = null;
   window.nomadProbeOut = () => { if (!probeOut) { probeOut = ctx.createAnalyser(); probeOut.fftSize = 2048; mixOut.connect(probeOut); } const a = new Float32Array(2048); probeOut.getFloatTimeDomainData(a); let m = 0; for (const v of a) { if (!isFinite(v)) return NaN; m = Math.max(m, Math.abs(v)); } return +m.toFixed(3); };

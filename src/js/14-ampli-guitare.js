@@ -167,7 +167,12 @@
     gn.duck = gain(1);
     gn.master.connect(gn.notch[0]); gn.notch[0].connect(gn.notch[1]); gn.notch[1].connect(gn.notch[2]); gn.notch[2].connect(gn.notch[3]); gn.notch[3].connect(gn.duck); gn.duck.connect(gn.lim);
     gn.fbAn = ctx.createAnalyser(); gn.fbAn.fftSize = 4096; gn.fbAn.smoothingTimeConstant = 0.5; gn.duck.connect(gn.fbAn);
-    gn.lim.connect(chGtr);
+    // garde-oreilles : plafond de niveau sans dépassement possible (−9 dB) et coupure immédiate d'un larsen qui s'emballe
+    if (hasWorklet) {
+      gn.guard = new AudioWorkletNode(ctx, "nomad-guard", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+      gn.lim.connect(gn.guard); gn.guard.connect(chGtr);
+      gn.guard.port.onmessage = e => { if (e.data.type === "larsen") larsenCut(e.data.hz); };
+    } else gn.lim.connect(chGtr);
     setGate(store.get("gate", -55)); setTrim(store.get("trim", 1));
     const saved = store.get("gpreset", 0);
     loadPreset(saved >= 0 && saved < PRESETS.length ? saved : 0);
@@ -216,6 +221,7 @@
     const ext = !/MicrophoneBuiltIn/i.test(a.input || "");
     const txt = "latence ≈ " + tot + " ms · " + (ext ? "" : "MICRO DE L'IPHONE ! · ") + String(a.input || "?").split(" · ")[0];
     if (G.on) lcd("lcdPad", "GUITARE", txt);
+    if (/HeadsetMic/i.test(a.input || "") && !G.tipHs) { G.tipHs = 1; setTimeout(() => G.on && lcd("lcdPad", "GUITARE", "écouteurs sur l'iRig : volume iPhone bas avant COMP, DRIVE, FUZZ"), 2500); }
     const li = $("latInfo"); if (li) li.textContent = "iPhone : " + txt + " · sortie " + String(a.output || "?").split(" · ")[0];
   };
   async function startInput(deviceId) {
@@ -225,6 +231,7 @@
       if (micStream) micStream.getTracks().forEach(tr => tr.stop());
       try { if (navigator.audioSession) navigator.audioSession.type = "play-and-record"; } catch (e) {}
       nativeAudio("record");
+      if (gn.guard) gn.guard.port.postMessage({ type: "reset" });
       micStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: deviceId ? { exact: deviceId } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false, latency: 0 } });
       micSrc = ctx.createMediaStreamSource(micStream);
       micSrc.connect(gn.input);
@@ -250,6 +257,11 @@
     G.on = false; applyGuitar();
   }
   $("inBtn").addEventListener("click", () => { if (G.on) stopInput(); else startInput(); });
+  function larsenCut(hz) {
+    stopInput();
+    lcd("lcdPad", "ANTI-LARSEN", "guitare coupée (" + hz + " Hz) · baissez le volume de l'iPhone ou le niveau d'entrée");
+    G.larsen = (G.larsen || 0) + 1;
+  }
   const FB = { bin: -1, n: 0, slot: 0, hot: 0, spec: null };
   setInterval(() => {
     if (!gn || !gn.fbAn || !G.on) return;
@@ -262,7 +274,7 @@
     const ringing = pv > -26 && pv - sum / Math.max(1, cnt) > 24;
     if (ringing && Math.abs(pk - FB.bin) <= 2) FB.n++; else { FB.n = ringing ? 1 : 0; FB.bin = ringing ? pk : -1; FB.lv0 = pv; }
     const t = ctx.currentTime;
-    if (FB.n >= 16 && pv >= FB.lv0 - 2 && t - gOnset.last > 0.8) {
+    if (FB.n >= 8 && pv >= FB.lv0 - 2 && t - gOnset.last > 0.4) {
       const f = pk * binHz, already = gn.notch.find(n => n.gain.value < -1 && Math.abs(n.frequency.value - f) < f * 0.04);
       if (already) { FB.hot++; gn.duck.gain.setTargetAtTime(Math.max(0.15, 0.5 / FB.hot), t, 0.02); lcd("lcdPad", "ANTI-LARSEN", "volume guitare réduit"); }
       else { const n = gn.notch[FB.slot++ % 4]; n.frequency.setValueAtTime(f, t); n.gain.setTargetAtTime(-26, t, 0.01); lcd("lcdPad", "ANTI-LARSEN", `${Math.round(f)} Hz creusé`); }

@@ -1275,3 +1275,25 @@ def test_guitare_session_native_et_compresseur_sans_retard(app):
     assert "latence ≈ 14 ms" in app.evaluate("document.getElementById('latInfo').textContent")
     app.click("#inBtn")
     assert app.evaluate("__msgs[__msgs.length - 1]") == "playback"
+
+
+def test_garde_oreilles_plafond_et_larsen(app):
+    app.click("#tab-guitar")
+    app.wait_for_function("nomadDbg.gn && nomadDbg.gn.guard")
+    # 1) un son très fort ne dépasse jamais le plafond ; une note de guitare qui retombe passe sans coupure
+    r = app.evaluate("""(async () => {
+      const ctx = nomadDbg.ctx, g = nomadDbg.gn.guard, an = ctx.createAnalyser(); an.fftSize = 2048; g.connect(an);
+      const peak = async ms => { let m = 0; const d = new Float32Array(2048); const t0 = performance.now();
+        while (performance.now() - t0 < ms) { an.getFloatTimeDomainData(d); for (const v of d) m = Math.max(m, Math.abs(v)); await new Promise(r => setTimeout(r, 20)); } return m; };
+      const note = ctx.createOscillator(), ng = ctx.createGain(); note.type = 'sawtooth'; note.frequency.value = 196; note.connect(ng); ng.connect(g);
+      const t = ctx.currentTime; ng.gain.setValueAtTime(3, t); ng.gain.setTargetAtTime(0.0, t + 0.01, 0.25); note.start();
+      const pNote = await peak(600); note.stop(); note.disconnect();
+      const cutAfterNote = nomadDbg.G.larsen || 0;
+      // 2) larsen : son pur qui monte tout seul -> coupé
+      const fb = ctx.createOscillator(), fg = ctx.createGain(); fb.frequency.value = 2400; fb.connect(fg); fg.connect(g);
+      const t2 = ctx.currentTime; fg.gain.setValueAtTime(0.05, t2); fg.gain.exponentialRampToValueAtTime(2, t2 + 1.2); fb.start();
+      await new Promise(r => setTimeout(r, 1500)); const pAfter = await peak(200); fb.stop();
+      return { pNote, cutAfterNote, cuts: nomadDbg.G.larsen || 0, pAfter }; })()""")
+    assert r["pNote"] <= 0.36, r
+    assert r["cutAfterNote"] == 0, r
+    assert r["cuts"] >= 1 and r["pAfter"] < 0.02, r

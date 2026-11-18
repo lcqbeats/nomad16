@@ -117,7 +117,23 @@ process(inputs,outputs){const i=inputs[0],o=outputs[0];if(!i||!i[0]){for(const c
 for(let s=0;s<n;s++){let v=0;for(let c=0;c<i.length;c++)v=Math.max(v,Math.abs(i[c][s]));this.env=v>this.env?this.a*this.env+(1-this.a)*v:this.r*this.env+(1-this.r)*v;
 const db=20*Math.log10(this.env+1e-9),red=db>-8?0.033*Math.pow(db+8,1.35):0,g=mk*Math.pow(10,-red/20);
 for(let c=0;c<o.length;c++)o[c][s]=(i[c]||i[0])[s]*g;}return true;}}
-registerProcessor('nomad-comp',Comp);`;
+registerProcessor('nomad-comp',Comp);
+class Guard extends AudioWorkletProcessor{constructor(){super();this.ceil=0.35;this.env=0;this.rel=Math.exp(-1/(0.06*sampleRate));this.m=1;this.mt=1;
+this.B=Math.round(sampleRate*0.01);this.k=0;this.ss=0;this.zc=0;this.last=0;this.h=[];this.stab=0;
+this.port.onmessage=e=>{const d=e.data;if(d.type==='reset'){this.mt=1;this.h=[];this.stab=0;}if(d.type==='ceil')this.ceil=d.v;};}
+process(inputs,outputs){const i=inputs[0],o=outputs[0];const x=i&&i[0];if(!x){for(const ch of o)ch.fill(0);return true;}const n=o[0].length;
+for(let s=0;s<n;s++){const v=x[s],a=Math.abs(v);this.env=a>this.env?a:this.rel*this.env+(1-this.rel)*a;
+this.ss+=v*v;if((v>=0)!==(this.last>=0))this.zc++;this.last=v;
+if(++this.k>=this.B){const r=Math.sqrt(this.ss/this.B),z=this.zc,h=this.h,p=h.length?h[h.length-1]:null;
+if(p&&r>0.03&&z>=2&&Math.abs(z-p.z)<=Math.max(1,p.z*0.06)&&r<p.r*1.6)this.stab++;else this.stab=0;
+h.push({r,z});if(h.length>40)h.shift();
+// larsen : son pur et régulier qui monte tout seul (pas d'attaque de corde) pendant 0,2 s, ou qui reste plaqué fort, sans bouger, 2,5 s
+const old=h.length>20?h[h.length-21]:null;
+if(this.mt>0&&((this.stab>=20&&old&&r>old.r*1.4&&r>0.06)||(this.stab>=250&&r>0.25))){this.mt=0;this.port.postMessage({type:'larsen',hz:Math.round(z*sampleRate/this.B/2)});}
+this.k=0;this.ss=0;this.zc=0;}
+this.m+=(this.mt-this.m)*(this.mt<this.m?0.02:0.0005);
+const g=this.env>this.ceil?this.ceil/this.env:1;for(let c=0;c<o.length;c++)o[c][s]=v*g*this.m;}return true;}}
+registerProcessor('nomad-guard',Guard);`;
   let hasWorklet = false;
   async function setupCapture() {
     ringN = Math.floor(sr * CAP_SECONDS);
