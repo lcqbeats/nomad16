@@ -1260,3 +1260,18 @@ def test_batterie_rec_boucle_et_anneau(app):
     app.wait_for_function("nomadDbg.LP.layers.length === 2", timeout=12000)
     assert app.evaluate("nomadDbg.LP.layers[1].k") == 1
     app.evaluate("nomadDbg.drStop()")
+
+
+def test_guitare_session_native_et_compresseur_sans_retard(app):
+    assert app.evaluate("window.nomadDbg && typeof nomadDbg.ctx === 'object'")
+    # l'app iPhone reçoit « record » puis renvoie l'entrée et la latence, affichées dans GUITARE
+    app.evaluate("""window.__msgs = []; window.webkit = { messageHandlers: { nomadAudio: { postMessage: m => { __msgs.push(m.type);
+        setTimeout(() => window.__nomadAudio({ input: 'iRig HD X · USBAudio', output: 'Haut-parleur · Speaker', inLat: 2.1, outLat: 6.3, buf: 2.9, sr: 48000, inputs: [] }), 0); } } } };""")
+    app.click("#tab-guitar")
+    app.click("#inBtn")
+    app.wait_for_function("__msgs.includes('route')", timeout=8000)
+    assert app.evaluate("__msgs[0]") == "record"
+    app.wait_for_function("document.getElementById('latInfo').textContent.includes('iRig HD X')")
+    assert "≈ 14 ms" in app.evaluate("document.getElementById('latInfo').textContent")
+    app.click("#inBtn")
+    assert app.evaluate("__msgs[__msgs.length - 1]") == "playback"

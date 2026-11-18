@@ -111,7 +111,13 @@ const ax=Math.abs(v);this.env=ax>this.env?ax:this.env*0.9995;const th=this.env*0
 if(this.st<=0&&v>th){this.st=1;this.ff=-this.ff;}else if(this.st>=0&&v<-th)this.st=-1;
 this.g+=((this.env>0.002?1:0)-this.g)*0.002;const y=this.ff*v*2*this.g;
 for(let c=0;c<o.length;c++)o[c][s]=y;}return true;}}
-registerProcessor('nomad-oct',Oct);`;
+registerProcessor('nomad-oct',Oct);
+class Comp extends AudioWorkletProcessor{constructor(){super();this.env=0;this.a=Math.exp(-1/(0.003*sampleRate));this.r=Math.exp(-1/(0.25*sampleRate));}
+process(inputs,outputs){const i=inputs[0],o=outputs[0];if(!i||!i[0]){for(const ch of o)ch.fill(0);return true;}const n=o[0].length,mk=Math.pow(10,0.28/20);
+for(let s=0;s<n;s++){let v=0;for(let c=0;c<i.length;c++)v=Math.max(v,Math.abs(i[c][s]));this.env=v>this.env?this.a*this.env+(1-this.a)*v:this.r*this.env+(1-this.r)*v;
+const db=20*Math.log10(this.env+1e-9),red=db>-8?0.033*Math.pow(db+8,1.35):0,g=mk*Math.pow(10,-red/20);
+for(let c=0;c<o.length;c++)o[c][s]=(i[c]||i[0])[s]*g;}return true;}}
+registerProcessor('nomad-comp',Comp);`;
   let hasWorklet = false;
   async function setupCapture() {
     ringN = Math.floor(sr * CAP_SECONDS);

@@ -1775,7 +1775,13 @@ const ax=Math.abs(v);this.env=ax>this.env?ax:this.env*0.9995;const th=this.env*0
 if(this.st<=0&&v>th){this.st=1;this.ff=-this.ff;}else if(this.st>=0&&v<-th)this.st=-1;
 this.g+=((this.env>0.002?1:0)-this.g)*0.002;const y=this.ff*v*2*this.g;
 for(let c=0;c<o.length;c++)o[c][s]=y;}return true;}}
-registerProcessor('nomad-oct',Oct);`;
+registerProcessor('nomad-oct',Oct);
+class Comp extends AudioWorkletProcessor{constructor(){super();this.env=0;this.a=Math.exp(-1/(0.003*sampleRate));this.r=Math.exp(-1/(0.25*sampleRate));}
+process(inputs,outputs){const i=inputs[0],o=outputs[0];if(!i||!i[0]){for(const ch of o)ch.fill(0);return true;}const n=o[0].length,mk=Math.pow(10,0.28/20);
+for(let s=0;s<n;s++){let v=0;for(let c=0;c<i.length;c++)v=Math.max(v,Math.abs(i[c][s]));this.env=v>this.env?this.a*this.env+(1-this.a)*v:this.r*this.env+(1-this.r)*v;
+const db=20*Math.log10(this.env+1e-9),red=db>-8?0.033*Math.pow(db+8,1.35):0,g=mk*Math.pow(10,-red/20);
+for(let c=0;c<o.length;c++)o[c][s]=(i[c]||i[0])[s]*g;}return true;}}
+registerProcessor('nomad-comp',Comp);`;
   let hasWorklet = false;
   async function setupCapture() {
     ringN = Math.floor(sr * CAP_SECONDS);
@@ -1847,7 +1853,9 @@ registerProcessor('nomad-oct',Oct);`;
     liveBus = ctx.createGain();
     loopBus = ctx.createGain();
     master = ctx.createGain();
-    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -10; comp.ratio.value = 4;
+    // compresseur de sortie : celui du navigateur anticipe de 6 ms ; remplacé (une fois les worklets chargés) par
+    // un compresseur sans anticipation, réglé pour sonner pareil (mesuré) : moins de latence, utile à la guitare
+    const comp = ctx.createGain(), dyn = ctx.createDynamicsCompressor(); dyn.threshold.value = -10; dyn.ratio.value = 4;
     liveIn.connect(padOut);
     echoIn = ctx.createGain(); echoIn.connect(delay);
     delayFb.gain.value = 0.42; delayWet.gain.value = 0.7;
@@ -1858,7 +1866,7 @@ registerProcessor('nomad-oct',Oct);`;
     padOut.connect(chPads); chPads.connect(liveBus); chSons.connect(liveBus); chGtr.connect(liveBus);
     liveBus.connect(master); loopBus.connect(master);
     fxOut = comp;
-    spIn = ctx.createGain(); comp.connect(spIn);
+    spIn = ctx.createGain(); comp.connect(dyn); dyn.connect(spIn);
     buildSp(spIn, chMaster);
     mixOut = chMaster; chMaster.connect(ctx.destination);
     applyMix();
@@ -1866,6 +1874,7 @@ registerProcessor('nomad-oct',Oct);`;
     buffers = synthBuffers.slice();
     loopBus.gain.value = knobVals.loops[6];
     await setupCapture();
+    if (hasWorklet) { try { const wc = new AudioWorkletNode(ctx, "nomad-comp", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] }); comp.disconnect(); comp.connect(wc); wc.connect(spIn); } catch (e) {} }
     buildFx();
     buildGuitar();
     $("power").hidden = true;
@@ -3105,7 +3114,8 @@ registerProcessor('nomad-oct',Oct);`;
     gn.master = gain(0);
     gn.chorus.out.connect(gn.master); gn.dlyWet.connect(gn.master); gn.revWet.connect(gn.master);
     // Limiteur : empêche un larsen de s'emballer
-    gn.lim = ctx.createDynamicsCompressor(); gn.lim.threshold.value = -6; gn.lim.knee.value = 0; gn.lim.ratio.value = 20; gn.lim.attack.value = 0.001; gn.lim.release.value = 0.08;
+    // (écrêtage doux sans anticipation, au lieu du compresseur du navigateur qui retardait le son de 6 ms)
+    gn.lim = ctx.createWaveShaper(); gn.lim.curve = (() => { const n = 2048, c = new Float32Array(n); for (let k = 0; k < n; k++) { const x = k / (n - 1) * 4 - 2, a = Math.abs(x); c[k] = Math.sign(x) * (a < 0.45 ? a : 0.45 + 0.55 * Math.tanh((a - 0.45) / 0.55)); } return c; })();
     // anti-larsen : repère une fréquence qui sonne seule et longtemps, la creuse ; si ça continue, baisse puis coupe la guitare
     gn.notch = [0, 1, 2, 3].map(() => { const b = ctx.createBiquadFilter(); b.type = "peaking"; b.frequency.value = 1000; b.Q.value = 14; b.gain.value = 0; return b; });
     gn.duck = gain(1);
@@ -3152,18 +3162,30 @@ registerProcessor('nomad-oct',Oct);`;
   drawGuitar();
 
   let micStream = null, micSrc = null;
+  // app iPhone (VERSION 6) : session audio enregistrement + entrée externe prioritaire ; elle renvoie l'entrée et la latence réelles
+  const nativeAudio = t => { try { window.webkit.messageHandlers.nomadAudio.postMessage({ type: t }); return true; } catch (e) { return false; } };
+  window.__nomadAudio = a => {
+    if (!a) return;
+    const tot = Math.round((a.inLat || 0) + (a.outLat || 0) + 2 * (a.buf || 0));
+    const ext = !/MicrophoneBuiltIn/i.test(a.input || "");
+    const txt = "entrée " + String(a.input || "?").split(" · ")[0] + (ext ? "" : " (micro de l'iPhone !)") + " · aller-retour ≈ " + tot + " ms";
+    if (G.on) lcd("lcdPad", "GUITARE", txt);
+    const li = $("latInfo"); if (li) li.textContent = "iPhone : " + txt + " · sortie " + String(a.output || "?").split(" · ")[0];
+  };
   async function startInput(deviceId) {
     if (!ctx) return;
     try {
       if (micSrc) { micSrc.disconnect(); micSrc = null; }
       if (micStream) micStream.getTracks().forEach(tr => tr.stop());
       try { if (navigator.audioSession) navigator.audioSession.type = "play-and-record"; } catch (e) {}
+      nativeAudio("record");
       micStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: deviceId ? { exact: deviceId } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false, latency: 0 } });
       micSrc = ctx.createMediaStreamSource(micStream);
       micSrc.connect(gn.input);
       gn.input.gain.value = +$("trimSl").value;
       G.on = true; applyGuitar();
       lcd("lcdPad", "GUITARE", "entrée active · " + (micStream.getAudioTracks()[0].label || "micro"));
+      nativeAudio("route");
       const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "audioinput");
       if (devs.length > 1) {
         const sel = $("devSel"); sel.innerHTML = ""; sel.hidden = false;
@@ -3178,6 +3200,7 @@ registerProcessor('nomad-oct',Oct);`;
     if (micSrc) { micSrc.disconnect(); micSrc = null; }
     if (micStream) { micStream.getTracks().forEach(tr => tr.stop()); micStream = null; }
     try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
+    nativeAudio("playback");
     G.on = false; applyGuitar();
   }
   $("inBtn").addEventListener("click", () => { if (G.on) stopInput(); else startInput(); });

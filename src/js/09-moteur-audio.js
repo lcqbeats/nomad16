@@ -44,7 +44,9 @@
     liveBus = ctx.createGain();
     loopBus = ctx.createGain();
     master = ctx.createGain();
-    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -10; comp.ratio.value = 4;
+    // compresseur de sortie : celui du navigateur anticipe de 6 ms ; remplacé (une fois les worklets chargés) par
+    // un compresseur sans anticipation, réglé pour sonner pareil (mesuré) : moins de latence, utile à la guitare
+    const comp = ctx.createGain(), dyn = ctx.createDynamicsCompressor(); dyn.threshold.value = -10; dyn.ratio.value = 4;
     liveIn.connect(padOut);
     echoIn = ctx.createGain(); echoIn.connect(delay);
     delayFb.gain.value = 0.42; delayWet.gain.value = 0.7;
@@ -55,7 +57,7 @@
     padOut.connect(chPads); chPads.connect(liveBus); chSons.connect(liveBus); chGtr.connect(liveBus);
     liveBus.connect(master); loopBus.connect(master);
     fxOut = comp;
-    spIn = ctx.createGain(); comp.connect(spIn);
+    spIn = ctx.createGain(); comp.connect(dyn); dyn.connect(spIn);
     buildSp(spIn, chMaster);
     mixOut = chMaster; chMaster.connect(ctx.destination);
     applyMix();
@@ -63,6 +65,7 @@
     buffers = synthBuffers.slice();
     loopBus.gain.value = knobVals.loops[6];
     await setupCapture();
+    if (hasWorklet) { try { const wc = new AudioWorkletNode(ctx, "nomad-comp", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] }); comp.disconnect(); comp.connect(wc); wc.connect(spIn); } catch (e) {} }
     buildFx();
     buildGuitar();
     $("power").hidden = true;

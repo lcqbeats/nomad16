@@ -160,7 +160,8 @@
     gn.master = gain(0);
     gn.chorus.out.connect(gn.master); gn.dlyWet.connect(gn.master); gn.revWet.connect(gn.master);
     // Limiteur : empêche un larsen de s'emballer
-    gn.lim = ctx.createDynamicsCompressor(); gn.lim.threshold.value = -6; gn.lim.knee.value = 0; gn.lim.ratio.value = 20; gn.lim.attack.value = 0.001; gn.lim.release.value = 0.08;
+    // (écrêtage doux sans anticipation, au lieu du compresseur du navigateur qui retardait le son de 6 ms)
+    gn.lim = ctx.createWaveShaper(); gn.lim.curve = (() => { const n = 2048, c = new Float32Array(n); for (let k = 0; k < n; k++) { const x = k / (n - 1) * 4 - 2, a = Math.abs(x); c[k] = Math.sign(x) * (a < 0.45 ? a : 0.45 + 0.55 * Math.tanh((a - 0.45) / 0.55)); } return c; })();
     // anti-larsen : repère une fréquence qui sonne seule et longtemps, la creuse ; si ça continue, baisse puis coupe la guitare
     gn.notch = [0, 1, 2, 3].map(() => { const b = ctx.createBiquadFilter(); b.type = "peaking"; b.frequency.value = 1000; b.Q.value = 14; b.gain.value = 0; return b; });
     gn.duck = gain(1);
@@ -207,18 +208,30 @@
   drawGuitar();
 
   let micStream = null, micSrc = null;
+  // app iPhone (VERSION 6) : session audio enregistrement + entrée externe prioritaire ; elle renvoie l'entrée et la latence réelles
+  const nativeAudio = t => { try { window.webkit.messageHandlers.nomadAudio.postMessage({ type: t }); return true; } catch (e) { return false; } };
+  window.__nomadAudio = a => {
+    if (!a) return;
+    const tot = Math.round((a.inLat || 0) + (a.outLat || 0) + 2 * (a.buf || 0));
+    const ext = !/MicrophoneBuiltIn/i.test(a.input || "");
+    const txt = "entrée " + String(a.input || "?").split(" · ")[0] + (ext ? "" : " (micro de l'iPhone !)") + " · aller-retour ≈ " + tot + " ms";
+    if (G.on) lcd("lcdPad", "GUITARE", txt);
+    const li = $("latInfo"); if (li) li.textContent = "iPhone : " + txt + " · sortie " + String(a.output || "?").split(" · ")[0];
+  };
   async function startInput(deviceId) {
     if (!ctx) return;
     try {
       if (micSrc) { micSrc.disconnect(); micSrc = null; }
       if (micStream) micStream.getTracks().forEach(tr => tr.stop());
       try { if (navigator.audioSession) navigator.audioSession.type = "play-and-record"; } catch (e) {}
+      nativeAudio("record");
       micStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: deviceId ? { exact: deviceId } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false, latency: 0 } });
       micSrc = ctx.createMediaStreamSource(micStream);
       micSrc.connect(gn.input);
       gn.input.gain.value = +$("trimSl").value;
       G.on = true; applyGuitar();
       lcd("lcdPad", "GUITARE", "entrée active · " + (micStream.getAudioTracks()[0].label || "micro"));
+      nativeAudio("route");
       const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "audioinput");
       if (devs.length > 1) {
         const sel = $("devSel"); sel.innerHTML = ""; sel.hidden = false;
@@ -233,6 +246,7 @@
     if (micSrc) { micSrc.disconnect(); micSrc = null; }
     if (micStream) { micStream.getTracks().forEach(tr => tr.stop()); micStream = null; }
     try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
+    nativeAudio("playback");
     G.on = false; applyGuitar();
   }
   $("inBtn").addEventListener("click", () => { if (G.on) stopInput(); else startInput(); });
