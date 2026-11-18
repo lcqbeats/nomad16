@@ -214,7 +214,7 @@
     if (!a) return;
     const tot = Math.round((a.inLat || 0) + (a.outLat || 0) + 2 * (a.buf || 0));
     const ext = !/MicrophoneBuiltIn/i.test(a.input || "");
-    const txt = "entrée " + String(a.input || "?").split(" · ")[0] + (ext ? "" : " (micro de l'iPhone !)") + " · aller-retour ≈ " + tot + " ms";
+    const txt = "latence ≈ " + tot + " ms · " + (ext ? "" : "MICRO DE L'IPHONE ! · ") + String(a.input || "?").split(" · ")[0];
     if (G.on) lcd("lcdPad", "GUITARE", txt);
     const li = $("latInfo"); if (li) li.textContent = "iPhone : " + txt + " · sortie " + String(a.output || "?").split(" · ")[0];
   };

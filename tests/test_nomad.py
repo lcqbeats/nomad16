@@ -1272,6 +1272,6 @@ def test_guitare_session_native_et_compresseur_sans_retard(app):
     app.wait_for_function("__msgs.includes('route')", timeout=8000)
     assert app.evaluate("__msgs[0]") == "record"
     app.wait_for_function("document.getElementById('latInfo').textContent.includes('iRig HD X')")
-    assert "≈ 14 ms" in app.evaluate("document.getElementById('latInfo').textContent")
+    assert "latence ≈ 14 ms" in app.evaluate("document.getElementById('latInfo').textContent")
     app.click("#inBtn")
     assert app.evaluate("__msgs[__msgs.length - 1]") == "playback"
