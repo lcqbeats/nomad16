@@ -133,7 +133,25 @@ if(this.mt>0&&((this.stab>=20&&old&&r>old.r*1.4&&r>0.06)||(this.stab>=250&&r>0.2
 this.k=0;this.ss=0;this.zc=0;}
 this.m+=(this.mt-this.m)*(this.mt<this.m?0.02:0.0005);
 const g=this.env>this.ceil?this.ceil/this.env:1;for(let c=0;c<o.length;c++)o[c][s]=v*g*this.m;}return true;}}
-registerProcessor('nomad-guard',Guard);`;
+registerProcessor('nomad-guard',Guard);
+class Aec extends AudioWorkletProcessor{constructor(){super();this.M=16383;this.R=new Float32Array(16384);this.w=0;this.L=128;this.h=new Float32Array(128);this.h0=null;this.D=0;this.run=false;this.rec=null;this.frz=0;this.E=0;this.g=0;this.mx=[0,0,0,0,0,0,0,0];this.mi=0;
+this.port.onmessage=e=>{const d=e.data;if(d.type==='calib')this.rec={m:new Float32Array(d.n),r:new Float32Array(d.n),i:0};
+if(d.type==='run'){this.D=d.D;this.h.set(d.h);this.h0=Float32Array.from(d.h);this.g=d.h.reduce((a,b)=>a+Math.abs(b),0);this.run=true;this.frz=0;}
+if(d.type==='off')this.run=false;};}
+process(inputs,outputs){const mi=inputs[0]&&inputs[0][0],ri=inputs[1]&&inputs[1][0],o=outputs[0],out=o[0],n=out.length,R=this.R,M=this.M,h=this.h,L=this.L;
+let bm=0;if(ri)for(let s=0;s<n;s++)bm=Math.max(bm,Math.abs(ri[s]));this.mx[this.mi=(this.mi+1)&7]=bm;const mr=Math.max(...this.mx);
+if(this.run){let E=0;const b0=this.w-this.D;for(let k=0;k<L;k++){const x=R[(b0-k)&M];E+=x*x;}this.E=E;}
+for(let s=0;s<n;s++){const rv=ri?ri[s]:0,mv=mi?mi[s]:0;R[this.w]=rv;
+if(this.rec){const c=this.rec;c.m[c.i]=mv;c.r[c.i]=rv;if(++c.i>=c.m.length){this.port.postMessage({type:'calib',m:c.m,r:c.r},[c.m.buffer,c.r.buffer]);this.rec=null;}}
+let e=mv;
+if(this.run){const b=this.w-this.D,xin=R[b&M],xout=R[(b-L)&M];this.E=Math.max(0,this.E+xin*xin-xout*xout);
+let y=0;for(let k=0;k<L;k++)y+=h[k]*R[(b-k)&M];e=mv-y;
+// la guitare joue (bien plus fort que la fuite attendue) : on n'apprend pas ; sinon le filtre suit la fuite (volume changé, câble bougé)
+if(Math.abs(mv)>2.5*this.g*mr+2e-4)this.frz=(sampleRate*0.04)|0;
+if(this.frz>0)this.frz--;else if(this.E>L*1e-7){const mu=0.015*e/(this.E+1e-6);let s1=0;for(let k=0;k<L;k++){h[k]+=mu*R[(b-k)&M];s1+=Math.abs(h[k]);}
+if(s1>4*this.g+0.05&&this.h0)h.set(this.h0);}}
+for(let c=0;c<o.length;c++)o[c][s]=e;this.w=(this.w+1)&M;}return true;}}
+registerProcessor('nomad-aec',Aec);`;
   let hasWorklet = false;
   async function setupCapture() {
     ringN = Math.floor(sr * CAP_SECONDS);

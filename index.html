@@ -273,6 +273,15 @@ button { font-family: var(--font-body); }
 .tuner .tbar { position: relative; height: 18px; border-radius: 9px; background: linear-gradient(90deg, #5a1414, #3a3a1a 40%, #134d2b 48% 52%, #3a3a1a 60%, #5a1414); }
 .tuner .tbar i { position: absolute; top: -3px; width: 4px; height: 24px; margin-left: -2px; border-radius: 2px; background: var(--text); left: 50%; transition: left .08s; }
 .tuner .tc { font-size: 20px; min-width: 5ch; text-align: right; }
+.tuner .tn { font-size: 30px; min-width: 3.4ch; }
+.tuner .tn small { display: block; font-size: 11px; opacity: .7; margin-top: 2px; }
+.tuner .tbar { height: 26px; }
+.tuner .tbar::after { content: ""; position: absolute; left: 50%; top: 2px; bottom: 2px; width: 2px; margin-left: -1px; background: #7dffa6; opacity: .8; }
+.tuner .tbar b { position: absolute; top: 50%; transform: translateY(-50%); font-size: 10px; letter-spacing: .08em; color: #ffffffb0; font-weight: 400; }
+.tuner .tbar .tfl { left: 8px; } .tuner .tbar .tsh { right: 8px; }
+.tuner .tbar i { top: -4px; width: 6px; height: 34px; margin-left: -3px; transition: left .12s ease-out, background .2s; }
+.tuner.hold .tbar i, .tuner.hold .tn, .tuner.hold .tc { opacity: .45; }
+.tuner .tdir { grid-column: 1 / -1; margin: 0; text-align: center; font-size: 15px; letter-spacing: .04em; min-height: 1.3em; }
 .crates { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
 .crate { flex: 0 0 auto; border: 0; cursor: pointer; padding: 8px 10px 7px; border-radius: 4px 4px 2px 2px; font-family: var(--font-display); font-size: 10px; letter-spacing: .08em; color: #f3e9d2;
   background: linear-gradient(180deg, #7a5532, #5e3f23); box-shadow: inset 0 -3px 0 rgba(0,0,0,.35), 0 0 0 2px #000; text-shadow: 0 1px 0 #000; }
@@ -989,8 +998,9 @@ html.flipped, html.flipped body { overflow: hidden; }
         <div class="meter" aria-label="Niveau d'entrée"><i id="meter"></i></div>
         <select class="dev" id="devSel" aria-label="Entrée audio" hidden></select>
         <button class="btn" id="tunBtn" type="button">ACCORDEUR</button>
+        <button class="btn" id="aecBtn" type="button" title="Mesure puis retire la fuite du son des écouteurs dans l'entrée guitare (iRig) : supprime le larsen avec COMP, DRIVE, FUZZ">ANTI-LARSEN</button>
       </div>
-      <div class="tuner" id="tuner" hidden><span class="tn" id="tunNote">—</span><div class="tbar"><i id="tunNeedle"></i></div><span class="tc" id="tunCents"></span></div>
+      <div class="tuner" id="tuner" hidden><span class="tn" id="tunNote">—</span><div class="tbar"><b class="tfl">♭ BAS</b><b class="tsh">HAUT ♯</b><i id="tunNeedle"></i></div><span class="tc" id="tunCents"></span><p class="tdir" id="tunDir">jouez une corde et laissez-la sonner</p></div>
       <div class="gtools">
         <label for="gateSl">SEUIL DE BRUIT <span id="gateVal">-55 dB</span></label>
         <label for="trimSl">NIVEAU D'ENTRÉE <span id="trimVal">100 %</span></label>
@@ -1797,7 +1807,25 @@ if(this.mt>0&&((this.stab>=20&&old&&r>old.r*1.4&&r>0.06)||(this.stab>=250&&r>0.2
 this.k=0;this.ss=0;this.zc=0;}
 this.m+=(this.mt-this.m)*(this.mt<this.m?0.02:0.0005);
 const g=this.env>this.ceil?this.ceil/this.env:1;for(let c=0;c<o.length;c++)o[c][s]=v*g*this.m;}return true;}}
-registerProcessor('nomad-guard',Guard);`;
+registerProcessor('nomad-guard',Guard);
+class Aec extends AudioWorkletProcessor{constructor(){super();this.M=16383;this.R=new Float32Array(16384);this.w=0;this.L=128;this.h=new Float32Array(128);this.h0=null;this.D=0;this.run=false;this.rec=null;this.frz=0;this.E=0;this.g=0;this.mx=[0,0,0,0,0,0,0,0];this.mi=0;
+this.port.onmessage=e=>{const d=e.data;if(d.type==='calib')this.rec={m:new Float32Array(d.n),r:new Float32Array(d.n),i:0};
+if(d.type==='run'){this.D=d.D;this.h.set(d.h);this.h0=Float32Array.from(d.h);this.g=d.h.reduce((a,b)=>a+Math.abs(b),0);this.run=true;this.frz=0;}
+if(d.type==='off')this.run=false;};}
+process(inputs,outputs){const mi=inputs[0]&&inputs[0][0],ri=inputs[1]&&inputs[1][0],o=outputs[0],out=o[0],n=out.length,R=this.R,M=this.M,h=this.h,L=this.L;
+let bm=0;if(ri)for(let s=0;s<n;s++)bm=Math.max(bm,Math.abs(ri[s]));this.mx[this.mi=(this.mi+1)&7]=bm;const mr=Math.max(...this.mx);
+if(this.run){let E=0;const b0=this.w-this.D;for(let k=0;k<L;k++){const x=R[(b0-k)&M];E+=x*x;}this.E=E;}
+for(let s=0;s<n;s++){const rv=ri?ri[s]:0,mv=mi?mi[s]:0;R[this.w]=rv;
+if(this.rec){const c=this.rec;c.m[c.i]=mv;c.r[c.i]=rv;if(++c.i>=c.m.length){this.port.postMessage({type:'calib',m:c.m,r:c.r},[c.m.buffer,c.r.buffer]);this.rec=null;}}
+let e=mv;
+if(this.run){const b=this.w-this.D,xin=R[b&M],xout=R[(b-L)&M];this.E=Math.max(0,this.E+xin*xin-xout*xout);
+let y=0;for(let k=0;k<L;k++)y+=h[k]*R[(b-k)&M];e=mv-y;
+// la guitare joue (bien plus fort que la fuite attendue) : on n'apprend pas ; sinon le filtre suit la fuite (volume changé, câble bougé)
+if(Math.abs(mv)>2.5*this.g*mr+2e-4)this.frz=(sampleRate*0.04)|0;
+if(this.frz>0)this.frz--;else if(this.E>L*1e-7){const mu=0.015*e/(this.E+1e-6);let s1=0;for(let k=0;k<L;k++){h[k]+=mu*R[(b-k)&M];s1+=Math.abs(h[k]);}
+if(s1>4*this.g+0.05&&this.h0)h.set(this.h0);}}
+for(let c=0;c<o.length;c++)o[c][s]=e;this.w=(this.w+1)&M;}return true;}}
+registerProcessor('nomad-aec',Aec);`;
   let hasWorklet = false;
   async function setupCapture() {
     ringN = Math.floor(sr * CAP_SECONDS);
@@ -3083,6 +3111,15 @@ registerProcessor('nomad-guard',Guard);`;
     gn.input = gain(1);
     gn.analyser = ctx.createAnalyser(); gn.analyser.fftSize = 2048;
     gn.input.connect(gn.analyser);
+    // anti-larsen écouteurs : retire de l'entrée la part du son de sortie qui fuit dans le câble de l'iRig
+    // (comme un annuleur d'écho de téléphone, mais sans traitement de la voix ni latence ajoutée)
+    gn.aecIn = gn.input;
+    if (hasWorklet) {
+      gn.aec = new AudioWorkletNode(ctx, "nomad-aec", { numberOfInputs: 2, numberOfOutputs: 1, outputChannelCount: [1] });
+      gn.aecRef = ctx.createDelay(0.01); gn.aecRef.delayTime.value = 128 / ctx.sampleRate;
+      mixOut.connect(gn.aecRef); gn.aecRef.connect(gn.aec, 0, 1); gn.aec.connect(gn.input); gn.aecIn = gn.aec;
+      gn.aec.port.onmessage = e => { if (e.data.type === "calib" && AEC.done) AEC.done(e.data); };
+    }
     gn.onAn = ctx.createAnalyser(); gn.onAn.fftSize = 256; gn.input.connect(gn.onAn);
     let head = gn.input;
     if (hasWorklet) {
@@ -3175,7 +3212,7 @@ registerProcessor('nomad-guard',Guard);`;
       gn.acTreb.gain.setTargetAtTime(db(k[3]) * 0.6 + 3, t, 0.02);
     }
     gn.revWet.gain.setTargetAtTime(Math.pow(k[5], 1.5) * 0.9, t, 0.02);
-    gn.master.gain.setTargetAtTime(G.on && !tuning ? Math.pow(k[6], 1.5) * 1.6 : 0, t, 0.02);
+    gn.master.gain.setTargetAtTime(G.on && !tuning && !AEC.busy ? Math.pow(k[6], 1.5) * 1.6 : 0, t, 0.02);
     const dl = G.fx.has("delay") ? Math.max(k[7], 0.25) : k[7];
     gn.dlyWet.gain.setTargetAtTime(dl * 0.7, t, 0.02);
     gn.dlyFb.gain.setTargetAtTime(0.2 + dl * 0.35, t, 0.02);
@@ -3191,7 +3228,8 @@ registerProcessor('nomad-guard',Guard);`;
     const ext = !/MicrophoneBuiltIn/i.test(a.input || "");
     const txt = "latence ≈ " + tot + " ms · " + (ext ? "" : "MICRO DE L'IPHONE ! · ") + String(a.input || "?").split(" · ")[0];
     if (G.on) lcd("lcdPad", "GUITARE", txt);
-    if (/HeadsetMic/i.test(a.input || "") && !G.tipHs) { G.tipHs = 1; setTimeout(() => G.on && lcd("lcdPad", "GUITARE", "écouteurs sur l'iRig : volume iPhone bas avant COMP, DRIVE, FUZZ"), 2500); }
+    // iRig sur la prise jack : la sortie fuit dans l'entrée -> calibrage automatique de l'anti-larsen à chaque nouveau branchement
+    if (/HeadsetMic/i.test(a.input || "") && G.on && !AEC.on && !AEC.busy && AEC.route !== a.input) { AEC.route = a.input; setTimeout(() => G.on && aecCalibrate(), 1500); }
     const li = $("latInfo"); if (li) li.textContent = "iPhone : " + txt + " · sortie " + String(a.output || "?").split(" · ")[0];
   };
   async function startInput(deviceId) {
@@ -3204,7 +3242,7 @@ registerProcessor('nomad-guard',Guard);`;
       if (gn.guard) gn.guard.port.postMessage({ type: "reset" });
       micStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: deviceId ? { exact: deviceId } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false, latency: 0 } });
       micSrc = ctx.createMediaStreamSource(micStream);
-      micSrc.connect(gn.input);
+      micSrc.connect(gn.aecIn);
       gn.input.gain.value = +$("trimSl").value;
       G.on = true; applyGuitar();
       lcd("lcdPad", "GUITARE", "entrée active · " + (micStream.getAudioTracks()[0].label || "micro"));
@@ -3227,6 +3265,41 @@ registerProcessor('nomad-guard',Guard);`;
     G.on = false; applyGuitar();
   }
   $("inBtn").addEventListener("click", () => { if (G.on) stopInput(); else startInput(); });
+  // calibrage : un souffle discret de 0,6 s (cordes étouffées) mesure le chemin de la fuite, puis le filtre la retire en continu
+  var AEC = { on: false, busy: false, done: null, route: "" };
+  async function aecCalibrate() {
+    if (!gn || !gn.aec || AEC.busy) return false;
+    AEC.busy = true; applyGuitar(); drawAec();
+    lcd("lcdPad", "ANTI-LARSEN", "calibrage · étouffez les cordes une seconde");
+    await new Promise(r => setTimeout(r, 250));
+    const n = Math.round(sr * 0.7), nb = ctx.createBuffer(1, n, sr), d = nb.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (i < 480 ? i / 480 : i > n - 480 ? (n - i) / 480 : 1);
+    const src = ctx.createBufferSource(), g = ctx.createGain(); g.gain.value = 0.05; src.buffer = nb; src.connect(g); g.connect(mixOut);
+    const got = new Promise(r => { AEC.done = r; });
+    gn.aec.port.postMessage({ type: "calib", n }); src.start();
+    const { m, r } = await got; AEC.done = null; g.disconnect();
+    const maxLag = Math.min(4096, n >> 1), N = n - maxLag, xc = new Float32Array(maxLag);
+    let Er = 0; for (let i = 0; i < N; i++) Er += r[i] * r[i];
+    for (let lag = 0; lag < maxLag; lag++) { let s = 0; for (let i = 0; i < N; i++) s += m[i + lag] * r[i]; xc[lag] = s; }
+    let P = 0; for (let lag = 1; lag < maxLag; lag++) if (Math.abs(xc[lag]) > Math.abs(xc[P])) P = lag;
+    const mags = Array.from(xc, Math.abs).sort((a, b) => a - b), med = mags[maxLag >> 1] || 1e-12;
+    AEC.busy = false;
+    if (Math.abs(xc[P]) < 10 * med || Er < 1e-6) {
+      gn.aec.port.postMessage({ type: "off" }); AEC.on = false; applyGuitar(); drawAec();
+      lcd("lcdPad", "ANTI-LARSEN", "aucune fuite mesurée · rien à retirer"); return false;
+    }
+    const D = Math.max(0, P - 16), h = new Float32Array(128);
+    for (let k = 0; k < 128 && D + k < maxLag; k++) h[k] = xc[D + k] / Er;
+    gn.aec.port.postMessage({ type: "run", D, h }); AEC.on = true; applyGuitar(); drawAec();
+    lcd("lcdPad", "ANTI-LARSEN", "fuite mesurée (" + (Math.round(D / sr * 10000) / 10) + " ms, " + Math.round(20 * Math.log10(Math.max(...Array.from(h, Math.abs))) ) + " dB) · retirée en continu");
+    return true;
+  }
+  function drawAec() { const b = $("aecBtn"); if (!b) return; b.classList.toggle("on", AEC.on); b.textContent = AEC.busy ? "MESURE…" : AEC.on ? "ANTI-LARSEN ON" : "ANTI-LARSEN"; }
+  $("aecBtn").addEventListener("click", () => {
+    if (AEC.on) { gn.aec.port.postMessage({ type: "off" }); AEC.on = false; drawAec(); lcd("lcdPad", "ANTI-LARSEN", "désactivé"); return; }
+    if (!G.on) { lcd("lcdPad", "ANTI-LARSEN", "allumez d'abord l'entrée"); return; }
+    aecCalibrate();
+  });
   function larsenCut(hz) {
     stopInput();
     lcd("lcdPad", "ANTI-LARSEN", "guitare coupée (" + hz + " Hz) · baissez le volume de l'iPhone ou le niveau d'entrée");
@@ -3273,29 +3346,47 @@ registerProcessor('nomad-guard',Guard);`;
   function detectPitch() {
     gn.analyser.getFloatTimeDomainData(yinBuf);
     let rms = 0; for (let i = 0; i < yinBuf.length; i++) rms += yinBuf[i] * yinBuf[i];
-    if (Math.sqrt(rms / yinBuf.length) < 0.008) return null;
+    if (Math.sqrt(rms / yinBuf.length) < 0.0015) return null;
     const W = 1024, maxT = Math.min(1000, Math.floor(sr / 60)), d = new Float32Array(maxT);
     for (let t = 1; t < maxT; t++) { let sum = 0; for (let i = 0; i < W; i++) { const x = yinBuf[i] - yinBuf[i + t]; sum += x * x; } d[t] = sum; }
     let run = 0, tau = -1;
     for (let t = 1; t < maxT; t++) { run += d[t]; const cm = d[t] * t / (run || 1); d[t] = cm; }
-    for (let t = Math.floor(sr / 1100); t < maxT - 1; t++) { if (d[t] < 0.12) { while (t + 1 < maxT && d[t + 1] < d[t]) t++; tau = t; break; } }
+    for (let t = Math.floor(sr / 1100); t < maxT - 1; t++) { if (d[t] < 0.15) { while (t + 1 < maxT && d[t + 1] < d[t]) t++; tau = t; break; } }
     if (tau < 0) return null;
     const a = d[tau - 1], b = d[tau], c = d[tau + 1] ?? b;
     const shift = (a - c) / (2 * (a - 2 * b + c) || 1);
     return sr / (tau + (isFinite(shift) ? shift : 0));
   }
+  // lecture stable : on suit la note qui sonne (même quand elle retombe), médiane des dernières mesures, aiguille lissée,
+  // et la dernière lecture reste affichée (grisée) 2 s après que la corde s'est tue
+  const TUN = { hist: [], cents: null, note: null, seen: 0 };
+  const STRINGS = { 40: "corde 6 · grave", 45: "corde 5", 50: "corde 4", 55: "corde 3", 59: "corde 2", 64: "corde 1 · aigu" };
   function drawTuner() {
     if (!tuning || !gn || !G.on) return;
-    const now = performance.now(); if (now - tunLast < 60) return; tunLast = now;
-    const f = detectPitch();
-    if (!f || f < 40 || f > 1200) { $("tunNote").textContent = "—"; $("tunCents").textContent = ""; $("tunNeedle").style.left = "50%"; return; }
-    const m = 69 + 12 * Math.log2(f / 440), n = Math.round(m), cents = Math.round((m - n) * 100);
-    const pc = ((n % 12) + 12) % 12;
-    $("tunNote").textContent = NOTE_EN[pc];
-    $("tunCents").textContent = (cents > 0 ? "+" : "") + cents + "¢";
-    $("tunNote").title = NOTE_FR[pc];
-    $("tunNeedle").style.left = (50 + cents) + "%";
-    $("tunNote").style.color = Math.abs(cents) <= 3 ? "#7dffa6" : Math.abs(cents) <= 12 ? "#e0b02a" : "#ff6b61";
+    const now = performance.now(); if (now - tunLast < 40) return; tunLast = now;
+    const f = detectPitch(), tun = $("tuner");
+    if (f && f >= 40 && f <= 1200) {
+      const m = 69 + 12 * Math.log2(f / 440);
+      if (TUN.hist.length && Math.abs(m - TUN.hist[TUN.hist.length - 1]) > 0.7) TUN.hist = []; // autre corde : on repart
+      TUN.hist.push(m); if (TUN.hist.length > 7) TUN.hist.shift();
+      const med = TUN.hist.slice().sort((x, y) => x - y)[TUN.hist.length >> 1], n = Math.round(med), c = (med - n) * 100;
+      if (TUN.note !== n || TUN.cents === null) TUN.cents = c; else TUN.cents += (c - TUN.cents) * 0.35;
+      TUN.note = n; TUN.seen = now;
+    } else if (now - TUN.seen > 2000) {
+      TUN.note = null; TUN.cents = null; TUN.hist = []; tun.classList.remove("hold");
+      $("tunNote").textContent = "—"; $("tunCents").textContent = ""; $("tunNeedle").style.left = "50%"; $("tunNeedle").style.background = "";
+      $("tunDir").textContent = "jouez une corde et laissez-la sonner"; $("tunDir").style.color = ""; return;
+    }
+    if (TUN.note === null) return;
+    tun.classList.toggle("hold", now - TUN.seen > 250);
+    const n = TUN.note, cents = Math.round(TUN.cents), pc = ((n % 12) + 12) % 12, ok = Math.abs(cents) <= 3;
+    $("tunNote").innerHTML = NOTE_FR[pc] + "<small>" + (STRINGS[n] || NOTE_EN[pc] + (Math.floor(n / 12) - 1)) + "</small>";
+    $("tunCents").textContent = (cents > 0 ? "+" : "") + cents;
+    const col = ok ? "#7dffa6" : Math.abs(cents) <= 12 ? "#e0b02a" : "#ff6b61";
+    $("tunNote").style.color = col; $("tunNeedle").style.background = col;
+    $("tunNeedle").style.left = (50 + Math.max(-48, Math.min(48, cents))) + "%";
+    $("tunDir").style.color = col; $("tunCents").style.color = col;
+    $("tunDir").textContent = ok ? "✓ JUSTE" : cents < 0 ? "♭ TROP BAS · tendez la corde" : "♯ TROP HAUT · détendez la corde";
   }
   $("devSel").addEventListener("change", e => startInput(e.target.value));
   const meterBuf = new Float32Array(512);
@@ -7928,7 +8019,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   initMidi();
   try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi) { $("btBox").hidden = false; $("btPair").addEventListener("click", () => window.webkit.messageHandlers.nomadMidi.postMessage({ type: "btpair" })); } } catch (e) {}
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
-  window.nomadDbg = { get ctx() { return ctx; }, get gn() { return gn; }, get G() { return G; }, drRec, drMap, drSwPct, DR_GENRES: DRUM_GENRES, get sp() { return sp; }, FXS, setFxBank, SP_FX, SPX, setSpBank, spPad, AMB, sonsT: { selectInst, keyOn, releaseKey: k => activeKeys.forEach((v, key) => releaseKey(key)) }, DR, drPlay, drStop, scrLoad, newKit, micStop, MIC, edSrcApply, song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get names() { return names; }, get kitIndex() { return kitIndex; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
+  window.nomadDbg = { get ctx() { return ctx; }, get gn() { return gn; }, get G() { return G; }, gtrOn: () => { G.on = true; applyGuitar(); }, aecCalibrate, drRec, drMap, drSwPct, DR_GENRES: DRUM_GENRES, get sp() { return sp; }, FXS, setFxBank, SP_FX, SPX, setSpBank, spPad, AMB, sonsT: { selectInst, keyOn, releaseKey: k => activeKeys.forEach((v, key) => releaseKey(key)) }, DR, drPlay, drStop, scrLoad, newKit, micStop, MIC, edSrcApply, song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get names() { return names; }, get kitIndex() { return kitIndex; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
   let probe = null;
   let probeOut = null;
   window.nomadProbeOut = () => { if (!probeOut) { probeOut = ctx.createAnalyser(); probeOut.fftSize = 2048; mixOut.connect(probeOut); } const a = new Float32Array(2048); probeOut.getFloatTimeDomainData(a); let m = 0; for (const v of a) { if (!isFinite(v)) return NaN; m = Math.max(m, Math.abs(v)); } return +m.toFixed(3); };

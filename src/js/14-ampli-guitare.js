@@ -113,6 +113,15 @@
     gn.input = gain(1);
     gn.analyser = ctx.createAnalyser(); gn.analyser.fftSize = 2048;
     gn.input.connect(gn.analyser);
+    // anti-larsen écouteurs : retire de l'entrée la part du son de sortie qui fuit dans le câble de l'iRig
+    // (comme un annuleur d'écho de téléphone, mais sans traitement de la voix ni latence ajoutée)
+    gn.aecIn = gn.input;
+    if (hasWorklet) {
+      gn.aec = new AudioWorkletNode(ctx, "nomad-aec", { numberOfInputs: 2, numberOfOutputs: 1, outputChannelCount: [1] });
+      gn.aecRef = ctx.createDelay(0.01); gn.aecRef.delayTime.value = 128 / ctx.sampleRate;
+      mixOut.connect(gn.aecRef); gn.aecRef.connect(gn.aec, 0, 1); gn.aec.connect(gn.input); gn.aecIn = gn.aec;
+      gn.aec.port.onmessage = e => { if (e.data.type === "calib" && AEC.done) AEC.done(e.data); };
+    }
     gn.onAn = ctx.createAnalyser(); gn.onAn.fftSize = 256; gn.input.connect(gn.onAn);
     let head = gn.input;
     if (hasWorklet) {
@@ -205,7 +214,7 @@
       gn.acTreb.gain.setTargetAtTime(db(k[3]) * 0.6 + 3, t, 0.02);
     }
     gn.revWet.gain.setTargetAtTime(Math.pow(k[5], 1.5) * 0.9, t, 0.02);
-    gn.master.gain.setTargetAtTime(G.on && !tuning ? Math.pow(k[6], 1.5) * 1.6 : 0, t, 0.02);
+    gn.master.gain.setTargetAtTime(G.on && !tuning && !AEC.busy ? Math.pow(k[6], 1.5) * 1.6 : 0, t, 0.02);
     const dl = G.fx.has("delay") ? Math.max(k[7], 0.25) : k[7];
     gn.dlyWet.gain.setTargetAtTime(dl * 0.7, t, 0.02);
     gn.dlyFb.gain.setTargetAtTime(0.2 + dl * 0.35, t, 0.02);
@@ -221,7 +230,8 @@
     const ext = !/MicrophoneBuiltIn/i.test(a.input || "");
     const txt = "latence ≈ " + tot + " ms · " + (ext ? "" : "MICRO DE L'IPHONE ! · ") + String(a.input || "?").split(" · ")[0];
     if (G.on) lcd("lcdPad", "GUITARE", txt);
-    if (/HeadsetMic/i.test(a.input || "") && !G.tipHs) { G.tipHs = 1; setTimeout(() => G.on && lcd("lcdPad", "GUITARE", "écouteurs sur l'iRig : volume iPhone bas avant COMP, DRIVE, FUZZ"), 2500); }
+    // iRig sur la prise jack : la sortie fuit dans l'entrée -> calibrage automatique de l'anti-larsen à chaque nouveau branchement
+    if (/HeadsetMic/i.test(a.input || "") && G.on && !AEC.on && !AEC.busy && AEC.route !== a.input) { AEC.route = a.input; setTimeout(() => G.on && aecCalibrate(), 1500); }
     const li = $("latInfo"); if (li) li.textContent = "iPhone : " + txt + " · sortie " + String(a.output || "?").split(" · ")[0];
   };
   async function startInput(deviceId) {
@@ -234,7 +244,7 @@
       if (gn.guard) gn.guard.port.postMessage({ type: "reset" });
       micStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: deviceId ? { exact: deviceId } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false, latency: 0 } });
       micSrc = ctx.createMediaStreamSource(micStream);
-      micSrc.connect(gn.input);
+      micSrc.connect(gn.aecIn);
       gn.input.gain.value = +$("trimSl").value;
       G.on = true; applyGuitar();
       lcd("lcdPad", "GUITARE", "entrée active · " + (micStream.getAudioTracks()[0].label || "micro"));
@@ -257,6 +267,41 @@
     G.on = false; applyGuitar();
   }
   $("inBtn").addEventListener("click", () => { if (G.on) stopInput(); else startInput(); });
+  // calibrage : un souffle discret de 0,6 s (cordes étouffées) mesure le chemin de la fuite, puis le filtre la retire en continu
+  var AEC = { on: false, busy: false, done: null, route: "" };
+  async function aecCalibrate() {
+    if (!gn || !gn.aec || AEC.busy) return false;
+    AEC.busy = true; applyGuitar(); drawAec();
+    lcd("lcdPad", "ANTI-LARSEN", "calibrage · étouffez les cordes une seconde");
+    await new Promise(r => setTimeout(r, 250));
+    const n = Math.round(sr * 0.7), nb = ctx.createBuffer(1, n, sr), d = nb.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (i < 480 ? i / 480 : i > n - 480 ? (n - i) / 480 : 1);
+    const src = ctx.createBufferSource(), g = ctx.createGain(); g.gain.value = 0.05; src.buffer = nb; src.connect(g); g.connect(mixOut);
+    const got = new Promise(r => { AEC.done = r; });
+    gn.aec.port.postMessage({ type: "calib", n }); src.start();
+    const { m, r } = await got; AEC.done = null; g.disconnect();
+    const maxLag = Math.min(4096, n >> 1), N = n - maxLag, xc = new Float32Array(maxLag);
+    let Er = 0; for (let i = 0; i < N; i++) Er += r[i] * r[i];
+    for (let lag = 0; lag < maxLag; lag++) { let s = 0; for (let i = 0; i < N; i++) s += m[i + lag] * r[i]; xc[lag] = s; }
+    let P = 0; for (let lag = 1; lag < maxLag; lag++) if (Math.abs(xc[lag]) > Math.abs(xc[P])) P = lag;
+    const mags = Array.from(xc, Math.abs).sort((a, b) => a - b), med = mags[maxLag >> 1] || 1e-12;
+    AEC.busy = false;
+    if (Math.abs(xc[P]) < 10 * med || Er < 1e-6) {
+      gn.aec.port.postMessage({ type: "off" }); AEC.on = false; applyGuitar(); drawAec();
+      lcd("lcdPad", "ANTI-LARSEN", "aucune fuite mesurée · rien à retirer"); return false;
+    }
+    const D = Math.max(0, P - 16), h = new Float32Array(128);
+    for (let k = 0; k < 128 && D + k < maxLag; k++) h[k] = xc[D + k] / Er;
+    gn.aec.port.postMessage({ type: "run", D, h }); AEC.on = true; applyGuitar(); drawAec();
+    lcd("lcdPad", "ANTI-LARSEN", "fuite mesurée (" + (Math.round(D / sr * 10000) / 10) + " ms, " + Math.round(20 * Math.log10(Math.max(...Array.from(h, Math.abs))) ) + " dB) · retirée en continu");
+    return true;
+  }
+  function drawAec() { const b = $("aecBtn"); if (!b) return; b.classList.toggle("on", AEC.on); b.textContent = AEC.busy ? "MESURE…" : AEC.on ? "ANTI-LARSEN ON" : "ANTI-LARSEN"; }
+  $("aecBtn").addEventListener("click", () => {
+    if (AEC.on) { gn.aec.port.postMessage({ type: "off" }); AEC.on = false; drawAec(); lcd("lcdPad", "ANTI-LARSEN", "désactivé"); return; }
+    if (!G.on) { lcd("lcdPad", "ANTI-LARSEN", "allumez d'abord l'entrée"); return; }
+    aecCalibrate();
+  });
   function larsenCut(hz) {
     stopInput();
     lcd("lcdPad", "ANTI-LARSEN", "guitare coupée (" + hz + " Hz) · baissez le volume de l'iPhone ou le niveau d'entrée");

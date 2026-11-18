@@ -139,8 +139,9 @@
         <div class="meter" aria-label="Niveau d'entrée"><i id="meter"></i></div>
         <select class="dev" id="devSel" aria-label="Entrée audio" hidden></select>
         <button class="btn" id="tunBtn" type="button">ACCORDEUR</button>
+        <button class="btn" id="aecBtn" type="button" title="Mesure puis retire la fuite du son des écouteurs dans l'entrée guitare (iRig) : supprime le larsen avec COMP, DRIVE, FUZZ">ANTI-LARSEN</button>
       </div>
-      <div class="tuner" id="tuner" hidden><span class="tn" id="tunNote">—</span><div class="tbar"><i id="tunNeedle"></i></div><span class="tc" id="tunCents"></span></div>
+      <div class="tuner" id="tuner" hidden><span class="tn" id="tunNote">—</span><div class="tbar"><b class="tfl">♭ BAS</b><b class="tsh">HAUT ♯</b><i id="tunNeedle"></i></div><span class="tc" id="tunCents"></span><p class="tdir" id="tunDir">jouez une corde et laissez-la sonner</p></div>
       <div class="gtools">
         <label for="gateSl">SEUIL DE BRUIT <span id="gateVal">-55 dB</span></label>
         <label for="trimSl">NIVEAU D'ENTRÉE <span id="trimVal">100 %</span></label>

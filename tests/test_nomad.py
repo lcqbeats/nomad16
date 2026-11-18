@@ -1297,3 +1297,52 @@ def test_garde_oreilles_plafond_et_larsen(app):
     assert r["pNote"] <= 0.36, r
     assert r["cutAfterNote"] == 0, r
     assert r["cuts"] >= 1 and r["pAfter"] < 0.02, r
+
+
+def test_anti_larsen_ecouteurs_annule_la_fuite(app):
+    # simulation de l'iRig : 20 % du son de sortie revient dans l'entrée guitare 9 ms plus tard ; avec COMP + FUZZ ça s'emballe
+    app.click("#tab-guitar")
+    app.wait_for_function("nomadDbg.gn && nomadDbg.gn.aec")
+    app.click("#pd-comp"); app.click("#pd-fuzz")
+    r = app.evaluate("""(async () => {
+      const ctx = nomadDbg.ctx, gn = nomadDbg.gn, wait = ms => new Promise(r => setTimeout(r, ms));
+      const leak = ctx.createDelay(0.05); leak.delayTime.value = 0.009; const lg = ctx.createGain(); lg.gain.value = 0.2;
+      nomadDbg.gn.aecRef.context; // même contexte
+      const out = gn.aecRef; // la sortie générale passe déjà par ici ; on prend la même source pour la fuite
+      const mix = ctx.createGain(); out.connect(mix); mix.connect(leak); leak.connect(lg); lg.connect(gn.aec, 0, 0);
+      const an = ctx.createAnalyser(); an.fftSize = 2048; gn.input.connect(an); const buf = new Float32Array(2048);
+      const lvl = () => { an.getFloatTimeDomainData(buf); let s = 0; for (const v of buf) s += v * v; return Math.sqrt(s / buf.length); };
+      const pluck = () => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sawtooth'; o.frequency.value = 110; o.connect(g); g.connect(gn.aec, 0, 0);
+        const t = ctx.currentTime; g.gain.setValueAtTime(0.25, t); g.gain.setTargetAtTime(0, t + 0.02, 0.12); o.start(t); o.stop(t + 1.2); };
+      nomadDbg.gtrOn(); await wait(300);
+      const before = nomadDbg.G.larsen || 0; pluck(); await wait(2500);
+      const sansAec = { cut: (nomadDbg.G.larsen || 0) - before, lvl: lvl() };
+      nomadDbg.gn.guard.port.postMessage({ type: 'reset' }); nomadDbg.gtrOn();
+      const ok = await nomadDbg.aecCalibrate(); nomadDbg.gtrOn(); await wait(300);
+      const b2 = nomadDbg.G.larsen || 0; pluck(); await wait(60); const joue = lvl(); await wait(2440);
+      return { sansAec, ok, avecAec: { cut: (nomadDbg.G.larsen || 0) - b2, lvl: lvl(), joue }, lcd: document.getElementById('lcdPad') ? document.getElementById('lcdPad').innerText : '' }; })()""")
+    print(r)
+    assert r["sansAec"]["cut"] >= 1 or r["sansAec"]["lvl"] > 0.05, r
+    assert r["ok"], r
+    assert r["avecAec"]["cut"] == 0 and r["avecAec"]["lvl"] < 0.01, r
+    assert r["avecAec"]["joue"] > 0.05, r  # la guitare elle-même n'est pas retirée
+
+
+def test_accordeur_suit_la_note_qui_sonne(app):
+    app.click("#tab-guitar")
+    app.click("#tunBtn")
+    app.wait_for_function("nomadDbg.G.on")
+    r = app.evaluate("""(async () => {
+      const ctx = nomadDbg.ctx, gn = nomadDbg.gn, wait = ms => new Promise(r => setTimeout(r, ms));
+      gn.input.gain.cancelScheduledValues(0); gn.input.gain.value = 0; await wait(200);
+      // corde de LA un peu basse (108 Hz), pincée une seule fois, qui retombe de 40 dB en 3 s
+      const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sawtooth'; o.frequency.value = 108; o.connect(g); g.connect(gn.analyser);
+      const t = ctx.currentTime; g.gain.setValueAtTime(0.3, t); g.gain.setTargetAtTime(0.003, t, 0.65); o.start(t);
+      const seen = [];
+      for (let i = 0; i < 6; i++) { await wait(500); seen.push([document.getElementById('tunNote').textContent, document.getElementById('tunDir').textContent]); }
+      o.frequency.setValueAtTime(110.1, ctx.currentTime); g.gain.setValueAtTime(0.2, ctx.currentTime); await wait(900);
+      const juste = document.getElementById('tunDir').textContent; o.stop();
+      return { seen, juste }; })()""")
+    print(r)
+    assert all(s[0].startswith("LA") and "TROP BAS" in s[1] for s in r["seen"]), r
+    assert "JUSTE" in r["juste"], r

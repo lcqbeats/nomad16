@@ -259,6 +259,15 @@ button { font-family: var(--font-body); }
 .tuner .tbar { position: relative; height: 18px; border-radius: 9px; background: linear-gradient(90deg, #5a1414, #3a3a1a 40%, #134d2b 48% 52%, #3a3a1a 60%, #5a1414); }
 .tuner .tbar i { position: absolute; top: -3px; width: 4px; height: 24px; margin-left: -2px; border-radius: 2px; background: var(--text); left: 50%; transition: left .08s; }
 .tuner .tc { font-size: 20px; min-width: 5ch; text-align: right; }
+.tuner .tn { font-size: 30px; min-width: 3.4ch; }
+.tuner .tn small { display: block; font-size: 11px; opacity: .7; margin-top: 2px; }
+.tuner .tbar { height: 26px; }
+.tuner .tbar::after { content: ""; position: absolute; left: 50%; top: 2px; bottom: 2px; width: 2px; margin-left: -1px; background: #7dffa6; opacity: .8; }
+.tuner .tbar b { position: absolute; top: 50%; transform: translateY(-50%); font-size: 10px; letter-spacing: .08em; color: #ffffffb0; font-weight: 400; }
+.tuner .tbar .tfl { left: 8px; } .tuner .tbar .tsh { right: 8px; }
+.tuner .tbar i { top: -4px; width: 6px; height: 34px; margin-left: -3px; transition: left .12s ease-out, background .2s; }
+.tuner.hold .tbar i, .tuner.hold .tn, .tuner.hold .tc { opacity: .45; }
+.tuner .tdir { grid-column: 1 / -1; margin: 0; text-align: center; font-size: 15px; letter-spacing: .04em; min-height: 1.3em; }
 .crates { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
 .crate { flex: 0 0 auto; border: 0; cursor: pointer; padding: 8px 10px 7px; border-radius: 4px 4px 2px 2px; font-family: var(--font-display); font-size: 10px; letter-spacing: .08em; color: #f3e9d2;
   background: linear-gradient(180deg, #7a5532, #5e3f23); box-shadow: inset 0 -3px 0 rgba(0,0,0,.35), 0 0 0 2px #000; text-shadow: 0 1px 0 #000; }
