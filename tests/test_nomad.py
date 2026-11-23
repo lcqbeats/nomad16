@@ -1487,3 +1487,19 @@ def test_scratch_onde_facon_serato(app):
     p1 = app.evaluate("nomadDbg.scrPos()")
     app.mouse.up()
     assert p1 < p0, (p0, p1)
+
+
+def test_barre_transport_au_dessus_des_pads_et_accords(app):
+    bar = app.locator("#view-play .minitr")
+    assert bar.locator("button").count() == 5
+    assert app.inner_text("#view-play .minitr .mkit") == app.inner_text("#kitName")
+    k0 = app.inner_text("#kitName")
+    bar.locator(".mkn").click()
+    app.wait_for_function("document.getElementById('kitName').textContent !== %r && !document.getElementById('kitName').textContent.endsWith('…')" % k0, timeout=8000)
+    bar.locator(".mrec").dispatch_event("pointerdown")
+    assert app.evaluate("!!nomadDbg.LP.pending")
+    app.wait_for_function("document.querySelector('#view-play .minitr .mrec').classList.contains('armed')")
+    bar.locator(".mundo").click()
+    assert app.evaluate("!nomadDbg.LP.pending")
+    app.click("#tab-sons"); app.click("#mChords")
+    assert app.locator("#view-sons .minitr").is_visible()

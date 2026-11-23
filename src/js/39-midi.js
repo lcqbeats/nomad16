@@ -136,6 +136,27 @@
   $("trRec").addEventListener("pointerdown", e => { e.preventDefault(); recPress(); });
   $("trPlay").addEventListener("click", () => { if (SONG.playing) { songStop(); stopAll(); } else togglePlay(); });
   $("trUndo").addEventListener("click", undo);
+  // Petite barre juste au-dessus des pads (PADS) et des accords (SONS) : REC, PLAY / STOP, UNDO, kit ◀ ▶,
+  // pour arrêter une prise sans remonter en haut de l'écran
+  document.querySelectorAll(".minitr").forEach(bar => {
+    const mk = (cls, txt, label, fn, down) => { const b = document.createElement("button"); b.type = "button"; b.className = cls; b.textContent = txt; b.setAttribute("aria-label", label);
+      if (down) b.addEventListener("pointerdown", e => { e.preventDefault(); fn(); }); else b.addEventListener("click", fn); bar.appendChild(b); return b; };
+    mk("mrec", "● REC", "Enregistrer", () => recPress(), true);
+    mk("mplay", "▶ PLAY", "Lecture / arrêt", () => { if (SONG.playing) { songStop(); stopAll(); } else togglePlay(); });
+    mk("mundo", "UNDO", "Annuler", undo);
+    const k = document.createElement("span"); k.className = "mkit"; bar.appendChild(k);
+    mk("mkp", "◀", "Kit précédent", () => stepKit(-1));
+    mk("mkn", "▶", "Kit suivant", () => stepKit(1));
+  });
+  function drawMiniTr() {
+    const rec = $("trRec"), pt = $("trPlay").textContent, kn = $("kitName").textContent;
+    document.querySelectorAll(".minitr").forEach(bar => {
+      const r = bar.querySelector(".mrec"); r.classList.toggle("armed", rec.classList.contains("armed")); r.classList.toggle("rec", rec.classList.contains("rec"));
+      const p = bar.querySelector(".mplay"); if (p.textContent !== pt) p.textContent = pt;
+      const k = bar.querySelector(".mkit"); if (k.textContent !== kn) k.textContent = kn;
+    });
+  }
+  setInterval(drawMiniTr, 120);
   $("trMetro").addEventListener("click", () => { SQ.metro = !SQ.metro; SQ.metroF = 0; drawSeqSel(); lcd("lcdPad", "MÉTRONOME", SQ.metro ? "activé" : "désactivé"); });
   initMidi();
   try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi) { $("btBox").hidden = false; $("btPair").addEventListener("click", () => window.webkit.messageHandlers.nomadMidi.postMessage({ type: "btpair" })); } } catch (e) {}
