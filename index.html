@@ -920,6 +920,9 @@ html.flipped, html.flipped body { overflow: hidden; }
 :root.deskfit body { padding: 6px max(6px, env(safe-area-inset-right)) 10px max(6px, env(safe-area-inset-left)); display: block; overflow-x: hidden; }
 :root.deskfit .machine { transform-origin: 0 0; max-width: none; margin-left: 0; }
 :root.deskfit .minitr { display: none; }
+:root.deskfit .pads { max-width: none; width: 100%; gap: 8px; }
+:root.deskfit .pad { aspect-ratio: auto; height: var(--padH, 100px); min-height: 0; }
+:root.deskfit .machine { padding: 12px 18px 16px; row-gap: 10px; column-gap: 20px; }
 </style>
 </head>
 <body>
@@ -8468,7 +8471,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   const DESK_Q = window.matchMedia ? window.matchMedia("(min-width: 1000px) and (hover: hover) and (pointer: fine)") : null;
   // téléphone tenu en paysage : même mise en page que sur ordinateur, réduite à la largeur de l'écran
   const LAND_Q = window.matchMedia ? window.matchMedia("(orientation: landscape) and (pointer: coarse) and (max-height: 560px)") : null;
-  const FIT_W = 1120;
+  const FIT_W = 1000;
   let deskMode = store.get("layout", "auto");
   function fitDesk() {
     const m = document.querySelector(".machine"); if (!m) return;
@@ -8478,6 +8481,12 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
     const k = Math.min(1, W / FIT_W), H = m.offsetHeight;
     m.style.width = FIT_W + "px"; m.style.transform = `scale(${k})`;
     m.style.marginRight = -(FIT_W * (1 - k)) + "px"; m.style.marginBottom = -(H * (1 - k)) + "px";
+    // pads aussi grands que possible : toute la largeur de la colonne, et les 4 rangées tiennent dans la hauteur de l'écran
+    const pads = $("pads");
+    if (pads && pads.offsetParent) {
+      const top = (pads.getBoundingClientRect().top - m.getBoundingClientRect().top) / k, avail = window.innerHeight / k - top - 14;
+      document.documentElement.style.setProperty("--padH", Math.max(70, Math.floor((avail - 3 * 8) / 4)) + "px");
+    }
   }
   function applyDesk() {
     const land = deskMode === "auto" && LAND_Q && LAND_Q.matches;

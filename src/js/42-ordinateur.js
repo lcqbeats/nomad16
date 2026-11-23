@@ -2,7 +2,7 @@
   const DESK_Q = window.matchMedia ? window.matchMedia("(min-width: 1000px) and (hover: hover) and (pointer: fine)") : null;
   // téléphone tenu en paysage : même mise en page que sur ordinateur, réduite à la largeur de l'écran
   const LAND_Q = window.matchMedia ? window.matchMedia("(orientation: landscape) and (pointer: coarse) and (max-height: 560px)") : null;
-  const FIT_W = 1120;
+  const FIT_W = 1000;
   let deskMode = store.get("layout", "auto");
   function fitDesk() {
     const m = document.querySelector(".machine"); if (!m) return;
@@ -12,6 +12,12 @@
     const k = Math.min(1, W / FIT_W), H = m.offsetHeight;
     m.style.width = FIT_W + "px"; m.style.transform = `scale(${k})`;
     m.style.marginRight = -(FIT_W * (1 - k)) + "px"; m.style.marginBottom = -(H * (1 - k)) + "px";
+    // pads aussi grands que possible : toute la largeur de la colonne, et les 4 rangées tiennent dans la hauteur de l'écran
+    const pads = $("pads");
+    if (pads && pads.offsetParent) {
+      const top = (pads.getBoundingClientRect().top - m.getBoundingClientRect().top) / k, avail = window.innerHeight / k - top - 14;
+      document.documentElement.style.setProperty("--padH", Math.max(70, Math.floor((avail - 3 * 8) / 4)) + "px");
+    }
   }
   function applyDesk() {
     const land = deskMode === "auto" && LAND_Q && LAND_Q.matches;
