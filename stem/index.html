@@ -36,6 +36,11 @@ button[disabled] { opacity: .45; cursor: default; }
 .seg { display: inline-flex; border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 1px var(--line); }
 .seg button { border-radius: 0; box-shadow: none; background: #1d190f; color: var(--mute); }
 .seg button.on { background: var(--green); color: #fff; }
+.picks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; width: 100%; }
+.picks span, .picks em { font: 800 11px/1 Arial, sans-serif; letter-spacing: .18em; color: var(--mute); font-style: normal; }
+.picks span { margin-right: 4px; }
+.picks button { padding: 10px 12px; background: #1d190f; color: var(--mute); box-shadow: 0 0 0 1px var(--line); }
+.picks button.on { background: var(--gold); color: #1d1607; box-shadow: 0 3px 0 #6b5212; }
 .info { color: var(--mute); font-size: 13px; margin: 8px 0 0; }
 .file { font-weight: 700; color: var(--ink); }
 .bar { height: 16px; border-radius: 8px; background: #0a0805; box-shadow: inset 0 1px 3px #000; overflow: hidden; margin: 12px 0 6px; }
@@ -97,13 +102,16 @@ footer a, .info a { color: var(--gold); }
   <section class="panel">
     <h2>2 · LA SÉPARATION</h2>
     <div class="row">
+      <div class="picks" role="group" aria-label="Pistes à sortir">
+        <span>PISTES À SORTIR</span>
+        <button type="button" data-k="drums">BATTERIE</button><button type="button" data-k="bass">BASSE</button><button type="button" data-k="vocals">VOIX</button><button type="button" data-k="guitar">GUITARE</button><button type="button" data-k="piano">PIANO</button>
+        <em>+ LE RESTE</em>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px">
       <div class="seg" role="group" aria-label="Qualité">
         <button type="button" id="qNorm" class="on">NORMALE</button>
         <button type="button" id="qCare">SOIGNÉE · 2× PLUS LONG</button>
-      </div>
-      <div class="seg" role="group" aria-label="Nombre de pistes">
-        <button type="button" data-n="4">4 PISTES</button>
-        <button type="button" data-n="6">6 PISTES · + GUITARE, PIANO</button>
       </div>
       <div class="seg" role="group" aria-label="Moteur de calcul">
         <button type="button" data-e="auto" class="on">AUTO</button>
@@ -112,7 +120,8 @@ footer a, .info a { color: var(--gold); }
       </div>
       <button type="button" class="go" id="go" disabled>▶ SÉPARER</button>
     </div>
-    <p class="info">4 PISTES : batterie, basse, voix et le reste des instruments (modèle HTDemucs v4, 172 Mo). 6 PISTES : en plus, la guitare et le piano sortent à part (HTDemucs 6s, 285 Mo, à peu près le même temps de calcul ; ces deux pistes-là sont moins propres que les autres). Chaque modèle se télécharge la première fois, puis reste dans le navigateur. SOIGNÉE fait une 2e passe décalée et moyenne les deux : un peu moins d'artefacts. MOTEUR : AUTO essaie la carte graphique puis le processeur ; sur un ordinateur ancien à puce graphique intégrée, PROCESSEUR est souvent plus rapide.</p>
+    <p class="info">Allumez les pistes à sortir : ce qui n'est pas choisi reste ensemble dans LE RESTE (rien ne se perd), et le temps de calcul ne change pas. GUITARE ou PIANO font passer au modèle 6 pistes (HTDemucs 6s, 285 Mo, à peu près le même temps ; ces deux pistes-là sont moins propres) ; sinon modèle 4 pistes (HTDemucs v4, 172 Mo). Chaque modèle se télécharge la première fois, puis reste dans le navigateur. SOIGNÉE fait une 2e passe décalée et moyenne les deux : un peu moins d'artefacts. MOTEUR : AUTO essaie la carte graphique puis le processeur ; sur un ordinateur ancien à puce graphique intégrée, PROCESSEUR est souvent plus rapide.</p>
+    <p class="info" id="modelInfo"></p>
     <div class="bar"><i id="bar"></i></div>
     <div class="status" id="status">prêt</div>
   </section>
@@ -158,7 +167,10 @@ const MIXES = [
   ["music", "MUSIQUE SANS RYTHMIQUE", "instruments + voix", ["-", "drums", "bass"]]
 ];
 const mixParts = spec => spec[0] === "-" ? Object.keys(stems).filter(k => !spec.includes(k)) : spec.filter(k => stems[k]);
-let ac = null, song = null, name = "", stems = null, careful = false, busy = false, nStems = +(localStorage.getItem("semiliaStems") || 4);
+let ac = null, song = null, name = "", stems = null, careful = false, busy = false;
+// pistes choisies : ce qui n'est pas choisi part dans « LE RESTE » (rien ne se perd) ; GUITARE ou PIANO demandent le modèle 6 pistes
+let picks = new Set(JSON.parse(localStorage.getItem("semiliaPicks") || '["drums","bass","vocals"]'));
+const nStems = () => picks.has("guitar") || picks.has("piano") ? 6 : 4;
 const ensureAc = () => ac || (ac = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SR }));
 const fmt = s => Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0");
 const status = (t, err) => { $("status").textContent = t; $("status").classList.toggle("err", !!err); };
@@ -186,7 +198,8 @@ async function openFile(f) {
 }
 
 // ---------- 2 · la séparation (dans un worker)
-document.querySelectorAll("[data-n]").forEach(b => { b.classList.toggle("on", +b.dataset.n === nStems); b.onclick = () => { nStems = +b.dataset.n; localStorage.setItem("semiliaStems", nStems); document.querySelectorAll("[data-n]").forEach(x => x.classList.toggle("on", x === b)); }; });
+function drawPicks() { document.querySelectorAll("[data-k]").forEach(b => b.classList.toggle("on", picks.has(b.dataset.k))); $("modelInfo").textContent = nStems() === 6 ? "modèle 6 pistes (285 Mo la première fois)" : "modèle 4 pistes (172 Mo la première fois)"; }
+document.querySelectorAll("[data-k]").forEach(b => b.onclick = () => { const k = b.dataset.k; if (picks.has(k)) picks.delete(k); else picks.add(k); localStorage.setItem("semiliaPicks", JSON.stringify([...picks])); drawPicks(); });
 let engine = localStorage.getItem("semiliaEngine") || "auto";
 document.querySelectorAll("[data-e]").forEach(b => { b.classList.toggle("on", b.dataset.e === engine); b.onclick = () => { engine = b.dataset.e; localStorage.setItem("semiliaEngine", engine); document.querySelectorAll("[data-e]").forEach(x => x.classList.toggle("on", x === b)); }; });
 $("qNorm").onclick = () => { careful = false; $("qNorm").classList.add("on"); $("qCare").classList.remove("on"); };
@@ -207,32 +220,39 @@ function getWorker() {
   worker.onerror = e => { busy = false; $("go").disabled = false; status("erreur du moteur : " + (e.message || "navigateur trop ancien ?"), true); };
   return worker;
 }
+let pendingPicks = null;
 $("go").onclick = () => {
   if (!song || busy) return;
   busy = true; $("go").disabled = true; stopPlay(); setBar(0); status("démarrage…");
   const L = song.getChannelData(0).slice(), R = (song.numberOfChannels > 1 ? song.getChannelData(1) : song.getChannelData(0)).slice();
-  getWorker().postMessage({ type: "separate", left: L, right: R, careful, engine, stems: nStems }, [L.buffer, R.buffer]);
+  getWorker().postMessage({ type: "separate", left: L, right: R, careful, engine, stems: nStems() }, [L.buffer, R.buffer]);
+  pendingPicks = new Set(picks);
 };
 
 // ---------- 3 · les pistes : écoute synchronisée, muet / solo, volume, téléchargements
 const P = { srcs: [], t0: 0, off: 0, playing: false, gains: {}, mute: {}, solo: {}, vol: {} };
-function showStems(raw) {
+function showStems(raw, keep) {
   const c = ensureAc();
+  keep = keep || pendingPicks || new Set(Object.keys(raw));
+  // les pistes non choisies rejoignent « le reste »
+  if (raw.other) for (const k of Object.keys(raw)) if (k !== "other" && !keep.has(k)) { const o = raw.other, x = raw[k]; for (let i = 0; i < o.left.length; i++) { o.left[i] += x.left[i]; o.right[i] += x.right[i]; } delete raw[k]; }
+  const allSplit = ["drums", "bass", "vocals", "guitar", "piano"].every(k => raw[k]);
   stems = {};
   for (const [id] of STEMS) { if (!raw[id]) continue; const b = c.createBuffer(2, raw[id].left.length, SR); b.copyToChannel(raw[id].left, 0); b.copyToChannel(raw[id].right, 1); stems[id] = b; }
   P.gains = {};
   $("stems").innerHTML = "";
   STEMS.filter(([id]) => stems[id]).forEach(([id, nm, sub0, col]) => {
-    const sub = id === "other" && stems.guitar ? "le reste : cuivres, cordes, synthés…" : sub0;
+    const nm2 = id === "other" && !allSplit ? "LE RESTE" : nm;
+    const sub = id === "other" ? (allSplit ? "le reste : cuivres, cordes, synthés…" : "tout ce qui n'a pas été choisi") : sub0;
     P.mute[id] = false; P.solo[id] = false; P.vol[id] = 1;
     const row = document.createElement("div"); row.className = "stem";
-    row.innerHTML = `<div class="nm" style="color:${col}">${nm}<small>${sub}</small></div><canvas></canvas>
+    row.innerHTML = `<div class="nm" style="color:${col}">${nm2}<small>${sub}</small></div><canvas></canvas>
       <div class="ctl"><button type="button" class="m">M</button><button type="button" class="s">S</button><input type="range" min="0" max="1.5" step="0.01" value="1" aria-label="Volume ${nm}"><button type="button" class="dl">↓ WAV</button></div>`;
     const [bm, bs, bd] = row.querySelectorAll("button"), vr = row.querySelector("input");
     bm.onclick = () => { P.mute[id] = !P.mute[id]; bm.classList.toggle("on", P.mute[id]); applyGains(); };
     bs.onclick = () => { P.solo[id] = !P.solo[id]; bs.classList.toggle("on", P.solo[id]); applyGains(); };
     vr.oninput = () => { P.vol[id] = +vr.value; applyGains(); };
-    bd.onclick = () => download([id], nm);
+    bd.onclick = () => download([id], nm2);
     $("stems").appendChild(row);
     requestAnimationFrame(() => drawWave(row.querySelector("canvas"), stems[id], col));
   });
@@ -280,6 +300,7 @@ function download(parts, label) {
   a.download = (name + " - " + label).replace(/[\\/:*?"<>|]+/g, " ").trim() + ".wav"; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
 }
 // prépare le moteur en avance (le téléchargement du modèle ne démarre qu'au premier SÉPARER)
+drawPicks();
 window.STEMSEMILIA = { get stems() { return stems; }, openFile, showStems };
 </script>
 </body>
