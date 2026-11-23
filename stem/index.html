@@ -41,6 +41,8 @@ button[disabled] { opacity: .45; cursor: default; }
 .picks span { margin-right: 4px; }
 .picks button { padding: 10px 12px; background: #1d190f; color: var(--mute); box-shadow: 0 0 0 1px var(--line); }
 .picks button.on { background: var(--gold); color: #1d1607; box-shadow: 0 3px 0 #6b5212; }
+.picks button:disabled { opacity: .35; }
+.lic { border-left: 3px solid var(--red); padding-left: 10px; }
 .info { color: var(--mute); font-size: 13px; margin: 8px 0 0; }
 .file { font-weight: 700; color: var(--ink); }
 .bar { height: 16px; border-radius: 8px; background: #0a0805; box-shadow: inset 0 1px 3px #000; overflow: hidden; margin: 12px 0 6px; }
@@ -107,6 +109,11 @@ footer a, .info a { color: var(--gold); }
         <button type="button" data-k="drums">BATTERIE</button><button type="button" data-k="bass">BASSE</button><button type="button" data-k="vocals">VOIX</button><button type="button" data-k="guitar">GUITARE</button><button type="button" data-k="piano">PIANO</button>
         <em>+ LE RESTE</em>
       </div>
+      <div class="picks" role="group" aria-label="Option batterie">
+        <span>OPTION</span>
+        <button type="button" id="drumSplit">BATTERIE EN ÉLÉMENTS · KICK, CAISSE, TOMS, CHARLEYS + CYMBALES</button>
+      </div>
+      <p class="info lic" id="drumLic" hidden>Batterie en éléments : modèles Timbrica (3 × 20 Mo), licence CC BY-NC-SA 4.0 : <b>usage non commercial uniquement</b> (pas de vente, pas de diffusion payante des pistes obtenues). Calcul en plus, seulement quand l'option est allumée ; charleys et cymbales = ce qui reste de la batterie une fois kick, caisse claire et toms retirés.</p>
     </div>
     <div class="row" style="margin-top:10px">
       <div class="seg" role="group" aria-label="Qualité">
@@ -141,7 +148,7 @@ footer a, .info a { color: var(--gold); }
 
   <footer>
     Gratuit, sans compte, sans envoi : tout se calcule dans ce navigateur (carte graphique si possible, sinon processeur). Un morceau de 4 minutes prend de une à plusieurs minutes selon l'ordinateur ; un ordinateur récent avec carte graphique va beaucoup plus vite. Sur un ordinateur ancien (2 cœurs, puce graphique intégrée), la mise en route seule peut dépasser 5 minutes et la séparation devenir très longue : préférez un ordinateur récent. Sur téléphone, ça peut manquer de mémoire.<br>
-    Modèles : HTDemucs v4 et HTDemucs 6s (Simon Rouard, Alexandre Défossez, Meta), licence MIT, exports ONNX timcsy/demucs-web-onnx et kramp/htdemucs-6s-webgpu-onnx · moteur : ONNX Runtime Web (Microsoft, MIT) · code de séparation : demucs-web (MIT) · isolation : coi-serviceworker (MIT).<br>
+    Batterie en éléments (option) : modèles Timbrica, CC BY-NC-SA 4.0, non commercial · Modèles : HTDemucs v4 et HTDemucs 6s (Simon Rouard, Alexandre Défossez, Meta), licence MIT, exports ONNX timcsy/demucs-web-onnx et kramp/htdemucs-6s-webgpu-onnx · moteur : ONNX Runtime Web (Microsoft, MIT) · code de séparation : demucs-web (MIT) · isolation : coi-serviceworker (MIT).<br>
     Respectez les droits des morceaux que vous séparez. · <a href="../">← NOMAD-16</a>
   </footer>
 </main>
@@ -151,6 +158,10 @@ const $ = id => document.getElementById(id);
 const SR = 44100;
 const STEMS = [
   ["drums", "BATTERIE", "kick, caisse, cymbales", "#c8302a"],
+  ["kick", "KICK", "grosse caisse", "#ff5a4a"],
+  ["snare", "CAISSE CLAIRE", "caisse claire, rimshots", "#ff9a7a"],
+  ["toms", "TOMS", "toms", "#d0603a"],
+  ["hats", "CHARLEYS + CYMBALES", "charleys, ride, crash", "#ffd0b0"],
   ["bass", "BASSE", "la ligne de basse", "#e8b021"],
   ["vocals", "VOIX", "chant, chœurs, toasts", "#6fc7ff"],
   ["guitar", "GUITARE", "guitares électriques et acoustiques", "#ff8a3a"],
@@ -166,7 +177,8 @@ const MIXES = [
   ["nobass", "SANS BASSE", "pour rejouer la basse", ["-", "bass"]],
   ["music", "MUSIQUE SANS RYTHMIQUE", "instruments + voix", ["-", "drums", "bass"]]
 ];
-const mixParts = spec => spec[0] === "-" ? Object.keys(stems).filter(k => !spec.includes(k)) : spec.filter(k => stems[k]);
+const DRUM_KEYS = ["kick", "snare", "toms", "hats"];
+const mixParts = spec => { spec = spec.flatMap(k => k === "drums" && !stems.drums ? DRUM_KEYS : [k]); return spec[0] === "-" ? Object.keys(stems).filter(k => !spec.includes(k)) : spec.filter(k => stems[k]); };
 let ac = null, song = null, name = "", stems = null, careful = false, busy = false;
 // pistes choisies : ce qui n'est pas choisi part dans « LE RESTE » (rien ne se perd) ; GUITARE ou PIANO demandent le modèle 6 pistes
 let picks = new Set(JSON.parse(localStorage.getItem("semiliaPicks") || '["drums","bass","vocals"]'));
@@ -198,7 +210,9 @@ async function openFile(f) {
 }
 
 // ---------- 2 · la séparation (dans un worker)
-function drawPicks() { document.querySelectorAll("[data-k]").forEach(b => b.classList.toggle("on", picks.has(b.dataset.k))); $("modelInfo").textContent = nStems() === 6 ? "modèle 6 pistes (285 Mo la première fois)" : "modèle 4 pistes (172 Mo la première fois)"; }
+let drumOn = localStorage.getItem("semiliaDrums") === "1";
+$("drumSplit").onclick = () => { drumOn = !drumOn; localStorage.setItem("semiliaDrums", drumOn ? "1" : "0"); drawPicks(); };
+function drawPicks() { $("drumSplit").disabled = !picks.has("drums"); $("drumSplit").classList.toggle("on", drumOn && picks.has("drums")); $("drumLic").hidden = !(drumOn && picks.has("drums")); document.querySelectorAll("[data-k]").forEach(b => b.classList.toggle("on", picks.has(b.dataset.k))); $("modelInfo").textContent = nStems() === 6 ? "modèle 6 pistes (285 Mo la première fois)" : "modèle 4 pistes (172 Mo la première fois)"; }
 document.querySelectorAll("[data-k]").forEach(b => b.onclick = () => { const k = b.dataset.k; if (picks.has(k)) picks.delete(k); else picks.add(k); localStorage.setItem("semiliaPicks", JSON.stringify([...picks])); drawPicks(); });
 let engine = localStorage.getItem("semiliaEngine") || "auto";
 document.querySelectorAll("[data-e]").forEach(b => { b.classList.toggle("on", b.dataset.e === engine); b.onclick = () => { engine = b.dataset.e; localStorage.setItem("semiliaEngine", engine); document.querySelectorAll("[data-e]").forEach(x => x.classList.toggle("on", x === b)); }; });
@@ -225,8 +239,8 @@ $("go").onclick = () => {
   if (!song || busy) return;
   busy = true; $("go").disabled = true; stopPlay(); setBar(0); status("démarrage…");
   const L = song.getChannelData(0).slice(), R = (song.numberOfChannels > 1 ? song.getChannelData(1) : song.getChannelData(0)).slice();
-  getWorker().postMessage({ type: "separate", left: L, right: R, careful, engine, stems: nStems() }, [L.buffer, R.buffer]);
-  pendingPicks = new Set(picks);
+  getWorker().postMessage({ type: "separate", left: L, right: R, careful, engine, stems: nStems(), drumsplit: drumOn && picks.has("drums") }, [L.buffer, R.buffer]);
+  pendingPicks = new Set(picks); if (drumOn && picks.has("drums")) DRUM_KEYS.forEach(k => pendingPicks.add(k));
 };
 
 // ---------- 3 · les pistes : écoute synchronisée, muet / solo, volume, téléchargements
@@ -236,7 +250,7 @@ function showStems(raw, keep) {
   keep = keep || pendingPicks || new Set(Object.keys(raw));
   // les pistes non choisies rejoignent « le reste »
   if (raw.other) for (const k of Object.keys(raw)) if (k !== "other" && !keep.has(k)) { const o = raw.other, x = raw[k]; for (let i = 0; i < o.left.length; i++) { o.left[i] += x.left[i]; o.right[i] += x.right[i]; } delete raw[k]; }
-  const allSplit = ["drums", "bass", "vocals", "guitar", "piano"].every(k => raw[k]);
+  const allSplit = ["bass", "vocals", "guitar", "piano"].every(k => raw[k]) && (raw.drums || raw.kick);
   stems = {};
   for (const [id] of STEMS) { if (!raw[id]) continue; const b = c.createBuffer(2, raw[id].left.length, SR); b.copyToChannel(raw[id].left, 0); b.copyToChannel(raw[id].right, 1); stems[id] = b; }
   P.gains = {};
@@ -271,7 +285,7 @@ function drawWave(cv, b, col) {
 const anySolo = () => Object.values(P.solo).some(Boolean);
 const gainOf = id => (P.mute[id] || (anySolo() && !P.solo[id])) ? 0 : P.vol[id];
 function applyGains() { for (const id in P.gains) P.gains[id].gain.setTargetAtTime(gainOf(id), ac.currentTime, 0.015); }
-const dur = () => stems ? stems.drums.duration : 0;
+const dur = () => stems ? Object.values(stems)[0].duration : 0;
 const now = () => P.playing ? Math.min(dur(), P.off + ac.currentTime - P.t0) : P.off;
 function startPlay() {
   if (!stems) return; const c = ensureAc(); c.resume(); stopSrcs();
@@ -289,7 +303,7 @@ function tick() { drawTime(); if (P.playing) requestAnimationFrame(tick); }
 
 // WAV 16 bits stéréo (le mélange garde les volumes réglés ; écrêtage doux s'il dépasse)
 function download(parts, label) {
-  const n = stems.drums.length, L = new Float32Array(n), R = new Float32Array(n);
+  const n = Object.values(stems)[0].length, L = new Float32Array(n), R = new Float32Array(n);
   for (const id of parts) { const v = parts.length === 1 ? 1 : P.vol[id], a = stems[id].getChannelData(0), b = stems[id].getChannelData(1); for (let i = 0; i < n; i++) { L[i] += a[i] * v; R[i] += b[i] * v; } }
   const buf = new ArrayBuffer(44 + n * 4), dv = new DataView(buf), w = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
   w(0, "RIFF"); dv.setUint32(4, 36 + n * 4, true); w(8, "WAVEfmt "); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 2, true);
