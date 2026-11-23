@@ -1301,6 +1301,9 @@ html.flipped, html.flipped body { overflow: hidden; }
     <h3>TÉMOIN REC SUR L'AKAI</h3>
     <div class="row"><button class="btn" id="padLedBtn" type="button" style="flex:1">TÉMOIN REC SUR LES PADS 8 ET 16 : NON</button><button class="btn" id="padLedTest" type="button">ESSAYER</button></div>
     <p class="help">Expérimental aussi : NOMAD renvoie au MPK les notes des pads 8 et 16 pendant le REC, pour les allumer. ESSAYER les allume 3 secondes : si rien ne s'allume, votre MPK ne le permet pas.</p>
+    <h3>FREESOUND (RECHERCHE DANS DIGGING)</h3>
+    <div class="row"><input class="dev" id="fsKey" type="text" placeholder="clé d'API Freesound" autocomplete="off" autocapitalize="off" spellcheck="false" style="flex:1"><button class="btn" id="fsKeyOk" type="button">ENREGISTRER</button></div>
+    <p class="help">Pour le bac FREESOUND ⌕ de DIGGING : créez un compte gratuit sur freesound.org, puis demandez une clé sur <a href="https://freesound.org/apiv2/apply" target="_blank" rel="noopener">freesound.org/apiv2/apply</a> (nom et description libres) et collez ici le « Client secret/Api key ». Seuls les sons CC0 sont proposés : libres pour tout usage, même commercial, sans citer l'auteur.</p>
     <h3>BATTERIE</h3>
     <div class="row"><button class="btn" id="hatsBtn" type="button" style="flex:1">CHARLEYS DISCRETS : OUI</button></div>
     <p class="help">Dans les kits fournis : hats, shakers et cymbales plus bas, plus courts, un peu étouffés, et très sensibles à la force de frappe (frappe légère = presque rien). Chaque pad reste réglable dans PADS.</p>
@@ -3448,11 +3451,12 @@ registerProcessor('nomad-aec',Aec);`;
       const b = document.createElement("button");
       b.type = "button"; b.className = "crate"; b.id = "crate" + i; b.setAttribute("role", "tab");
       b.innerHTML = `<i style="background:${c.color}"></i>${c.name}`;
-      b.addEventListener("click", () => openCrate(i, 0));
+      b.addEventListener("click", () => { if (c.src === "fs") c.items = null; openCrate(i, 0); });
       $("crates").appendChild(b);
     });
     const s = store.get("dig", { c: 0, r: 0 });
-    openCrate(Math.min(s.c, crate.collections.length - 1), s.r);
+    const sc = Math.min(s.c, crate.collections.length - 1);
+    openCrate(crate.collections[sc].src === "fs" ? 0 : sc, crate.collections[sc].src === "fs" ? 0 : s.r);
   }
   // ---------- Bacs en ligne : Internet Archive (78 tours d'avant 1926, domaine public) et Wikimedia Commons (licences libres) ----------
   // Rien n'est stocké dans l'appareil : la liste et les sons arrivent d'internet à chaque fois.
@@ -3463,10 +3467,10 @@ registerProcessor('nomad-aec',Aec);`;
     if (c.src && !c.items) {
       $("digTitle").textContent = "on fouille le bac en ligne…"; $("digYear").textContent = ""; $("digArtist").textContent = ""; $("digCount").textContent = c.name;
       digLoad(-1);
-      try { c.items = c.src === "ia" ? await iaList(c) : await wcList(c); } catch (e) { c.items = null; }
+      try { c.items = c.src === "ia" ? await iaList(c) : c.src === "fs" ? await fsList(c) : await wcList(c); } catch (e) { c.items = null; if (c.src === "fs") c.err = c.err || "recherche impossible (connexion ?)"; }
       digLoad(null);
       if (tok !== crateTok) return;
-      if (!c.items || !c.items.length) { c.items = null; $("digTitle").textContent = "bac en ligne injoignable (pas de connexion ?)"; return; }
+      if (!c.items || !c.items.length) { c.items = null; $("digTitle").textContent = c.src === "fs" ? (c.err || "rien trouvé en CC0 · essayez un autre mot (en anglais)") : "bac en ligne injoignable (pas de connexion ?)"; c.err = null; return; }
     }
     recIdx = Math.max(0, Math.min(r || 0, curItems().length - 1)); showRecord(0);
   }
@@ -3476,6 +3480,20 @@ registerProcessor('nomad-aec',Aec);`;
     return j.response.docs.map(d => ({ id: d.identifier, t: String(d.title || "").replace(/\s+/g, " ").slice(0, 90), a: String([].concat(d.creator || "")[0] || "").split(",")[0].slice(0, 50), y: d.date ? +String(d.date).slice(0, 4) : undefined }))
       .filter(x => { const k = x.t.toLowerCase(); if (!x.t || seen.has(k) || /none legible|unknown/i.test(x.t) || (drop && drop.test(x.t + " " + x.a))) return false; seen.add(k); return true; })
       .map(x => ({ ...x, ia: 1, u: "https://archive.org/details/" + x.id, img: "https://archive.org/services/img/" + x.id, l: "domaine public" }));
+  }
+  // Recherche Freesound : sons CC0 seulement (libres pour tout usage, même commercial, sans citer), lus en direct
+  async function fsList(c) {
+    const key = String(store.get("fsKey", "")).trim();
+    if (!key) { c.err = "ajoutez votre clé Freesound dans RÉGLAGES › FREESOUND"; return null; }
+    const q = await askName("CHERCHER SUR FREESOUND · CC0 (mot en anglais : kora, oud, tabla…)", c.q || "", 40);
+    if (!q) { c.err = "recherche annulée"; return null; }
+    c.q = q.toLowerCase().trim();
+    const u = "https://freesound.org/apiv2/search/text/?" + new URLSearchParams({ query: c.q, filter: 'license:"Creative Commons 0" duration:[2 TO 240]', fields: "id,name,username,duration,previews,url", page_size: "80", token: key });
+    const r = await fetch(u, { cache: "no-store" });
+    if (r.status === 401 || r.status === 403) { c.err = "clé Freesound refusée · vérifiez-la dans RÉGLAGES"; return null; }
+    const j = await r.json();
+    c.sub = "« " + c.q + " » · " + (j.count || 0) + " sons CC0";
+    return (j.results || []).map(s => ({ id: "fs-" + s.id, t: String(s.name || "").replace(/\.(wav|mp3|aiff?|flac|ogg|m4a)$/i, "").replace(/[_]+/g, " ").slice(0, 90), a: s.username, l: "CC0", u: s.url || "https://freesound.org/s/" + s.id + "/", m: s.previews && s.previews["preview-hq-mp3"], d: s.duration, fs: 1 })).filter(x => x.m);
   }
   async function wcList(c) {
     const strip = h => String(h || "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim(), drop = c.drop ? new RegExp(c.drop, "i") : null;
@@ -3530,9 +3548,9 @@ registerProcessor('nomad-aec',Aec);`;
     $("digTitle").textContent = it.t;
     $("digYear").textContent = it.y || "";
     $("digArtist").textContent = it.a || "artiste inconnu";
-    $("digCount").textContent = `${c.name} · ${recIdx + 1}/${curItems().length}` + (it.l && it.l !== "domaine public" ? ` · ${it.l} (citer l'auteur)` : "");
+    $("digCount").textContent = `${c.name} · ${recIdx + 1}/${curItems().length}` + (it.l === "CC0" ? " · CC0, libre" : it.l && it.l !== "domaine public" ? ` · ${it.l} (citer l'auteur)` : "");
     $("digLink").href = it.u;
-    $("digLink").textContent = it.ia ? "fiche sur Internet Archive" : it.m ? "fiche sur Wikimedia Commons" : "fiche à la Bibliothèque du Congrès";
+    $("digLink").textContent = it.ia ? "fiche sur Internet Archive" : it.fs ? "fiche sur Freesound" : it.m ? "fiche sur Wikimedia Commons" : "fiche à la Bibliothèque du Congrès";
     if (dir) digAnim = { dir, t0: performance.now() };
     digDirty = true;
     store.set("dig", { c: crateIdx, r: recIdx });
@@ -4138,6 +4156,10 @@ registerProcessor('nomad-aec',Aec);`;
   $("clHiss").addEventListener("click", () => cleanClip("hiss"));
   $("clClick").addEventListener("click", () => cleanClip("click"));
   $("clOrig").addEventListener("click", () => { if (!clip || cleaning || clip.buf === clip.orig) return; stopTT(); clip.buf = clip.orig; computePeaks(); clip.pk = null; drawWave(); lcd("lcdPad", "NETTOYAGE", "retour au son d'origine"); });
+
+  // clé Freesound (RÉGLAGES)
+  $("fsKey").value = store.get("fsKey", "");
+  $("fsKeyOk").addEventListener("click", () => { store.set("fsKey", $("fsKey").value.trim()); $("fsKeyOk").textContent = "ENREGISTRÉE ✓"; setTimeout(() => { $("fsKeyOk").textContent = "ENREGISTRER"; }, 1500); });
   // ---------- SONS : instruments et accords ----------
   let instData = null, instCur = store.get("inst", "pad"), instCat = "CLAVIERS";
   const instCache = new Map();

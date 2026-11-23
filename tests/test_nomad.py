@@ -1346,3 +1346,27 @@ def test_accordeur_suit_la_note_qui_sonne(app):
     print(r)
     assert all(s[0].startswith("LA") and "TROP BAS" in s[1] for s in r["seen"]), r
     assert "JUSTE" in r["juste"], r
+
+
+def test_digging_solos_du_monde_et_freesound(app):
+    app.click("#tab-sample")
+    app.wait_for_function("document.querySelectorAll('#crates .crate').length > 10")
+    names = app.evaluate("[...document.querySelectorAll('#crates .crate')].map(b => b.textContent)")
+    for n in ["SOLOS AFRIQUE", "SOLOS ORIENT", "SOLOS INDE", "SOLOS ASIE", "FREESOUND ⌕"]:
+        assert n in names, names
+    app.locator("#crates .crate", has_text="SOLOS INDE").click()
+    app.wait_for_function("/SOLOS INDE · 1\\//.test(document.getElementById('digCount').textContent)")
+    assert "CC0" in app.inner_text("#digCount")
+    assert app.inner_text("#digLink") == "fiche sur Freesound"
+    assert app.get_attribute("#digLink", "href").startswith("https://freesound.org/s/")
+    # sans clé : message clair, pas de recherche
+    app.locator("#crates .crate", has_text="FREESOUND").click()
+    app.wait_for_function("/clé Freesound/.test(document.getElementById('digTitle').textContent)")
+    # avec clé : la recherche demande un mot, puis interroge l'API (réponse simulée ici)
+    app.evaluate("""() => { localStorage.setItem('nomad16.fsKey', JSON.stringify('k')); const f = window.fetch; window.fetch = (u, o) => String(u).includes('apiv2/search') ?
+      Promise.resolve(new Response(JSON.stringify({ count: 1, results: [{ id: 42, name: 'oud_taqsim.wav', username: 'x', duration: 9, url: 'https://freesound.org/s/42/', previews: { 'preview-hq-mp3': 'https://cdn.freesound.org/previews/0/42_1-hq.mp3' } }] }))) : f(u, o); }""")
+    app.locator("#crates .crate", has_text="FREESOUND").click()
+    app.fill(".namedlg input", "oud")
+    app.click(".namedlg button[type=submit]")
+    app.wait_for_function("document.getElementById('digTitle').textContent === 'oud taqsim'")
+    assert "CC0" in app.inner_text("#digCount") and app.inner_text("#digLink") == "fiche sur Freesound"

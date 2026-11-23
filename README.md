@@ -7,6 +7,8 @@ Sons des kits : voir [kits/CREDITS.md](kits/CREDITS.md) (Virtuosity Drums, CC0, 
 
 Bac à disques (onglet DIGGING) : extraits de la Bibliothèque du Congrès via Citizen DJ (https://citizen-dj.labs.loc.gov), chargés directement depuis leurs serveurs. Index : crate/crate.json.
 
+Bacs SOLOS AFRIQUE, ORIENT, INDE, ASIE : 60 instruments joués seuls (kora, mbira, udu, berimbau, oud, ney, saz, rebab, doudouk, bendir, sitar, sarod, santoor, tabla, tanpura, sarangi, erhu, dizi, hulusi, gayageum, shamisen, gamelan, morin khuur…), choisis sur Freesound parmi les sons CC0 (libres pour tout usage, même commercial, sans citer), lus en direct depuis Freesound. Seules des prises jouées par ceux qui les ont déposées (ou enregistrées dans la rue) ont été retenues : pas d'extraits de disques ni d'instruments virtuels. Bac FREESOUND ⌕ : recherche libre parmi les sons CC0, avec une clé d'API Freesound gratuite à coller dans RÉGLAGES.
+
 Instruments de l'onglet SONS : échantillons libres (VCSL CC0, Splendid Grand Piano domaine public, D. Smolken CC0, Greg Sullivan CC BY 3.0, J. Learman jRhodes3d), hébergés par https://danigb.github.io/samples et chargés à la demande. Index : sons/instruments.json.
 
 ## Contrôles Akai (preset 3)
