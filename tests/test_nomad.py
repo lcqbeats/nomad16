@@ -942,7 +942,16 @@ def test_renommer_piste_et_projet(app):
     app.click("#tab-loops")
     app.wait_for_timeout(200)
     box = app.locator("#loopCanvas").bounding_box()
-    app.mouse.click(box["x"] + box["width"] / 6, box["y"] + box["height"] / 4)   # centre du cercle 1 = son numéro
+    # un toucher : muet tout de suite, sans fenêtre de nom
+    app.mouse.click(box["x"] + box["width"] / 6, box["y"] + box["height"] / 4)
+    app.wait_for_timeout(450)
+    assert app.evaluate("nomadDbg.LP.layers[0].muted") is True and app.locator(".namedlg").count() == 0
+    app.mouse.click(box["x"] + box["width"] / 6, box["y"] + box["height"] / 4)   # rejoue
+    app.wait_for_timeout(450)
+    # deux touchers rapprochés : renommer
+    app.mouse.click(box["x"] + box["width"] / 6, box["y"] + box["height"] / 4)
+    app.wait_for_timeout(120)
+    app.mouse.click(box["x"] + box["width"] / 6, box["y"] + box["height"] / 4)
     app.wait_for_selector(".namedlg input")
     app.fill(".namedlg input", "basse dub")
     app.click(".namedlg button[type=submit]")

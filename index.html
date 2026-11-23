@@ -2550,6 +2550,8 @@ registerProcessor('nomad-aec',Aec);`;
     }
   }
   function text(s, x, y, size, color, font) { g2.font = `${size}px ${font || "Archivo Black, Arial Black, sans-serif"}`; g2.fillStyle = color; g2.textAlign = "center"; g2.textBaseline = "middle"; g2.fillText(s, x, y); }
+  // boucle allumée : le rond central prend une couleur pastel franche (une par emplacement), texte foncé dessus
+  const PASTEL = ["#f1bcb5", "#acd9c1", "#ece0bf", "#bac7ea", "#cfe3ad", "#e2c4e3"];
   function draw() {
     requestAnimationFrame(draw);
     if (!ctx) return;
@@ -2573,7 +2575,7 @@ registerProcessor('nomad-aec',Aec);`;
       const col = COLORS[i];
       const lw = 7 * d;
       if (l) {
-        g2.beginPath(); g2.arc(x, y, r - lw, 0, Math.PI * 2); g2.fillStyle = l.muted ? "#1c1b19" : "#26231f"; g2.fill();
+        g2.beginPath(); g2.arc(x, y, r - lw, 0, Math.PI * 2); g2.fillStyle = l.muted ? "#1c1b19" : PASTEL[i % PASTEL.length]; g2.fill();
         ring(x, y, r, 0, Math.PI * 2, "#34302c", lw);
         const Lk = l.k * LP.Lf, sF = LP.t0F + l.m * LP.Lf;
         const prog = LP.playing ? ((((nowF - sF) % Lk) + Lk) % Lk) / Lk : 0;
@@ -2581,14 +2583,15 @@ registerProcessor('nomad-aec',Aec);`;
         const n = LP.beats * l.k;
         ticks(x, y, r + 11 * d, n, LP.playing ? Math.floor(prog * Math.min(n, 32)) : -1, l.muted ? "#5d574f" : col, 1.6 * d);
         const st = l.muted ? "MUET" : (l.k > 1 ? "×" + l.k : Math.round(l.vol * 100) + "%");
-        if (l.name) {   // nom donné à la piste (toucher le numéro pour renommer)
-          text(String(i + 1), x, y - 16 * d, 18 * d, l.muted ? "#5d574f" : "#ece3d3");
+        const ink = l.muted ? "#5d574f" : "#2a2420", sub = l.muted ? "#8f877a" : "#5a4f45";
+        if (l.name) {   // nom donné à la piste (double-toucher la boucle pour renommer)
+          text(String(i + 1), x, y - 16 * d, 18 * d, ink);
           const fs = Math.min(18, 150 / Math.max(4, l.name.length)) * d * Math.min(1.3, r / (60 * d));
-          text(l.name, x, y + 3 * d, fs, l.muted ? "#5d574f" : col, "VT323, monospace");
-          text(st, x, y + 21 * d, 13 * d, "#8f877a", "VT323, monospace");
+          text(l.name, x, y + 3 * d, fs, ink, "VT323, monospace");
+          text(st, x, y + 21 * d, 13 * d, sub, "VT323, monospace");
         } else {
-          text(String(i + 1), x, y - 4 * d, 26 * d, l.muted ? "#5d574f" : "#ece3d3");
-          text(st, x, y + 18 * d, 15 * d, "#8f877a", "VT323, monospace");
+          text(String(i + 1), x, y - 4 * d, 26 * d, ink);
+          text(st, x, y + 18 * d, 15 * d, sub, "VT323, monospace");
         }
       } else if (p && i === LP.layers.length) {
         const heard = nowF - (p.comp || 0);
@@ -2669,7 +2672,7 @@ registerProcessor('nomad-aec',Aec);`;
     return -1;
   }
   // Toucher le numéro (centre du cercle) : renommer. Toucher l'anneau : muet. Appui long : effacer. Glisser un cercle sur un autre : fusionner les deux pistes.
-  let dragLoop = null;
+  let dragLoop = null; const lastTap = { i: -1, t: 0 };
   cv.addEventListener("pointerdown", e => {
     pressCell = cellAt(e); if (pressCell < 0 || !LP.layers[pressCell]) return;
     cv.setPointerCapture(e.pointerId);
@@ -2687,8 +2690,10 @@ registerProcessor('nomad-aec',Aec);`;
     if (!dl) return;
     if (dl.moved) { const to = cellAt(e); if (to >= 0 && to !== dl.from && LP.layers[to]) mergeLayers(dl.from, to); }
     else if (LP.layers[dl.from]) {
-      const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1, c = cellGeom(dl.from);
-      if (Math.hypot((e.clientX - r.left) * d - c.x, (e.clientY - r.top) * d - c.y) < c.r * 0.45) renameLayer(dl.from); else toggleMute(dl.from);
+      // un toucher = muet / joue tout de suite (track mute) ; deux touchers rapprochés = renommer (le muet est annulé)
+      const now = performance.now();
+      if (lastTap.i === dl.from && now - lastTap.t < 380) { lastTap.i = -1; toggleMute(dl.from); renameLayer(dl.from); }
+      else { lastTap.i = dl.from; lastTap.t = now; toggleMute(dl.from); }
     }
     pressCell = -1;
   });
