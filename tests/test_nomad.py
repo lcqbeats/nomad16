@@ -1408,3 +1408,37 @@ def test_digging_voix_scratch_en_kit(app):
     app.click("#toPads")
     app.wait_for_function("document.getElementById('kitName').textContent.startsWith('CHOPS')", timeout=8000)
     assert app.evaluate("nomadDbg.buffers.filter(Boolean).length") >= 14
+
+
+def test_sons_univers_accords_simples_et_nouveaux_effets(app):
+    app.click("#tab-sons")
+    app.wait_for_function("document.querySelectorAll('#sonsFx .fxpre').length >= 22", timeout=5000)
+    app.click("#mChords")
+    styles = app.evaluate("[...document.querySelectorAll('#styles .stylebtn')].map(b => b.textContent)")
+    for s in ["BASIQUES MAJEUR", "BASIQUES MINEUR", "AFROBEAT", "ANDALOU", "ORIENT HIJAZ", "BOSSA NOVA", "ROOTS REGGAE", "AMBIENT"]:
+        assert s in styles, styles
+    app.locator("#styles .stylebtn", has_text="BOSSA NOVA").click()
+    assert "maj7" in app.inner_text("#chords")
+    app.click("#mSimple")
+    txt = app.inner_text("#chords")
+    assert "maj7" not in txt and "13" not in txt
+    app.evaluate("nomadMidi([0x99, 36, 100])")       # pad 1 : premier accord, triade
+    assert len(app.inner_text("#lcdPad").split("·")[1].split()) == 3
+    app.evaluate("nomadMidi([0x89, 36, 0])")
+    app.click("#mSimple")
+    # niveau des nouveaux effets : pas de saut de volume par rapport à AUCUN (−8 à +4 dB)
+    app.click("#mNotes")
+    def lvl(name):
+        app.locator("#sonsFx .fxpre", has_text=name).first.click()
+        app.wait_for_timeout(150)
+        app.evaluate("nomadMidi([0x90, 60, 100]); nomadMidi([0x90, 64, 100]); nomadMidi([0x90, 67, 100])")
+        v = max(loud(app, 60) for _ in range(8))
+        app.evaluate("nomadMidi([0x80, 60, 0]); nomadMidi([0x80, 64, 0]); nomadMidi([0x80, 67, 0])")
+        app.wait_for_timeout(700)
+        return v
+    import math
+    ref = lvl("AUCUN")
+    assert ref > 0.003
+    for n in ["LESLIE", "ÉCHO À BANDE", "SP-1200", "RESSORT", "PHASER", "PETITE SALLE", "AUTO-WAH", "CHORUS 80s"]:
+        db = 20 * math.log10(lvl(n) / ref)
+        assert -8 < db < 4, (n, db)

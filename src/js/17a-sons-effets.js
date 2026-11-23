@@ -15,8 +15,24 @@
     ["wobble", "WOBBLE", "filtre qui respire au tempo"],
     ["tremolo", "TRÉMOLO", "volume qui palpite au tempo"],
     ["close", "TRÈS PROCHE", "sec, compressé, présent"],
-    ["far", "LOINTAIN", "voilé, petit, perdu dans la pièce"]
+    ["far", "LOINTAIN", "voilé, petit, perdu dans la pièce"],
+    ["leslie", "LESLIE", "cabine tournante d'orgue : le son tourne et scintille"],
+    ["tapeecho", "ÉCHO À BANDE", "écho à bande saturé qui se dégrade (Space Echo)"],
+    ["sp1200", "SP-1200", "12 bits, bande passante réduite, grain de sampleur 80s"],
+    ["spring", "RESSORT", "réverbe à ressort d'ampli, métallique"],
+    ["phaser", "PHASER", "phaser lent, années 70"],
+    ["room", "PETITE SALLE", "une vraie pièce, courte et boisée"],
+    ["autowah", "AUTO-WAH", "filtre qui fait « wah » à la croche"],
+    ["chorusvintage", "CHORUS 80s", "chorus large et doux, stéréo"]
   ];
+  function sxFxPhaser(rate, depth, base) {
+    let first = null, last = null;
+    [1, 1.6, 2.5, 3.9].forEach(m => { const a = ctx.createBiquadFilter(); a.type = "allpass"; a.frequency.value = base * m; a.Q.value = 0.6; sxLfo(rate, depth * m, a.frequency); if (!first) first = a; else last.connect(a); last = a; });
+    return sxWetDry(() => ({ i: first, o: last }), 0.85, 0.85);
+  }
+  function sxFxSpring(mix) {
+    return sxWetDry(() => { const c = ctx.createConvolver(); c.normalize = true; c.buffer = springIR(); const h = ctx.createBiquadFilter(); h.type = "highpass"; h.frequency.value = 250; h.connect(c); return { i: h, o: c }; }, mix, 1);
+  }
   const sxBeat = () => 60 / curBpm();
   function sxFxEq(type, f, q = 0.7, gain = 0) { const b = ctx.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; b.gain.value = gain; return { i: b, o: b }; }
   function sxFxDrive(k, makeup = 0.8) {
@@ -95,6 +111,14 @@
       case "tremolo": return [sxFxTrem(b * 2, 0.85)];
       case "close": return [sxFxEq("highpass", 70), sxFxComp(-26, 5, 1.8), sxFxEq("peaking", 3000, 1, 2.5)];
       case "far": return [sxFxEq("highpass", 350), sxFxEq("lowpass", 2800), sxFxGain(0.6), sxFxVerb(3, 2.2, 0.8, 0, 4000, 0.4)];
+      case "leslie": return [sxFxChorus(5.8, 0.0012, 0.6), sxFxTrem(5.8, 0.35), sxFxEq("peaking", 800, 0.8, 2)];
+      case "tapeecho": return [sxFxDrive(1.6, 0.85), sxFxDelay(0.75, 0.62, 0.55, 2400), sxFxWow(0.4, 0.0012), sxFxEq("lowpass", 7000)];
+      case "sp1200": return [sxFxCrush(12), sxFxEq("lowpass", 12000 * 0.45), sxFxDrive(1.4, 0.9), sxFxEq("lowshelf", 120, 0.7, 2)];
+      case "spring": return [sxFxSpring(0.45)];
+      case "phaser": return [sxFxPhaser(0.18, 220, 300)];
+      case "room": return [sxFxVerb(0.7, 3.2, 0.3, 150, 7000)];
+      case "autowah": return [sxFxWah(b * 2, 1100, 900, 5, "bandpass"), sxFxGain(1.4)];
+      case "chorusvintage": return [sxFxChorus(0.45, 0.0035, 0.55), sxFxEq("highshelf", 5000, 0.7, 1.5)];
       default: return [];
     }
   }

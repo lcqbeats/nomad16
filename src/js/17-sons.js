@@ -18,9 +18,16 @@
   const Q = {
     maj: [0, 4, 7], min: [0, 3, 7], maj7: [0, 4, 7, 11], m7: [0, 3, 7, 10], "7": [0, 4, 7, 10], maj9: [0, 4, 7, 11, 14], m9: [0, 3, 7, 10, 14],
     "9": [0, 4, 7, 10, 14], "13": [0, 4, 10, 14, 21], m11: [0, 3, 7, 10, 14, 17], "6/9": [0, 4, 7, 9, 14], dim7: [0, 3, 6, 9], m7b5: [0, 3, 6, 10],
-    add9: [0, 4, 7, 14], sus2: [0, 2, 7, 14], "7sus": [0, 5, 7, 10], "7#9": [0, 4, 7, 10, 15], "7b9": [0, 4, 7, 10, 13], m6: [0, 3, 7, 9]
+    add9: [0, 4, 7, 14], sus2: [0, 2, 7, 14], "7sus": [0, 5, 7, 10], "7#9": [0, 4, 7, 10, 15], "7b9": [0, 4, 7, 10, 13], m6: [0, 3, 7, 9],
+    dim: [0, 3, 6], sus4: [0, 5, 7], "6": [0, 4, 7, 9], mmaj7: [0, 3, 7, 11], aug: [0, 4, 8]
   };
-  const SYM = { maj: "", min: "m", maj7: "maj7", m7: "m7", "7": "7", maj9: "maj9", m9: "m9", "9": "9", "13": "13", m11: "m11", "6/9": "6/9", dim7: "°7", m7b5: "ø7", add9: "add9", sus2: "sus2", "7sus": "7sus4", "7#9": "7#9", "7b9": "7b9", m6: "m6" };
+  // ACCORDS SIMPLES : chaque accord de la progression ramené à sa triade (majeur, mineur, diminué, sus)
+  const SIMPLE = q => /^(m7b5|dim7|dim)$/.test(q) ? "dim" : /^(m|min)/.test(q) ? "min" : /sus2/.test(q) ? "sus2" : /sus/.test(q) ? "sus4" : q === "aug" ? "aug" : "maj";
+  let simpleChords = store.get("simpleChords", false);
+  const chordQ = q => simpleChords ? SIMPLE(q) : q;
+  // degré affiché : en mode SIMPLES, le chiffre romain sans les extensions (« ii9 » → « ii », « iiiø » → « iii° »)
+  const chordRoman = c => { if (!simpleChords) return c[2]; const m = String(c[2]).match(/^[♭♯]?[ivIV]+/), q = SIMPLE(c[1]); return (m ? m[0] : c[2]) + (q === "dim" ? "°" : q === "aug" ? "+" : /sus/.test(q) ? q : ""); };
+  const SYM = { maj: "", min: "m", maj7: "maj7", m7: "m7", "7": "7", maj9: "maj9", m9: "m9", "9": "9", "13": "13", m11: "m11", "6/9": "6/9", dim7: "°7", m7b5: "ø7", add9: "add9", sus2: "sus2", "7sus": "7sus4", "7#9": "7#9", "7b9": "7b9", m6: "m6", dim: "°", sus4: "sus4", "6": "6", mmaj7: "m(maj7)", aug: "+" };
   const STYLES = [
     { name: "NÉO SOUL", minor: false, p: [[2, "m9", "ii9"], [7, "13", "V13"], [0, "maj9", "Imaj9"], [9, "m9", "vi9"], [5, "maj9", "IVmaj9"], [4, "m7", "iii7"], [10, "9", "♭VII9"]] },
     { name: "JAZZ", minor: false, p: [[2, "m7", "ii7"], [7, "7b9", "V7♭9"], [0, "maj7", "Imaj7"], [9, "7", "VI7"], [4, "m7b5", "iiiø"], [5, "maj7", "IVmaj7"], [6, "dim7", "♯iv°7"]] },
@@ -33,7 +40,22 @@
     // couleurs tirées des morceaux analysés (types d'accords, pas leur grille) : transposables, à jouer dans l'ordre qu'on veut
     { name: "COULEUR SOBER", minor: true, p: [[0, "m9", "i9"], [10, "maj9", "♭VIImaj9"], [7, "m11", "v11"], [8, "maj9", "♭VImaj9"], [5, "m9", "iv9"], [3, "maj7", "♭IIImaj7"], [0, "m11", "i11"]] },
     { name: "COULEUR ALL THINGS", minor: true, p: [[0, "sus2", "isus2"], [5, "m9", "iv9"], [3, "maj7", "♭IIImaj7"], [10, "sus2", "♭VIIsus2"], [0, "m11", "i11"], [8, "maj7", "♭VImaj7"], [7, "7sus", "V7sus"]] },
-    { name: "CINÉ SOMBRE", minor: true, p: [[0, "m9", "i9"], [8, "maj7", "♭VImaj7"], [3, "maj7", "♭IIImaj7"], [10, "add9", "♭VII"], [5, "m6", "iv6"], [7, "7b9", "V7♭9"], [1, "maj7", "♭IImaj7"]] }
+    { name: "CINÉ SOMBRE", minor: true, p: [[0, "m9", "i9"], [8, "maj7", "♭VImaj7"], [3, "maj7", "♭IIImaj7"], [10, "add9", "♭VII"], [5, "m6", "iv6"], [7, "7b9", "V7♭9"], [1, "maj7", "♭IImaj7"]] },
+    // ACCORDS DE BASE : les 7 accords de la gamme, sans couleur (majeur puis mineur)
+    { name: "BASIQUES MAJEUR", minor: false, p: [[0, "maj", "I"], [2, "min", "ii"], [4, "min", "iii"], [5, "maj", "IV"], [7, "maj", "V"], [9, "min", "vi"], [11, "dim", "vii°"]] },
+    { name: "BASIQUES MINEUR", minor: true, p: [[0, "min", "i"], [2, "dim", "ii°"], [3, "maj", "♭III"], [5, "min", "iv"], [7, "min", "v"], [8, "maj", "♭VI"], [10, "maj", "♭VII"]] },
+    // AUTRES UNIVERS
+    { name: "AFROBEAT", minor: false, p: [[0, "9", "I9"], [5, "maj7", "IVmaj7"], [2, "m7", "ii7"], [7, "7sus", "V7sus"], [9, "m9", "vi9"], [10, "9", "♭VII9"], [4, "m7", "iii7"]] },
+    { name: "HIGHLIFE", minor: false, p: [[0, "maj", "I"], [5, "maj", "IV"], [7, "maj", "V"], [0, "add9", "Iadd9"], [9, "min", "vi"], [2, "m7", "ii7"], [7, "7", "V7"]] },
+    { name: "DÉSERT TOUAREG", minor: true, p: [[0, "m7", "i7"], [5, "m7", "iv7"], [10, "maj", "♭VII"], [3, "maj", "♭III"], [7, "m7", "v7"], [0, "sus4", "isus4"], [8, "maj", "♭VI"]] },
+    { name: "ANDALOU", minor: true, p: [[0, "min", "i"], [10, "maj", "♭VII"], [8, "maj", "♭VI"], [7, "maj", "V"], [1, "maj7", "♭IImaj7"], [5, "m7", "iv7"], [7, "7b9", "V7♭9"]] },
+    { name: "ORIENT HIJAZ", minor: true, p: [[0, "maj", "I (hijaz)"], [1, "maj", "♭II"], [5, "min", "iv"], [10, "min", "♭vii"], [8, "maj", "♭VI"], [3, "aug", "♭III+"], [7, "dim", "v°"]] },
+    { name: "INDE RAGA", minor: false, p: [[0, "sus4", "Isus4"], [0, "maj", "I"], [10, "maj", "♭VII"], [5, "maj", "IV"], [7, "sus2", "Vsus2"], [2, "min", "ii"], [0, "6", "I6"]] },
+    { name: "BOSSA NOVA", minor: false, p: [[0, "maj7", "Imaj7"], [2, "m9", "ii9"], [7, "13", "V13"], [9, "m7", "vi7"], [4, "m7b5", "iiiø"], [5, "6/9", "IV6/9"], [8, "7", "♭VI7"]] },
+    { name: "CITY POP", minor: false, p: [[5, "maj9", "IVmaj9"], [4, "m7", "iii7"], [9, "m9", "vi9"], [2, "m9", "ii9"], [7, "7sus", "V7sus"], [0, "maj9", "Imaj9"], [3, "maj7", "♭IIImaj7"]] },
+    { name: "ROOTS REGGAE", minor: false, p: [[0, "maj", "I"], [5, "maj", "IV"], [7, "maj", "V"], [9, "min", "vi"], [2, "min", "ii"], [10, "maj", "♭VII"], [4, "min", "iii"]] },
+    { name: "DRILL SOMBRE", minor: true, p: [[0, "min", "i"], [8, "maj", "♭VI"], [3, "maj", "♭III"], [7, "7b9", "V7♭9"], [1, "maj", "♭II"], [5, "m6", "iv6"], [0, "mmaj7", "i(maj7)"]] },
+    { name: "AMBIENT", minor: false, p: [[0, "add9", "Iadd9"], [7, "sus2", "Vsus2"], [9, "m7", "vi7"], [5, "maj9", "IVmaj9"], [2, "sus2", "iisus2"], [4, "m7", "iii7"], [10, "add9", "♭VIIadd9"]] },
   ];
   const WHITE = { 0: 0, 2: 1, 4: 2, 5: 3, 7: 4, 9: 5, 11: 6 };
   let lastVoicing = [60, 64, 67], knobChord = -1, knobChordT = null;
@@ -67,7 +89,7 @@
       b.innerHTML = `<b>${i.name}</b><span>${i.lic}</span>`;
       b.addEventListener("click", () => selectInst(i.id)); $("insts").appendChild(b);
     });
-    $("mNotes").classList.toggle("on", !chordMode); $("mChords").classList.toggle("on", chordMode); $("mBass").classList.toggle("on", addBass); $("mFull").classList.toggle("on", sonsFull);
+    $("mNotes").classList.toggle("on", !chordMode); $("mChords").classList.toggle("on", chordMode); $("mBass").classList.toggle("on", addBass); $("mFull").classList.toggle("on", sonsFull); $("mSimple").classList.toggle("on", simpleChords);
     $("chordPanel").hidden = !chordMode || isDrum(instCur);
     drawSonsFx();
     try { drawDrums(); ambApply(); } catch (e) {}
@@ -81,7 +103,7 @@
     [4, 5, 6, 7, 0, 1, 2, 3].forEach(pad => {
       const i = pad < 7 && pad < st.p.length ? pad : 0, oct = pad === 7 || pad >= st.p.length, c = st.p[i];
       const b = document.createElement("button"); b.type = "button"; b.className = "chord"; if (!oct) b.id = "ch" + i;
-      b.innerHTML = `<b>${NN[(tonic + c[0]) % 12]}${SYM[c[1]]}${oct ? " ↑" : ""}</b><span>${oct ? "octave" : c[2]} · pad ${pad + 1}${oct ? "" : " · " + ["DO", "RÉ", "MI", "FA", "SOL", "LA", "SI"][i]}</span>`;
+      b.innerHTML = `<b>${NN[(tonic + c[0]) % 12]}${SYM[chordQ(c[1])]}${oct ? " ↑" : ""}</b><span>${oct ? "octave" : chordRoman(c)} · pad ${pad + 1}${oct ? "" : " · " + ["DO", "RÉ", "MI", "FA", "SOL", "LA", "SI"][i]}</span>`;
       b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture(e.pointerId); chordOn("screen" + pad, i, 0.8, 0, oct ? 1 : 0); });
       ["pointerup", "pointercancel"].forEach(ev => b.addEventListener(ev, () => releaseKey("screen" + pad)));
       $("chords").appendChild(b);
@@ -92,6 +114,7 @@
   $("mNotes").addEventListener("click", () => { chordMode = false; store.set("chordMode", false); drawSons(); });
   $("mChords").addEventListener("click", () => { chordMode = true; store.set("chordMode", true); drawSons(); });
   $("mBass").addEventListener("click", () => { addBass = !addBass; store.set("addBass", addBass); drawSons(); });
+  $("mSimple").addEventListener("click", () => { simpleChords = !simpleChords; store.set("simpleChords", simpleChords); drawSons(); lcd("lcdPad", "ACCORDS", simpleChords ? "SIMPLES : chaque accord ramené à sa triade (majeur, mineur, diminué)" : "COULEUR : 7e, 9e, 11e, 13e comme dans le style"); });
   $("mFull").addEventListener("click", () => { sonsFull = !sonsFull; store.set("sonsFull", sonsFull); drawSons(); lcd("lcdPad", "SONS", sonsFull ? "FULL : toutes les notes à pleine force" : "FULL coupé : la force de frappe compte"); });
   function setOct(o) { octShift = Math.max(-2, Math.min(2, o)); knobVals.sons[4] = (octShift + 2) / 4; $("octVal").textContent = (octShift > 0 ? "+" : "") + octShift; if (tab === "sons") drawKnobs(); }
   $("octDown").addEventListener("click", () => setOct(octShift - 1));
@@ -194,7 +217,7 @@
   function chordOn(key, idx, vel, invUp, octUp) {
     const st = STYLES[styleIdx], c = st.p[idx % st.p.length];
     const root = 48 + ((tonic + c[0]) % 12), sh = (octShift + (octUp || 0)) * 12;
-    const notes = voiceChord(root, c[1], invUp).map(n => n + sh);
+    const notes = voiceChord(root, chordQ(c[1]), invUp).map(n => n + sh);
     if (addBass) notes.unshift(root - 12 + sh);
     releaseKey(key);
     // STRUM (potard 8) : les notes partent l'une après l'autre, de la plus grave à la plus aiguë, de plus en plus douces
@@ -203,7 +226,7 @@
     activeKeys.set(key, vs);
     onFirstNote(ctx.currentTime);
     const b = $("ch" + (idx % st.p.length)); if (b) { b.classList.add("hit"); b.dataset.k = key; }
-    lcd("lcdPad", "ACCORD", `${NN[root % 12]}${SYM[c[1]]} · ${notes.map(n => NN[n % 12]).join(" ")}`);
+    lcd("lcdPad", "ACCORD", `${NN[root % 12]}${SYM[chordQ(c[1])]} · ${notes.map(n => NN[n % 12]).join(" ")}`);
   }
   // potard Attaque : montée progressive de chaque note (0 = immédiate, à fond = 2 s)
   const attackTime = () => { const v = knobVals.sons[6]; return v < 0.02 ? 0 : v * v * 2; };

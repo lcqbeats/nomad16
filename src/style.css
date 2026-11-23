@@ -803,6 +803,34 @@ html.flipped, html.flipped body { overflow: hidden; }
 :root.desk[data-desk="xl"] .pad .n, :root.desk[data-desk="xl"] .pad .m, :root.desk[data-desk="xl"] .pad .name { color: #1b1a18; }
 :root.desk[data-desk="xl"] .pad.sel { box-shadow: 0 0 0 2px #f2efe6, inset 0 1px 0 #b9b7b1, 0 6px 10px rgba(0,0,0,.55); }
 :root.desk[data-desk="xl"] .dial::after { background: radial-gradient(circle at 40% 30%, #6a6864, #2a2927 70%); }
+/* DUB (SOUND SYSTEM) : caisson vert profond, toile de haut-parleur, bandeau rouge-or-vert, pads en cônes de HP, écran ambre */
+:root.desk[data-desk="dub"] { --lcd-bg: #1d1407; --lcd-ink: #ffb33a; --red: #c8302a; --green: #1f8a3c; --stripe-mid: #e8b021; }
+:root.desk[data-desk="dub"] body { background: radial-gradient(ellipse at 50% 10%, #1b2a1d, #070a07 70%); }
+:root.desk[data-desk="dub"] .machine { background: radial-gradient(circle at 1px 1px, rgba(0,0,0,.55) 1px, transparent 1.6px) 0 0 / 4px 4px, linear-gradient(180deg, #1f3523, #15271a 55%, #0f1d13);
+  box-shadow: 0 0 0 2px #0a0f0a, inset 0 0 0 6px #2b1d10, inset 0 0 0 8px #e8b021, inset 0 0 40px rgba(0,0,0,.6), 0 30px 60px rgba(0,0,0,.75); }
+:root.desk[data-desk="dub"] .machine > .stripe { height: 10px; opacity: 1; border-radius: 2px; }
+:root.desk[data-desk="dub"] .top .brand .bw { color: #e8b021; text-shadow: 2px 2px 0 #c8302a; }
+:root.desk[data-desk="dub"] .top .brand span, :root.desk[data-desk="dub"] .top .brand small { color: #f3e6c4; text-shadow: none; -webkit-text-stroke: 0; }
+:root.desk[data-desk="dub"] .top .brand span * { text-shadow: none; }
+:root.desk[data-desk="dub"] .top .gear, :root.desk[data-desk="dub"] .top .histbtn { background: linear-gradient(180deg, #2b2b27, #191916); color: #e8b021; box-shadow: 0 2px 0 #000, 0 0 0 1px #5a4a1e; }
+:root.desk[data-desk="dub"] .lcd { border-color: #000; box-shadow: inset 0 0 26px rgba(255,140,0,.12), 0 0 0 3px #2b1d10, 0 0 0 4px #e8b021; }
+:root.desk[data-desk="dub"] .lcd button { color: var(--lcd-ink); border-color: rgba(255,179,58,.4); background: rgba(255,179,58,.06); }
+:root.desk[data-desk="dub"] .tabs .tab { background: linear-gradient(180deg, #24331f, #172215); color: #f3e6c4; box-shadow: 0 3px 0 #050805, inset 0 1px 0 #3c5236; }
+:root.desk[data-desk="dub"] .tabs .tab::after { color: #e8b021; }
+:root.desk[data-desk="dub"] .tabs .tab[aria-selected="true"] { background: linear-gradient(180deg, #d63a30, #a8241f); color: #fff6df; }
+:root.desk[data-desk="dub"] .tabs .tab[aria-selected="true"]::after { color: #ffd772; }
+:root.desk[data-desk="dub"] .knobs, :root.desk[data-desk="dub"] .deskside, :root.desk[data-desk="dub"] .machine > section.view {
+  background: radial-gradient(circle at 1.5px 1.5px, #050705 1.1px, transparent 1.7px) 0 0 / 5px 5px, linear-gradient(180deg, #2a2a26, #1c1c19);
+  border-radius: 10px; box-shadow: inset 0 2px 10px rgba(0,0,0,.8), 0 0 0 2px #3a2b16, 0 0 0 3px #6b5424; }
+:root.desk[data-desk="dub"] .deskside { padding: 10px; }
+:root.desk[data-desk="dub"] .machine > section.view { padding: 14px; }
+:root.desk[data-desk="dub"] .pad { color: #f3e6c4;
+  background: radial-gradient(circle at 50% 50%, #3a3a36 0 12%, #121210 13% 16%, #2c2c29 17% 52%, #0d0d0c 53% 58%, #3d3d39 59% 64%, #1d1d1b 65%);
+  box-shadow: 0 0 0 2px #0a0a09, 0 0 0 3px #5a4a1e, 0 6px 10px rgba(0,0,0,.6); }
+:root.desk[data-desk="dub"] .pad .n, :root.desk[data-desk="dub"] .pad .m, :root.desk[data-desk="dub"] .pad .name { color: #f3e6c4; text-shadow: 0 1px 2px #000; }
+:root.desk[data-desk="dub"] .pad.sel { box-shadow: 0 0 0 2px #e8b021, 0 0 14px rgba(232,176,33,.45), 0 6px 10px rgba(0,0,0,.6); }
+:root.desk[data-desk="dub"] .pad.hit, :root.desk[data-desk="dub"] .pad:active { background: radial-gradient(circle at 50% 50%, #c8302a 0 12%, #121210 13% 16%, #3a2a22 17% 52%, #0d0d0c 53% 58%, #3d3d39 59% 64%, #1d1d1b 65%); }
+:root.desk[data-desk="dub"] .dial::after { background: radial-gradient(circle at 38% 30%, #ffe08a, #c08a1a 45%, #5a3e0a 80%); }
 /* sélecteur d'apparence (RÉGLAGES, ordinateur) */
 .deskskins { display: none; }
 :root.desk div.deskskins { display: grid; } :root.desk p.deskskins { display: block; }

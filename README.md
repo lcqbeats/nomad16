@@ -75,6 +75,8 @@ Sur un grand écran avec souris, NOMAD passe tout seul en paysage, dans l'esprit
 ## Nouveautés sons
 
 - SONS : famille 20SYL (12 sons de synthèse dans l'esprit de 20syl) et 14 préréglages d'effets (DREAMY, CASSETTE, SOUL 70s, RADIO, TÉLÉPHONE, SOUS L'EAU, DUB, PING-PONG, SHIMMER, CRUNCH, WOBBLE, TRÉMOLO, TRÈS PROCHE, LOINTAIN).
+- SONS : 8 effets de plus (LESLIE, ÉCHO À BANDE, SP-1200, RESSORT, PHASER, PETITE SALLE, AUTO-WAH, CHORUS 80s) ; nouveaux univers de progressions (BASIQUES MAJEUR et MINEUR : les 7 accords de la gamme sans couleur, AFROBEAT, HIGHLIFE, DÉSERT TOUAREG, ANDALOU, ORIENT HIJAZ, INDE RAGA, BOSSA NOVA, CITY POP, ROOTS REGGAE, DRILL SOMBRE, AMBIENT) ; bouton SIMPLES : chaque accord de n'importe quelle progression ramené à sa triade (majeur, mineur, diminué).
+- Réglages des pads gardés par kit : en changeant de kit puis en revenant (kits de chops compris), on retrouve niveaux, pan, hauteur, enveloppes et découpes. SCRATCH : crossfader à course plus courte (150 px).
 - Kits J DILLA, RZA, PETE ROCK, DAMU THE FUDGEMUNK : batterie CC0 (Virtuosity Drums) traitée dans l'esprit de chacun.
 - SONG : mastering automatique (NATUREL, CHAUD, CLAIR, PUNCH, LO-FI ; STREAMING -14, FORT -9, DOUX -18 LUFS), appliqué aux exports WAV du morceau, des boucles et de la session. L'export multipiste + MPC reste brut.
 
@@ -103,7 +105,7 @@ PADS : + KIT (ou + NOUVEAU KIT dans la liste des kits) crée un kit vide, nommé
 
 ## Apparence sur ordinateur
 
-RÉGLAGES → APPARENCE SUR ORDINATEUR : NOIRE (façon MPC 1000, d'origine) ou GRISE (façon MPC 2000XL : boîtier gris chaud, touches grises, pads de caoutchouc gris, écran vert-gris).
+RÉGLAGES → APPARENCE SUR ORDINATEUR : NOIRE (façon MPC 1000, d'origine) GRISE (façon MPC 2000XL : boîtier gris chaud, touches grises, pads de caoutchouc gris, écran vert-gris) ou DUB (SOUND SYSTEM : caisson vert profond en toile de haut-parleur, bandeau rouge-or-vert, pads en cônes de haut-parleur, écran ambre, potards laiton).
 
 ## SONS · BATTERIE (patterns par genre)
 

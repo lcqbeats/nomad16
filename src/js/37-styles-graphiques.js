@@ -15,7 +15,7 @@
   document.querySelectorAll(".ftype").forEach(b => b.addEventListener("click", () => setType(b.dataset.type)));
   setType(store.get("type", "mpk"));
 
-  // Apparence sur ordinateur : noire (façon 1000) ou grise (façon 2000XL)
+  // Apparence sur ordinateur : noire (façon 1000), grise (façon 2000XL) ou dub (sound system)
   function setDeskSkin(d) {
     if (d) document.documentElement.dataset.desk = d; else delete document.documentElement.dataset.desk;
     document.querySelectorAll(".dskin").forEach(b => b.classList.toggle("on", b.dataset.desk === d));
