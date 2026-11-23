@@ -20,7 +20,7 @@
     try { crate = await (await fetch("crate/crate.json")).json(); }
     catch (e) { $("digTitle").textContent = "Le bac n'a pas pu être chargé (hors ligne ?)"; return; }
     $("crates").innerHTML = "";
-    crate.collections.forEach(c => { if (c.gen === "scratch") c.items = scrVoiceItems(); });
+    crate.collections.forEach(c => { if (/^loc-/.test(c.id) && c.items) c.kits = locKits(c); });
     crate.collections.forEach((c, i) => {
       const b = document.createElement("button");
       b.type = "button"; b.className = "crate"; b.id = "crate" + i; b.setAttribute("role", "tab");
@@ -69,27 +69,33 @@
     c.sub = "« " + c.q + " » · " + (j.count || 0) + " sons CC0";
     return (j.results || []).map(s => ({ id: "fs-" + s.id, t: String(s.name || "").replace(/\.(wav|mp3|aiff?|flac|ogg|m4a)$/i, "").replace(/[_]+/g, " ").slice(0, 90), a: s.username, l: "CC0", u: s.url || "https://freesound.org/s/" + s.id + "/", m: s.previews && s.previews["preview-hq-mp3"], d: s.duration, fs: 1 })).filter(x => x.m);
   }
-  // Bac VOIX SCRATCH : les sons de l'onglet SCRATCH (voix synthétisées, tonalités, voix de la Bibliothèque du Congrès),
-  // un par disque, plus un « kit » : les 16 à la suite, déjà découpés, prêts à envoyer sur les pads
-  function scrVoiceItems() {
-    const loc = crate.collections.find(x => x.id === "loc-tony-schwartz"), out = [{ id: "scr-kit", t: "KIT VOIX SCRATCH · 16 sons à la suite", a: "NOMAD", gen: "kit", l: "domaine public", u: "https://citizen-dj.labs.loc.gov/loc-tony-schwartz/" }];
-    SCR_SYN_NAMES.forEach((n, k) => out.push({ id: "scr-syn-" + k, t: n, a: "NOMAD (son synthétisé)", gen: "syn", k, l: "domaine public", u: "https://lcqbeats.github.io/nomad16/" }));
-    if (loc) SCR_LOC.forEach(([cid, title, ci, nm], k) => { const it = loc.items.find(x => x.t === title); if (it && it.c[ci]) out.push({ id: "scr-loc-" + k, t: nm + " (voix)", a: "Tony Schwartz · Bibliothèque du Congrès", l: "domaine public", u: it.u || "https://citizen-dj.labs.loc.gov/loc-tony-schwartz/", dir: cid, c: [it.c[ci]] }); });
+  // Bibliothèque du Congrès : les extraits regroupés par 16, un « disque » par kit, déjà découpé : SUR LES PADS en fait un kit
+  function locKits(c) {
+    const clips = []; c.items.forEach(it => it.c.forEach(cc => clips.push({ f: cc[0], it })));
+    const out = [];
+    for (let k = 0; k * 16 < clips.length; k++) {
+      const g = clips.slice(k * 16, k * 16 + 16), its = [...new Set(g.map(x => x.it))];
+      const ys = its.map(x => +x.y).filter(Boolean), arts = [...new Set(its.map(x => x.a).filter(Boolean))];
+      out.push({ id: c.id + "-kit" + (k + 1), t: `KIT ${k + 1} · ` + its.slice(0, 3).map(x => x.t).join(", ") + (its.length > 3 ? "…" : ""), a: arts.slice(0, 2).join(", ") + (arts.length > 2 ? "…" : ""),
+        y: ys.length ? Math.min(...ys) : undefined, l: "domaine public", u: g[0].it.u, gen: "loc16", dir: c.id, files: g.map(x => x.f) });
+    }
     return out;
   }
   async function loadGen(it) {
     if (!ctx) return;
-    stopTT(); $("faces").innerHTML = ""; $("ttMsg").textContent = "on pose le disque…";
-    const syn = scrSynthCache();
-    if (it.gen === "syn") { setClip(scrBufOf(syn[it.k].data, sr), it, it.t); $("ttMsg").textContent = (syn[it.k].data.length / sr).toFixed(1) + " s"; return; }
-    // kit : 14 sons synthétisés + 2 voix, séparés par un petit silence, une découpe au début de chaque son
-    const parts = syn.map(x => x.data), gap = Math.round(sr * 0.12);
-    const loc = crate.collections.find(x => x.id === "scr-voix").items.filter(x => x.dir).slice(0, 2);
-    for (const v of loc) { try { const b = await scrFetch(crate.base + v.dir + "/" + v.c[0][0] + ".wav"); parts.push(b.getChannelData(0).slice(0, Math.round(sr * Math.min(2.5, b.duration)))); } catch (e) {} }
-    const L = parts.reduce((a, p) => a + p.length + gap, 0), b = ctx.createBuffer(1, L, sr), d = b.getChannelData(0), starts = [];
-    let o = 0; parts.forEach(p => { starts.push(o); d.set(p, o); o += p.length + gap; });
-    setClip(b, it, it.t); chops = starts.slice(0, 16); drawWave();
-    $("ttMsg").textContent = starts.length + " sons · « SUR LES PADS » pour en faire un kit";
+    stopTT(); $("faces").innerHTML = ""; $("ttMsg").textContent = "on pose les " + it.files.length + " extraits…"; digLoad(0);
+    let done = 0;
+    const bufs = await Promise.all(it.files.map(async f => { try { const ab = await (await fetch(crate.base + it.dir + "/" + f + ".wav")).arrayBuffer(); const b = await new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)); digLoad(++done / it.files.length); return b; } catch (e) { return null; } }));
+    digLoad(null);
+    const ok = bufs.filter(Boolean); if (!ok.length) { $("ttMsg").textContent = "chargement impossible (connexion ?)"; return; }
+    // chaque extrait (8 s au plus), un petit silence entre deux, une découpe au début de chacun
+    const gap = Math.round(sr * 0.08), parts = ok.map(b => { const n = Math.min(b.length, Math.round(b.sampleRate * 8)), r = sr / b.sampleRate; return { b, n, m: Math.round(n * r) }; });
+    const L = parts.reduce((a, p) => a + p.m + gap, 0), out = ctx.createBuffer(2, L, sr), starts = [];
+    let o = 0;
+    parts.forEach(p => { starts.push(o); for (let ch = 0; ch < 2; ch++) { const src = p.b.getChannelData(Math.min(ch, p.b.numberOfChannels - 1)), d = out.getChannelData(ch), r = p.b.sampleRate / sr;
+      for (let i = 0; i < p.m; i++) { const x = i * r, j = Math.floor(x), f = x - j; d[o + i] = (src[j] || 0) * (1 - f) + (src[j + 1] || 0) * f; } } o += p.m + gap; });
+    setClip(out, it, it.t); chops = starts.slice(0, 16); drawWave();
+    $("ttMsg").textContent = ok.length + " extraits à la suite · « SUR LES PADS » pour en faire un kit";
   }
   async function wcList(c) {
     const strip = h => String(h || "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim(), drop = c.drop ? new RegExp(c.drop, "i") : null;
@@ -135,7 +141,7 @@
   }
   function enterDig() { fitCanvas(dcv); fitCanvas(wcv); tcv.width = 240; tcv.height = 240; loadCrate(); drawWave(); }
   function drawCrates() { digDirty = true; crate.collections.forEach((c, i) => { $("crate" + i).classList.toggle("on", i === crateIdx); $("crate" + i).setAttribute("aria-selected", i === crateIdx); }); }
-  const curItems = () => crate ? crate.collections[crateIdx].items || [] : [];
+  const curItems = () => crate ? crate.collections[crateIdx].kits || crate.collections[crateIdx].items || [] : [];
   const curItem = () => curItems()[recIdx];
   function showRecord(dir) {
     if (!crate) return;
@@ -146,7 +152,7 @@
     $("digArtist").textContent = it.a || "artiste inconnu";
     $("digCount").textContent = `${c.name} · ${recIdx + 1}/${curItems().length}` + (it.l === "CC0" ? " · CC0, libre" : it.l && it.l !== "domaine public" ? ` · ${it.l} (citer l'auteur)` : "");
     $("digLink").href = it.u;
-    $("digLink").textContent = it.ia ? "fiche sur Internet Archive" : it.fs ? "fiche sur Freesound" : it.gen ? "sons de SCRATCH (NOMAD)" : it.m ? "fiche sur Wikimedia Commons" : "fiche à la Bibliothèque du Congrès";
+    $("digLink").textContent = it.ia ? "fiche sur Internet Archive" : it.fs ? "fiche sur Freesound" : it.m ? "fiche sur Wikimedia Commons" : "fiche à la Bibliothèque du Congrès";
     if (dir) digAnim = { dir, t0: performance.now() };
     digDirty = true;
     store.set("dig", { c: crateIdx, r: recIdx });

@@ -687,8 +687,8 @@ def test_fx_32_motifs(app):
       window._pk3 = () => { an.getFloatTimeDomainData(_b3); let m = 0, bad = 0; for (const v of _b3) { if (!isFinite(v)) bad++; m = Math.max(m, Math.abs(v)); } return [m, bad]; }; }""")
     app.click("#tab-fx")
     app.evaluate("nomadMidi([0x99, 36, 100]); nomadMidi([0x89, 36, 0])")
-    app.evaluate("nomadMidi([0x90, 49, 100]); nomadMidi([0x80, 49, 0])")     # DO# : page 17 à 32
-    assert "17" in app.inner_text("#fxSet")
+    app.evaluate("nomadMidi([0x90, 49, 100]); nomadMidi([0x80, 49, 0])")     # DO# : page 17 à 32 (rythmiques 1)
+    assert "RYTHMIQUES 1" in app.inner_text("#fxSet")
     assert app.locator("#fxgrid svg").count() == 16
     for i in range(16):
         app.evaluate(f"nomadMidi([0x99, {36 + i}, 100])")
@@ -708,7 +708,7 @@ def test_fx_32_motifs(app):
             app.evaluate(f"nomadMidi([0x89, {36 + i}, 0])")
             assert worst[1] == 0 and worst[0] < 1.5, (page * 16 + i + 1, worst)
     app.click("#fxSet")
-    assert "1–16" in app.inner_text("#fxSet")
+    assert "GLITCH-HOP" in app.inner_text("#fxSet")
 
 
 def test_doubler_aligne_les_autres_pistes(app):
@@ -1174,13 +1174,14 @@ def test_fx_quatre_pages_et_motifs_valides(app):
     app.evaluate("nomadMidi([0x99, 36, 1]); nomadMidi([0x89, 36, 0])")
     for k in range(5):
         app.evaluate("nomadMidi([0x90, 49, 100]); nomadMidi([0x80, 49, 0])")     # do# : page suivante
-    assert "MOTIFS 1–16" in app.inner_text("#fxSet")
+    # la page glitch-hop vient en premier, puis les motifs rythmiques, puis le reste
+    assert "GLITCH-HOP" in app.inner_text("#fxSet") and "RATCHET" in app.inner_text("#fxgrid") and "MACHINE QUI DÉRAILLE" in app.inner_text("#fxgrid")
+    app.evaluate("nomadMidi([0x90, 49, 100]); nomadMidi([0x80, 49, 0])")
+    assert "RYTHMIQUES 1" in app.inner_text("#fxSet") and "BUILD-UP" in app.inner_text("#fxgrid")
     app.evaluate("nomadMidi([0x90, 49, 100]); nomadMidi([0x80, 49, 0])"); app.evaluate("nomadMidi([0x90, 49, 100]); nomadMidi([0x80, 49, 0])")
     assert "VARIATIONS DRUMS" in app.inner_text("#fxSet") and "GHOST NOTES" in app.inner_text("#fxgrid")
-    app.evaluate("nomadDbg.setFxBank(3)")
-    assert "ÉCHO PING-PONG" in app.inner_text("#fxgrid")
     app.evaluate("nomadDbg.setFxBank(4)")
-    assert "GLITCH-HOP" in app.inner_text("#fxSet") and "RATCHET" in app.inner_text("#fxgrid") and "MACHINE QUI DÉRAILLE" in app.inner_text("#fxgrid")
+    assert "ÉCHO PING-PONG" in app.inner_text("#fxgrid")
 
 
 def test_sp_bank_b_et_dosage_par_effet(app):
@@ -1397,18 +1398,24 @@ def test_reglages_des_pads_gardes_par_kit_et_chops(app):
     app.wait_for_function("nomadDbg.padParams[2].level === 0.5", timeout=5000)
 
 
-def test_digging_voix_scratch_en_kit(app):
+def test_digging_bibliotheque_du_congres_en_kits_de_16(app):
     app.click("#tab-sample")
     app.wait_for_function("document.querySelectorAll('#crates .crate').length > 10")
-    app.locator("#crates .crate", has_text="VOIX SCRATCH").click()
-    app.wait_for_function("/VOIX SCRATCH · 1\\//.test(document.getElementById('digCount').textContent)")
-    assert app.inner_text("#digTitle").startswith("KIT VOIX SCRATCH")
-    app.evaluate("document.getElementById('digPull').click()")
-    app.wait_for_function("nomadDbg.clip && nomadDbg.chops.length >= 14", timeout=10000)
+    names = app.evaluate("[...document.querySelectorAll('#crates .crate')].map(b => b.textContent)")
+    assert "VOIX SCRATCH" not in names
+    app.locator("#crates .crate", has_text="JAZZ").last.click()
+    app.wait_for_function("/^JAZZ · 1\\/22/.test(document.getElementById('digCount').textContent)")
+    assert app.inner_text("#digTitle").startswith("KIT 1 ·")
+    # extraits simulés (le serveur de la Bibliothèque n'est pas joignable ici) : 16 sons courts
+    app.evaluate("""() => { const wav = n => { const b = new ArrayBuffer(44 + n * 2), v = new DataView(b), w = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+        w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 22050, true); v.setUint32(28, 44100, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+        for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.sin(i / 5) * 12000 * Math.exp(-i / 4000), true); return b; };
+      const f = window.fetch; window.fetch = (u, o) => /\.wav$/.test(String(u)) ? Promise.resolve(new Response(wav(22050))) : f(u, o); }""")
+    app.click("#digPull")
+    app.wait_for_function("nomadDbg.clip && nomadDbg.chops.length === 16", timeout=10000)
     app.click("#toPads")
     app.wait_for_function("document.getElementById('kitName').textContent.startsWith('CHOPS')", timeout=8000)
-    assert app.evaluate("nomadDbg.buffers.filter(Boolean).length") >= 14
-
+    assert app.evaluate("nomadDbg.buffers.filter(Boolean).length") == 16
 
 def test_sons_univers_accords_simples_et_nouveaux_effets(app):
     app.click("#tab-sons")

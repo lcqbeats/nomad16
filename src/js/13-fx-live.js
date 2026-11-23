@@ -123,12 +123,13 @@
     pts.forEach(p => { if (!p) { pen = false; return; } const x = (4 + p[0] * 92).toFixed(1), y = Y(p[1]).toFixed(1); d += (pen ? "L" : "M") + x + " " + y; pen = true; prev = p; });
     return `<svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><path d="${d}"/></svg>`;
   }
-  // pages de motifs : 0 = 1 à 16, 1 = 17 à 32, 2 = variations de batterie (33 à 48), 3 = mélodique (49 à 64), 4 = glitch-hop (65 à 80)
-  const FX_PAGES = [["MOTIFS 1–16", "1–16"], ["MOTIFS 17–32", "17+"], ["VARIATIONS DRUMS", "DRM"], ["MÉLODIQUE", "MÉL"], ["GLITCH-HOP", "GLT"]];
+  // pages de motifs, dans l'ordre joué : glitch-hop (1 à 16), motifs rythmiques (17 à 32 puis 33 à 48),
+  // variations de batterie (49 à 64), mélodique (65 à 80)
+  const FX_PAGES = [["GLITCH-HOP", "GLT"], ["RYTHMIQUES 1", "RY1"], ["RYTHMIQUES 2", "RY2"], ["VARIATIONS DRUMS", "DRM"], ["MÉLODIQUE", "MÉL"]];
   let fxBank = Math.min(FX_PAGES.length - 1, store.get("fxPage", 0));
   let fxNode = null, fxFilt, fxCrush, fxPost, echoSend, echoDly, echoFb, springSend, fxMaster;
   let fxActive = -1, fxQuant = true, manualBpm = 90, fxTrig = store.get("fxTrig", "hold"), fxTarget = "all", fxOneT = null;
-  const FXS = FX_PATTERNS;
+  const FXS = FX_PATTERNS.slice(64).concat(FX_PATTERNS.slice(0, 64));   // glitch-hop en tête
   const fxEls = [];
   // 16 pads dans la disposition de l'onglet PADS (pad 1 en bas à gauche, comme sur l'Akai).
   // Téléphone : seuls les 8 pads de la banque choisie s'affichent ; ordinateur : les 16 d'un coup.
@@ -144,7 +145,7 @@
     if (b === fxBank) return;
     if (fxActive >= 0) fxEnd(fxActive);
     fxBank = b; store.set("fxPage", b); drawFxPads();
-    lcd("lcdPad", "FX", ["motifs 1 à 16", "motifs 17 à 32 (élaborés)", "variations de batterie (33 à 48)", "mélodique (49 à 64)", "glitch-hop (65 à 80)"][b]);
+    lcd("lcdPad", "FX", ["glitch-hop (1 à 16)", "motifs rythmiques (17 à 32)", "motifs rythmiques élaborés (33 à 48)", "variations de batterie (49 à 64)", "mélodique (65 à 80)"][b]);
     if (typeof fxDisp === "function") fxDisp(FX_PAGES[b][1], FX_PAGES[b][0]);
   }
   function drawFxPads() {
@@ -166,7 +167,7 @@
   const FX_KEY_T = ["all", "live", "1", "2", "3", "4", "5", "6", "song"];
   // renvoie true si la touche a servi de sélecteur ; les autres touches jouent SONS normalement
   function fxKey(note) {
-    if (note - 48 === 1) { setFxBank((fxBank + 1) % FX_PAGES.length); return true; }   // DO# : page suivante (1–16, 17–32, drums, mélodique, glitch-hop)
+    if (note - 48 === 1) { setFxBank((fxBank + 1) % FX_PAGES.length); return true; }   // DO# : page suivante (glitch-hop, rythmiques 1 et 2, drums, mélodique)
     const w = [0, 2, 4, 5, 7, 9, 11, 12, 14].indexOf(note - 48);   // … et le ré suivant = SONG
     if (w < 0) return false;
     setFxTarget(FX_KEY_T[w]); return true;
