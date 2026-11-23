@@ -101,6 +101,10 @@ footer a, .info a { color: var(--gold); }
         <button type="button" id="qNorm" class="on">NORMALE</button>
         <button type="button" id="qCare">SOIGNÉE · 2× PLUS LONG</button>
       </div>
+      <div class="seg" role="group" aria-label="Nombre de pistes">
+        <button type="button" data-n="4">4 PISTES</button>
+        <button type="button" data-n="6">6 PISTES · + GUITARE, PIANO</button>
+      </div>
       <div class="seg" role="group" aria-label="Moteur de calcul">
         <button type="button" data-e="auto" class="on">AUTO</button>
         <button type="button" data-e="gpu">CARTE GRAPHIQUE</button>
@@ -108,7 +112,7 @@ footer a, .info a { color: var(--gold); }
       </div>
       <button type="button" class="go" id="go" disabled>▶ SÉPARER</button>
     </div>
-    <p class="info">Batterie, basse, voix et le reste des instruments, avec le modèle HTDemucs v4. La première fois, le modèle (172 Mo) se télécharge, puis il reste dans le navigateur. SOIGNÉE fait une 2e passe décalée et moyenne les deux : un peu moins d'artefacts. MOTEUR : AUTO essaie la carte graphique puis le processeur ; sur un ordinateur ancien à puce graphique intégrée, PROCESSEUR est souvent plus rapide.</p>
+    <p class="info">4 PISTES : batterie, basse, voix et le reste des instruments (modèle HTDemucs v4, 172 Mo). 6 PISTES : en plus, la guitare et le piano sortent à part (HTDemucs 6s, 285 Mo, à peu près le même temps de calcul ; ces deux pistes-là sont moins propres que les autres). Chaque modèle se télécharge la première fois, puis reste dans le navigateur. SOIGNÉE fait une 2e passe décalée et moyenne les deux : un peu moins d'artefacts. MOTEUR : AUTO essaie la carte graphique puis le processeur ; sur un ordinateur ancien à puce graphique intégrée, PROCESSEUR est souvent plus rapide.</p>
     <div class="bar"><i id="bar"></i></div>
     <div class="status" id="status">prêt</div>
   </section>
@@ -128,7 +132,7 @@ footer a, .info a { color: var(--gold); }
 
   <footer>
     Gratuit, sans compte, sans envoi : tout se calcule dans ce navigateur (carte graphique si possible, sinon processeur). Un morceau de 4 minutes prend de une à plusieurs minutes selon l'ordinateur ; un ordinateur récent avec carte graphique va beaucoup plus vite. Sur un ordinateur ancien (2 cœurs, puce graphique intégrée), la mise en route seule peut dépasser 5 minutes et la séparation devenir très longue : préférez un ordinateur récent. Sur téléphone, ça peut manquer de mémoire.<br>
-    Modèle : HTDemucs v4 (Simon Rouard, Alexandre Défossez, Meta), licence MIT · moteur : ONNX Runtime Web (Microsoft, MIT) · code de séparation : demucs-web (MIT) · isolation : coi-serviceworker (MIT).<br>
+    Modèles : HTDemucs v4 et HTDemucs 6s (Simon Rouard, Alexandre Défossez, Meta), licence MIT, exports ONNX timcsy/demucs-web-onnx et kramp/htdemucs-6s-webgpu-onnx · moteur : ONNX Runtime Web (Microsoft, MIT) · code de séparation : demucs-web (MIT) · isolation : coi-serviceworker (MIT).<br>
     Respectez les droits des morceaux que vous séparez. · <a href="../">← NOMAD-16</a>
   </footer>
 </main>
@@ -140,17 +144,21 @@ const STEMS = [
   ["drums", "BATTERIE", "kick, caisse, cymbales", "#c8302a"],
   ["bass", "BASSE", "la ligne de basse", "#e8b021"],
   ["vocals", "VOIX", "chant, chœurs, toasts", "#6fc7ff"],
+  ["guitar", "GUITARE", "guitares électriques et acoustiques", "#ff8a3a"],
+  ["piano", "PIANO", "piano et claviers proches", "#c58cff"],
   ["other", "INSTRUMENTS", "guitares, claviers, cuivres…", "#3fcf6a"]
 ];
+// mélanges : « tout sauf » se calcule sur les pistes présentes (4 ou 6)
 const MIXES = [
-  ["instru", "INSTRUMENTAL", "sans la voix", ["drums", "bass", "other"]],
+  ["instru", "INSTRUMENTAL", "sans la voix", ["-", "vocals"]],
   ["acap", "A CAPPELLA", "la voix seule", ["vocals"]],
   ["riddim", "RIDDIM", "batterie + basse", ["drums", "bass"]],
-  ["nodrums", "SANS BATTERIE", "tout sauf la batterie", ["bass", "other", "vocals"]],
-  ["nobass", "SANS BASSE", "pour rejouer la basse", ["drums", "other", "vocals"]],
-  ["music", "MUSIQUE SANS RYTHMIQUE", "instruments + voix", ["other", "vocals"]]
+  ["nodrums", "SANS BATTERIE", "tout sauf la batterie", ["-", "drums"]],
+  ["nobass", "SANS BASSE", "pour rejouer la basse", ["-", "bass"]],
+  ["music", "MUSIQUE SANS RYTHMIQUE", "instruments + voix", ["-", "drums", "bass"]]
 ];
-let ac = null, song = null, name = "", stems = null, careful = false, busy = false;
+const mixParts = spec => spec[0] === "-" ? Object.keys(stems).filter(k => !spec.includes(k)) : spec.filter(k => stems[k]);
+let ac = null, song = null, name = "", stems = null, careful = false, busy = false, nStems = +(localStorage.getItem("semiliaStems") || 4);
 const ensureAc = () => ac || (ac = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SR }));
 const fmt = s => Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0");
 const status = (t, err) => { $("status").textContent = t; $("status").classList.toggle("err", !!err); };
@@ -178,6 +186,7 @@ async function openFile(f) {
 }
 
 // ---------- 2 · la séparation (dans un worker)
+document.querySelectorAll("[data-n]").forEach(b => { b.classList.toggle("on", +b.dataset.n === nStems); b.onclick = () => { nStems = +b.dataset.n; localStorage.setItem("semiliaStems", nStems); document.querySelectorAll("[data-n]").forEach(x => x.classList.toggle("on", x === b)); }; });
 let engine = localStorage.getItem("semiliaEngine") || "auto";
 document.querySelectorAll("[data-e]").forEach(b => { b.classList.toggle("on", b.dataset.e === engine); b.onclick = () => { engine = b.dataset.e; localStorage.setItem("semiliaEngine", engine); document.querySelectorAll("[data-e]").forEach(x => x.classList.toggle("on", x === b)); }; });
 $("qNorm").onclick = () => { careful = false; $("qNorm").classList.add("on"); $("qCare").classList.remove("on"); };
@@ -188,7 +197,7 @@ function getWorker() {
   worker = new Worker("worker.js", { type: "module" });
   worker.onmessage = e => {
     const m = e.data;
-    if (m.type === "dl") { setBar(m.p * 0.999); status(m.cached ? "modèle déjà dans le navigateur" : `téléchargement du modèle (une seule fois) · ${Math.round(m.p * 100)} %`); }
+    if (m.type === "dl") { setBar(m.p * 0.999); status(m.cached ? "modèle déjà dans le navigateur" : `téléchargement du modèle${m.mb ? " (" + m.mb + " Mo)" : ""}, une seule fois · ${Math.round(m.p * 100)} %`); }
     if (m.type === "phase") status(m.msg);
     if (m.type === "ready") { setBar(0); status("moteur prêt · " + m.backend + " · calcul du premier segment (le plus long)…"); }
     if (m.type === "prog") { setBar(m.p); status(`séparation · ${m.label} · segment ${m.seg}/${m.segs} · reste ≈ ${m.eta > 90 ? Math.round(m.eta / 60) + " min" : Math.max(1, Math.round(m.eta)) + " s"}`); }
@@ -202,7 +211,7 @@ $("go").onclick = () => {
   if (!song || busy) return;
   busy = true; $("go").disabled = true; stopPlay(); setBar(0); status("démarrage…");
   const L = song.getChannelData(0).slice(), R = (song.numberOfChannels > 1 ? song.getChannelData(1) : song.getChannelData(0)).slice();
-  getWorker().postMessage({ type: "separate", left: L, right: R, careful, engine }, [L.buffer, R.buffer]);
+  getWorker().postMessage({ type: "separate", left: L, right: R, careful, engine, stems: nStems }, [L.buffer, R.buffer]);
 };
 
 // ---------- 3 · les pistes : écoute synchronisée, muet / solo, volume, téléchargements
@@ -210,9 +219,11 @@ const P = { srcs: [], t0: 0, off: 0, playing: false, gains: {}, mute: {}, solo: 
 function showStems(raw) {
   const c = ensureAc();
   stems = {};
-  for (const [id] of STEMS) { const b = c.createBuffer(2, raw[id].left.length, SR); b.copyToChannel(raw[id].left, 0); b.copyToChannel(raw[id].right, 1); stems[id] = b; }
+  for (const [id] of STEMS) { if (!raw[id]) continue; const b = c.createBuffer(2, raw[id].left.length, SR); b.copyToChannel(raw[id].left, 0); b.copyToChannel(raw[id].right, 1); stems[id] = b; }
+  P.gains = {};
   $("stems").innerHTML = "";
-  STEMS.forEach(([id, nm, sub, col]) => {
+  STEMS.filter(([id]) => stems[id]).forEach(([id, nm, sub0, col]) => {
+    const sub = id === "other" && stems.guitar ? "le reste : cuivres, cordes, synthés…" : sub0;
     P.mute[id] = false; P.solo[id] = false; P.vol[id] = 1;
     const row = document.createElement("div"); row.className = "stem";
     row.innerHTML = `<div class="nm" style="color:${col}">${nm}<small>${sub}</small></div><canvas></canvas>
@@ -226,7 +237,7 @@ function showStems(raw) {
     requestAnimationFrame(() => drawWave(row.querySelector("canvas"), stems[id], col));
   });
   $("mixes").innerHTML = "";
-  MIXES.forEach(([id, nm, sub, parts]) => { const b = document.createElement("button"); b.type = "button"; b.innerHTML = `${nm} <small>${sub}</small>`; b.onclick = () => download(parts, nm); $("mixes").appendChild(b); });
+  MIXES.forEach(([id, nm, sub, parts]) => { const b = document.createElement("button"); b.type = "button"; b.innerHTML = `${nm} <small>${sub}</small>`; b.onclick = () => download(mixParts(parts), nm); $("mixes").appendChild(b); });
   $("out").hidden = false; P.off = 0; drawTime();
   $("out").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -245,7 +256,7 @@ const now = () => P.playing ? Math.min(dur(), P.off + ac.currentTime - P.t0) : P
 function startPlay() {
   if (!stems) return; const c = ensureAc(); c.resume(); stopSrcs();
   const t = c.currentTime + 0.05; P.t0 = t; P.playing = true;
-  for (const [id] of STEMS) { const s = c.createBufferSource(), g = c.createGain(); s.buffer = stems[id]; g.gain.value = gainOf(id); s.connect(g); g.connect(c.destination); s.start(t, P.off); P.srcs.push(s); P.gains[id] = g; }
+  for (const id of Object.keys(stems)) { const s = c.createBufferSource(), g = c.createGain(); s.buffer = stems[id]; g.gain.value = gainOf(id); s.connect(g); g.connect(c.destination); s.start(t, P.off); P.srcs.push(s); P.gains[id] = g; }
   P.srcs[0].onended = () => { if (P.playing && now() >= dur() - 0.05) { P.playing = false; P.off = 0; $("play").textContent = "▶ ÉCOUTER"; } };
   $("play").textContent = "❚❚ PAUSE"; tick();
 }
