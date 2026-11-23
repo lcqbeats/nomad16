@@ -1449,3 +1449,32 @@ def test_sons_univers_accords_simples_et_nouveaux_effets(app):
     for n in ["LESLIE", "ÉCHO À BANDE", "SP-1200", "RESSORT", "PHASER", "PETITE SALLE", "AUTO-WAH", "CHORUS 80s"]:
         db = 20 * math.log10(lvl(n) / ref)
         assert -8 < db < 4, (n, db)
+
+
+def test_scratch_onde_facon_serato(app):
+    app.click("#tab-scratch")
+    app.locator("#scrCanvas").click()
+    app.wait_for_function("nomadDbg.ctx && document.getElementById('scrWave').width > 0", timeout=5000)
+    app.evaluate("""() => { const c = nomadDbg.ctx, sr = c.sampleRate, n = sr * 8, b = c.createBuffer(2, n, sr);
+      for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < n; i++) { const bt = (i / sr) % 0.5; d[i] = Math.sin(2 * Math.PI * 55 * bt) * Math.exp(-bt * 12) * 0.7; } }
+      nomadDbg.scrLoad(b, "TEST ONDE"); }""")
+    app.wait_for_timeout(300)
+    # l'onde est dessinée (des pixels colorés au centre)
+    lit = app.evaluate("""(() => { const c = document.getElementById('scrWave'), g = c.getContext('2d'), d = g.getImageData(0, 0, c.width, c.height).data; let n = 0;
+      for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 200) n++; return n; })()""")
+    assert lit > 200, lit
+    # vue d'ensemble : toucher à 3/4 envoie le disque aux 3/4
+    box = app.locator("#scrOver").bounding_box()
+    app.mouse.click(box["x"] + box["width"] * 0.75, box["y"] + box["height"] / 2)
+    app.wait_for_timeout(150)
+    N = app.evaluate("nomadDbg.SCRN")
+    p = app.evaluate("nomadDbg.scrPos()")
+    assert abs((p % N) / N - 0.75) < 0.05, (p, N)
+    # glisser l'onde vers la droite fait reculer le disque
+    box = app.locator("#scrWave").bounding_box()
+    p0 = app.evaluate("nomadDbg.scrPos()")
+    app.mouse.move(box["x"] + box["width"] * 0.6, box["y"] + 30); app.mouse.down()
+    app.mouse.move(box["x"] + box["width"] * 0.8, box["y"] + 30, steps=6)
+    p1 = app.evaluate("nomadDbg.scrPos()")
+    app.mouse.up()
+    assert p1 < p0, (p0, p1)

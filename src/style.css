@@ -180,6 +180,11 @@ button { font-family: var(--font-body); }
 .scrcues .cue.set { opacity: 1; }
 .scrcues .cue.on { background: var(--text); color: var(--ink); opacity: 1; }
 .scrcuts .btn { padding: 16px 4px; font-size: 12px; touch-action: none; }
+/* forme d'onde façon Serato */
+.scrwave { display: grid; gap: 4px; padding: 6px; border-radius: 8px; background: #050607; box-shadow: inset 0 1px 6px rgba(0,0,0,.8), 0 0 0 1px #24262a; }
+#scrWave { display: block; width: 100%; height: 74px; border-radius: 4px; cursor: grab; }
+#scrOver { display: block; width: 100%; height: 20px; border-radius: 3px; cursor: pointer; }
+:root.desk #scrWave { height: 64px; } :root.desk #scrOver { height: 16px; } :root.desk .scrwave { padding: 4px; }
 #view-scratch .scrplay, #view-scratch .scrplay * { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 #scrLcd { cursor: pointer; }
 .scrph .btn, .scrtools .btn { padding: 11px 2px; font-size: 10px; touch-action: manipulation; }

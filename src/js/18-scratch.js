@@ -143,6 +143,7 @@
     const mem = scrCueMem.get(name); SCR.cues = mem ? mem.cues.slice() : [null, null, null, null]; SCR.cueIdx = mem ? mem.idx : -1;
     if (SCR.cueIdx >= 0 && SCR.cues[SCR.cueIdx] !== null) SCR.cue = SCR.cues[SCR.cueIdx];
     drawScrCues();
+    scrWaveCompute(L, R, n0, N, bsr);
     SCR.node.port.postMessage({ type: "buf", l: L, r: R, cue: SCR.cue }, [L.buffer, R.buffer]);
     SCR.rep = { pos: SCR.cue, vel: 0, t: performance.now() };
     scrApply();
@@ -547,9 +548,84 @@
     return { base: c, top };
   }
 
+  // ---------- Forme d'onde façon Serato : défile sous la tête de lecture, couleurs selon les fréquences
+  // (rouge = graves, vert = médiums, bleu = aigus), vue d'ensemble dessous ; on navigue en glissant l'onde ou en touchant la vue d'ensemble
+  const SCRW = { bin: 128, span: 6 };
+  function scrWaveCompute(L, R, n0, N, bsr) {
+    const bin = SCRW.bin, nb = Math.ceil(N / bin), amp = new Float32Array(nb), lo = new Float32Array(nb), mi = new Float32Array(nb), hi = new Float32Array(nb);
+    const al = 1 - Math.exp(-2 * Math.PI * 220 / bsr), ah = 1 - Math.exp(-2 * Math.PI * 2600 / bsr);
+    let l1 = 0, h1 = 0, mx = 1e-9;
+    for (let b = 0; b < nb; b++) {
+      let pk = 0, el = 0, em = 0, eh = 0; const a0 = b * bin, a1 = Math.min(n0, a0 + bin);
+      for (let i = a0; i < a1; i++) { const x = (L[i] + R[i]) * 0.5; l1 += al * (x - l1); h1 += ah * (x - h1); const hh = x - h1, mm = h1 - l1; el += l1 * l1; em += mm * mm; eh += hh * hh; const ax = Math.abs(x); if (ax > pk) pk = ax; }
+      amp[b] = pk; lo[b] = Math.sqrt(el); mi[b] = Math.sqrt(em) * 1.6; hi[b] = Math.sqrt(eh) * 3; if (pk > mx) mx = pk;
+    }
+    for (let b = 0; b < nb; b++) amp[b] /= mx;
+    SCRW.d = { amp, lo, mi, hi, nb, N, bsr }; SCRW.over = null;
+  }
+  const scrWaveCol = (d, b, k = 1) => { const s = d.lo[b] + d.mi[b] + d.hi[b] + 1e-9, r = d.lo[b] / s, g = d.mi[b] / s, bl = d.hi[b] / s;
+    return `rgb(${Math.round((60 + 195 * Math.min(1, r * 1.5)) * k)},${Math.round((40 + 215 * Math.min(1, g * 1.4)) * k)},${Math.round((70 + 185 * Math.min(1, bl * 1.6)) * k)})`; };
+  function drawScrWave() {
+    const cv = $("scrWave"), ov = $("scrOver"); if (!cv || !ov) return;
+    fitCanvas(cv); fitCanvas(ov);
+    const g = cv.getContext("2d"), W = cv.width, H = cv.height, d = SCRW.d;
+    g.fillStyle = "#08090b"; g.fillRect(0, 0, W, H);
+    if (!d) return;
+    const pos = scrPosNow(), spp = SCRW.span * d.bsr / W, wrap = b => ((b % d.nb) + d.nb) % d.nb, mid = H / 2;
+    for (let x = 0; x < W; x++) {
+      const s0 = pos + (x - W / 2) * spp, b0 = Math.floor(s0 / SCRW.bin), b1 = Math.max(b0 + 1, Math.floor((s0 + spp) / SCRW.bin));
+      let a = 0, bb = wrap(b0); for (let b = b0; b < b1; b++) { const w = wrap(b); if (d.amp[w] > a) { a = d.amp[w]; bb = w; } }
+      if (a < 0.004) continue;
+      const h = Math.max(1, a * (H * 0.46)); g.fillStyle = scrWaveCol(d, bb, x < W / 2 ? 0.62 : 1); g.fillRect(x, mid - h, 1, h * 2);
+    }
+    // repères CUE et tête de lecture
+    SCR.cues.forEach((c, i) => { if (c === null) return; let dx = ((c - pos) % d.N + d.N * 1.5) % d.N - d.N / 2; const x = W / 2 + dx / spp; if (x < 0 || x > W) return;
+      g.fillStyle = SCR_CUEC[i]; g.fillRect(x - 1, 0, 2, H); g.beginPath(); g.moveTo(x - 6, 0); g.lineTo(x + 6, 0); g.lineTo(x, 9); g.fill(); g.font = `700 ${Math.round(H * 0.16)}px Arimo, Arial, sans-serif`; g.fillText(String(i + 1), x + 4, H - 4); });
+    g.fillStyle = "#fff"; g.fillRect(W / 2 - 1, 0, 2, H);
+    g.fillStyle = "rgba(255,255,255,.08)"; g.fillRect(0, mid, W, 1);
+    // vue d'ensemble (calculée une fois par disque et par taille)
+    const og = ov.getContext("2d"), OW = ov.width, OH = ov.height;
+    if (!SCRW.over || SCRW.over.W !== OW || SCRW.over.H !== OH) {
+      const c = document.createElement("canvas"); c.width = OW; c.height = OH; const cg = c.getContext("2d"); cg.fillStyle = "#08090b"; cg.fillRect(0, 0, OW, OH);
+      const per = d.nb / OW;
+      for (let x = 0; x < OW; x++) { let a = 0, bb = 0; for (let b = Math.floor(x * per); b < Math.floor((x + 1) * per); b++) if (d.amp[b] > a) { a = d.amp[b]; bb = b; } const h = a * OH * 0.46; if (h < 0.5) continue; cg.fillStyle = scrWaveCol(d, bb, 0.85); cg.fillRect(x, OH / 2 - h, 1, h * 2); }
+      SCRW.over = { W: OW, H: OH, c };
+    }
+    og.drawImage(SCRW.over.c, 0, 0);
+    const px = (((pos % d.N) + d.N) % d.N) / d.N * OW;
+    og.fillStyle = "rgba(0,0,0,.45)"; og.fillRect(0, 0, px, OH);
+    SCR.cues.forEach((c, i) => { if (c === null) return; og.fillStyle = SCR_CUEC[i]; og.fillRect((((c % d.N) + d.N) % d.N) / d.N * OW - 1, 0, 2, OH); });
+    og.fillStyle = "#fff"; og.fillRect(px - 1, 0, 2, OH);
+  }
+  // glisser l'onde : le disque suit le doigt (comme la main sur le vinyle, le son « scratche »)
+  (() => {
+    const cv = $("scrWave"), ov = $("scrOver");
+    cv.addEventListener("pointerdown", async e => {
+      e.preventDefault(); if (SCR.hand || !(await scrInit()) || !SCR.N || !SCRW.d) return;
+      cv.setPointerCapture(e.pointerId);
+      const p0 = scrPosNow();
+      SCR.hand = { id: e.pointerId, wave: true, x0: e.clientX, p0, pos: p0, t: performance.now(), v: 0, moved: performance.now(), last: 0, acc: 0, ap: 0 };
+      SCR.node.port.postMessage({ type: "hand", on: true }); onFirstNote(ctx.currentTime);
+    });
+    cv.addEventListener("pointermove", e => {
+      const h = SCR.hand; if (!h || !h.wave || e.pointerId !== h.id) return;
+      const r = cv.getBoundingClientRect(), spp = SCRW.span * SCRW.d.bsr / r.width;
+      const now = performance.now(), pos = h.p0 - (e.clientX - h.x0) * spp, dt = Math.max(4, now - h.t);
+      h.v = pos - h.pos; h.pos = pos; h.t = now; h.moved = now;
+      SCR.node.port.postMessage({ type: "tgt", pos, dur: Math.round(Math.min(0.025, dt / 1000) * sr) });
+    });
+    const up = e => { const h = SCR.hand; if (!h || !h.wave || e.pointerId !== h.id) return; SCR.node.port.postMessage({ type: "hand", on: false }); SCR.rep = { pos: h.pos, vel: 0, t: performance.now() }; SCR.hand = null; };
+    ["pointerup", "pointercancel"].forEach(ev => cv.addEventListener(ev, up));
+    // vue d'ensemble : toucher = aller à cet endroit du disque (glisser = chercher)
+    const seekAt = e => { if (!SCR.node || !SCRW.d) return; const r = ov.getBoundingClientRect(), f = Math.max(0, Math.min(0.999, (e.clientX - r.left) / r.width)), d = SCRW.d;
+      const cur = scrPosNow(), base = Math.floor(cur / d.N) * d.N, pos = base + f * d.N; SCR.node.port.postMessage({ type: "seek", pos }); SCR.rep = { pos, vel: SCR.rep.vel, t: performance.now() }; };
+    ov.addEventListener("pointerdown", async e => { e.preventDefault(); if (!(await scrInit())) return; ov.setPointerCapture(e.pointerId); seekAt(e); });
+    ov.addEventListener("pointermove", e => { if (ov.hasPointerCapture(e.pointerId)) seekAt(e); });
+  })();
   function drawScratch() {
     if (tab !== "scratch") { SCR.raf = 0; return; }
     SCR.raf = requestAnimationFrame(drawScratch);
+    drawScrWave();
     fitCanvas(scv); const W = scv.width; if (!W) return;
     if (!scrStatic || scrStatic.W !== W) { scrStatic = scrBuildStatic(W); scrStatic.W = W; }
     const h = SCR.hand;
