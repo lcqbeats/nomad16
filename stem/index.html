@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>STEM SEMILIA · séparateur de pistes</title>
+<meta name="description" content="Séparez un morceau en batterie, basse, voix et instruments, gratuitement, directement dans le navigateur. Le son ne quitte pas votre ordinateur.">
+<meta name="theme-color" content="#0d0b07">
+<!-- isolation d'origine (calcul multi-cœurs) : petit service worker qui ajoute les en-têtes nécessaires sur GitHub Pages -->
+<script src="coi-serviceworker.min.js"></script>
+<style>
+:root { --red: #c8302a; --gold: #e8b021; --green: #1f8a3c; --ink: #f3e6c4; --mute: #a99f86; --bg: #0d0b07; --panel: #17140d; --line: #3a3220; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 -apple-system, "Helvetica Neue", Arial, sans-serif; }
+body { min-height: 100vh; background:
+  radial-gradient(circle at 1.5px 1.5px, rgba(255,255,255,.035) 1px, transparent 1.6px) 0 0 / 6px 6px,
+  radial-gradient(ellipse at 50% -10%, #2a2312, #0d0b07 60%); }
+.flag { height: 12px; background: linear-gradient(180deg, var(--red) 0 33.3%, var(--gold) 33.3% 66.6%, var(--green) 66.6%); }
+main { max-width: 980px; margin: 0 auto; padding: 22px 18px 60px; }
+header { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; margin: 8px 0 22px; }
+h1 { margin: 0; font: 900 clamp(38px, 8vw, 78px)/.9 Impact, "Arial Black", "Helvetica Neue", sans-serif; letter-spacing: .02em; color: var(--gold);
+  text-shadow: 3px 3px 0 var(--red), 6px 6px 0 var(--green); text-transform: uppercase; }
+h1 small { display: block; font: 700 clamp(12px, 2.2vw, 16px)/1.2 Arial, sans-serif; letter-spacing: .32em; color: var(--ink); text-shadow: none; margin-top: 12px; }
+.stack { width: clamp(110px, 20vw, 190px); }
+.panel { background: linear-gradient(180deg, #1c180f, #141109); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin: 14px 0; box-shadow: 0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04); }
+.panel h2 { margin: 0 0 12px; font: 800 13px/1 Arial, sans-serif; letter-spacing: .28em; color: var(--gold); }
+.drop { display: grid; place-items: center; text-align: center; gap: 8px; min-height: 150px; border: 2px dashed #5a4a26; border-radius: 12px; padding: 18px; cursor: pointer; transition: background .2s, border-color .2s; }
+.drop:hover, .drop.over { background: rgba(232,176,33,.06); border-color: var(--gold); }
+.drop b { font: 900 22px/1.1 Impact, "Arial Black", sans-serif; letter-spacing: .04em; }
+.drop span { color: var(--mute); font-size: 13px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+button, .btn { appearance: none; border: 0; border-radius: 9px; padding: 11px 16px; font: 800 13px/1 Arial, sans-serif; letter-spacing: .08em; cursor: pointer; color: var(--ink); background: #2a2416; box-shadow: 0 3px 0 #0a0805, inset 0 1px 0 rgba(255,255,255,.06); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+button:active { transform: translateY(2px); box-shadow: 0 1px 0 #0a0805; }
+button[disabled] { opacity: .45; cursor: default; }
+.go { background: linear-gradient(180deg, #d63a30, #a8241f); color: #fff6df; font-size: 16px; padding: 15px 26px; }
+.seg { display: inline-flex; border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 1px var(--line); }
+.seg button { border-radius: 0; box-shadow: none; background: #1d190f; color: var(--mute); }
+.seg button.on { background: var(--green); color: #fff; }
+.info { color: var(--mute); font-size: 13px; margin: 8px 0 0; }
+.file { font-weight: 700; color: var(--ink); }
+.bar { height: 16px; border-radius: 8px; background: #0a0805; box-shadow: inset 0 1px 3px #000; overflow: hidden; margin: 12px 0 6px; }
+.bar i { display: block; height: 100%; width: 0; background: repeating-linear-gradient(135deg, var(--red) 0 12px, var(--gold) 12px 24px, var(--green) 24px 36px); transition: width .3s; }
+.status { font: 600 13px/1.3 Menlo, Consolas, monospace; color: var(--gold); min-height: 1.3em; }
+.stems { display: grid; gap: 10px; }
+.stem { display: grid; grid-template-columns: 142px 1fr auto; gap: 12px; align-items: center; background: #0f0d08; border-radius: 10px; padding: 10px 12px; border: 1px solid #2b2414; }
+.stem .nm { font: 900 17px/1 Impact, "Arial Black", sans-serif; letter-spacing: .05em; }
+.stem .nm small { display: block; font: 600 11px/1.4 Arial, sans-serif; color: var(--mute); letter-spacing: .08em; margin-top: 3px; }
+.stem canvas { width: 100%; height: 46px; display: block; border-radius: 6px; background: #070604; }
+.stem .ctl { display: flex; gap: 6px; align-items: center; }
+.stem .ctl button { padding: 9px 10px; font-size: 12px; }
+.stem .ctl button.on.m { background: var(--red); color: #fff; }
+.stem .ctl button.on.s { background: var(--gold); color: #1d1607; }
+.stem input[type=range] { width: 90px; accent-color: var(--gold); }
+.transport { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; margin-bottom: 12px; }
+.transport input { width: 100%; accent-color: var(--red); }
+.time { font: 600 13px Menlo, Consolas, monospace; color: var(--mute); min-width: 92px; text-align: right; }
+.mixes { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.mixes button { justify-content: space-between; width: 100%; padding: 12px 14px; }
+.mixes button small { color: var(--mute); font-weight: 600; letter-spacing: .02em; }
+footer { color: var(--mute); font-size: 12px; margin-top: 26px; line-height: 1.6; }
+footer a, .info a { color: var(--gold); }
+.err { color: #ff8a7a; }
+@media (max-width: 640px) {
+  .stem { grid-template-columns: 1fr; } .stem .ctl { flex-wrap: wrap; } header { grid-template-columns: 1fr; } .stack { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="flag"></div>
+<main>
+  <header>
+    <h1>Stem Semilia<small>SÉPARATEUR DE PISTES · SOUND SYSTEM</small></h1>
+    <!-- mur d'enceintes de sound system (dessin original) -->
+    <svg class="stack" viewBox="0 0 200 170" aria-hidden="true">
+      <defs><radialGradient id="cone" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#3a3a36"/><stop offset=".22" stop-color="#121210"/><stop offset=".3" stop-color="#2c2c29"/><stop offset=".8" stop-color="#191917"/><stop offset=".86" stop-color="#3d3d39"/><stop offset="1" stop-color="#121210"/></radialGradient></defs>
+      <g stroke="#e8b021" stroke-width="2">
+        <rect x="4" y="60" width="92" height="106" rx="5" fill="#1b2a1d"/><rect x="104" y="60" width="92" height="106" rx="5" fill="#1b2a1d"/>
+        <rect x="24" y="6" width="152" height="50" rx="5" fill="#241a0f"/>
+      </g>
+      <circle cx="50" cy="113" r="38" fill="url(#cone)"/><circle cx="150" cy="113" r="38" fill="url(#cone)"/>
+      <circle cx="50" cy="113" r="7" fill="#c8302a"/><circle cx="150" cy="113" r="7" fill="#c8302a"/>
+      <g fill="url(#cone)"><circle cx="58" cy="31" r="17"/><circle cx="100" cy="31" r="17"/><circle cx="142" cy="31" r="17"/></g>
+      <g fill="#1f8a3c"><circle cx="58" cy="31" r="4"/><circle cx="100" cy="31" r="4"/><circle cx="142" cy="31" r="4"/></g>
+    </svg>
+  </header>
+
+  <section class="panel">
+    <h2>1 · LE MORCEAU</h2>
+    <label class="drop" id="drop">
+      <b>DÉPOSEZ UN MORCEAU ICI</b>
+      <span>ou touchez pour le choisir · MP3, WAV, M4A, FLAC… · le son ne quitte pas votre ordinateur</span>
+      <input type="file" id="file" accept="audio/*,.mp3,.wav,.m4a,.flac,.aif,.aiff,.ogg" hidden>
+    </label>
+    <p class="info" id="fileInfo"></p>
+  </section>
+
+  <section class="panel">
+    <h2>2 · LA SÉPARATION</h2>
+    <div class="row">
+      <div class="seg" role="group" aria-label="Qualité">
+        <button type="button" id="qNorm" class="on">NORMALE</button>
+        <button type="button" id="qCare">SOIGNÉE · 2× PLUS LONG</button>
+      </div>
+      <button type="button" class="go" id="go" disabled>▶ SÉPARER</button>
+    </div>
+    <p class="info">Batterie, basse, voix et le reste des instruments, avec le modèle HTDemucs v4. La première fois, le modèle (172 Mo) se télécharge, puis il reste dans le navigateur. SOIGNÉE fait une 2e passe décalée et moyenne les deux : un peu moins d'artefacts.</p>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="status" id="status">prêt</div>
+  </section>
+
+  <section class="panel" id="out" hidden>
+    <h2>3 · LES PISTES</h2>
+    <div class="transport">
+      <button type="button" id="play">▶ ÉCOUTER</button>
+      <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Position">
+      <span class="time" id="time">0:00 / 0:00</span>
+    </div>
+    <div class="stems" id="stems"></div>
+    <h2 style="margin-top:18px">MÉLANGES PRÊTS À TÉLÉCHARGER</h2>
+    <div class="mixes" id="mixes"></div>
+    <p class="info">Fichiers WAV 16 bits, 44,1 kHz, stéréo. Pour les utiliser dans NOMAD : DIGGING › IMPORTER, ou PADS › + NOUVEAU KIT › importer.</p>
+  </section>
+
+  <footer>
+    Gratuit, sans compte, sans envoi : tout se calcule dans ce navigateur (carte graphique si possible, sinon processeur). Un morceau de 4 minutes prend de une à plusieurs minutes selon l'ordinateur ; un ordinateur récent avec carte graphique va beaucoup plus vite. Sur téléphone, ça peut manquer de mémoire.<br>
+    Modèle : HTDemucs v4 (Simon Rouard, Alexandre Défossez, Meta), licence MIT · moteur : ONNX Runtime Web (Microsoft, MIT) · code de séparation : demucs-web (MIT) · isolation : coi-serviceworker (MIT).<br>
+    Respectez les droits des morceaux que vous séparez. · <a href="../">← NOMAD-16</a>
+  </footer>
+</main>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+const SR = 44100;
+const STEMS = [
+  ["drums", "BATTERIE", "kick, caisse, cymbales", "#c8302a"],
+  ["bass", "BASSE", "la ligne de basse", "#e8b021"],
+  ["vocals", "VOIX", "chant, chœurs, toasts", "#6fc7ff"],
+  ["other", "INSTRUMENTS", "guitares, claviers, cuivres…", "#3fcf6a"]
+];
+const MIXES = [
+  ["instru", "INSTRUMENTAL", "sans la voix", ["drums", "bass", "other"]],
+  ["acap", "A CAPPELLA", "la voix seule", ["vocals"]],
+  ["riddim", "RIDDIM", "batterie + basse", ["drums", "bass"]],
+  ["nodrums", "SANS BATTERIE", "tout sauf la batterie", ["bass", "other", "vocals"]],
+  ["nobass", "SANS BASSE", "pour rejouer la basse", ["drums", "other", "vocals"]],
+  ["music", "MUSIQUE SANS RYTHMIQUE", "instruments + voix", ["other", "vocals"]]
+];
+let ac = null, song = null, name = "", stems = null, careful = false, busy = false;
+const ensureAc = () => ac || (ac = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SR }));
+const fmt = s => Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0");
+const status = (t, err) => { $("status").textContent = t; $("status").classList.toggle("err", !!err); };
+const setBar = p => { $("bar").style.width = Math.round(Math.max(0, Math.min(1, p)) * 100) + "%"; };
+
+// ---------- 1 · le morceau
+const drop = $("drop");
+["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if (f) openFile(f); });
+$("file").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) openFile(f); });
+async function openFile(f) {
+  if (busy) return;
+  stopPlay(); $("out").hidden = true; stems = null;
+  $("fileInfo").textContent = "lecture du fichier…";
+  try {
+    const buf = await ensureAc().decodeAudioData(await f.arrayBuffer());
+    song = buf; name = f.name.replace(/\.[^.]+$/, "");
+    const segs = Math.ceil(Math.max(0, buf.length - 343980) / 257985) + 1;
+    $("fileInfo").innerHTML = `<span class="file"></span> · ${fmt(buf.duration)} · ${segs} segments à calculer`;
+    $("fileInfo").querySelector(".file").textContent = name;
+    if (buf.duration > 600) $("fileInfo").innerHTML += " · <span class='err'>long : la mémoire du navigateur risque de manquer (10 min au plus conseillé)</span>";
+    $("go").disabled = false; status("prêt : touchez SÉPARER"); setBar(0);
+  } catch (e) { $("fileInfo").innerHTML = "<span class='err'>ce fichier ne se lit pas dans ce navigateur</span>"; song = null; $("go").disabled = true; }
+}
+
+// ---------- 2 · la séparation (dans un worker)
+$("qNorm").onclick = () => { careful = false; $("qNorm").classList.add("on"); $("qCare").classList.remove("on"); };
+$("qCare").onclick = () => { careful = true; $("qCare").classList.add("on"); $("qNorm").classList.remove("on"); };
+let worker = null;
+function getWorker() {
+  if (worker) return worker;
+  worker = new Worker("worker.js", { type: "module" });
+  worker.onmessage = e => {
+    const m = e.data;
+    if (m.type === "dl") { setBar(m.p * 0.999); status(m.cached ? "modèle déjà dans le navigateur" : `téléchargement du modèle (une seule fois) · ${Math.round(m.p * 100)} %`); }
+    if (m.type === "phase") status(m.msg);
+    if (m.type === "ready") status("moteur prêt · " + m.backend);
+    if (m.type === "prog") { setBar(m.p); status(`séparation · ${m.label} · segment ${m.seg}/${m.segs} · reste ≈ ${m.eta > 90 ? Math.round(m.eta / 60) + " min" : Math.max(1, Math.round(m.eta)) + " s"}`); }
+    if (m.type === "done") { busy = false; $("go").disabled = false; setBar(1); status(`terminé en ${fmt(m.secs)} · ${m.backend}`); showStems(m.stems); }
+    if (m.type === "error") { busy = false; $("go").disabled = false; status("erreur : " + m.msg, true); }
+  };
+  worker.onerror = e => { busy = false; $("go").disabled = false; status("erreur du moteur : " + (e.message || "navigateur trop ancien ?"), true); };
+  return worker;
+}
+$("go").onclick = () => {
+  if (!song || busy) return;
+  busy = true; $("go").disabled = true; stopPlay(); setBar(0); status("démarrage…");
+  const L = song.getChannelData(0).slice(), R = (song.numberOfChannels > 1 ? song.getChannelData(1) : song.getChannelData(0)).slice();
+  getWorker().postMessage({ type: "separate", left: L, right: R, careful }, [L.buffer, R.buffer]);
+};
+
+// ---------- 3 · les pistes : écoute synchronisée, muet / solo, volume, téléchargements
+const P = { srcs: [], t0: 0, off: 0, playing: false, gains: {}, mute: {}, solo: {}, vol: {} };
+function showStems(raw) {
+  const c = ensureAc();
+  stems = {};
+  for (const [id] of STEMS) { const b = c.createBuffer(2, raw[id].left.length, SR); b.copyToChannel(raw[id].left, 0); b.copyToChannel(raw[id].right, 1); stems[id] = b; }
+  $("stems").innerHTML = "";
+  STEMS.forEach(([id, nm, sub, col]) => {
+    P.mute[id] = false; P.solo[id] = false; P.vol[id] = 1;
+    const row = document.createElement("div"); row.className = "stem";
+    row.innerHTML = `<div class="nm" style="color:${col}">${nm}<small>${sub}</small></div><canvas></canvas>
+      <div class="ctl"><button type="button" class="m">M</button><button type="button" class="s">S</button><input type="range" min="0" max="1.5" step="0.01" value="1" aria-label="Volume ${nm}"><button type="button" class="dl">↓ WAV</button></div>`;
+    const [bm, bs, bd] = row.querySelectorAll("button"), vr = row.querySelector("input");
+    bm.onclick = () => { P.mute[id] = !P.mute[id]; bm.classList.toggle("on", P.mute[id]); applyGains(); };
+    bs.onclick = () => { P.solo[id] = !P.solo[id]; bs.classList.toggle("on", P.solo[id]); applyGains(); };
+    vr.oninput = () => { P.vol[id] = +vr.value; applyGains(); };
+    bd.onclick = () => download([id], nm);
+    $("stems").appendChild(row);
+    requestAnimationFrame(() => drawWave(row.querySelector("canvas"), stems[id], col));
+  });
+  $("mixes").innerHTML = "";
+  MIXES.forEach(([id, nm, sub, parts]) => { const b = document.createElement("button"); b.type = "button"; b.innerHTML = `${nm} <small>${sub}</small>`; b.onclick = () => download(parts, nm); $("mixes").appendChild(b); });
+  $("out").hidden = false; P.off = 0; drawTime();
+  $("out").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function drawWave(cv, b, col) {
+  const d = devicePixelRatio || 1, W = cv.width = cv.clientWidth * d, H = cv.height = cv.clientHeight * d, g = cv.getContext("2d");
+  const L = b.getChannelData(0), R = b.getChannelData(1), per = Math.max(1, Math.floor(L.length / W));
+  let mx = 1e-6; const pk = new Float32Array(W);
+  for (let x = 0; x < W; x++) { let m = 0; for (let i = x * per, e = Math.min(L.length, i + per); i < e; i += 4) m = Math.max(m, Math.abs(L[i]), Math.abs(R[i])); pk[x] = m; if (m > mx) mx = m; }
+  g.fillStyle = col; for (let x = 0; x < W; x++) { const h = pk[x] / Math.max(mx, 0.25) * H * 0.48; g.fillRect(x, H / 2 - h, 1, h * 2 || 1); }
+}
+const anySolo = () => Object.values(P.solo).some(Boolean);
+const gainOf = id => (P.mute[id] || (anySolo() && !P.solo[id])) ? 0 : P.vol[id];
+function applyGains() { for (const id in P.gains) P.gains[id].gain.setTargetAtTime(gainOf(id), ac.currentTime, 0.015); }
+const dur = () => stems ? stems.drums.duration : 0;
+const now = () => P.playing ? Math.min(dur(), P.off + ac.currentTime - P.t0) : P.off;
+function startPlay() {
+  if (!stems) return; const c = ensureAc(); c.resume(); stopSrcs();
+  const t = c.currentTime + 0.05; P.t0 = t; P.playing = true;
+  for (const [id] of STEMS) { const s = c.createBufferSource(), g = c.createGain(); s.buffer = stems[id]; g.gain.value = gainOf(id); s.connect(g); g.connect(c.destination); s.start(t, P.off); P.srcs.push(s); P.gains[id] = g; }
+  P.srcs[0].onended = () => { if (P.playing && now() >= dur() - 0.05) { P.playing = false; P.off = 0; $("play").textContent = "▶ ÉCOUTER"; } };
+  $("play").textContent = "❚❚ PAUSE"; tick();
+}
+function stopSrcs() { P.srcs.forEach(s => { try { s.onended = null; s.stop(); } catch (e) {} }); P.srcs = []; }
+function stopPlay() { if (P.playing) P.off = now(); P.playing = false; stopSrcs(); $("play").textContent = "▶ ÉCOUTER"; }
+$("play").onclick = () => P.playing ? stopPlay() : startPlay();
+$("seek").oninput = () => { P.off = +$("seek").value / 1000 * dur(); if (P.playing) startPlay(); else drawTime(); };
+function drawTime() { $("time").textContent = fmt(now()) + " / " + fmt(dur()); if (document.activeElement !== $("seek")) $("seek").value = dur() ? Math.round(now() / dur() * 1000) : 0; }
+function tick() { drawTime(); if (P.playing) requestAnimationFrame(tick); }
+
+// WAV 16 bits stéréo (le mélange garde les volumes réglés ; écrêtage doux s'il dépasse)
+function download(parts, label) {
+  const n = stems.drums.length, L = new Float32Array(n), R = new Float32Array(n);
+  for (const id of parts) { const v = parts.length === 1 ? 1 : P.vol[id], a = stems[id].getChannelData(0), b = stems[id].getChannelData(1); for (let i = 0; i < n; i++) { L[i] += a[i] * v; R[i] += b[i] * v; } }
+  const buf = new ArrayBuffer(44 + n * 4), dv = new DataView(buf), w = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, "RIFF"); dv.setUint32(4, 36 + n * 4, true); w(8, "WAVEfmt "); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 2, true);
+  dv.setUint32(24, SR, true); dv.setUint32(28, SR * 4, true); dv.setUint16(32, 4, true); dv.setUint16(34, 16, true); w(36, "data"); dv.setUint32(40, n * 4, true);
+  const q = x => { const y = Math.abs(x) > 0.98 ? Math.sign(x) * (0.98 + 0.02 * Math.tanh((Math.abs(x) - 0.98) / 0.02)) : x; return Math.max(-32768, Math.min(32767, Math.round(y * 32767))); };
+  for (let i = 0, o = 44; i < n; i++, o += 4) { dv.setInt16(o, q(L[i]), true); dv.setInt16(o + 2, q(R[i]), true); }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+  a.download = (name + " - " + label).replace(/[\\/:*?"<>|]+/g, " ").trim() + ".wav"; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+}
+// prépare le moteur en avance (le téléchargement du modèle ne démarre qu'au premier SÉPARER)
+window.STEMSEMILIA = { get stems() { return stems; }, openFile, showStems };
+</script>
+</body>
+</html>
