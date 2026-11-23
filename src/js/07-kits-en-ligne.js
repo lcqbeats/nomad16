@@ -48,8 +48,19 @@
     });
   }
   let kitLoading = 0, userParams = null, userChoke = false;
+  // Réglages des pads gardés par kit : en quittant un kit, ses réglages (niveau, pan, hauteur, enveloppe, découpe…)
+  // sont mis de côté ; en y revenant, on les retrouve. Kits perso et kits de chops : dans le kit lui-même ;
+  // kits fournis : dans l'appareil.
+  function saveKitParams(id) {
+    const meta = kitIndex.find(k => k.id === id); if (!meta || !padParams) return;
+    const pp = padParams.map(p => ({ ...p }));
+    if (meta.user) { DB.get("kits", id).then(rec => { if (rec) { rec.params = pp; return DB.put("kits", rec); } }).catch(() => {}); }
+    else store.set("kp." + id, pp);
+  }
+  window.addEventListener("pagehide", () => { if (kitCur) saveKitParams(kitCur); });
   async function loadKit(id) {
     if (!ctx) return;
+    if (kitCur && kitCur !== id) saveKitParams(kitCur);
     if (kitCur === "chops" && id !== "chops" && typeof persistChops === "function") persistChops(false);
     const ticket = ++kitLoading;
     const meta = kitIndex.find(k => k.id === id) || kitIndex[0];
@@ -82,8 +93,9 @@
       }
     }
     if (ticket !== kitLoading) return;
-    padParams = (meta.user && userParams) ? fixParams(userParams) : newParams(); userParams = null;
-    if (!meta.user && meta.id !== "chops") softHats();
+    const keptP = meta.user ? userParams : store.get("kp." + meta.id, null);
+    padParams = keptP ? fixParams(keptP) : newParams(); userParams = null;
+    if (!keptP && !meta.user && meta.id !== "chops") softHats();
     kitChoke = meta.id === "chops" || !!(meta.user && userChoke); userChoke = false;
     select(selected);
     kitCur = meta.id; store.set("kit", kitCur);

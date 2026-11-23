@@ -164,8 +164,8 @@ button { font-family: var(--font-body); }
 .scrpitch { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 9px; font-weight: 700; letter-spacing: .1em; color: #3a3b3e; }
 .scrpitch input { width: 100%; accent-color: #3a3b3e; }
 /* crossfader : façade de table de mixage (plaque brossée, vis, graduations, fente, bouton strié) */
-/* course courte, comme sur une table de scratch : moitié coupée, moitié ouverte */
-.xfader { position: relative; height: 66px; width: min(100%, 230px); align-self: center; border-radius: 6px; touch-action: none; cursor: ew-resize;
+/* course très courte, comme sur une table de scratch : moitié coupée, moitié ouverte (150 px en tout) */
+.xfader { position: relative; height: 66px; width: min(100%, 150px); align-self: center; border-radius: 6px; touch-action: none; cursor: ew-resize;
   background: repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px), linear-gradient(180deg, #3b3c3f, #232427 60%, #1b1c1e);
   box-shadow: inset 0 1px 0 #55575b, inset 0 -1px 0 #0b0b0c, 0 0 0 1px #050505, 0 4px 10px rgba(0,0,0,.5); }
 .xfader::before, .xfader::after { content: ""; position: absolute; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%;
@@ -177,7 +177,7 @@ button { font-family: var(--font-body); }
   background: repeating-linear-gradient(90deg, #8d8f93 0 1px, transparent 1px calc(10% - .1px)); opacity: .55; }
 .xfader .rail::after { content: ""; position: absolute; left: 0; right: 0; bottom: -12px; height: 6px;
   background: repeating-linear-gradient(90deg, #8d8f93 0 1px, transparent 1px calc(10% - .1px)); opacity: .55; }
-.xfader .cap { position: absolute; top: 9px; width: 30px; height: 48px; margin-left: -15px; border-radius: 5px; pointer-events: none;
+.xfader .cap { position: absolute; top: 9px; width: 24px; height: 48px; margin-left: -12px; border-radius: 5px; pointer-events: none;
   background: linear-gradient(90deg, #121212, #3a3a3a 18%, #1e1e1e 50%, #3a3a3a 82%, #121212);
   box-shadow: 0 4px 6px rgba(0,0,0,.7), inset 0 1px 0 #5a5a5a, 0 0 0 1px #000; }
 .xfader .cap::before { content: ""; position: absolute; left: 50%; top: 6px; bottom: 6px; width: 2px; margin-left: -1px; background: #ece3d3; border-radius: 1px; }
@@ -1599,8 +1599,19 @@ html.flipped, html.flipped body { overflow: hidden; }
     });
   }
   let kitLoading = 0, userParams = null, userChoke = false;
+  // Réglages des pads gardés par kit : en quittant un kit, ses réglages (niveau, pan, hauteur, enveloppe, découpe…)
+  // sont mis de côté ; en y revenant, on les retrouve. Kits perso et kits de chops : dans le kit lui-même ;
+  // kits fournis : dans l'appareil.
+  function saveKitParams(id) {
+    const meta = kitIndex.find(k => k.id === id); if (!meta || !padParams) return;
+    const pp = padParams.map(p => ({ ...p }));
+    if (meta.user) { DB.get("kits", id).then(rec => { if (rec) { rec.params = pp; return DB.put("kits", rec); } }).catch(() => {}); }
+    else store.set("kp." + id, pp);
+  }
+  window.addEventListener("pagehide", () => { if (kitCur) saveKitParams(kitCur); });
   async function loadKit(id) {
     if (!ctx) return;
+    if (kitCur && kitCur !== id) saveKitParams(kitCur);
     if (kitCur === "chops" && id !== "chops" && typeof persistChops === "function") persistChops(false);
     const ticket = ++kitLoading;
     const meta = kitIndex.find(k => k.id === id) || kitIndex[0];
@@ -1633,8 +1644,9 @@ html.flipped, html.flipped body { overflow: hidden; }
       }
     }
     if (ticket !== kitLoading) return;
-    padParams = (meta.user && userParams) ? fixParams(userParams) : newParams(); userParams = null;
-    if (!meta.user && meta.id !== "chops") softHats();
+    const keptP = meta.user ? userParams : store.get("kp." + meta.id, null);
+    padParams = keptP ? fixParams(keptP) : newParams(); userParams = null;
+    if (!keptP && !meta.user && meta.id !== "chops") softHats();
     kitChoke = meta.id === "chops" || !!(meta.user && userChoke); userChoke = false;
     select(selected);
     kitCur = meta.id; store.set("kit", kitCur);
@@ -2772,7 +2784,25 @@ registerProcessor('nomad-aec',Aec);`;
     { name: "ÉCHO PING-PONG", sub: "écho à la noire, de gauche à droite", steps: R16(j => ({ s: j + 12, m: 0.4, p: (j >> 2) % 2 ? 0.7 : -0.7, f: -0.2 })) },
     { name: "RALENTI VINYLE", sub: "la platine ralentit puis repart, 2 mesures", steps: (() => { const out = []; let pos = 0; for (let j = 0; j < 32; j++) { if (j >= 16) { out.push({ s: -1 }); continue; } const r0 = 1 - 0.22 * j / 16, r1 = 1 - 0.22 * (j + 1) / 16; out.push({ s: pos, r0, r1, f: -j * 0.015 }); pos += (r0 + r1) / 2; } return out; })() },
     { name: "RADIO LOINTAINE", sub: "petit poste au loin", steps: R16(j => ({ s: -1, f: -0.45, x: 0.35, m: 0.85 })) },
-    { name: "VOLUME QUI GONFLE", sub: "chaque temps monte comme à l'envers", steps: R16(j => ({ s: -1, g: [0.25, 0.5, 0.75, 1][j % 4] })) }
+    { name: "VOLUME QUI GONFLE", sub: "chaque temps monte comme à l'envers", steps: R16(j => ({ s: -1, g: [0.25, 0.5, 0.75, 1][j % 4] })) },
+    // MOTIFS 65 À 80 : GLITCH-HOP — esprit edIT (Crying Over Pros for No Reason) : la mesure découpée au scalpel,
+    // micro-répétitions qui accélèrent ou ralentissent, bégaiements qui changent de hauteur, sauts de disque numérique
+    { name: "RATCHET", sub: "le 3e temps s'accélère jusqu'à la mitraille", steps: R16(j => j < 8 ? { s: j } : { s: 8 + ((j - 8) >> 2) * 2, d: [2, 2, 3, 4, 6, 8, 12, 16][j - 8] }) },
+    { name: "RATCHET INVERSÉ", sub: "mitraille qui se calme", steps: R16(j => j < 8 ? { s: 0, d: [16, 12, 8, 6, 4, 3, 2, 2][j] } : { s: j }) },
+    { name: "BÉGAIEMENT QUI MONTE", sub: "le temps se répète en montant", steps: R16(j => j < 8 ? { s: j } : { s: 8, d: 4, r0: 1 + (j - 8) / 8, r1: 1 + (j - 7) / 8 }) },
+    { name: "BÉGAIEMENT QUI TOMBE", sub: "le temps se répète en descendant", steps: R16(j => j < 8 ? { s: j } : { s: 8, d: 4, r0: 1 - (j - 8) * 0.07, r1: 1 - (j - 7) * 0.07, f: -(j - 8) * 0.05 }) },
+    { name: "CD QUI SAUTE", sub: "le lecteur accroche et repart", steps: R16(j => [{ s: 0 }, { s: 1 }, { s: 1, d: 2 }, { s: 1, d: 2 }, { s: 4 }, { s: 5 }, { s: 6, d: 4 }, { s: 6, d: 4, g: 0.8 }, { s: 8 }, { s: 9 }, { s: 9, d: 8, x: 0.3 }, { s: 11 }, { s: 12 }, { s: 12, d: 3 }, { s: 0, g: 0 }, { s: 15 }][j]) },
+    { name: "3-3-2 DÉCOUPÉ", sub: "les doubles croches en 3-3-2", steps: R16(j => ({ s: [0, 1, 2, 0, 1, 2, 0, 1, 8, 9, 10, 8, 9, 10, 8, 9][j] })) },
+    { name: "GRANULES", sub: "poussière de grains de son", steps: (() => { let h = 7; const rnd = () => (h = (h * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff; return R16(j => ({ s: Math.floor(rnd() * 16), d: [6, 8, 6, 12][j % 4], r0: [1, 1, 0.5, 2, 1, 1.5][Math.floor(rnd() * 6)], g: 0.9, m: 0.85 })); })() },
+    { name: "TAPE STOP ÉCLAIR", sub: "la bande cale en une croche et repart", steps: R16(j => j < 12 ? { s: j } : j === 12 ? { s: 12, r0: 1, r1: 0.45 } : j === 13 ? { s: 12.7, r0: 0.45, r1: 0.05, f: -0.35 } : j === 14 ? { s: 0, g: 0 } : { s: 15, r0: 0.4, r1: 1 }) },
+    { name: "ENVERS HACHÉ", sub: "endroit, envers, endroit, envers", steps: R16(j => j % 2 ? { s: j, v: 1, d: 2 } : { s: j }) },
+    { name: "CRUSH QUI PULSE", sub: "le grain se casse en rythme", steps: R16(j => ({ s: -1, x: [0, 0, 0.62, 0, 0.75, 0, 0.62, 0.85, 0, 0, 0.62, 0, 0.75, 0.62, 0.85, 0.9][j], f: [0, 0, -0.1, 0, 0.15, 0, -0.1, -0.25, 0, 0, -0.1, 0, 0.15, -0.1, -0.25, -0.3][j] })) },
+    { name: "FILTRE QUI SAUTE", sub: "le filtre change à chaque pas", steps: R16(j => ({ s: -1, f: [0, -0.65, 0.35, -0.3, 0, 0.5, -0.7, 0.2, 0, -0.45, 0.4, -0.65, 0.3, -0.2, 0.55, -0.75][j] })) },
+    { name: "HOQUET", sub: "petits trous et doublés", steps: R16(j => [{ s: 0 }, { s: 1 }, { s: 0, g: 0 }, { s: 3 }, { s: 4 }, { s: 4, d: 2 }, { s: 6 }, { s: 0, g: 0 }, { s: 8 }, { s: 9 }, { s: 10, d: 2 }, { s: 0, g: 0 }, { s: 12 }, { s: 0, g: 0 }, { s: 14, d: 2 }, { s: 15 }][j]) },
+    { name: "ÉTIRÉ GRANULAIRE", sub: "deux fois plus lent, même hauteur", steps: R32(j => ({ s: j * 0.5, d: 4, f: -0.05 })) },
+    { name: "PING-PONG GLITCH", sub: "les bégaiements sautent G / D", steps: R16(j => j < 8 ? { s: j } : { s: 8 + ((j - 8) >> 1) * 2, d: [2, 4, 3, 6][(j - 8) >> 1], p: j % 2 ? 0.8 : -0.8 }) },
+    { name: "BOUCLE QUI RÉTRÉCIT", sub: "noire, croche, double, triple, 2 mesures", steps: R32(j => j < 8 ? { s: j % 4 + 4 } : j < 16 ? { s: (j % 2) + 4, f: 0.05 } : j < 24 ? { s: 4, d: 2, f: 0.12 } : { s: 4, d: [4, 4, 6, 8, 8, 12, 16, 16][j - 24], f: 0.15 + (j - 24) * 0.04 }) },
+    { name: "MACHINE QUI DÉRAILLE", sub: "2 mesures de chaos (toujours le même)", steps: (() => { let h = 1337; const rnd = () => (h = (h * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff; return R32(j => { const k = rnd(); if (j % 8 === 0) return { s: j % 16 }; if (k < 0.18) return { s: Math.floor(rnd() * 16), d: [2, 3, 4, 8][Math.floor(rnd() * 4)] }; if (k < 0.3) return { s: Math.floor(rnd() * 16), v: 1 }; if (k < 0.38) return { s: 0, g: 0 }; if (k < 0.48) return { s: j % 16, x: 0.6 }; if (k < 0.56) return { s: j % 16, r0: 1.5, r1: 0.7 }; return { s: j % 16 }; }); })() }
   ];
   // Petit graphique du motif au-dessus du nom : la position lue dans le son par rapport à une lecture normale.
   // Ligne plate = lecture normale ; marches = répétitions ; pente = scratch, ralenti ou envers ; trous = coupures.
@@ -2801,9 +2831,9 @@ registerProcessor('nomad-aec',Aec);`;
     pts.forEach(p => { if (!p) { pen = false; return; } const x = (4 + p[0] * 92).toFixed(1), y = Y(p[1]).toFixed(1); d += (pen ? "L" : "M") + x + " " + y; pen = true; prev = p; });
     return `<svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><path d="${d}"/></svg>`;
   }
-  // pages de motifs : 0 = 1 à 16, 1 = 17 à 32, 2 = variations de batterie (33 à 48), 3 = mélodique (49 à 64)
-  const FX_PAGES = [["MOTIFS 1–16", "1–16"], ["MOTIFS 17–32", "17+"], ["VARIATIONS DRUMS", "DRM"], ["MÉLODIQUE", "MÉL"]];
-  let fxBank = Math.min(3, store.get("fxPage", 0));
+  // pages de motifs : 0 = 1 à 16, 1 = 17 à 32, 2 = variations de batterie (33 à 48), 3 = mélodique (49 à 64), 4 = glitch-hop (65 à 80)
+  const FX_PAGES = [["MOTIFS 1–16", "1–16"], ["MOTIFS 17–32", "17+"], ["VARIATIONS DRUMS", "DRM"], ["MÉLODIQUE", "MÉL"], ["GLITCH-HOP", "GLT"]];
+  let fxBank = Math.min(FX_PAGES.length - 1, store.get("fxPage", 0));
   let fxNode = null, fxFilt, fxCrush, fxPost, echoSend, echoDly, echoFb, springSend, fxMaster;
   let fxActive = -1, fxQuant = true, manualBpm = 90, fxTrig = store.get("fxTrig", "hold"), fxTarget = "all", fxOneT = null;
   const FXS = FX_PATTERNS;
@@ -2822,7 +2852,7 @@ registerProcessor('nomad-aec',Aec);`;
     if (b === fxBank) return;
     if (fxActive >= 0) fxEnd(fxActive);
     fxBank = b; store.set("fxPage", b); drawFxPads();
-    lcd("lcdPad", "FX", ["motifs 1 à 16", "motifs 17 à 32 (élaborés)", "variations de batterie (33 à 48)", "mélodique (49 à 64)"][b]);
+    lcd("lcdPad", "FX", ["motifs 1 à 16", "motifs 17 à 32 (élaborés)", "variations de batterie (33 à 48)", "mélodique (49 à 64)", "glitch-hop (65 à 80)"][b]);
     if (typeof fxDisp === "function") fxDisp(FX_PAGES[b][1], FX_PAGES[b][0]);
   }
   function drawFxPads() {
@@ -2835,7 +2865,7 @@ registerProcessor('nomad-aec',Aec);`;
   function curBpm() { return LP.t0F !== null && LP.Lf ? 60 * LP.beats / loopLen() : manualBpm; }
   function drawFxBar() { $("fxBpm").textContent = curBpm().toFixed(1).replace(/\.0$/, "") + " BPM"; $("fxQuant").textContent = fxQuant ? "CALÉ 1/16" : "LIBRE"; $("fxQuant").classList.toggle("on", fxQuant); }
   $("fxQuant").addEventListener("click", () => { fxQuant = !fxQuant; drawFxBar(); });
-  $("fxSet").addEventListener("click", () => setFxBank((fxBank + 1) % 4));
+  $("fxSet").addEventListener("click", () => setFxBank((fxBank + 1) % FX_PAGES.length));
   $("fxTrig").addEventListener("click", () => { if (fxActive >= 0) fxEnd(fxActive); fxTrig = { hold: "one", one: "latch", latch: "hold" }[fxTrig]; store.set("fxTrig", fxTrig); drawFxPads(); });
   document.querySelectorAll(".fxt").forEach(b => b.addEventListener("click", () => setFxTarget(b.dataset.t)));
   // Cible des effets : tout le morceau, le jeu en direct, ou une seule piste du looper
@@ -2844,7 +2874,7 @@ registerProcessor('nomad-aec',Aec);`;
   const FX_KEY_T = ["all", "live", "1", "2", "3", "4", "5", "6", "song"];
   // renvoie true si la touche a servi de sélecteur ; les autres touches jouent SONS normalement
   function fxKey(note) {
-    if (note - 48 === 1) { setFxBank((fxBank + 1) % 4); return true; }   // DO# : page suivante (1–16, 17–32, drums, mélodique)
+    if (note - 48 === 1) { setFxBank((fxBank + 1) % FX_PAGES.length); return true; }   // DO# : page suivante (1–16, 17–32, drums, mélodique, glitch-hop)
     const w = [0, 2, 4, 5, 7, 9, 11, 12, 14].indexOf(note - 48);   // … et le ré suivant = SONG
     if (w < 0) return false;
     setFxTarget(FX_KEY_T[w]); return true;
@@ -3447,6 +3477,7 @@ registerProcessor('nomad-aec',Aec);`;
     try { crate = await (await fetch("crate/crate.json")).json(); }
     catch (e) { $("digTitle").textContent = "Le bac n'a pas pu être chargé (hors ligne ?)"; return; }
     $("crates").innerHTML = "";
+    crate.collections.forEach(c => { if (c.gen === "scratch") c.items = scrVoiceItems(); });
     crate.collections.forEach((c, i) => {
       const b = document.createElement("button");
       b.type = "button"; b.className = "crate"; b.id = "crate" + i; b.setAttribute("role", "tab");
@@ -3494,6 +3525,28 @@ registerProcessor('nomad-aec',Aec);`;
     const j = await r.json();
     c.sub = "« " + c.q + " » · " + (j.count || 0) + " sons CC0";
     return (j.results || []).map(s => ({ id: "fs-" + s.id, t: String(s.name || "").replace(/\.(wav|mp3|aiff?|flac|ogg|m4a)$/i, "").replace(/[_]+/g, " ").slice(0, 90), a: s.username, l: "CC0", u: s.url || "https://freesound.org/s/" + s.id + "/", m: s.previews && s.previews["preview-hq-mp3"], d: s.duration, fs: 1 })).filter(x => x.m);
+  }
+  // Bac VOIX SCRATCH : les sons de l'onglet SCRATCH (voix synthétisées, tonalités, voix de la Bibliothèque du Congrès),
+  // un par disque, plus un « kit » : les 16 à la suite, déjà découpés, prêts à envoyer sur les pads
+  function scrVoiceItems() {
+    const loc = crate.collections.find(x => x.id === "loc-tony-schwartz"), out = [{ id: "scr-kit", t: "KIT VOIX SCRATCH · 16 sons à la suite", a: "NOMAD", gen: "kit", l: "domaine public", u: "https://citizen-dj.labs.loc.gov/loc-tony-schwartz/" }];
+    SCR_SYN_NAMES.forEach((n, k) => out.push({ id: "scr-syn-" + k, t: n, a: "NOMAD (son synthétisé)", gen: "syn", k, l: "domaine public", u: "https://lcqbeats.github.io/nomad16/" }));
+    if (loc) SCR_LOC.forEach(([cid, title, ci, nm], k) => { const it = loc.items.find(x => x.t === title); if (it && it.c[ci]) out.push({ id: "scr-loc-" + k, t: nm + " (voix)", a: "Tony Schwartz · Bibliothèque du Congrès", l: "domaine public", u: it.u || "https://citizen-dj.labs.loc.gov/loc-tony-schwartz/", dir: cid, c: [it.c[ci]] }); });
+    return out;
+  }
+  async function loadGen(it) {
+    if (!ctx) return;
+    stopTT(); $("faces").innerHTML = ""; $("ttMsg").textContent = "on pose le disque…";
+    const syn = scrSynthCache();
+    if (it.gen === "syn") { setClip(scrBufOf(syn[it.k].data, sr), it, it.t); $("ttMsg").textContent = (syn[it.k].data.length / sr).toFixed(1) + " s"; return; }
+    // kit : 14 sons synthétisés + 2 voix, séparés par un petit silence, une découpe au début de chaque son
+    const parts = syn.map(x => x.data), gap = Math.round(sr * 0.12);
+    const loc = crate.collections.find(x => x.id === "scr-voix").items.filter(x => x.dir).slice(0, 2);
+    for (const v of loc) { try { const b = await scrFetch(crate.base + v.dir + "/" + v.c[0][0] + ".wav"); parts.push(b.getChannelData(0).slice(0, Math.round(sr * Math.min(2.5, b.duration)))); } catch (e) {} }
+    const L = parts.reduce((a, p) => a + p.length + gap, 0), b = ctx.createBuffer(1, L, sr), d = b.getChannelData(0), starts = [];
+    let o = 0; parts.forEach(p => { starts.push(o); d.set(p, o); o += p.length + gap; });
+    setClip(b, it, it.t); chops = starts.slice(0, 16); drawWave();
+    $("ttMsg").textContent = starts.length + " sons · « SUR LES PADS » pour en faire un kit";
   }
   async function wcList(c) {
     const strip = h => String(h || "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim(), drop = c.drop ? new RegExp(c.drop, "i") : null;
@@ -3550,7 +3603,7 @@ registerProcessor('nomad-aec',Aec);`;
     $("digArtist").textContent = it.a || "artiste inconnu";
     $("digCount").textContent = `${c.name} · ${recIdx + 1}/${curItems().length}` + (it.l === "CC0" ? " · CC0, libre" : it.l && it.l !== "domaine public" ? ` · ${it.l} (citer l'auteur)` : "");
     $("digLink").href = it.u;
-    $("digLink").textContent = it.ia ? "fiche sur Internet Archive" : it.fs ? "fiche sur Freesound" : it.m ? "fiche sur Wikimedia Commons" : "fiche à la Bibliothèque du Congrès";
+    $("digLink").textContent = it.ia ? "fiche sur Internet Archive" : it.fs ? "fiche sur Freesound" : it.gen ? "sons de SCRATCH (NOMAD)" : it.m ? "fiche sur Wikimedia Commons" : "fiche à la Bibliothèque du Congrès";
     if (dir) digAnim = { dir, t0: performance.now() };
     digDirty = true;
     store.set("dig", { c: crateIdx, r: recIdx });
@@ -3695,6 +3748,7 @@ registerProcessor('nomad-aec',Aec);`;
     const it = curItem(); if (!it) return;
     $("deck").hidden = false;
     $("faces").innerHTML = "";
+    if (it.gen) { loadGen(it); return; }
     if (!it.c) { loadOnline(it); return; }
     it.c.forEach((cl, i) => {
       const b = document.createElement("button");
@@ -3709,7 +3763,7 @@ registerProcessor('nomad-aec',Aec);`;
     if (!ctx) return;
     stopTT();
     [...$("faces").children].forEach((b, j) => b.classList.toggle("on", j === i));
-    const file = it.c[i][0], url = crate.base + crate.collections.find(c => (c.items || []).includes(it)).id + "/" + file + ".wav";
+    const file = it.c[i][0], url = crate.base + (it.dir || crate.collections.find(c => (c.items || []).includes(it)).id) + "/" + file + ".wav";
     $("ttMsg").textContent = "on pose le disque…"; digLoad(0);
     try {
       let buf = clipCache.get(url);
@@ -3918,7 +3972,7 @@ registerProcessor('nomad-aec',Aec);`;
   $("toPads").addEventListener("click", () => {
     if (!clip || !ctx) return;
     const rate = Math.pow(2, pitchSemi / 12);
-    chopKit.buffers = []; chopKit.names = [];
+    chopKit.buffers = []; chopKit.names = []; store.set("kp.chops", null);   // nouvelles découpes : réglages neufs
     chops.slice(0, 16).forEach((c, i) => {
       const [a, b] = chopRange(i);
       chopKit.buffers.push(sliceBuf(a, b, rate)); chopKit.names.push("Chop " + (i + 1));
@@ -3940,7 +3994,9 @@ registerProcessor('nomad-aec',Aec);`;
     const id = "chops-" + (h >>> 0).toString(36), name = chopKitName();
     try {
       const prev = await DB.get("kits", id);
-      await DB.put("kits", { id, name, names: chopKit.names.slice(), gains: new Array(16).fill(1), chokeAll: true, bufs: chopKit.buffers.map(packBuf16), created: prev ? prev.created : Date.now(), used: Date.now(), auto: true, desc: t.slice(0, 60) });
+      // en quittant le kit de chops en direct, ses réglages partent avec lui ; un nouveau découpage (load) repart de zéro
+      const params = !load && kitCur === "chops" ? padParams.map(p => ({ ...p })) : (!load && prev ? prev.params : undefined);
+      await DB.put("kits", { id, name, names: chopKit.names.slice(), gains: new Array(16).fill(1), chokeAll: true, bufs: chopKit.buffers.map(packBuf16), params, created: prev ? prev.created : Date.now(), used: Date.now(), auto: true, desc: t.slice(0, 60) });
       const autos = (await DB.all("kits")).filter(k => k.auto).sort((a, b) => (b.used || 0) - (a.used || 0));
       for (const k of autos.slice(CHOP_KEEP)) if (k.id !== kitCur) await DB.del("kits", k.id);
       await refreshUserKits();
@@ -5234,7 +5290,9 @@ registerProcessor('nomad-aec',Aec);`;
       ["LASER", mix(0.6, t => Math.sin(2 * Math.PI * (2200 * t - 1600 * t * t / 1.2)) * 0.5 * Math.exp(-t / 0.4))]
     ].map(([n, d]) => ({ name: n, data: d }));
   }
-  const SCR_LOC = [["loc-tony-schwartz", "Old auto horns", 0, "KLAXONS"], ["loc-tony-schwartz", "Announcer - Process", 0, "SPEAKER"], ["loc-tony-schwartz", "Words & tone", 0, "MOTS"], ["loc-tony-schwartz", "How do you read?", 0, "HOW DO YOU READ"], ["loc-tony-schwartz", "It's a boy", 0, "IT'S A BOY"], ["loc-tony-schwartz", "Mothers calling children", 0, "APPELS"], ["loc-tony-schwartz", "Instant information", 0, "INFO"], ["loc-jukebox-popular", "Army bugle calls", 0, "CLAIRON"], ["loc-tony-schwartz", "Taxi to Harlem", 0, "TAXI"], ["loc-tony-schwartz", "Playground", 0, "RÉCRÉ"]];
+  var SCR_LOC = [["loc-tony-schwartz", "Old auto horns", 0, "KLAXONS"], ["loc-tony-schwartz", "Announcer - Process", 0, "SPEAKER"], ["loc-tony-schwartz", "Words & tone", 0, "MOTS"], ["loc-tony-schwartz", "How do you read?", 0, "HOW DO YOU READ"], ["loc-tony-schwartz", "It's a boy", 0, "IT'S A BOY"], ["loc-tony-schwartz", "Mothers calling children", 0, "APPELS"], ["loc-tony-schwartz", "Instant information", 0, "INFO"], ["loc-jukebox-popular", "Army bugle calls", 0, "CLAIRON"], ["loc-tony-schwartz", "Taxi to Harlem", 0, "TAXI"], ["loc-tony-schwartz", "Playground", 0, "RÉCRÉ"]];
+  // noms de la banque synthétisée (bac VOIX SCRATCH de DIGGING), dans l'ordre de scrSynth
+  var SCR_SYN_NAMES = ["AHH", "OUH", "YEAH", "HEY", "WAAH", "TON 1 KHZ", "TON GRAVE", "BUZZ", "CAISSE", "BOUM-TCHAK", "CUIVRES", "BASSE 808", "PSSHH", "LASER"];
   // banque synthétisée, partagée avec l'onglet PADS (choix du son d'un pad)
   let scrSynthC = null;
   const scrSynthCache = () => scrSynthC || (scrSynthC = scrSynth(sr));
@@ -5794,7 +5852,7 @@ registerProcessor('nomad-aec',Aec);`;
       sec("PADS EN NOTES, SELON L'ONGLET", `<p><b>PADS, SONG, SP, GUITARE</b> : les 16 sons du kit (banque A = 1 à 8, banque B = 9 à 16).</p>
         <p class="glh">LOOPER · banque A</p>${padGrid(["Muet piste 4", "Muet piste 5", "Muet piste 6", "Tout couper", "Muet piste 1", "Muet piste 2", "Muet piste 3", "Tout rétablir"])}
         <p class="glh">LOOPER · banque B</p>${padGrid(["Solo piste 4", "Solo piste 5", "Solo piste 6", "Tape stop", "Solo piste 1", "Solo piste 2", "Solo piste 3", "▶ Lecture"], 8)}
-        <p class="glh">FX · motifs 1 à 16 (banques A puis B)</p>${padGrid(fxA)}${padGrid(fxB, 8)}<p class="glh">FX · motifs 17 à 32 (DO# du clavier : page suivante)</p>${padGrid(fxC)}${padGrid(fxD, 8)}<p class="glh">FX · variations de batterie (33 à 48)</p>${padGrid(FXS.slice(32, 40).map(f => f.name))}${padGrid(FXS.slice(40, 48).map(f => f.name), 8)}<p class="glh">FX · mélodique (49 à 64)</p>${padGrid(FXS.slice(48, 56).map(f => f.name))}${padGrid(FXS.slice(56, 64).map(f => f.name), 8)}
+        <p class="glh">FX · motifs 1 à 16 (banques A puis B)</p>${padGrid(fxA)}${padGrid(fxB, 8)}<p class="glh">FX · motifs 17 à 32 (DO# du clavier : page suivante, jusqu'au glitch-hop 65–80)</p>${padGrid(fxC)}${padGrid(fxD, 8)}<p class="glh">FX · variations de batterie (33 à 48)</p>${padGrid(FXS.slice(32, 40).map(f => f.name))}${padGrid(FXS.slice(40, 48).map(f => f.name), 8)}<p class="glh">FX · mélodique (49 à 64)</p>${padGrid(FXS.slice(48, 56).map(f => f.name))}${padGrid(FXS.slice(56, 64).map(f => f.name), 8)}
         <p class="glh">SP · banque A : couleur (appui court = allumé, long = tant qu'on tient)</p>${padGrid(SP_FX.slice(0, 8).map(f => f.name))}<p class="glh">SP · banque B : espace et jeu</p>${padGrid(SP_FX.slice(8, 16).map(f => f.name), 8)}<p class="glh">SP · BANK B (DO# du clavier) : couleur, mouvement, stéréo</p>${padGrid(SP_FX.slice(16, 24).map(f => f.name))}${padGrid(SP_FX.slice(24, 32).map(f => f.name), 8)}
         <p><b>DIGGING</b> : avec CHOP LIVE et le disque qui tourne, chaque pad pose sa découpe ; sinon, le kit.</p>
         <p><b>SONS</b> en mode ACCORDS : pads 1 à 7 = les accords du style choisi, pad 8 = le premier à l'octave ; banque B = une octave plus haut.</p>

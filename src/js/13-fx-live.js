@@ -76,7 +76,25 @@
     { name: "ÉCHO PING-PONG", sub: "écho à la noire, de gauche à droite", steps: R16(j => ({ s: j + 12, m: 0.4, p: (j >> 2) % 2 ? 0.7 : -0.7, f: -0.2 })) },
     { name: "RALENTI VINYLE", sub: "la platine ralentit puis repart, 2 mesures", steps: (() => { const out = []; let pos = 0; for (let j = 0; j < 32; j++) { if (j >= 16) { out.push({ s: -1 }); continue; } const r0 = 1 - 0.22 * j / 16, r1 = 1 - 0.22 * (j + 1) / 16; out.push({ s: pos, r0, r1, f: -j * 0.015 }); pos += (r0 + r1) / 2; } return out; })() },
     { name: "RADIO LOINTAINE", sub: "petit poste au loin", steps: R16(j => ({ s: -1, f: -0.45, x: 0.35, m: 0.85 })) },
-    { name: "VOLUME QUI GONFLE", sub: "chaque temps monte comme à l'envers", steps: R16(j => ({ s: -1, g: [0.25, 0.5, 0.75, 1][j % 4] })) }
+    { name: "VOLUME QUI GONFLE", sub: "chaque temps monte comme à l'envers", steps: R16(j => ({ s: -1, g: [0.25, 0.5, 0.75, 1][j % 4] })) },
+    // MOTIFS 65 À 80 : GLITCH-HOP — esprit edIT (Crying Over Pros for No Reason) : la mesure découpée au scalpel,
+    // micro-répétitions qui accélèrent ou ralentissent, bégaiements qui changent de hauteur, sauts de disque numérique
+    { name: "RATCHET", sub: "le 3e temps s'accélère jusqu'à la mitraille", steps: R16(j => j < 8 ? { s: j } : { s: 8 + ((j - 8) >> 2) * 2, d: [2, 2, 3, 4, 6, 8, 12, 16][j - 8] }) },
+    { name: "RATCHET INVERSÉ", sub: "mitraille qui se calme", steps: R16(j => j < 8 ? { s: 0, d: [16, 12, 8, 6, 4, 3, 2, 2][j] } : { s: j }) },
+    { name: "BÉGAIEMENT QUI MONTE", sub: "le temps se répète en montant", steps: R16(j => j < 8 ? { s: j } : { s: 8, d: 4, r0: 1 + (j - 8) / 8, r1: 1 + (j - 7) / 8 }) },
+    { name: "BÉGAIEMENT QUI TOMBE", sub: "le temps se répète en descendant", steps: R16(j => j < 8 ? { s: j } : { s: 8, d: 4, r0: 1 - (j - 8) * 0.07, r1: 1 - (j - 7) * 0.07, f: -(j - 8) * 0.05 }) },
+    { name: "CD QUI SAUTE", sub: "le lecteur accroche et repart", steps: R16(j => [{ s: 0 }, { s: 1 }, { s: 1, d: 2 }, { s: 1, d: 2 }, { s: 4 }, { s: 5 }, { s: 6, d: 4 }, { s: 6, d: 4, g: 0.8 }, { s: 8 }, { s: 9 }, { s: 9, d: 8, x: 0.3 }, { s: 11 }, { s: 12 }, { s: 12, d: 3 }, { s: 0, g: 0 }, { s: 15 }][j]) },
+    { name: "3-3-2 DÉCOUPÉ", sub: "les doubles croches en 3-3-2", steps: R16(j => ({ s: [0, 1, 2, 0, 1, 2, 0, 1, 8, 9, 10, 8, 9, 10, 8, 9][j] })) },
+    { name: "GRANULES", sub: "poussière de grains de son", steps: (() => { let h = 7; const rnd = () => (h = (h * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff; return R16(j => ({ s: Math.floor(rnd() * 16), d: [6, 8, 6, 12][j % 4], r0: [1, 1, 0.5, 2, 1, 1.5][Math.floor(rnd() * 6)], g: 0.9, m: 0.85 })); })() },
+    { name: "TAPE STOP ÉCLAIR", sub: "la bande cale en une croche et repart", steps: R16(j => j < 12 ? { s: j } : j === 12 ? { s: 12, r0: 1, r1: 0.45 } : j === 13 ? { s: 12.7, r0: 0.45, r1: 0.05, f: -0.35 } : j === 14 ? { s: 0, g: 0 } : { s: 15, r0: 0.4, r1: 1 }) },
+    { name: "ENVERS HACHÉ", sub: "endroit, envers, endroit, envers", steps: R16(j => j % 2 ? { s: j, v: 1, d: 2 } : { s: j }) },
+    { name: "CRUSH QUI PULSE", sub: "le grain se casse en rythme", steps: R16(j => ({ s: -1, x: [0, 0, 0.62, 0, 0.75, 0, 0.62, 0.85, 0, 0, 0.62, 0, 0.75, 0.62, 0.85, 0.9][j], f: [0, 0, -0.1, 0, 0.15, 0, -0.1, -0.25, 0, 0, -0.1, 0, 0.15, -0.1, -0.25, -0.3][j] })) },
+    { name: "FILTRE QUI SAUTE", sub: "le filtre change à chaque pas", steps: R16(j => ({ s: -1, f: [0, -0.65, 0.35, -0.3, 0, 0.5, -0.7, 0.2, 0, -0.45, 0.4, -0.65, 0.3, -0.2, 0.55, -0.75][j] })) },
+    { name: "HOQUET", sub: "petits trous et doublés", steps: R16(j => [{ s: 0 }, { s: 1 }, { s: 0, g: 0 }, { s: 3 }, { s: 4 }, { s: 4, d: 2 }, { s: 6 }, { s: 0, g: 0 }, { s: 8 }, { s: 9 }, { s: 10, d: 2 }, { s: 0, g: 0 }, { s: 12 }, { s: 0, g: 0 }, { s: 14, d: 2 }, { s: 15 }][j]) },
+    { name: "ÉTIRÉ GRANULAIRE", sub: "deux fois plus lent, même hauteur", steps: R32(j => ({ s: j * 0.5, d: 4, f: -0.05 })) },
+    { name: "PING-PONG GLITCH", sub: "les bégaiements sautent G / D", steps: R16(j => j < 8 ? { s: j } : { s: 8 + ((j - 8) >> 1) * 2, d: [2, 4, 3, 6][(j - 8) >> 1], p: j % 2 ? 0.8 : -0.8 }) },
+    { name: "BOUCLE QUI RÉTRÉCIT", sub: "noire, croche, double, triple, 2 mesures", steps: R32(j => j < 8 ? { s: j % 4 + 4 } : j < 16 ? { s: (j % 2) + 4, f: 0.05 } : j < 24 ? { s: 4, d: 2, f: 0.12 } : { s: 4, d: [4, 4, 6, 8, 8, 12, 16, 16][j - 24], f: 0.15 + (j - 24) * 0.04 }) },
+    { name: "MACHINE QUI DÉRAILLE", sub: "2 mesures de chaos (toujours le même)", steps: (() => { let h = 1337; const rnd = () => (h = (h * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff; return R32(j => { const k = rnd(); if (j % 8 === 0) return { s: j % 16 }; if (k < 0.18) return { s: Math.floor(rnd() * 16), d: [2, 3, 4, 8][Math.floor(rnd() * 4)] }; if (k < 0.3) return { s: Math.floor(rnd() * 16), v: 1 }; if (k < 0.38) return { s: 0, g: 0 }; if (k < 0.48) return { s: j % 16, x: 0.6 }; if (k < 0.56) return { s: j % 16, r0: 1.5, r1: 0.7 }; return { s: j % 16 }; }); })() }
   ];
   // Petit graphique du motif au-dessus du nom : la position lue dans le son par rapport à une lecture normale.
   // Ligne plate = lecture normale ; marches = répétitions ; pente = scratch, ralenti ou envers ; trous = coupures.
@@ -105,9 +123,9 @@
     pts.forEach(p => { if (!p) { pen = false; return; } const x = (4 + p[0] * 92).toFixed(1), y = Y(p[1]).toFixed(1); d += (pen ? "L" : "M") + x + " " + y; pen = true; prev = p; });
     return `<svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><path d="${d}"/></svg>`;
   }
-  // pages de motifs : 0 = 1 à 16, 1 = 17 à 32, 2 = variations de batterie (33 à 48), 3 = mélodique (49 à 64)
-  const FX_PAGES = [["MOTIFS 1–16", "1–16"], ["MOTIFS 17–32", "17+"], ["VARIATIONS DRUMS", "DRM"], ["MÉLODIQUE", "MÉL"]];
-  let fxBank = Math.min(3, store.get("fxPage", 0));
+  // pages de motifs : 0 = 1 à 16, 1 = 17 à 32, 2 = variations de batterie (33 à 48), 3 = mélodique (49 à 64), 4 = glitch-hop (65 à 80)
+  const FX_PAGES = [["MOTIFS 1–16", "1–16"], ["MOTIFS 17–32", "17+"], ["VARIATIONS DRUMS", "DRM"], ["MÉLODIQUE", "MÉL"], ["GLITCH-HOP", "GLT"]];
+  let fxBank = Math.min(FX_PAGES.length - 1, store.get("fxPage", 0));
   let fxNode = null, fxFilt, fxCrush, fxPost, echoSend, echoDly, echoFb, springSend, fxMaster;
   let fxActive = -1, fxQuant = true, manualBpm = 90, fxTrig = store.get("fxTrig", "hold"), fxTarget = "all", fxOneT = null;
   const FXS = FX_PATTERNS;
@@ -126,7 +144,7 @@
     if (b === fxBank) return;
     if (fxActive >= 0) fxEnd(fxActive);
     fxBank = b; store.set("fxPage", b); drawFxPads();
-    lcd("lcdPad", "FX", ["motifs 1 à 16", "motifs 17 à 32 (élaborés)", "variations de batterie (33 à 48)", "mélodique (49 à 64)"][b]);
+    lcd("lcdPad", "FX", ["motifs 1 à 16", "motifs 17 à 32 (élaborés)", "variations de batterie (33 à 48)", "mélodique (49 à 64)", "glitch-hop (65 à 80)"][b]);
     if (typeof fxDisp === "function") fxDisp(FX_PAGES[b][1], FX_PAGES[b][0]);
   }
   function drawFxPads() {
@@ -139,7 +157,7 @@
   function curBpm() { return LP.t0F !== null && LP.Lf ? 60 * LP.beats / loopLen() : manualBpm; }
   function drawFxBar() { $("fxBpm").textContent = curBpm().toFixed(1).replace(/\.0$/, "") + " BPM"; $("fxQuant").textContent = fxQuant ? "CALÉ 1/16" : "LIBRE"; $("fxQuant").classList.toggle("on", fxQuant); }
   $("fxQuant").addEventListener("click", () => { fxQuant = !fxQuant; drawFxBar(); });
-  $("fxSet").addEventListener("click", () => setFxBank((fxBank + 1) % 4));
+  $("fxSet").addEventListener("click", () => setFxBank((fxBank + 1) % FX_PAGES.length));
   $("fxTrig").addEventListener("click", () => { if (fxActive >= 0) fxEnd(fxActive); fxTrig = { hold: "one", one: "latch", latch: "hold" }[fxTrig]; store.set("fxTrig", fxTrig); drawFxPads(); });
   document.querySelectorAll(".fxt").forEach(b => b.addEventListener("click", () => setFxTarget(b.dataset.t)));
   // Cible des effets : tout le morceau, le jeu en direct, ou une seule piste du looper
@@ -148,7 +166,7 @@
   const FX_KEY_T = ["all", "live", "1", "2", "3", "4", "5", "6", "song"];
   // renvoie true si la touche a servi de sélecteur ; les autres touches jouent SONS normalement
   function fxKey(note) {
-    if (note - 48 === 1) { setFxBank((fxBank + 1) % 4); return true; }   // DO# : page suivante (1–16, 17–32, drums, mélodique)
+    if (note - 48 === 1) { setFxBank((fxBank + 1) % FX_PAGES.length); return true; }   // DO# : page suivante (1–16, 17–32, drums, mélodique, glitch-hop)
     const w = [0, 2, 4, 5, 7, 9, 11, 12, 14].indexOf(note - 48);   // … et le ré suivant = SONG
     if (w < 0) return false;
     setFxTarget(FX_KEY_T[w]); return true;

@@ -65,7 +65,9 @@
       ["LASER", mix(0.6, t => Math.sin(2 * Math.PI * (2200 * t - 1600 * t * t / 1.2)) * 0.5 * Math.exp(-t / 0.4))]
     ].map(([n, d]) => ({ name: n, data: d }));
   }
-  const SCR_LOC = [["loc-tony-schwartz", "Old auto horns", 0, "KLAXONS"], ["loc-tony-schwartz", "Announcer - Process", 0, "SPEAKER"], ["loc-tony-schwartz", "Words & tone", 0, "MOTS"], ["loc-tony-schwartz", "How do you read?", 0, "HOW DO YOU READ"], ["loc-tony-schwartz", "It's a boy", 0, "IT'S A BOY"], ["loc-tony-schwartz", "Mothers calling children", 0, "APPELS"], ["loc-tony-schwartz", "Instant information", 0, "INFO"], ["loc-jukebox-popular", "Army bugle calls", 0, "CLAIRON"], ["loc-tony-schwartz", "Taxi to Harlem", 0, "TAXI"], ["loc-tony-schwartz", "Playground", 0, "RÉCRÉ"]];
+  var SCR_LOC = [["loc-tony-schwartz", "Old auto horns", 0, "KLAXONS"], ["loc-tony-schwartz", "Announcer - Process", 0, "SPEAKER"], ["loc-tony-schwartz", "Words & tone", 0, "MOTS"], ["loc-tony-schwartz", "How do you read?", 0, "HOW DO YOU READ"], ["loc-tony-schwartz", "It's a boy", 0, "IT'S A BOY"], ["loc-tony-schwartz", "Mothers calling children", 0, "APPELS"], ["loc-tony-schwartz", "Instant information", 0, "INFO"], ["loc-jukebox-popular", "Army bugle calls", 0, "CLAIRON"], ["loc-tony-schwartz", "Taxi to Harlem", 0, "TAXI"], ["loc-tony-schwartz", "Playground", 0, "RÉCRÉ"]];
+  // noms de la banque synthétisée (bac VOIX SCRATCH de DIGGING), dans l'ordre de scrSynth
+  var SCR_SYN_NAMES = ["AHH", "OUH", "YEAH", "HEY", "WAAH", "TON 1 KHZ", "TON GRAVE", "BUZZ", "CAISSE", "BOUM-TCHAK", "CUIVRES", "BASSE 808", "PSSHH", "LASER"];
   // banque synthétisée, partagée avec l'onglet PADS (choix du son d'un pad)
   let scrSynthC = null;
   const scrSynthCache = () => scrSynthC || (scrSynthC = scrSynth(sr));

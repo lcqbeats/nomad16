@@ -150,8 +150,8 @@ button { font-family: var(--font-body); }
 .scrpitch { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 9px; font-weight: 700; letter-spacing: .1em; color: #3a3b3e; }
 .scrpitch input { width: 100%; accent-color: #3a3b3e; }
 /* crossfader : façade de table de mixage (plaque brossée, vis, graduations, fente, bouton strié) */
-/* course courte, comme sur une table de scratch : moitié coupée, moitié ouverte */
-.xfader { position: relative; height: 66px; width: min(100%, 230px); align-self: center; border-radius: 6px; touch-action: none; cursor: ew-resize;
+/* course très courte, comme sur une table de scratch : moitié coupée, moitié ouverte (150 px en tout) */
+.xfader { position: relative; height: 66px; width: min(100%, 150px); align-self: center; border-radius: 6px; touch-action: none; cursor: ew-resize;
   background: repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px), linear-gradient(180deg, #3b3c3f, #232427 60%, #1b1c1e);
   box-shadow: inset 0 1px 0 #55575b, inset 0 -1px 0 #0b0b0c, 0 0 0 1px #050505, 0 4px 10px rgba(0,0,0,.5); }
 .xfader::before, .xfader::after { content: ""; position: absolute; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%;
@@ -163,7 +163,7 @@ button { font-family: var(--font-body); }
   background: repeating-linear-gradient(90deg, #8d8f93 0 1px, transparent 1px calc(10% - .1px)); opacity: .55; }
 .xfader .rail::after { content: ""; position: absolute; left: 0; right: 0; bottom: -12px; height: 6px;
   background: repeating-linear-gradient(90deg, #8d8f93 0 1px, transparent 1px calc(10% - .1px)); opacity: .55; }
-.xfader .cap { position: absolute; top: 9px; width: 30px; height: 48px; margin-left: -15px; border-radius: 5px; pointer-events: none;
+.xfader .cap { position: absolute; top: 9px; width: 24px; height: 48px; margin-left: -12px; border-radius: 5px; pointer-events: none;
   background: linear-gradient(90deg, #121212, #3a3a3a 18%, #1e1e1e 50%, #3a3a3a 82%, #121212);
   box-shadow: 0 4px 6px rgba(0,0,0,.7), inset 0 1px 0 #5a5a5a, 0 0 0 1px #000; }
 .xfader .cap::before { content: ""; position: absolute; left: 50%; top: 6px; bottom: 6px; width: 2px; margin-left: -1px; background: #ece3d3; border-radius: 1px; }

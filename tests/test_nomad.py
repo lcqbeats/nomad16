@@ -697,8 +697,8 @@ def test_fx_32_motifs(app):
             app.wait_for_timeout(70); m, bad = app.evaluate("_pk3()"); worst = [max(worst[0], m), worst[1] + bad]
         app.evaluate(f"nomadMidi([0x89, {36 + i}, 0])")
         assert worst[1] == 0 and worst[0] < 1.5, (i + 17, worst)
-    # pages 3 (variations de batterie) et 4 (mélodique) : mêmes garanties
-    for page in (2, 3):
+    # pages 3 (variations de batterie), 4 (mélodique) et 5 (glitch-hop) : mêmes garanties
+    for page in (2, 3, 4):
         app.click("#fxSet")
         for i in range(16):
             app.evaluate(f"nomadMidi([0x99, {36 + i}, 100])")
@@ -1162,7 +1162,7 @@ def test_ambiance_de_collection(app):
 
 
 def test_fx_quatre_pages_et_motifs_valides(app):
-    assert app.evaluate("nomadDbg.FXS.length") == 64
+    assert app.evaluate("nomadDbg.FXS.length") == 80
     # aucun motif ne lit l'avenir ni trop loin dans le passé (tampon de 12 s ≈ 64 double-croches à 80 BPM)
     bad = app.evaluate("""nomadDbg.FXS.flatMap((f, n) => (f.steps || []).map((st, j) => {
         if (st.s < 0) return null;
@@ -1172,13 +1172,15 @@ def test_fx_quatre_pages_et_motifs_valides(app):
     assert bad == [], bad
     app.click("#tab-fx")
     app.evaluate("nomadMidi([0x99, 36, 1]); nomadMidi([0x89, 36, 0])")
-    for k in range(4):
+    for k in range(5):
         app.evaluate("nomadMidi([0x90, 49, 100]); nomadMidi([0x80, 49, 0])")     # do# : page suivante
     assert "MOTIFS 1–16" in app.inner_text("#fxSet")
     app.evaluate("nomadMidi([0x90, 49, 100]); nomadMidi([0x80, 49, 0])"); app.evaluate("nomadMidi([0x90, 49, 100]); nomadMidi([0x80, 49, 0])")
     assert "VARIATIONS DRUMS" in app.inner_text("#fxSet") and "GHOST NOTES" in app.inner_text("#fxgrid")
     app.evaluate("nomadDbg.setFxBank(3)")
     assert "ÉCHO PING-PONG" in app.inner_text("#fxgrid")
+    app.evaluate("nomadDbg.setFxBank(4)")
+    assert "GLITCH-HOP" in app.inner_text("#fxSet") and "RATCHET" in app.inner_text("#fxgrid") and "MACHINE QUI DÉRAILLE" in app.inner_text("#fxgrid")
 
 
 def test_sp_bank_b_et_dosage_par_effet(app):
@@ -1370,3 +1372,39 @@ def test_digging_solos_du_monde_et_freesound(app):
     app.click(".namedlg button[type=submit]")
     app.wait_for_function("document.getElementById('digTitle').textContent === 'oud taqsim'")
     assert "CC0" in app.inner_text("#digCount") and app.inner_text("#digLink") == "fiche sur Freesound"
+
+
+def test_reglages_des_pads_gardes_par_kit_et_chops(app):
+    # kit de chops depuis DIGGING : on règle un pad, on change de kit, on revient : le réglage est toujours là
+    app.click("#tab-sample")
+    app.evaluate("""() => { const c = nomadDbg.sp.in.context, sr = c.sampleRate, n = sr * 3, b = c.createBuffer(2, n, sr);
+      for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < n; i++) d[i] = Math.sin(i / 20) * (i % (sr / 2) < 2000 ? 0.8 : 0.1); }
+      nomadDbg.setClip(b, "essai chops"); }""")
+    app.click("#toPads")
+    app.wait_for_function("document.getElementById('kitName').textContent.startsWith('CHOPS')", timeout=8000)
+    chop = app.inner_text("#kitName")
+    app.evaluate("nomadDbg.padParams[0].level = 0.37; nomadDbg.padParams[0].pan = -0.5")
+    app.evaluate("nomadDbg.loadKit('synth')")
+    app.wait_for_function("document.getElementById('kitName').textContent !== %r" % chop)
+    app.evaluate("nomadDbg.padParams[2].level = 0.5")
+    app.wait_for_timeout(300)
+    app.evaluate("""() => { const k = nomadDbg.kitIndex.find(k => k.name === %r); nomadDbg.loadKit(k.id); }""" % chop)
+    app.wait_for_function("document.getElementById('kitName').textContent === %r" % chop)
+    assert abs(app.evaluate("nomadDbg.padParams[0].level") - 0.37) < 1e-6
+    assert app.evaluate("nomadDbg.padParams[0].pan") == -0.5
+    # et le kit fourni aussi
+    app.evaluate("nomadDbg.loadKit('synth')")
+    app.wait_for_function("nomadDbg.padParams[2].level === 0.5", timeout=5000)
+
+
+def test_digging_voix_scratch_en_kit(app):
+    app.click("#tab-sample")
+    app.wait_for_function("document.querySelectorAll('#crates .crate').length > 10")
+    app.locator("#crates .crate", has_text="VOIX SCRATCH").click()
+    app.wait_for_function("/VOIX SCRATCH · 1\\//.test(document.getElementById('digCount').textContent)")
+    assert app.inner_text("#digTitle").startswith("KIT VOIX SCRATCH")
+    app.evaluate("document.getElementById('digPull').click()")
+    app.wait_for_function("nomadDbg.clip && nomadDbg.chops.length >= 14", timeout=10000)
+    app.click("#toPads")
+    app.wait_for_function("document.getElementById('kitName').textContent.startsWith('CHOPS')", timeout=8000)
+    assert app.evaluate("nomadDbg.buffers.filter(Boolean).length") >= 14

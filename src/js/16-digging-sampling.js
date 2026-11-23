@@ -20,6 +20,7 @@
     try { crate = await (await fetch("crate/crate.json")).json(); }
     catch (e) { $("digTitle").textContent = "Le bac n'a pas pu être chargé (hors ligne ?)"; return; }
     $("crates").innerHTML = "";
+    crate.collections.forEach(c => { if (c.gen === "scratch") c.items = scrVoiceItems(); });
     crate.collections.forEach((c, i) => {
       const b = document.createElement("button");
       b.type = "button"; b.className = "crate"; b.id = "crate" + i; b.setAttribute("role", "tab");
@@ -67,6 +68,28 @@
     const j = await r.json();
     c.sub = "« " + c.q + " » · " + (j.count || 0) + " sons CC0";
     return (j.results || []).map(s => ({ id: "fs-" + s.id, t: String(s.name || "").replace(/\.(wav|mp3|aiff?|flac|ogg|m4a)$/i, "").replace(/[_]+/g, " ").slice(0, 90), a: s.username, l: "CC0", u: s.url || "https://freesound.org/s/" + s.id + "/", m: s.previews && s.previews["preview-hq-mp3"], d: s.duration, fs: 1 })).filter(x => x.m);
+  }
+  // Bac VOIX SCRATCH : les sons de l'onglet SCRATCH (voix synthétisées, tonalités, voix de la Bibliothèque du Congrès),
+  // un par disque, plus un « kit » : les 16 à la suite, déjà découpés, prêts à envoyer sur les pads
+  function scrVoiceItems() {
+    const loc = crate.collections.find(x => x.id === "loc-tony-schwartz"), out = [{ id: "scr-kit", t: "KIT VOIX SCRATCH · 16 sons à la suite", a: "NOMAD", gen: "kit", l: "domaine public", u: "https://citizen-dj.labs.loc.gov/loc-tony-schwartz/" }];
+    SCR_SYN_NAMES.forEach((n, k) => out.push({ id: "scr-syn-" + k, t: n, a: "NOMAD (son synthétisé)", gen: "syn", k, l: "domaine public", u: "https://lcqbeats.github.io/nomad16/" }));
+    if (loc) SCR_LOC.forEach(([cid, title, ci, nm], k) => { const it = loc.items.find(x => x.t === title); if (it && it.c[ci]) out.push({ id: "scr-loc-" + k, t: nm + " (voix)", a: "Tony Schwartz · Bibliothèque du Congrès", l: "domaine public", u: it.u || "https://citizen-dj.labs.loc.gov/loc-tony-schwartz/", dir: cid, c: [it.c[ci]] }); });
+    return out;
+  }
+  async function loadGen(it) {
+    if (!ctx) return;
+    stopTT(); $("faces").innerHTML = ""; $("ttMsg").textContent = "on pose le disque…";
+    const syn = scrSynthCache();
+    if (it.gen === "syn") { setClip(scrBufOf(syn[it.k].data, sr), it, it.t); $("ttMsg").textContent = (syn[it.k].data.length / sr).toFixed(1) + " s"; return; }
+    // kit : 14 sons synthétisés + 2 voix, séparés par un petit silence, une découpe au début de chaque son
+    const parts = syn.map(x => x.data), gap = Math.round(sr * 0.12);
+    const loc = crate.collections.find(x => x.id === "scr-voix").items.filter(x => x.dir).slice(0, 2);
+    for (const v of loc) { try { const b = await scrFetch(crate.base + v.dir + "/" + v.c[0][0] + ".wav"); parts.push(b.getChannelData(0).slice(0, Math.round(sr * Math.min(2.5, b.duration)))); } catch (e) {} }
+    const L = parts.reduce((a, p) => a + p.length + gap, 0), b = ctx.createBuffer(1, L, sr), d = b.getChannelData(0), starts = [];
+    let o = 0; parts.forEach(p => { starts.push(o); d.set(p, o); o += p.length + gap; });
+    setClip(b, it, it.t); chops = starts.slice(0, 16); drawWave();
+    $("ttMsg").textContent = starts.length + " sons · « SUR LES PADS » pour en faire un kit";
   }
   async function wcList(c) {
     const strip = h => String(h || "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim(), drop = c.drop ? new RegExp(c.drop, "i") : null;
@@ -123,7 +146,7 @@
     $("digArtist").textContent = it.a || "artiste inconnu";
     $("digCount").textContent = `${c.name} · ${recIdx + 1}/${curItems().length}` + (it.l === "CC0" ? " · CC0, libre" : it.l && it.l !== "domaine public" ? ` · ${it.l} (citer l'auteur)` : "");
     $("digLink").href = it.u;
-    $("digLink").textContent = it.ia ? "fiche sur Internet Archive" : it.fs ? "fiche sur Freesound" : it.m ? "fiche sur Wikimedia Commons" : "fiche à la Bibliothèque du Congrès";
+    $("digLink").textContent = it.ia ? "fiche sur Internet Archive" : it.fs ? "fiche sur Freesound" : it.gen ? "sons de SCRATCH (NOMAD)" : it.m ? "fiche sur Wikimedia Commons" : "fiche à la Bibliothèque du Congrès";
     if (dir) digAnim = { dir, t0: performance.now() };
     digDirty = true;
     store.set("dig", { c: crateIdx, r: recIdx });
@@ -268,6 +291,7 @@
     const it = curItem(); if (!it) return;
     $("deck").hidden = false;
     $("faces").innerHTML = "";
+    if (it.gen) { loadGen(it); return; }
     if (!it.c) { loadOnline(it); return; }
     it.c.forEach((cl, i) => {
       const b = document.createElement("button");
@@ -282,7 +306,7 @@
     if (!ctx) return;
     stopTT();
     [...$("faces").children].forEach((b, j) => b.classList.toggle("on", j === i));
-    const file = it.c[i][0], url = crate.base + crate.collections.find(c => (c.items || []).includes(it)).id + "/" + file + ".wav";
+    const file = it.c[i][0], url = crate.base + (it.dir || crate.collections.find(c => (c.items || []).includes(it)).id) + "/" + file + ".wav";
     $("ttMsg").textContent = "on pose le disque…"; digLoad(0);
     try {
       let buf = clipCache.get(url);
@@ -491,7 +515,7 @@
   $("toPads").addEventListener("click", () => {
     if (!clip || !ctx) return;
     const rate = Math.pow(2, pitchSemi / 12);
-    chopKit.buffers = []; chopKit.names = [];
+    chopKit.buffers = []; chopKit.names = []; store.set("kp.chops", null);   // nouvelles découpes : réglages neufs
     chops.slice(0, 16).forEach((c, i) => {
       const [a, b] = chopRange(i);
       chopKit.buffers.push(sliceBuf(a, b, rate)); chopKit.names.push("Chop " + (i + 1));
@@ -513,7 +537,9 @@
     const id = "chops-" + (h >>> 0).toString(36), name = chopKitName();
     try {
       const prev = await DB.get("kits", id);
-      await DB.put("kits", { id, name, names: chopKit.names.slice(), gains: new Array(16).fill(1), chokeAll: true, bufs: chopKit.buffers.map(packBuf16), created: prev ? prev.created : Date.now(), used: Date.now(), auto: true, desc: t.slice(0, 60) });
+      // en quittant le kit de chops en direct, ses réglages partent avec lui ; un nouveau découpage (load) repart de zéro
+      const params = !load && kitCur === "chops" ? padParams.map(p => ({ ...p })) : (!load && prev ? prev.params : undefined);
+      await DB.put("kits", { id, name, names: chopKit.names.slice(), gains: new Array(16).fill(1), chokeAll: true, bufs: chopKit.buffers.map(packBuf16), params, created: prev ? prev.created : Date.now(), used: Date.now(), auto: true, desc: t.slice(0, 60) });
       const autos = (await DB.all("kits")).filter(k => k.auto).sort((a, b) => (b.used || 0) - (a.used || 0));
       for (const k of autos.slice(CHOP_KEEP)) if (k.id !== kitCur) await DB.del("kits", k.id);
       await refreshUserKits();
