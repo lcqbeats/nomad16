@@ -242,6 +242,16 @@
       try { if (navigator.audioSession) navigator.audioSession.type = "play-and-record"; } catch (e) {}
       nativeAudio("record");
       if (gn.guard) gn.guard.port.postMessage({ type: "reset" });
+      // sans choix explicite : l'entrée choisie la dernière fois, sinon une entrée externe (iRig sur la prise casque = « microphone externe »,
+      // interface USB…) plutôt que le micro intégré de l'ordinateur
+      if (!deviceId) {
+        try {
+          const ins = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "audioinput" && d.deviceId && d.deviceId !== "default");
+          const saved = store.get("gtrDev", ""), ext = d => /extern|external|irig|usb|line|interface|guitar|guitare|focusrite|scarlett|behringer|presonus|audient|steinberg|motu|zoom|line 6|boss|connex/i.test(d.label) && !/built-in.*(micro|mic)|micro.*macbook|macbook.*micro|iphone|airpods/i.test(d.label);
+          const pick = ins.find(d => d.deviceId === saved) || ins.find(ext);
+          if (pick) deviceId = pick.deviceId;
+        } catch (e) {}
+      } else store.set("gtrDev", deviceId);
       micStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: deviceId ? { exact: deviceId } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false, latency: 0 } });
       micSrc = ctx.createMediaStreamSource(micStream);
       micSrc.connect(gn.aecIn);
