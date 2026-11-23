@@ -901,3 +901,8 @@ html.flipped, html.flipped body { overflow: hidden; }
 .minitr .mkit { font: 600 10px/1.2 var(--font-display, Arial, sans-serif); color: var(--muted); text-align: right; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0; letter-spacing: .04em; }
 :root[data-skin="clair"] .minitr button { background: #d6d3cc; color: #2a2a2a; }
 :root.desk .minitr { display: none; }
+
+/* téléphone en paysage : mise en page ordinateur réduite (la mise à l'échelle est faite par fitDesk) */
+:root.deskfit body { padding: 6px max(6px, env(safe-area-inset-right)) 10px max(6px, env(safe-area-inset-left)); display: block; overflow-x: hidden; }
+:root.deskfit .machine { transform-origin: 0 0; max-width: none; margin-left: 0; }
+:root.deskfit .minitr { display: none; }
