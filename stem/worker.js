@@ -8,7 +8,7 @@ ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.max(1, Math.min(8, (na
 
 const MODEL_URL = CONSTANTS.DEFAULT_MODEL_URL;
 const CACHE = "stem-semilia-modele-v1";
-let proc = null, backend = "";
+let proc = null, backend = "", engine = "auto";
 
 const post = (type, data = {}, transfer) => self.postMessage({ type, ...data }, transfer || []);
 
@@ -27,13 +27,14 @@ async function modelBytes() {
   return buf.buffer;
 }
 
-async function load() {
+async function load(want) {
+  if (want && want !== engine) { engine = want; proc = null; }
   if (proc) return;
   const bytes = await modelBytes();
   post("phase", { msg: "préparation du moteur…" });
   let gpu = false;
   try { gpu = !!(self.navigator.gpu && await self.navigator.gpu.requestAdapter()); } catch (e) {}
-  const tries = gpu ? [["webgpu"], ["wasm"]] : [["wasm"]];
+  const tries = engine === "cpu" || !gpu ? [["wasm"]] : engine === "gpu" ? [["webgpu"]] : [["webgpu"], ["wasm"]];
   let lastErr = null;
   for (const eps of tries) {
     try {
@@ -60,9 +61,9 @@ async function pass(L, R, label, k, of) {
 self.onmessage = async e => {
   const m = e.data;
   try {
-    if (m.type === "load") { await load(); return; }
+    if (m.type === "load") { await load(m.engine); return; }
     if (m.type === "separate") {
-      await load();
+      await load(m.engine);
       const { left, right, careful } = m, n = left.length, of = careful ? 2 : 1;
       const t0 = performance.now();
       const res = await pass(left, right, "passe 1", 0, of);

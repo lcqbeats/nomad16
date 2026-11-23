@@ -101,9 +101,14 @@ footer a, .info a { color: var(--gold); }
         <button type="button" id="qNorm" class="on">NORMALE</button>
         <button type="button" id="qCare">SOIGNÉE · 2× PLUS LONG</button>
       </div>
+      <div class="seg" role="group" aria-label="Moteur de calcul">
+        <button type="button" data-e="auto" class="on">AUTO</button>
+        <button type="button" data-e="gpu">CARTE GRAPHIQUE</button>
+        <button type="button" data-e="cpu">PROCESSEUR</button>
+      </div>
       <button type="button" class="go" id="go" disabled>▶ SÉPARER</button>
     </div>
-    <p class="info">Batterie, basse, voix et le reste des instruments, avec le modèle HTDemucs v4. La première fois, le modèle (172 Mo) se télécharge, puis il reste dans le navigateur. SOIGNÉE fait une 2e passe décalée et moyenne les deux : un peu moins d'artefacts.</p>
+    <p class="info">Batterie, basse, voix et le reste des instruments, avec le modèle HTDemucs v4. La première fois, le modèle (172 Mo) se télécharge, puis il reste dans le navigateur. SOIGNÉE fait une 2e passe décalée et moyenne les deux : un peu moins d'artefacts. MOTEUR : AUTO essaie la carte graphique puis le processeur ; sur un ordinateur ancien à puce graphique intégrée, PROCESSEUR est souvent plus rapide.</p>
     <div class="bar"><i id="bar"></i></div>
     <div class="status" id="status">prêt</div>
   </section>
@@ -173,6 +178,8 @@ async function openFile(f) {
 }
 
 // ---------- 2 · la séparation (dans un worker)
+let engine = localStorage.getItem("semiliaEngine") || "auto";
+document.querySelectorAll("[data-e]").forEach(b => { b.classList.toggle("on", b.dataset.e === engine); b.onclick = () => { engine = b.dataset.e; localStorage.setItem("semiliaEngine", engine); document.querySelectorAll("[data-e]").forEach(x => x.classList.toggle("on", x === b)); }; });
 $("qNorm").onclick = () => { careful = false; $("qNorm").classList.add("on"); $("qCare").classList.remove("on"); };
 $("qCare").onclick = () => { careful = true; $("qCare").classList.add("on"); $("qNorm").classList.remove("on"); };
 let worker = null;
@@ -183,7 +190,7 @@ function getWorker() {
     const m = e.data;
     if (m.type === "dl") { setBar(m.p * 0.999); status(m.cached ? "modèle déjà dans le navigateur" : `téléchargement du modèle (une seule fois) · ${Math.round(m.p * 100)} %`); }
     if (m.type === "phase") status(m.msg);
-    if (m.type === "ready") status("moteur prêt · " + m.backend);
+    if (m.type === "ready") { setBar(0); status("moteur prêt · " + m.backend + " · calcul du premier segment (le plus long)…"); }
     if (m.type === "prog") { setBar(m.p); status(`séparation · ${m.label} · segment ${m.seg}/${m.segs} · reste ≈ ${m.eta > 90 ? Math.round(m.eta / 60) + " min" : Math.max(1, Math.round(m.eta)) + " s"}`); }
     if (m.type === "done") { busy = false; $("go").disabled = false; setBar(1); status(`terminé en ${fmt(m.secs)} · ${m.backend}`); showStems(m.stems); }
     if (m.type === "error") { busy = false; $("go").disabled = false; status("erreur : " + m.msg, true); }
@@ -195,7 +202,7 @@ $("go").onclick = () => {
   if (!song || busy) return;
   busy = true; $("go").disabled = true; stopPlay(); setBar(0); status("démarrage…");
   const L = song.getChannelData(0).slice(), R = (song.numberOfChannels > 1 ? song.getChannelData(1) : song.getChannelData(0)).slice();
-  getWorker().postMessage({ type: "separate", left: L, right: R, careful }, [L.buffer, R.buffer]);
+  getWorker().postMessage({ type: "separate", left: L, right: R, careful, engine }, [L.buffer, R.buffer]);
 };
 
 // ---------- 3 · les pistes : écoute synchronisée, muet / solo, volume, téléchargements
