@@ -1,12 +1,12 @@
   // ---------- Noms : petite fenêtre de saisie (pas de prompt(), que l'app iPhone n'affiche pas) ----------
-  function askName(title, value, max = 16) {
+  function askName(title, value, max = 16, raw = false) {
     return new Promise(res => {
       const ov = document.createElement("div"); ov.className = "namedlg";
       ov.innerHTML = `<form><b></b><input type="text" autocomplete="off" autocapitalize="characters" spellcheck="false"><div><button type="button" class="mini" data-a="x">ANNULER</button><button type="button" class="mini" data-a="clr">EFFACER</button><button type="submit" class="mini on">OK</button></div></form>`;
       const f = ov.querySelector("form"), inp = ov.querySelector("input");
       ov.querySelector("b").textContent = title; inp.value = value || ""; inp.maxLength = max;
       const done = v => { ov.remove(); res(v); };
-      f.addEventListener("submit", e => { e.preventDefault(); done(inp.value.trim().toUpperCase()); });
+      f.addEventListener("submit", e => { e.preventDefault(); done(raw ? inp.value.trim() : inp.value.trim().toUpperCase()); });
       ov.querySelector('[data-a="x"]').addEventListener("click", () => done(null));
       ov.querySelector('[data-a="clr"]').addEventListener("click", () => done(""));
       ov.addEventListener("pointerdown", e => { if (e.target === ov) done(null); });

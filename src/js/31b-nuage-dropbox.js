@@ -6,17 +6,36 @@
   const inIosApp = () => !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi);
   let DBX = store.get("dbx", null);   // { refresh, access, exp }
   const b64u = a => btoa(String.fromCharCode(...new Uint8Array(a))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  // la paire PKCE est préparée d'avance : l'ouverture de Dropbox reste ainsi « directe » (iOS bloque une fenêtre ouverte après une attente)
+  let PK = null;
+  async function dbxPrep() {
+    const ver = b64u(crypto.getRandomValues(new Uint8Array(48))), chal = b64u(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ver)));
+    PK = { ver, chal };
+  }
+  dbxPrep().catch(() => {});
+  function dbxUrl(app) {
+    const q = new URLSearchParams({ client_id: DBX_KEY, response_type: "code", code_challenge: PK.chal, code_challenge_method: "S256", token_access_type: "offline" });
+    if (!app) q.set("redirect_uri", DBX_REDIRECT);
+    return "https://www.dropbox.com/oauth2/authorize?" + q;
+  }
   async function dbxLogin() {
     if (!DBX_KEY) { lcd("lcdPad", "NUAGE", "clé Dropbox pas encore installée"); return; }
-    const ver = b64u(crypto.getRandomValues(new Uint8Array(48))), chal = b64u(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ver)));
-    store.set("dbxVer", ver);
-    const app = inIosApp(), q = new URLSearchParams({ client_id: DBX_KEY, response_type: "code", code_challenge: chal, code_challenge_method: "S256", token_access_type: "offline" });
-    if (!app) q.set("redirect_uri", DBX_REDIRECT);
-    const url = "https://www.dropbox.com/oauth2/authorize?" + q;
+    if (!PK) await dbxPrep();
+    const ver = PK.ver; store.set("dbxVer", ver);
+    const app = inIosApp(), url = dbxUrl(app);
     if (!app) { location.href = url; return; }
     // dans l'app iPhone : Dropbox s'ouvre dans Safari et affiche un code à recopier ici
-    window.open(url, "_blank");
-    const code = await askName("CODE AFFICHÉ PAR DROPBOX (copier, revenir, coller)", "", 80);
+    try { window.open(url, "_blank"); } catch (e) {}
+    const pr = askName("CODE AFFICHÉ PAR DROPBOX (copier, revenir, coller)", "", 80, true);
+    const f = document.querySelector(".namedlg form");
+    if (f) {   // secours : lien à toucher si Safari ne s'est pas ouvert
+      const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; a.className = "mini on dbxopen";
+      a.textContent = "OUVRIR DROPBOX DANS SAFARI"; a.style.cssText = "display:block;text-align:center;margin:8px 0;padding:10px;text-decoration:none";
+      f.insertBefore(a, f.querySelector("input"));
+      const inp = f.querySelector("input"); inp.autocapitalize = "off"; inp.style.textTransform = "none";
+    }
+    const code = await pr;
+    PK = null; dbxPrep().catch(() => {});
     if (code) await dbxToken({ code: code.trim(), grant_type: "authorization_code", code_verifier: ver });
   }
   async function dbxToken(params) {

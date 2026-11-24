@@ -1541,3 +1541,22 @@ def test_nuage_dropbox_envoi_liste_ouverture(app):
 
     app.click("#cloudList .kititem")
     app.wait_for_function("/importé/.test(document.getElementById('lcdPad').textContent)", timeout=10000)
+
+
+def test_nuage_connexion_app_iphone(app):
+    # dans l'app iPhone : Dropbox s'ouvre tout de suite (sans attente qui ferait bloquer la fenêtre par iOS),
+    # un lien de secours est proposé, et le code collé garde ses minuscules
+    app.evaluate("""() => { window.webkit = { messageHandlers: { nomadMidi: { postMessage() {} } } };
+      window.__opened = []; window.open = u => { __opened.push(u); return null; };
+      window.__tok = null; const f0 = window.fetch;
+      window.fetch = async (u, o = {}) => { if (String(u).endsWith('/oauth2/token')) { __tok = String(o.body); return new Response(JSON.stringify({ access_token: 'a', refresh_token: 'r', expires_in: 14400 })); } return f0(u, o); }; }""")
+    app.click("#gearBtn")
+    app.click("#cloudBtn")
+    app.wait_for_selector(".namedlg a.dbxopen")
+    assert app.evaluate("__opened.length") == 1 and "redirect_uri" not in app.evaluate("__opened[0]")
+    assert app.evaluate("document.querySelector('.namedlg a.dbxopen').target") == "_blank"
+    app.fill(".namedlg input", "AbC-dEf_123xyz")
+    app.click(".namedlg button[type=submit]")
+    app.wait_for_function("window.__tok !== null")
+    assert "code=AbC-dEf_123xyz" in app.evaluate("__tok")
+    assert "connecté" in app.inner_text("#lcdPad")
