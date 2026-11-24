@@ -1503,3 +1503,19 @@ def test_barre_transport_au_dessus_des_pads_et_accords(app):
     assert app.evaluate("!nomadDbg.LP.pending")
     app.click("#tab-sons"); app.click("#mChords")
     assert app.locator("#view-sons .minitr").is_visible()
+
+
+def test_importer_un_pack_zip_en_kits(app):
+    import os
+    app.click("#kitBtn") if app.locator("#kitBtn").count() else None
+    app.evaluate("document.getElementById('kitSheet').hidden = false")
+    app.set_input_files("#packFile", os.path.join(os.path.dirname(__file__), "pack-essai.zip"))
+    app.wait_for_selector(".namedlg input")
+    assert "25 sons → 3 kits" in app.inner_text(".namedlg")
+    app.click(".namedlg button[type=submit]")
+    app.wait_for_function("/kits créés/.test(document.getElementById('lcdPad').textContent)", timeout=20000)
+    names = app.evaluate("nomadDbg.kitIndex.filter(k => k.user).map(k => k.name)")
+    assert any("DRUM LOOPS · 174BPM" in n for n in names), names
+    assert any("ONE SHOTS · KICKS 2" in n for n in names), names
+    assert app.evaluate("nomadDbg.buffers.filter(Boolean).length") in (5, 16, 4)
+    assert "DNB KICK" in app.inner_text("#pads") or "LOOP" in app.inner_text("#pads")
