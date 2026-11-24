@@ -19,6 +19,7 @@
       loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], name: l.name || "", buf: packBuf(l.buf) }))) }
     };
     await DB.put("projects", p);
+    if (id !== "proj-auto" && typeof cloudUpload === "function") setTimeout(() => cloudUpload(id, true), 300);
     return id;
   }
   let saving = false;
@@ -89,6 +90,7 @@
     lcd("lcdPad", "PROJET", p.name + " chargé");
   }
   async function renderProjects() {
+    if (typeof drawCloud === "function") drawCloud();
     let list = []; try { list = await DB.all("projects"); } catch (e) {}
     list.sort((a, b) => b.created - a.created);
     $("projList").innerHTML = list.length ? "" : "<p>Aucun projet pour l'instant.</p>";

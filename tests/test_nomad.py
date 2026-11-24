@@ -1519,3 +1519,25 @@ def test_importer_un_pack_zip_en_kits(app):
     assert any("ONE SHOTS · KICKS 2" in n for n in names), names
     assert app.evaluate("nomadDbg.buffers.filter(Boolean).length") in (5, 16, 4)
     assert "DNB KICK" in app.inner_text("#pads") or "LOOP" in app.inner_text("#pads")
+
+
+def test_nuage_dropbox_envoi_liste_ouverture(app):
+    # Dropbox simulé : on vérifie l'envoi au SAVE, la liste, puis l'ouverture qui réimporte le projet
+    app.evaluate("""() => { window.__dbx = {}; const f0 = window.fetch;
+      window.fetch = async (u, o = {}) => { u = String(u); const arg = o.headers && o.headers['Dropbox-API-Arg'] ? JSON.parse(o.headers['Dropbox-API-Arg']) : null;
+        if (u.endsWith('/files/upload')) { __dbx[arg.path.toLowerCase()] = { b: await new Response(o.body).arrayBuffer(), t: new Date().toISOString() }; return new Response('{}'); }
+        if (u.endsWith('/files/list_folder')) return new Response(JSON.stringify({ entries: Object.entries(__dbx).map(([p, v]) => ({ '.tag': 'file', name: p.split('/').pop(), path_lower: p, size: v.b.byteLength, server_modified: v.t })) }));
+        if (u.endsWith('/files/download')) return new Response(__dbx[arg.path].b);
+        if (u.endsWith('/files/delete_v2')) { delete __dbx[JSON.parse(o.body).path]; return new Response('{}'); }
+        return f0(u, o); };
+      nomadDbg.cloudSet({ refresh: 'r', access: 'a', exp: Date.now() + 3.6e6 }); }""")
+    app.click("#saveBtn")
+    app.wait_for_function("Object.keys(window.__dbx).length === 1", timeout=10000)
+    path = app.evaluate("Object.keys(window.__dbx)[0]")
+    assert path.startswith("/projets/") and path.endswith("].nomad")
+    app.click("#gearBtn")
+    app.wait_for_selector("#cloudList .kititem")
+    assert "☁" in app.inner_text("#cloudList")
+
+    app.click("#cloudList .kititem")
+    app.wait_for_function("/importé/.test(document.getElementById('lcdPad').textContent)", timeout=10000)
