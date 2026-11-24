@@ -7657,7 +7657,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   // ---------- NUAGE (Dropbox) : mêmes projets sur le téléphone et l'ordinateur, sans serveur ni abonnement ----------
   // Connexion OAuth « PKCE » (pas de secret dans la page) ; jeton de rafraîchissement gardé dans l'appareil.
   // Les projets vont dans Dropbox › Applications › NOMAD16 › projets, au format .nomad (le même que FICHIER).
-  const DBX_KEY = "";   // clé publique de l'app Dropbox (App key) — à renseigner
+  const DBX_KEY = "5ii447sf90agytv";   // clé publique de l'app Dropbox « NOMAD16 lcqbeats » (dossier d'app, PKCE)
   const DBX_REDIRECT = location.origin + location.pathname.replace(/[^/]*$/, "");
   const inIosApp = () => !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi);
   let DBX = store.get("dbx", null);   // { refresh, access, exp }
