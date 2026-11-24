@@ -923,6 +923,12 @@ html.flipped, html.flipped body { overflow: hidden; }
 :root.deskfit .pads { max-width: none; width: 100%; gap: 8px; }
 :root.deskfit .pad { aspect-ratio: auto; height: var(--padH, 100px); min-height: 0; }
 :root.deskfit .machine { padding: 12px 18px 16px; row-gap: 10px; column-gap: 20px; }
+/* lignes de projet chargées (▶ NOM FICHIER ☁ SUPPR.) : les boutons passent sous le nom sur téléphone */
+@media (max-width: 700px) {
+  .item-row:has(> :nth-child(5)) { flex-wrap: wrap; }
+  .item-row:has(> :nth-child(5)) > .kititem { flex: 1 1 100%; }
+  .item-row:has(> :nth-child(5)) > .mini { flex: 1 1 0; min-height: 40px; }
+}
 </style>
 </head>
 <body>
@@ -1389,6 +1395,7 @@ html.flipped, html.flipped body { overflow: hidden; }
     <h3>NUAGE (DROPBOX)</h3>
     <p class="help" id="cloudState"></p>
     <div class="saverow"><button class="btn" id="cloudBtn" type="button" style="flex:1">SE CONNECTER À DROPBOX</button><button class="btn" id="cloudRefresh" type="button">↻</button></div>
+    <button class="btn" id="cloudAuto" type="button" hidden style="width:100%;margin-top:6px">ENVOI AU NUAGE À CHAQUE SAVE : OUI</button>
     <div id="cloudList"></div>
     <h3>HORS LIGNE ET SAUVEGARDE</h3>
     <p class="help">L'app et les kits sont gardés dans l'appareil pour jouer sans réseau. La session en cours est enregistrée toute seule (projet « SESSION AUTO ») et se reprend depuis l'écran d'accueil. iOS peut effacer les données d'un site : gardez une sauvegarde complète dans l'app Fichiers.</p>
@@ -7754,6 +7761,8 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
         }
       }
       lcd("lcdPad", "NUAGE", "« " + x.p.name + " » est dans le nuage (" + (size / 1e6).toFixed(1) + " Mo)");
+      // l'aperçu à écouter part à côté (petit fichier, retrouvé par l'identifiant du projet)
+      try { const w = projectPreview(x.p); if (w) await dbxCall("content", "files/upload", { arg: { path: apPath(id), mode: "overwrite", mute: true }, body: w }); } catch (e) {}
       if (!$("setSheet").hidden) drawCloudList();
     } catch (e) { lcd("lcdPad", "NUAGE", "envoi impossible : " + e.message); }
   }
@@ -7762,6 +7771,18 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       const r = await (await dbxCall("api", "files/list_folder", { json: { path: "/projets" } })).json();
       return r.entries.filter(e => e[".tag"] === "file" && /\.nomad$/i.test(e.name)).map(e => ({ name: e.name, path: e.path_lower, size: e.size, date: new Date(e.server_modified) }));
     } catch (e) { if (/not_found/.test(e.message)) return []; throw e; }
+  }
+  const apPath = id => "/apercus/" + id.replace(/^proj-/, "") + ".wav";
+  const cloudId = f => { const m = f.name.match(/\[([^\]]+)\]\.nomad$/i); return m ? "proj-" + m[1] : null; };
+  // aperçu d'un projet du nuage : le petit fichier s'il existe, sinon on le calcule depuis le projet (et on le range pour la prochaine fois)
+  async function cloudPreview(f) {
+    const id = cloudId(f);
+    if (id) { try { return await (await dbxCall("content", "files/download", { arg: { path: apPath(id) } })).blob(); } catch (e) {} }
+    lcd("lcdPad", "APERÇU", "premier aperçu : lecture du projet dans le nuage…");
+    const files = readZip(new Uint8Array(await (await (await dbxCall("content", "files/download", { arg: { path: f.path } })).blob()).arrayBuffer()));
+    const j = JSON.parse(new TextDecoder().decode(files["projet.json"])), w = projectPreview(unpackAudio(j.project, files));
+    if (w && id) dbxCall("content", "files/upload", { arg: { path: apPath(id), mode: "overwrite", mute: true }, body: w }).catch(() => {});
+    return w;
   }
   async function cloudOpen(f) {
     try {
@@ -7784,19 +7805,86 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       b.innerHTML = `☁ ${f.name.replace(/ \[[^\]]*\]\.nomad$/i, "").replace(/\.nomad$/i, "")}<small>${f.date.toLocaleDateString()} ${f.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · ${(f.size / 1e6).toFixed(1)} Mo</small>`;
       b.addEventListener("click", () => cloudOpen(f));
       const del = document.createElement("button"); del.type = "button"; del.className = "mini"; del.textContent = "SUPPR.";
-      del.addEventListener("click", async () => { if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "SÛR ?"; return; } try { await dbxCall("api", "files/delete_v2", { json: { path: f.path } }); } catch (e) {} drawCloudList(); });
-      row.appendChild(b); row.appendChild(del); box.appendChild(row);
+      del.addEventListener("click", async () => { if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "SÛR ?"; return; } if (AP.btn === ap) apStop(); try { await dbxCall("api", "files/delete_v2", { json: { path: f.path } }); lcd("lcdPad", "NUAGE", "« " + f.name.replace(/ \[.*$/, "") + " » supprimé du nuage"); } catch (e) { lcd("lcdPad", "NUAGE", "suppression impossible : " + e.message); }
+        const id = cloudId(f); if (id) dbxCall("api", "files/delete_v2", { json: { path: apPath(id) } }).catch(() => {});
+        drawCloudList(); });
+      const ap = apButton(() => cloudPreview(f));
+      row.appendChild(b); row.appendChild(ap); row.appendChild(del); box.appendChild(row);
     });
   }
   function drawCloud() {
     const st = $("cloudState"), bt = $("cloudBtn"); if (!st) return;
-    st.textContent = !DBX_KEY ? "Pas encore disponible : la clé Dropbox de NOMAD reste à installer." : DBX ? "Connecté à Dropbox : chaque SAVE envoie aussi le projet dans le nuage ; touchez un projet ☁ pour l'ouvrir ici." : "Pas connecté. Un compte Dropbox gratuit suffit (2 Go, sans carte bancaire).";
+    st.textContent = !DBX_KEY ? "Pas encore disponible : la clé Dropbox de NOMAD reste à installer." : DBX ? (cloudAuto() ? "Connecté à Dropbox : chaque SAVE enregistre dans l'appareil ET envoie le projet dans le nuage." : "Connecté à Dropbox : SAVE enregistre seulement dans l'appareil ; le bouton ☁ d'un projet l'envoie dans le nuage.") + " Touchez un projet ☁ pour l'ouvrir ici, ▶ pour en écouter un extrait." : "Pas connecté. Un compte Dropbox gratuit suffit (2 Go, sans carte bancaire).";
+    const au = $("cloudAuto"); if (au) { au.hidden = !DBX; au.textContent = "ENVOI AU NUAGE À CHAQUE SAVE : " + (cloudAuto() ? "OUI" : "NON"); au.classList.toggle("on", cloudAuto()); }
     bt.textContent = DBX ? "DÉCONNECTER DROPBOX" : "SE CONNECTER À DROPBOX";
     bt.disabled = !DBX_KEY;
     drawCloudList();
   }
   $("cloudBtn").addEventListener("click", () => { if (DBX) { DBX = null; store.set("dbx", null); drawCloud(); lcd("lcdPad", "NUAGE", "Dropbox déconnecté (les projets restent dans le nuage)"); } else dbxLogin(); });
   $("cloudRefresh").addEventListener("click", drawCloudList);
+  // choix : SAVE dans l'appareil seulement, ou dans l'appareil + le nuage
+  function cloudAuto() { return store.get("cloudAuto", true) !== false; }
+  $("cloudAuto").addEventListener("click", () => { store.set("cloudAuto", !cloudAuto()); renderProjects(); });
+  // ---------- APERÇU des projets : quelques secondes à écouter dans RÉGLAGES pour reconnaître un projet ----------
+  // Calculé à partir du projet enregistré (boucles de toutes les banks, sinon morceau imprimé, sinon sons du kit intégré),
+  // en mono 22 kHz : ~0,5 Mo, assez léger pour être aussi rangé dans Dropbox à côté du projet.
+  const AP_SR = 22050, AP_SEC = 12;
+  function apChan(o, c) { const d = o.ch[Math.min(c, o.ch.length - 1)]; return o.q ? Float32Array.from(d, v => v / 32767) : d; }
+  function apMono(o) { const a = apChan(o, 0), b = o.ch.length > 1 ? apChan(o, 1) : a, m = new Float32Array(a.length); for (let i = 0; i < a.length; i++) m[i] = (a[i] + b[i]) * 0.5; return m; }
+  function apResample(x, from, maxN) { const r = from / AP_SR, n = Math.min(maxN, Math.floor(x.length / r)), o = new Float32Array(n); for (let i = 0; i < n; i++) { const p = i * r, k = p | 0, f = p - k; o[i] = (x[k] || 0) * (1 - f) + (x[k + 1] || 0) * f; } return o; }
+  function projectPreview(p) {
+    const N = AP_SEC * AP_SR;
+    let out = null;
+    // 1. les boucles : toutes les banks jouent ensemble, comme dans le looper
+    const L = p.loop, layers = L ? (L.seqs ? [].concat(...L.seqs) : (L.layers || [])) : [];
+    const live = layers.filter(l => l && l.buf && !l.muted);
+    if (L && L.Lf && live.length) {
+      const sr0 = L.sr || live[0].buf.sr, n0 = Math.min(Math.round(AP_SEC * sr0), 8 * 16 * L.Lf), mix = new Float32Array(n0);
+      live.forEach(l => {
+        const s = apMono(l.buf), LkL = l.k * L.Lf, off = l.m * L.Lf, g = l.vol ?? 1;
+        for (let i = 0; i < n0; i++) mix[i] += (s[(((i - off) % LkL) + LkL) % LkL] || 0) * g;
+      });
+      out = apResample(mix, sr0, N);
+    }
+    // 2. le morceau imprimé (onglet SONG)
+    if (!out && p.song && p.song.prints) { const pr = Object.values(p.song.prints).find(b => b && b.ch); if (pr) out = apResample(apMono(pr), pr.sr, N); }
+    // 3. les sons du kit emporté dans le projet, joués l'un après l'autre
+    if (!out && p.kitEmbed && p.kitEmbed.bufs) {
+      const parts = p.kitEmbed.bufs.filter(b => b && b.ch).slice(0, 16).map(b => apResample(apMono(b), b.sr, Math.round(0.7 * AP_SR)));
+      if (parts.length) { out = new Float32Array(Math.min(N, parts.reduce((a, x) => a + x.length + 1500, 0))); let o = 0; for (const x of parts) { if (o >= out.length) break; out.set(x.subarray(0, out.length - o), o); o += x.length + 1500; } }
+    }
+    if (!out || !out.length) return null;
+    let pk = 0; for (let i = 0; i < out.length; i++) pk = Math.max(pk, Math.abs(out[i]));
+    if (pk < 1e-4) return null;
+    const g = 0.9 / pk, fade = Math.min(out.length >> 2, AP_SR >> 1);
+    for (let i = 0; i < out.length; i++) out[i] *= g * Math.min(1, (out.length - i) / fade);
+    return wavBlob([out], AP_SR);
+  }
+  // lecture : un seul aperçu à la fois ; le même bouton arrête
+  const AP = { audio: null, btn: null, url: null };
+  function apStop() {
+    if (AP.audio) { AP.audio.pause(); AP.audio = null; }
+    if (AP.url) { URL.revokeObjectURL(AP.url); AP.url = null; }
+    if (AP.btn) { AP.btn.textContent = "▶"; AP.btn.classList.remove("on"); AP.btn = null; }
+  }
+  async function apPlay(btn, getBlob) {
+    if (AP.btn === btn) { apStop(); return; }
+    apStop(); AP.btn = btn; btn.textContent = "…"; btn.classList.add("on");
+    // l'élément audio est créé tout de suite (pendant le toucher) : iOS accepte ensuite de le faire jouer
+    const a = new Audio(); AP.audio = a;
+    try {
+      const blob = await getBlob();
+      if (AP.btn !== btn) return;
+      if (!blob) { apStop(); lcd("lcdPad", "APERÇU", "rien à écouter (projet sans boucle ni son intégré)"); return; }
+      AP.url = URL.createObjectURL(blob); a.src = AP.url; a.onended = () => { if (AP.audio === a) apStop(); };
+      await a.play(); btn.textContent = "■";
+    } catch (e) { if (AP.btn === btn) { apStop(); lcd("lcdPad", "APERÇU", "lecture impossible : " + e.message); } }
+  }
+  function apButton(getBlob) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "mini apbtn"; b.textContent = "▶"; b.title = "Écouter un extrait";
+    b.addEventListener("click", () => apPlay(b, getBlob));
+    return b;
+  }
   // ---------- Historique global (annuler / rétablir) ----------
   const HIST = { stack: [], i: 0 };
   // heavy : l'étape garde un son entier en mémoire ; on n'en garde que les 6 dernières pour ne pas saturer l'iPhone
@@ -8329,7 +8417,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], name: l.name || "", buf: packBuf(l.buf) }))) }
     };
     await DB.put("projects", p);
-    if (id !== "proj-auto" && typeof cloudUpload === "function") setTimeout(() => cloudUpload(id, true), 300);
+    if (id !== "proj-auto" && typeof cloudUpload === "function" && cloudAuto()) setTimeout(() => cloudUpload(id, true), 300);
     return id;
   }
   let saving = false;
@@ -8422,7 +8510,11 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
         q.name = v; await DB.put("projects", q); if (CUR && CUR.id === p.id) setCur(p.id, v);
         lcd("lcdPad", "PROJET", "renommé : " + v); renderProjects();
       });
-      row.appendChild(b); row.appendChild(rn); row.appendChild(fb); row.appendChild(del); $("projList").appendChild(row);
+      // ▶ : extrait du projet ; ☁ : l'envoyer dans Dropbox à la demande
+      const ap = apButton(async () => projectPreview(await DB.get("projects", p.id)));
+      row.appendChild(b); row.appendChild(ap); row.appendChild(rn); row.appendChild(fb);
+      if (DBX && p.id !== "proj-auto") { const cb = document.createElement("button"); cb.type = "button"; cb.className = "mini"; cb.textContent = "☁"; cb.title = "Envoyer dans Dropbox"; cb.addEventListener("click", () => cloudUpload(p.id, false)); row.appendChild(cb); }
+      row.appendChild(del); $("projList").appendChild(row);
     });
   }
   drawCur();

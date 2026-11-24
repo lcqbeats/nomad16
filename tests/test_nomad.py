@@ -1560,3 +1560,47 @@ def test_nuage_connexion_app_iphone(app):
     app.wait_for_function("window.__tok !== null")
     assert "code=AbC-dEf_123xyz" in app.evaluate("__tok")
     assert "connecté" in app.inner_text("#lcdPad")
+
+
+def test_nuage_choix_apercu_suppression(app):
+    # SAVE dans l'appareil seulement (choix), ☁ envoie à la demande avec son aperçu, ▶ joue un extrait, SUPPR. retire projet + aperçu
+    app.evaluate("""() => { window.__dbx = {}; const f0 = window.fetch;
+      window.fetch = async (u, o = {}) => { u = String(u); const arg = o.headers && o.headers['Dropbox-API-Arg'] ? JSON.parse(o.headers['Dropbox-API-Arg']) : null;
+        if (u.endsWith('/files/upload')) { __dbx[arg.path.toLowerCase()] = { b: await new Response(o.body).arrayBuffer(), t: new Date().toISOString() }; return new Response('{}'); }
+        if (u.endsWith('/files/list_folder')) { const d = JSON.parse(o.body).path; return new Response(JSON.stringify({ entries: Object.entries(__dbx).filter(([p]) => p.startsWith(d + '/')).map(([p, v]) => ({ '.tag': 'file', name: p.split('/').pop(), path_lower: p, size: v.b.byteLength, server_modified: v.t })) })); }
+        if (u.endsWith('/files/download')) { const x = __dbx[arg.path.toLowerCase()]; return x ? new Response(x.b) : new Response('{"error_summary":"path/not_found/"}', { status: 409 }); }
+        if (u.endsWith('/files/delete_v2')) { delete __dbx[JSON.parse(o.body).path.toLowerCase()]; return new Response('{}'); }
+        return f0(u, o); };
+      window.__played = 0; HTMLMediaElement.prototype.play = function () { __played++; return Promise.resolve(); };
+      nomadDbg.cloudSet({ refresh: 'r', access: 'a', exp: Date.now() + 3.6e6 }); }""")
+    # une boucle pour avoir quelque chose à écouter
+    fake_loop(app)
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[0], 1, 0)")
+    app.click("#gearBtn")
+    app.wait_for_selector("#cloudAuto:not([hidden])")
+    assert "OUI" in app.inner_text("#cloudAuto")
+    app.click("#cloudAuto")
+    assert "NON" in app.inner_text("#cloudAuto")
+    app.click("#setClose")
+    app.click("#saveBtn")
+    app.wait_for_timeout(1500)
+    app.click("#gearBtn")
+    assert app.evaluate("Object.keys(window.__dbx).length") == 0   # resté dans l'appareil
+    app.wait_for_selector("#projList .item-row button[title='Envoyer dans Dropbox']")
+    # ▶ local
+    app.click("#projList .item-row .apbtn")
+    app.wait_for_function("window.__played === 1")
+    assert app.inner_text("#projList .item-row .apbtn") == "■"
+    app.click("#projList .item-row .apbtn")
+    # ☁ à la demande : projet + aperçu
+    app.click("#projList .item-row button[title='Envoyer dans Dropbox']")
+    app.wait_for_function("Object.keys(window.__dbx).length === 2", timeout=10000)
+    keys = app.evaluate("Object.keys(window.__dbx)")
+    assert any(k.startswith("/apercus/") and k.endswith(".wav") for k in keys)
+    app.wait_for_selector("#cloudList .apbtn")
+    app.click("#cloudList .apbtn")
+    app.wait_for_function("window.__played === 2")
+    # SUPPR. (deux touchers) retire le projet et son aperçu
+    app.click("#cloudList .item-row button:has-text('SUPPR.')")
+    app.click("#cloudList .item-row button:has-text('SÛR ?')")
+    app.wait_for_function("Object.keys(window.__dbx).length === 0", timeout=10000)

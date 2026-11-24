@@ -19,7 +19,7 @@
       loop: LP.t0F === null ? null : { Lf: LP.Lf, sr, beats: LP.beats, seqs: SQ.list.map(x => x.map(l => ({ k: l.k, m: l.m, vol: l.vol, muted: l.muted, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], name: l.name || "", buf: packBuf(l.buf) }))) }
     };
     await DB.put("projects", p);
-    if (id !== "proj-auto" && typeof cloudUpload === "function") setTimeout(() => cloudUpload(id, true), 300);
+    if (id !== "proj-auto" && typeof cloudUpload === "function" && cloudAuto()) setTimeout(() => cloudUpload(id, true), 300);
     return id;
   }
   let saving = false;
@@ -112,7 +112,11 @@
         q.name = v; await DB.put("projects", q); if (CUR && CUR.id === p.id) setCur(p.id, v);
         lcd("lcdPad", "PROJET", "renommé : " + v); renderProjects();
       });
-      row.appendChild(b); row.appendChild(rn); row.appendChild(fb); row.appendChild(del); $("projList").appendChild(row);
+      // ▶ : extrait du projet ; ☁ : l'envoyer dans Dropbox à la demande
+      const ap = apButton(async () => projectPreview(await DB.get("projects", p.id)));
+      row.appendChild(b); row.appendChild(ap); row.appendChild(rn); row.appendChild(fb);
+      if (DBX && p.id !== "proj-auto") { const cb = document.createElement("button"); cb.type = "button"; cb.className = "mini"; cb.textContent = "☁"; cb.title = "Envoyer dans Dropbox"; cb.addEventListener("click", () => cloudUpload(p.id, false)); row.appendChild(cb); }
+      row.appendChild(del); $("projList").appendChild(row);
     });
   }
   drawCur();

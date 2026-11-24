@@ -98,6 +98,8 @@
         }
       }
       lcd("lcdPad", "NUAGE", "« " + x.p.name + " » est dans le nuage (" + (size / 1e6).toFixed(1) + " Mo)");
+      // l'aperçu à écouter part à côté (petit fichier, retrouvé par l'identifiant du projet)
+      try { const w = projectPreview(x.p); if (w) await dbxCall("content", "files/upload", { arg: { path: apPath(id), mode: "overwrite", mute: true }, body: w }); } catch (e) {}
       if (!$("setSheet").hidden) drawCloudList();
     } catch (e) { lcd("lcdPad", "NUAGE", "envoi impossible : " + e.message); }
   }
@@ -106,6 +108,18 @@
       const r = await (await dbxCall("api", "files/list_folder", { json: { path: "/projets" } })).json();
       return r.entries.filter(e => e[".tag"] === "file" && /\.nomad$/i.test(e.name)).map(e => ({ name: e.name, path: e.path_lower, size: e.size, date: new Date(e.server_modified) }));
     } catch (e) { if (/not_found/.test(e.message)) return []; throw e; }
+  }
+  const apPath = id => "/apercus/" + id.replace(/^proj-/, "") + ".wav";
+  const cloudId = f => { const m = f.name.match(/\[([^\]]+)\]\.nomad$/i); return m ? "proj-" + m[1] : null; };
+  // aperçu d'un projet du nuage : le petit fichier s'il existe, sinon on le calcule depuis le projet (et on le range pour la prochaine fois)
+  async function cloudPreview(f) {
+    const id = cloudId(f);
+    if (id) { try { return await (await dbxCall("content", "files/download", { arg: { path: apPath(id) } })).blob(); } catch (e) {} }
+    lcd("lcdPad", "APERÇU", "premier aperçu : lecture du projet dans le nuage…");
+    const files = readZip(new Uint8Array(await (await (await dbxCall("content", "files/download", { arg: { path: f.path } })).blob()).arrayBuffer()));
+    const j = JSON.parse(new TextDecoder().decode(files["projet.json"])), w = projectPreview(unpackAudio(j.project, files));
+    if (w && id) dbxCall("content", "files/upload", { arg: { path: apPath(id), mode: "overwrite", mute: true }, body: w }).catch(() => {});
+    return w;
   }
   async function cloudOpen(f) {
     try {
@@ -128,16 +142,23 @@
       b.innerHTML = `☁ ${f.name.replace(/ \[[^\]]*\]\.nomad$/i, "").replace(/\.nomad$/i, "")}<small>${f.date.toLocaleDateString()} ${f.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · ${(f.size / 1e6).toFixed(1)} Mo</small>`;
       b.addEventListener("click", () => cloudOpen(f));
       const del = document.createElement("button"); del.type = "button"; del.className = "mini"; del.textContent = "SUPPR.";
-      del.addEventListener("click", async () => { if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "SÛR ?"; return; } try { await dbxCall("api", "files/delete_v2", { json: { path: f.path } }); } catch (e) {} drawCloudList(); });
-      row.appendChild(b); row.appendChild(del); box.appendChild(row);
+      del.addEventListener("click", async () => { if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "SÛR ?"; return; } if (AP.btn === ap) apStop(); try { await dbxCall("api", "files/delete_v2", { json: { path: f.path } }); lcd("lcdPad", "NUAGE", "« " + f.name.replace(/ \[.*$/, "") + " » supprimé du nuage"); } catch (e) { lcd("lcdPad", "NUAGE", "suppression impossible : " + e.message); }
+        const id = cloudId(f); if (id) dbxCall("api", "files/delete_v2", { json: { path: apPath(id) } }).catch(() => {});
+        drawCloudList(); });
+      const ap = apButton(() => cloudPreview(f));
+      row.appendChild(b); row.appendChild(ap); row.appendChild(del); box.appendChild(row);
     });
   }
   function drawCloud() {
     const st = $("cloudState"), bt = $("cloudBtn"); if (!st) return;
-    st.textContent = !DBX_KEY ? "Pas encore disponible : la clé Dropbox de NOMAD reste à installer." : DBX ? "Connecté à Dropbox : chaque SAVE envoie aussi le projet dans le nuage ; touchez un projet ☁ pour l'ouvrir ici." : "Pas connecté. Un compte Dropbox gratuit suffit (2 Go, sans carte bancaire).";
+    st.textContent = !DBX_KEY ? "Pas encore disponible : la clé Dropbox de NOMAD reste à installer." : DBX ? (cloudAuto() ? "Connecté à Dropbox : chaque SAVE enregistre dans l'appareil ET envoie le projet dans le nuage." : "Connecté à Dropbox : SAVE enregistre seulement dans l'appareil ; le bouton ☁ d'un projet l'envoie dans le nuage.") + " Touchez un projet ☁ pour l'ouvrir ici, ▶ pour en écouter un extrait." : "Pas connecté. Un compte Dropbox gratuit suffit (2 Go, sans carte bancaire).";
+    const au = $("cloudAuto"); if (au) { au.hidden = !DBX; au.textContent = "ENVOI AU NUAGE À CHAQUE SAVE : " + (cloudAuto() ? "OUI" : "NON"); au.classList.toggle("on", cloudAuto()); }
     bt.textContent = DBX ? "DÉCONNECTER DROPBOX" : "SE CONNECTER À DROPBOX";
     bt.disabled = !DBX_KEY;
     drawCloudList();
   }
   $("cloudBtn").addEventListener("click", () => { if (DBX) { DBX = null; store.set("dbx", null); drawCloud(); lcd("lcdPad", "NUAGE", "Dropbox déconnecté (les projets restent dans le nuage)"); } else dbxLogin(); });
   $("cloudRefresh").addEventListener("click", drawCloudList);
+  // choix : SAVE dans l'appareil seulement, ou dans l'appareil + le nuage
+  function cloudAuto() { return store.get("cloudAuto", true) !== false; }
+  $("cloudAuto").addEventListener("click", () => { store.set("cloudAuto", !cloudAuto()); renderProjects(); });

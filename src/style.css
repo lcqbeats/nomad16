@@ -909,3 +909,9 @@ html.flipped, html.flipped body { overflow: hidden; }
 :root.deskfit .pads { max-width: none; width: 100%; gap: 8px; }
 :root.deskfit .pad { aspect-ratio: auto; height: var(--padH, 100px); min-height: 0; }
 :root.deskfit .machine { padding: 12px 18px 16px; row-gap: 10px; column-gap: 20px; }
+/* lignes de projet chargées (▶ NOM FICHIER ☁ SUPPR.) : les boutons passent sous le nom sur téléphone */
+@media (max-width: 700px) {
+  .item-row:has(> :nth-child(5)) { flex-wrap: wrap; }
+  .item-row:has(> :nth-child(5)) > .kititem { flex: 1 1 100%; }
+  .item-row:has(> :nth-child(5)) > .mini { flex: 1 1 0; min-height: 40px; }
+}
