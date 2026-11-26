@@ -922,3 +922,8 @@ html.flipped, html.flipped body { overflow: hidden; }
 .djcols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; font-size: 12px; line-height: 1.45; }
 .djcols ul { margin: 4px 0 0; padding-left: 16px; }
 .djcols i { font-style: normal; font-weight: 700; color: #e0a63a; }
+/* kit à variantes (packs Serato) : choix de la version de chaque pad */
+.varbar { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font: 15px VT323, monospace; color: #7dff9a; flex-wrap: wrap; }
+.varbar .vlab { font: 700 10px Arimo, Arial, sans-serif; letter-spacing: .08em; opacity: .7; }
+.varbar span#varPad, .varbar span#varAll { background: #0f0e0d; border: 1px solid #3a3733; border-radius: 6px; padding: 3px 8px; min-width: 8em; text-align: center; }
+.varbar .mini { min-width: 34px; }

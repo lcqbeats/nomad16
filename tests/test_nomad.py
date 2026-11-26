@@ -1701,3 +1701,28 @@ def test_scratch_rec_empile_sur_une_piste(app):
     assert peak > 0.01
     assert app.evaluate("nomadDbg.LP.layers[nomadDbg.LP.layers.length - 1].buf.length") == app.evaluate("nomadDbg.LP.Lf")
     assert "tour" in app.inner_text("#lcdPad")
+
+
+def test_pack_serato_kits_de_batterie_en_variantes(app):
+    # 2 kits de batterie → 1 kit à 2 variantes, rangé selon le mapping (1 kick, 2 snare, 3 hat, 4 open, 5 kick 2, 6 snare 2/clap/rim, 7 hat 2/shaker, 8 ride)
+    import os
+    app.evaluate("document.getElementById('kitSheet').hidden = false")
+    app.set_input_files("#packFile", os.path.join(os.path.dirname(__file__), "pack-variantes.serato-pack"))
+    app.wait_for_selector(".namedlg input")
+    assert "2 kits de batterie → 1 kit à 2 variantes" in app.inner_text(".namedlg")
+    app.click(".namedlg button[type=submit]")
+    app.wait_for_function("/kits créés/.test(document.getElementById('lcdPad').textContent)", timeout=20000)
+    assert any("BATTERIE ×2" in n for n in app.evaluate("nomadDbg.kitIndex.filter(k => k.user).map(k => k.name)"))
+    n = app.evaluate("nomadDbg.names.slice(0, 10)")
+    assert n[:8] == ["KICK", "SNARE", "CLOSED HI HAT", "OPEN HI HAT", "808 KICK", "CLAP", "SHAKER", "RIDE"], n
+    assert not app.is_hidden("#varBar")
+    # tout le kit sur la 2e variante
+    app.click("#varAllNext")
+    n = app.evaluate("nomadDbg.names.slice(0, 8)")
+    assert n == ["KICK", "SNARE", "HAT", "OPEN HAT", "KICK 2", "RIMSHOT", "CLOSED HAT 2", "CRASH"], n
+    # pad 2 seul revient à la 1re variante
+    app.locator("#pads .pad", has_text="RIMSHOT").click()   # pad 6
+    app.wait_for_timeout(100)
+    app.click("#varNext")
+    assert app.evaluate("nomadDbg.names[5]") == "CLAP" and app.evaluate("nomadDbg.names[1]") == "SNARE"
+    assert "ALPHA" in app.inner_text("#varPad") and "PAD 06" in app.inner_text("#varPad")

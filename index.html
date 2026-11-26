@@ -936,6 +936,11 @@ html.flipped, html.flipped body { overflow: hidden; }
 .djcols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; font-size: 12px; line-height: 1.45; }
 .djcols ul { margin: 4px 0 0; padding-left: 16px; }
 .djcols i { font-style: normal; font-weight: 700; color: #e0a63a; }
+/* kit à variantes (packs Serato) : choix de la version de chaque pad */
+.varbar { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font: 15px VT323, monospace; color: #7dff9a; flex-wrap: wrap; }
+.varbar .vlab { font: 700 10px Arimo, Arial, sans-serif; letter-spacing: .08em; opacity: .7; }
+.varbar span#varPad, .varbar span#varAll { background: #0f0e0d; border: 1px solid #3a3733; border-radius: 6px; padding: 3px 8px; min-width: 8em; text-align: center; }
+.varbar .mini { min-width: 34px; }
 </style>
 </head>
 <body>
@@ -1019,6 +1024,7 @@ html.flipped, html.flipped body { overflow: hidden; }
       <p class="mictxt" id="micTxt">Le son va sur le pad 01. Touchez un pad pour changer de destination ; ● pour lancer, ■ pour arrêter : la prise est posée tout de suite (↶ pour annuler).</p>
     </div>
     <div class="minitr" data-mini="pads"></div>
+    <div class="varbar" id="varBar" hidden><span class="vlab">VARIANTES</span><button class="mini" id="varPrev" type="button" aria-label="Variante précédente du pad">◀</button><span id="varPad">PAD</span><button class="mini" id="varNext" type="button" aria-label="Variante suivante du pad">▶</button><button class="mini" id="varAllPrev" type="button" aria-label="Tout le kit : kit précédent">◀</button><span id="varAll">TOUT</span><button class="mini" id="varAllNext" type="button" aria-label="Tout le kit : kit suivant">▶</button></div>
     <div class="pads" id="pads"></div>
   </section>
 
@@ -1564,12 +1570,13 @@ html.flipped, html.flipped body { overflow: hidden; }
       padEls[i] = b;
     }
   }
-  function drawPads() { padEls.forEach((b, i) => { b.innerHTML = `<span class="n">${String(i + 1).padStart(2, "0")} · ${BASE_NOTE + i}</span><span class="m">PAD ${i + 1}</span><span class="name">${names[i] || "—"}</span>`; }); }
+  function drawPads() { padEls.forEach((b, i) => { b.innerHTML = `<span class="n">${String(i + 1).padStart(2, "0")} · ${BASE_NOTE + i}</span><span class="m">PAD ${i + 1}</span><span class="name">${names[i] || "—"}</span>`; }); if (typeof drawVar === "function") drawVar(); }
   drawPads();
   function select(i) {
     padEls[selected].classList.remove("sel"); selected = i; padEls[i].classList.add("sel");
     const p = padParams[i];
     if (typeof syncPlayKnobs === "function" && padParams) syncPlayKnobs();
+    if (typeof drawVar === "function") drawVar();
     if ($("edBtn")) { $("edBtn").textContent = `ÉDITER ${String(i + 1).padStart(2, "0")}`; $("edBtn").title = (names[i] || "—").toUpperCase(); if (typeof drawMicTxt === "function") drawMicTxt(); if (!$("editor").hidden) drawEditor(); }
   }
   select(0);
@@ -1721,6 +1728,7 @@ html.flipped, html.flipped body { overflow: hidden; }
     if (kitCur === "chops" && id !== "chops" && typeof persistChops === "function") persistChops(false);
     const ticket = ++kitLoading;
     const meta = kitIndex.find(k => k.id === id) || kitIndex[0];
+    VAR = null;
     $("kitName").textContent = meta.name + (meta.id === "synth" ? "" : " …");
     if (meta.id === "synth") {
       buffers = synthBuffers.slice(); names = SYNTH_NAMES.slice(); gains = new Array(16).fill(1);
@@ -1730,7 +1738,9 @@ html.flipped, html.flipped body { overflow: hidden; }
       try {
         const k = await DB.get("kits", meta.id);
         if (ticket !== kitLoading) return;
-        buffers = k.bufs.map(b => b ? unpackBuf(b) : null); names = k.names.slice(); gains = k.gains ? k.gains.slice() : new Array(16).fill(1);
+        if (k.vars) { const v = varLoad(k); buffers = v.bufs; names = v.names; }   // kit à variantes (pack Serato)
+        else { buffers = k.bufs.map(b => b ? unpackBuf(b) : null); names = k.names.slice(); }
+        gains = k.gains ? k.gains.slice() : new Array(16).fill(1);
         userParams = k.params ? k.params.map(p => ({ ...p })) : null; userChoke = !!k.chokeAll;
       } catch (e) { lcd("lcdPad", "PAD", "kit perso illisible"); return; }
     } else {
@@ -8577,15 +8587,41 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       items = list.map(f => ({ path: rel(f), read: () => f.arrayBuffer() }));
     }
     if (!items.length) { lcd("lcdPad", "PACK", "aucun son trouvé (WAV, AIFF, MP3, M4A…)"); return; }
+    // pack à plusieurs kits de batterie (Drums/<kit>/…) : ils deviennent un seul kit à variantes
+    const drumOf = p => { const m = p.match(/^Drums\/([^/]+)\//i); return m ? m[1] : null; };
+    const dk = new Map(); items.forEach(it => { const k = drumOf(it.path); if (k) { if (!dk.has(k)) dk.set(k, []); dk.get(k).push(it); } });
+    const multi = dk.size >= 2;
+    if (multi) items = items.filter(it => !drumOf(it.path));
     // regroupés par dossier, dans l'ordre alphabétique ; 16 par kit
     const groups = new Map();
     items.sort((a, b) => a.path.localeCompare(b.path, "fr", { numeric: true })).forEach(it => { const parts = it.path.split("/"); parts.pop(); const g = /^Instruments\//i.test(it.path) ? "Instruments" : /^Audio Samples\//i.test(it.path) ? "Samples" : parts.filter(Boolean).slice(-2).join(" · ").replace(/^Drums · /i, "") || "SONS"; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(it); });
     const plan = []; groups.forEach((arr, g) => { for (let i = 0; i < arr.length; i += 16) plan.push({ g, part: Math.floor(i / 16) + 1, of: Math.ceil(arr.length / 16), items: arr.slice(i, i + 16) }); });
     // kits de batterie d'abord, puis les samples et les instruments (packs Serato)
     const rank = g => g === "Samples" ? 1 : g === "Instruments" ? 2 : 0; plan.sort((a, b) => rank(a.g) - rank(b.g));
-    const ok = await askName(`${items.length} sons → ${plan.length} kits · nom du pack`, title.slice(0, 24), 24); if (!ok) return;
+    const nDr = multi ? [...dk.values()].reduce((a, x) => a + x.length, 0) : 0;
+    const ok = await askName(multi ? `${dk.size} kits de batterie → 1 kit à ${dk.size} variantes · ${items.length} autres sons → ${plan.length} kits · nom du pack` : `${items.length} sons → ${plan.length} kits · nom du pack`, title.slice(0, 24), 24); if (!ok) return;
     title = ok.toUpperCase();
     let done = 0, made = 0, firstId = null;
+    const cleanName = path => path.split("/").pop().replace(PACK_AUDIO, "").replace(/^musicradar[-_ ]*/i, "").replace(/(\s*\([^)]*kit[^)]*\))+\s*$/i, "").replace(/^\d{1,2}\s+/, "").replace(/[-_]+/g, " ").trim().slice(0, 24).toUpperCase();
+    const decode = async it => { const ab = await it.read(), b = await new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)); const n = Math.min(b.length, Math.round(b.sampleRate * 20)), c = ctx.createBuffer(Math.min(2, b.numberOfChannels), n, b.sampleRate); for (let ch = 0; ch < c.numberOfChannels; ch++) c.copyToChannel(b.getChannelData(ch).subarray(0, n), ch); return c; };
+    if (multi) {
+      const kits = [];
+      for (const [kname, arr] of [...dk.entries()].sort((a, b) => a[0].localeCompare(b[0], "fr", { numeric: true }))) {
+        const sons = [];
+        for (const it of arr.sort((a, b) => a.path.localeCompare(b.path, "fr", { numeric: true }))) {
+          try { sons.push({ name: cleanName(it.path), buf: await decode(it) }); } catch (e) {}
+          done++; if (done % 6 === 0) lcd("lcdPad", "PACK", `batterie · ${done}/${nDr} sons`);
+        }
+        if (sons.length) kits.push({ name: kname.trim(), sons });
+      }
+      if (kits.length) {
+        const v = varBuild(kits), id = "pack-" + Date.now().toString(36) + "-v";
+        const first = v.vars.map(vs => vs[0] || null);
+        await DB.put("kits", { id, name: (title + " · BATTERIE ×" + kits.length).slice(0, 40), names: first.map(x => x ? x.name : ""), gains: new Array(16).fill(1), params: null, chokeAll: false, bufs: first.map(x => x ? x.buf : null), vars: v.vars, vsel: v.vsel, kits: v.kits, vg: 0, created: Date.now(), pack: title });
+        firstId = id; made++;
+      }
+      done = 0;
+    }
     for (const p of plan) {
       const bufs = new Array(16).fill(null), names = new Array(16).fill("");
       for (let i = 0; i < p.items.length; i++) {
@@ -8595,7 +8631,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
           // 20 s au plus par pad (boucles et lignes de basse comprises)
           const n = Math.min(b.length, Math.round(b.sampleRate * 20)), c = ctx.createBuffer(Math.min(2, b.numberOfChannels), n, b.sampleRate);
           for (let ch = 0; ch < c.numberOfChannels; ch++) c.copyToChannel(b.getChannelData(ch).subarray(0, n), ch);
-          bufs[i] = c; names[i] = it.path.split("/").pop().replace(PACK_AUDIO, "").replace(/^musicradar[-_ ]*/i, "").replace(/\s*\([^)]*kit\)\s*$/i, "").replace(/^\d{1,2}\s+/, "").replace(/[-_]+/g, " ").slice(0, 24).toUpperCase();
+          bufs[i] = c; names[i] = cleanName(it.path);
         } catch (e) {}
         done++; if (done % 4 === 0) lcd("lcdPad", "PACK", `import · ${done}/${items.length} sons · kit ${made + 1}/${plan.length}`);
       }
@@ -8612,6 +8648,80 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   $("packDir").addEventListener("click", () => $("packFolder").click());
   $("packFile").addEventListener("change", e => { const f = [...e.target.files]; e.target.value = ""; importPack(f); });
   $("packFolder").addEventListener("change", e => { const f = [...e.target.files]; e.target.value = ""; importPack(f); });
+  // ---------- KIT À VARIANTES : les kits de batterie d'un pack réunis dans un seul kit ----------
+  // Chaque pad garde son rôle (mapping de Jérémy : 1 kick, 2 snare, 3 hat fermé, 4 hat ouvert, 5 kick 2,
+  // 6 snare 2 / clap / rim / roll, 7 hat fermé 2 / shaker, 8 ride ; 9 à 16 = le reste du kit), et chaque pad
+  // propose la version de chacun des kits du pack : on passe de l'une à l'autre pad par pad, ou tout le kit d'un coup.
+  var VAR = null;   // { id, vars: [[{ buf, name, k }]] par pad, vsel: [index par pad], kits: [noms], g: kit global }
+  const VR = {
+    kick: /kick|kik|\bbd\b|bass ?drum/i, k808: /808/i, snare: /snare|\bsd\b/i, clap: /clap|snap/i, rim: /rim|stick|side/i, roll: /roll/i,
+    open: /open|\boh\b|ohh/i, hat: /hat|\bhh\b|\bch\b|chh|hi-?hat/i, shaker: /shaker|shake|tamb|cabasa|maraca/i, ride: /ride/i, crash: /crash|cymbal/i
+  };
+  // rôles d'un kit → 16 pads (index du son dans le kit, ou -1)
+  function varMap(namesK) {
+    const used = new Set(), out = new Array(16).fill(-1);
+    const find = (test, avoid) => { for (let i = 0; i < namesK.length; i++) if (!used.has(i) && test(namesK[i]) && !(avoid && avoid(namesK[i]))) { used.add(i); return i; } return -1; };
+    const isHat = n => VR.hat.test(n) && !VR.open.test(n), isOpen = n => VR.hat.test(n) && VR.open.test(n);
+    const isKick = n => VR.kick.test(n), isSnare = n => VR.snare.test(n);
+    const firstOf = (...tests) => { for (const t of tests) { const i = find(t); if (i >= 0) return i; } return -1; };
+    out[0] = firstOf(n => isKick(n) && !VR.k808.test(n), isKick);
+    out[1] = firstOf(n => isSnare(n) && !VR.clap.test(n), isSnare, n => VR.clap.test(n));
+    out[2] = firstOf(isHat);
+    out[3] = firstOf(isOpen);
+    out[4] = firstOf(isKick, n => VR.k808.test(n));
+    out[5] = firstOf(isSnare, n => VR.clap.test(n), n => VR.rim.test(n), n => VR.roll.test(n));
+    out[6] = firstOf(isHat, n => VR.shaker.test(n));
+    out[7] = firstOf(n => VR.ride.test(n), n => VR.crash.test(n));
+    let p = 8; for (let i = 0; i < namesK.length && p < 16; i++) if (!used.has(i)) { used.add(i); out[p++] = i; }
+    return out;
+  }
+  // kits = [{ name, sons: [{ name, buf (AudioBuffer) }] }] → enregistrement du kit à variantes
+  function varBuild(kits) {
+    const vars = Array.from({ length: 16 }, () => []);
+    kits.forEach((kit, k) => {
+      const m = varMap(kit.sons.map(s => s.name));
+      m.forEach((si, pad) => { if (si >= 0) vars[pad].push({ buf: packBuf16(kit.sons[si].buf), name: kit.sons[si].name, k }); });
+    });
+    return { vars, vsel: new Array(16).fill(0), kits: kits.map(k => k.name) };
+  }
+  function varLoad(k) {
+    VAR = { id: k.id, vars: k.vars, vsel: (k.vsel || []).slice(), kits: k.kits || [], g: k.vg || 0 };
+    for (let i = 0; i < 16; i++) { const n = VAR.vars[i].length; VAR.vsel[i] = n ? Math.min(VAR.vsel[i] || 0, n - 1) : 0; }
+    return { bufs: VAR.vars.map((vs, i) => vs.length ? unpackBuf(vs[VAR.vsel[i]].buf) : null), names: VAR.vars.map((vs, i) => vs.length ? vs[VAR.vsel[i]].name : "") };
+  }
+  let varSaveT = null;
+  function varSave() {
+    clearTimeout(varSaveT);
+    const id = VAR && VAR.id;
+    varSaveT = setTimeout(async () => { try { const r = await DB.get("kits", id); if (!r || !VAR || VAR.id !== id) return; r.vsel = VAR.vsel.slice(); r.vg = VAR.g; await DB.put("kits", r); } catch (e) {} }, 600);
+  }
+  const varKitName = v => (VAR.kits[v.k] || "kit " + (v.k + 1)).replace(/\s*drum kit\s*$/i, "").toUpperCase();
+  function varSet(i, v) {
+    if (!VAR || !VAR.vars[i] || !VAR.vars[i].length) return;
+    const n = VAR.vars[i].length; v = ((v % n) + n) % n; VAR.vsel[i] = v;
+    const x = VAR.vars[i][v]; buffers[i] = unpackBuf(x.buf); names[i] = x.name;
+    drawPads(); varSave();
+    lcd("lcdPad", "VARIANTE", `pad ${i + 1} : ${x.name} · ${varKitName(x)} (${v + 1}/${n})`);
+  }
+  // tout le kit : chaque pad prend la version du même kit d'origine (s'il l'a)
+  function varAll(d) {
+    if (!VAR) return;
+    const K = VAR.kits.length || 1; VAR.g = ((VAR.g + d) % K + K) % K;
+    VAR.vars.forEach((vs, i) => { const j = vs.findIndex(x => x.k === VAR.g); if (j >= 0) { VAR.vsel[i] = j; buffers[i] = unpackBuf(vs[j].buf); names[i] = vs[j].name; } });
+    drawPads(); varSave();
+    lcd("lcdPad", "VARIANTES", `tout le kit : ${(VAR.kits[VAR.g] || "").toUpperCase()} (${VAR.g + 1}/${K})`);
+  }
+  function drawVar() {
+    const bar = $("varBar"); if (!bar) return;
+    bar.hidden = !VAR; if (!VAR) return;
+    const i = selected, vs = VAR.vars[i] || [], x = vs[VAR.vsel[i]];
+    $("varPad").textContent = vs.length ? `PAD ${String(i + 1).padStart(2, "0")} · ${varKitName(x)} ${VAR.vsel[i] + 1}/${vs.length}` : `PAD ${String(i + 1).padStart(2, "0")} · —`;
+    $("varAll").textContent = `TOUT : ${(VAR.kits[VAR.g] || "").replace(/\s*drum kit\s*$/i, "").toUpperCase()}`;
+  }
+  $("varPrev").addEventListener("click", () => VAR && varSet(selected, VAR.vsel[selected] - 1));
+  $("varNext").addEventListener("click", () => VAR && varSet(selected, VAR.vsel[selected] + 1));
+  $("varAllPrev").addEventListener("click", () => varAll(-1));
+  $("varAllNext").addEventListener("click", () => varAll(1));
   // ---------- Glisser un pad sur un autre ----------
   let pm = null;
   function openPadMenu(a, b) { pm = { a, b }; $("padMenuT").firstChild.textContent = `PAD ${a + 1} → PAD ${b + 1} `; $("padMenu").hidden = false; }

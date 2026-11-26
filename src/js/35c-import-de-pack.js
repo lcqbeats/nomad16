@@ -58,15 +58,41 @@
       items = list.map(f => ({ path: rel(f), read: () => f.arrayBuffer() }));
     }
     if (!items.length) { lcd("lcdPad", "PACK", "aucun son trouvé (WAV, AIFF, MP3, M4A…)"); return; }
+    // pack à plusieurs kits de batterie (Drums/<kit>/…) : ils deviennent un seul kit à variantes
+    const drumOf = p => { const m = p.match(/^Drums\/([^/]+)\//i); return m ? m[1] : null; };
+    const dk = new Map(); items.forEach(it => { const k = drumOf(it.path); if (k) { if (!dk.has(k)) dk.set(k, []); dk.get(k).push(it); } });
+    const multi = dk.size >= 2;
+    if (multi) items = items.filter(it => !drumOf(it.path));
     // regroupés par dossier, dans l'ordre alphabétique ; 16 par kit
     const groups = new Map();
     items.sort((a, b) => a.path.localeCompare(b.path, "fr", { numeric: true })).forEach(it => { const parts = it.path.split("/"); parts.pop(); const g = /^Instruments\//i.test(it.path) ? "Instruments" : /^Audio Samples\//i.test(it.path) ? "Samples" : parts.filter(Boolean).slice(-2).join(" · ").replace(/^Drums · /i, "") || "SONS"; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(it); });
     const plan = []; groups.forEach((arr, g) => { for (let i = 0; i < arr.length; i += 16) plan.push({ g, part: Math.floor(i / 16) + 1, of: Math.ceil(arr.length / 16), items: arr.slice(i, i + 16) }); });
     // kits de batterie d'abord, puis les samples et les instruments (packs Serato)
     const rank = g => g === "Samples" ? 1 : g === "Instruments" ? 2 : 0; plan.sort((a, b) => rank(a.g) - rank(b.g));
-    const ok = await askName(`${items.length} sons → ${plan.length} kits · nom du pack`, title.slice(0, 24), 24); if (!ok) return;
+    const nDr = multi ? [...dk.values()].reduce((a, x) => a + x.length, 0) : 0;
+    const ok = await askName(multi ? `${dk.size} kits de batterie → 1 kit à ${dk.size} variantes · ${items.length} autres sons → ${plan.length} kits · nom du pack` : `${items.length} sons → ${plan.length} kits · nom du pack`, title.slice(0, 24), 24); if (!ok) return;
     title = ok.toUpperCase();
     let done = 0, made = 0, firstId = null;
+    const cleanName = path => path.split("/").pop().replace(PACK_AUDIO, "").replace(/^musicradar[-_ ]*/i, "").replace(/(\s*\([^)]*kit[^)]*\))+\s*$/i, "").replace(/^\d{1,2}\s+/, "").replace(/[-_]+/g, " ").trim().slice(0, 24).toUpperCase();
+    const decode = async it => { const ab = await it.read(), b = await new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)); const n = Math.min(b.length, Math.round(b.sampleRate * 20)), c = ctx.createBuffer(Math.min(2, b.numberOfChannels), n, b.sampleRate); for (let ch = 0; ch < c.numberOfChannels; ch++) c.copyToChannel(b.getChannelData(ch).subarray(0, n), ch); return c; };
+    if (multi) {
+      const kits = [];
+      for (const [kname, arr] of [...dk.entries()].sort((a, b) => a[0].localeCompare(b[0], "fr", { numeric: true }))) {
+        const sons = [];
+        for (const it of arr.sort((a, b) => a.path.localeCompare(b.path, "fr", { numeric: true }))) {
+          try { sons.push({ name: cleanName(it.path), buf: await decode(it) }); } catch (e) {}
+          done++; if (done % 6 === 0) lcd("lcdPad", "PACK", `batterie · ${done}/${nDr} sons`);
+        }
+        if (sons.length) kits.push({ name: kname.trim(), sons });
+      }
+      if (kits.length) {
+        const v = varBuild(kits), id = "pack-" + Date.now().toString(36) + "-v";
+        const first = v.vars.map(vs => vs[0] || null);
+        await DB.put("kits", { id, name: (title + " · BATTERIE ×" + kits.length).slice(0, 40), names: first.map(x => x ? x.name : ""), gains: new Array(16).fill(1), params: null, chokeAll: false, bufs: first.map(x => x ? x.buf : null), vars: v.vars, vsel: v.vsel, kits: v.kits, vg: 0, created: Date.now(), pack: title });
+        firstId = id; made++;
+      }
+      done = 0;
+    }
     for (const p of plan) {
       const bufs = new Array(16).fill(null), names = new Array(16).fill("");
       for (let i = 0; i < p.items.length; i++) {
@@ -76,7 +102,7 @@
           // 20 s au plus par pad (boucles et lignes de basse comprises)
           const n = Math.min(b.length, Math.round(b.sampleRate * 20)), c = ctx.createBuffer(Math.min(2, b.numberOfChannels), n, b.sampleRate);
           for (let ch = 0; ch < c.numberOfChannels; ch++) c.copyToChannel(b.getChannelData(ch).subarray(0, n), ch);
-          bufs[i] = c; names[i] = it.path.split("/").pop().replace(PACK_AUDIO, "").replace(/^musicradar[-_ ]*/i, "").replace(/\s*\([^)]*kit\)\s*$/i, "").replace(/^\d{1,2}\s+/, "").replace(/[-_]+/g, " ").slice(0, 24).toUpperCase();
+          bufs[i] = c; names[i] = cleanName(it.path);
         } catch (e) {}
         done++; if (done % 4 === 0) lcd("lcdPad", "PACK", `import · ${done}/${items.length} sons · kit ${made + 1}/${plan.length}`);
       }

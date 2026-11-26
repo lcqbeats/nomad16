@@ -25,12 +25,13 @@
       padEls[i] = b;
     }
   }
-  function drawPads() { padEls.forEach((b, i) => { b.innerHTML = `<span class="n">${String(i + 1).padStart(2, "0")} · ${BASE_NOTE + i}</span><span class="m">PAD ${i + 1}</span><span class="name">${names[i] || "—"}</span>`; }); }
+  function drawPads() { padEls.forEach((b, i) => { b.innerHTML = `<span class="n">${String(i + 1).padStart(2, "0")} · ${BASE_NOTE + i}</span><span class="m">PAD ${i + 1}</span><span class="name">${names[i] || "—"}</span>`; }); if (typeof drawVar === "function") drawVar(); }
   drawPads();
   function select(i) {
     padEls[selected].classList.remove("sel"); selected = i; padEls[i].classList.add("sel");
     const p = padParams[i];
     if (typeof syncPlayKnobs === "function" && padParams) syncPlayKnobs();
+    if (typeof drawVar === "function") drawVar();
     if ($("edBtn")) { $("edBtn").textContent = `ÉDITER ${String(i + 1).padStart(2, "0")}`; $("edBtn").title = (names[i] || "—").toUpperCase(); if (typeof drawMicTxt === "function") drawMicTxt(); if (!$("editor").hidden) drawEditor(); }
   }
   select(0);

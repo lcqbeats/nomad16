@@ -64,6 +64,7 @@
     if (kitCur === "chops" && id !== "chops" && typeof persistChops === "function") persistChops(false);
     const ticket = ++kitLoading;
     const meta = kitIndex.find(k => k.id === id) || kitIndex[0];
+    VAR = null;
     $("kitName").textContent = meta.name + (meta.id === "synth" ? "" : " …");
     if (meta.id === "synth") {
       buffers = synthBuffers.slice(); names = SYNTH_NAMES.slice(); gains = new Array(16).fill(1);
@@ -73,7 +74,9 @@
       try {
         const k = await DB.get("kits", meta.id);
         if (ticket !== kitLoading) return;
-        buffers = k.bufs.map(b => b ? unpackBuf(b) : null); names = k.names.slice(); gains = k.gains ? k.gains.slice() : new Array(16).fill(1);
+        if (k.vars) { const v = varLoad(k); buffers = v.bufs; names = v.names; }   // kit à variantes (pack Serato)
+        else { buffers = k.bufs.map(b => b ? unpackBuf(b) : null); names = k.names.slice(); }
+        gains = k.gains ? k.gains.slice() : new Array(16).fill(1);
         userParams = k.params ? k.params.map(p => ({ ...p })) : null; userChoke = !!k.chokeAll;
       } catch (e) { lcd("lcdPad", "PAD", "kit perso illisible"); return; }
     } else {
