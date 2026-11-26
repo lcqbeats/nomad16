@@ -1740,3 +1740,30 @@ def test_scratch_sons_de_packs(app):
     assert opts[0].startswith("1. CUIVRES ET STABS · HORN HIT · TRAKGIRL"), opts
     assert any("VOIX · UZ VOX YEAH · UZ" in o for o in opts), opts
     assert not any("AHH" == o.split(". ", 1)[1] for o in opts), opts   # plus de sons synthétisés
+
+
+def test_dj2go2_dans_digging(app):
+    # DIGGING : PLAY lecture/pause, jog main posée = l'aiguille suit, pads = points de chop (posés → kit MES CHOPS)
+    app.evaluate("""() => { const c = nomadDbg.ctx, b = c.createBuffer(1, c.sampleRate * 4, c.sampleRate), d = b.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.sin(i / 30) * 0.4 * ((i % 11025) < 3000 ? 1 : 0.2); nomadDbg.setClip(b, 'ESSAI'); }""")
+    app.click("#tab-sample")
+    dj = lambda *b: app.evaluate(f"nomadDbg.djMidi([{','.join(str(x) for x in b)}])")
+    dj(0x90, 0x06, 0x7f)                                   # main sur le jog : l'aiguille avance
+    for _ in range(118): dj(0xB0, 0x06, 0x01)              # un demi-tour = 0,9 s
+    dj(0x80, 0x06, 0x00)
+    pos = app.evaluate("nomadDbg.digPos()")
+    assert abs(pos - 0.9 * app.evaluate("nomadDbg.sr")) < 400, pos
+    dj(0x94, 0x01, 0x7f); dj(0x84, 0x01, 0x00)             # pad 1 : point de chop à l'aiguille
+    assert abs(app.evaluate("nomadDbg.LC.marks[0]") - pos) < 2
+    app.wait_for_function("nomadState().kit === 'chops'", timeout=5000)
+    dj(0x95, 0x0A, 0x7f); dj(0x85, 0x0A, 0x00)             # PAD MODE + pad 2 droit = pad 14
+    assert app.evaluate("nomadDbg.LC.marks[13] !== undefined")
+    dj(0x90, 0x00, 0x7f)                                   # PLAY : lecture
+    assert app.evaluate("nomadDbg.playing()") is True
+    app.wait_for_timeout(300)
+    dj(0x90, 0x00, 0x7f)                                   # pause : on garde la position
+    assert app.evaluate("nomadDbg.playing()") is False
+    assert app.evaluate("nomadDbg.digPos()") > pos + 0.2 * app.evaluate("nomadDbg.sr")
+    dj(0x90, 0x02, 0x7f)                                   # SYNC : annule le dernier point
+    assert app.evaluate("nomadDbg.LC.marks[13] === undefined")
+    assert not app.is_hidden("#djDig")

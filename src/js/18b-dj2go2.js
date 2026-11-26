@@ -102,6 +102,7 @@
     const [st, d1, d2] = e.data, type = st & 0xf0, ch = st & 0x0f, down = type === 0x90 && d2 > 0, isNote = type === 0x90 || type === 0x80;
     if (!ctx) return;
     if (!DJ.on) { DJ.on = true; djLedsAll(); drawDj(); }
+    if (digOn() && digMidi(st, d1, d2)) return;   // onglet DIGGING : le deck gauche, les pads et le browse manipulent le disque
     if (ch === 0 || ch === 1) {   // decks
       const L = ch === 0;
       if (type === 0xb0) {
@@ -190,14 +191,17 @@
       "144,0": SCR.motor, "144,1": SCR.cues && SCR.cues.some(c => c !== null), "144,2": SCR.rec ? blink : false, "144,27": SCR.ham,
       "145,0": djBeatOn(), "145,1": SCR.rec || (DR.rec && DR.rec.phase) || LP.pending ? blink : false, "145,2": LP.layers.length > 0, "145,27": SQ.metro
     };
-    for (let i = 0; i < 4; i++) { want["148," + (i + 1)] = !!(SCR.cues && SCR.cues[i] !== null) && (SCR.cueIdx !== i || blink || !SCR.motor); want["149," + (i + 1)] = DR.cur === i || (DR.next === i && blink); }
+    if (digOn()) {   // DIGGING : PLAY = lecture du disque, SYNC = il y a un point à annuler, casque = zoom, pads = points de chop posés
+      want["144,0"] = !!ttSrc; want["144,1"] = false; want["144,2"] = LC.hist.length > 0; want["144,27"] = wz > 1;
+      for (let i = 0; i < 4; i++) { want["148," + (i + 1)] = LC.marks[i] !== undefined; want["149," + (i + 1)] = LC.marks[8 + i] !== undefined; }
+    } else for (let i = 0; i < 4; i++) { want["148," + (i + 1)] = !!(SCR.cues && SCR.cues[i] !== null) && (SCR.cueIdx !== i || blink || !SCR.motor); want["149," + (i + 1)] = DR.cur === i || (DR.next === i && blink); }
     Object.entries(want).forEach(([k, v]) => { v = !!v; if (force || DJ.led[k] !== v) { DJ.led[k] = v; const [s, n] = k.split(",").map(Number); djSend(s, n, v); if (s === 148 || s === 149) [0x10, 0x20, 0x30].forEach(o => djSend(s, n + o, v)); } });
   }
   setInterval(() => { if (DJ.on) djLeds(false); }, 120);
   // ----- panneau à l'écran (onglet SCRATCH) -----
   function drawDj() {
     const p = $("djPanel"); if (!p) return;
-    p.hidden = !DJ.on;
+    p.hidden = !DJ.on; if ($("djDig")) $("djDig").hidden = !DJ.on;
     if (!DJ.on) return;
     const g = djGenre(), f = Math.abs(DJ.filt) < 0.04 ? "ouvert" : DJ.filt < 0 ? "graves " + Math.round(-DJ.filt * 100) + " %" : "aigus " + Math.round(DJ.filt * 100) + " %";
     $("djBeat").textContent = `BEAT ${djBeatOn() ? "▶" : "■"} · ${LP.t0F !== null && LP.Lf ? "boucle du looper" : g.name} · ${Math.round(curBpm())} BPM · filtre ${f} · volume ${Math.round(DJ.vol * 100)} %`;
@@ -207,4 +211,90 @@
     DJ.name = name; DJ.out = out || null;
     if (!DJ.on) { DJ.on = true; if (ctx) djLedsAll(); }
     drawDj();
+  }
+  // ----- DIGGING : le deck gauche manipule le disque de la platine, les pads posent les points de chop -----
+  // PLAY = lecture / pause (on repart d'où on s'est arrêté) ; CUE = disque à l'arrêt : pose le repère ; en lecture : y revient et s'arrête ;
+  // JOG main posée = l'aiguille suit la main (on entend le sillon) ; bord du jog = avance rapide (à l'arrêt) ou pousse / freine (en lecture) ;
+  // PADS gauche 1-4 (PAD MODE : 5-8) et droite 9-12 (PAD MODE : 13-16) : pad vide = point de chop ici ; pad posé = y aller (et l'écouter) ; tenu = replacer ;
+  // SYNC = annuler le dernier point ; CASQUE = zoom de la forme d'onde ; PITCH = demi-tons ; VOLUME = volume du disque ;
+  // BROWSE = disque suivant / précédent dans le bac (appui : bac suivant) ; LOAD A = poser le disque sur la platine.
+  const DG = { cue: 0, scrub: null, grainT: 0, hold: {} };
+  const digOn = () => tab === "sample";
+  const digPos = () => clip ? (ttSrc ? Math.max(0, Math.min(clip.buf.length - 1, ttPos())) : wStart) : 0;
+  function digPause() { if (clip && ttSrc) { const p = digPos(); stopTT(); setStart(p, false); } }
+  function digPlay() { if (!clip) { lcd("lcdPad", "PLATINE", "posez d'abord un disque (LOAD A)"); return; } if (ttSrc) { digPause(); lcd("lcdPad", "PLATINE", "pause · " + fmtT(wStart)); } else ttStartPlay(0); }
+  function digCue() {
+    if (!clip) return;
+    if (ttSrc) { stopTT(); setStart(DG.cue, false); lcd("lcdPad", "CUE", "retour au repère · " + fmtT(DG.cue)); }
+    else { DG.cue = wStart; lcd("lcdPad", "CUE", "repère posé · " + fmtT(DG.cue)); }
+  }
+  // un grain de 50 ms à l'endroit de l'aiguille : on entend le sillon en tournant le jog
+  function digGrain(pos) {
+    const now = performance.now(); if (now - DG.grainT < 28 || !clip) return; DG.grainT = now;
+    const s = ctx.createBufferSource(), g = ctx.createGain(), t = ctx.currentTime, d = 0.05;
+    s.buffer = clip.buf; s.playbackRate.value = Math.pow(2, pitchSemi / 12);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(sampleVol, t + 0.006); g.gain.setValueAtTime(sampleVol, t + d - 0.012); g.gain.linearRampToValueAtTime(0, t + d);
+    s.connect(g); g.connect(liveIn); s.start(t, Math.max(0, pos / sr), d);
+  }
+  function digJogTouch(down) {
+    if (!clip) return;
+    if (down) { DG.scrub = { was: !!ttSrc }; digPause(); }
+    else if (DG.scrub) { const w = DG.scrub.was; DG.scrub = null; if (w) ttStartPlay(0); }
+  }
+  function digJogTurn(d) {
+    if (!clip) return;
+    const fine = d / DJ_TPR * SCR_REV * sr;
+    if (DG.scrub) { setStart(wStart + fine, false); digGrain(wStart); return; }
+    if (ttSrc) {   // bord du jog en lecture : pousse / freine un instant
+      ttSrc.playbackRate.value = Math.pow(2, pitchSemi / 12) * (1 + Math.sign(d) * Math.min(0.2, 0.03 * Math.abs(d)));
+      clearTimeout(DG.nudgeT); DG.nudgeT = setTimeout(() => { if (ttSrc) ttSrc.playbackRate.value = Math.pow(2, pitchSemi / 12); }, 110);
+      return;
+    }
+    setStart(wStart + fine * 8, false); digGrain(wStart);   // à l'arrêt : avance rapide
+  }
+  function digMark(i) {
+    if (!clip) return;
+    const pos = digPos();
+    LC.hist.push({ i, prev: LC.marks[i] }); LC.marks[i] = pos;
+    rebuildChops();
+    lcd("lcdPad", "CHOP", `pad ${i + 1} ← ${fmtT(pos)}`);
+  }
+  function digPad(i, down) {
+    if (!clip) { if (down) lcd("lcdPad", "PLATINE", "posez d'abord un disque (LOAD A)"); return; }
+    if (down) { clearTimeout(DG.hold[i] && DG.hold[i].t); DG.hold[i] = { long: false, t: setTimeout(() => { DG.hold[i].long = true; digMark(i); }, 600) }; return; }
+    const h = DG.hold[i]; if (!h) return; clearTimeout(h.t); delete DG.hold[i];
+    if (h.long) return;
+    if (LC.marks[i] === undefined) { digMark(i); return; }
+    if (ttSrc) setStart(LC.marks[i], true);            // en lecture : le disque saute au point (comme un hot cue)
+    else { setStart(LC.marks[i], false); playPad(i, 0.9); flash(i); }   // à l'arrêt : on entend le chop
+  }
+  function digMidi(st, d1, d2) {
+    const type = st & 0xf0, ch = st & 0x0f, down = type === 0x90 && d2 > 0, isNote = type === 0x90 || type === 0x80;
+    if (ch === 0) {
+      if (type === 0xb0) {
+        if (d1 === 6) digJogTurn(djDelta(d2));
+        else if (d1 === 0x16) { sampleVol = d2 / 127; knobVals.sample[7] = sampleVol; }
+        else if (d1 === 9) setPitch(Math.round((d2 - 64) / 63 * 12));
+        return true;
+      }
+      if (!isNote) return true;
+      if (d1 === 6) { digJogTouch(down); return true; }
+      if (!down) return true;
+      if (d1 === 0) digPlay();
+      else if (d1 === 1) digCue();
+      else if (d1 === 2) lcUndo();
+      else if (d1 === 0x1b) setZoom(wz >= 16 ? 1 : wz * 4);
+      return true;
+    }
+    if (ch === 4 || ch === 5) {
+      if (!isNote || d1 === 0) return true;
+      const hi = d1 & 0xf0, lo = d1 & 0x0f, shift = hi === 0 && lo >= 9 && lo <= 12, j = shift ? lo - 9 : lo - 1;
+      if (j < 0 || j > 3) return true;
+      digPad((ch === 5 ? 8 : 0) + (shift ? 4 : 0) + j, down);
+      return true;
+    }
+    if (ch === 15 && type === 0xb0 && d1 === 0) { flip(djDelta(d2) > 0 ? 1 : -1); return true; }
+    if (ch === 15 && down && d1 === 6) { if (crate) openCrate((crateIdx + 1) % crate.collections.length, 0); return true; }
+    if (ch === 15 && down && d1 === 2) { pullRecord(); return true; }
+    return false;   // le reste (deck droit, crossfader, LOAD B, gain) garde son rôle
   }
