@@ -1681,3 +1681,23 @@ def test_importer_un_pack_serato(app):
     assert any(n.endswith("SAMPLES") for n in names) and any(n.endswith("INSTRUMENTS") for n in names), names
     pads = app.evaluate("nomadDbg.names.slice(0, 3)")
     assert [p.upper() for p in pads] == ["KICK", "SNARE", "CLOSED HI HAT"], pads
+
+
+def test_scratch_rec_empile_sur_une_piste(app):
+    # SYNC gauche du DJ2GO2 : un appui lance la prise, un autre l'arrête ; plusieurs tours → une seule piste de la boucle
+    fake_loop(app, 0.5)
+    app.evaluate("nomadDbg.addLayer(nomadDbg.buffers[0], 1, 0)")
+    dj = lambda *b: app.evaluate(f"nomadDbg.djMidi([{','.join(str(x) for x in b)}])")
+    app.evaluate("nomadDbg.scrInit()")
+    app.wait_for_function("nomadDbg.SCR.N > 0", timeout=10000)
+    app.evaluate("nomadDbg.SCR.motor || document.getElementById('scrStart').click()")   # le disque tourne
+    n0 = app.evaluate("nomadDbg.LP.layers.length")
+    dj(0x90, 0x02, 0x7f)
+    assert app.evaluate("!!nomadDbg.SCR.rec")
+    app.wait_for_timeout(1300)                              # un peu plus de deux tours
+    dj(0x90, 0x02, 0x7f)
+    app.wait_for_function(f"nomadDbg.LP.layers.length === {n0 + 1}", timeout=5000)
+    peak = app.evaluate("(() => { const b = nomadDbg.LP.layers[nomadDbg.LP.layers.length - 1].buf, d = b.getChannelData(0); let m = 0; for (const v of d) m = Math.max(m, Math.abs(v)); return m; })()")
+    assert peak > 0.01
+    assert app.evaluate("nomadDbg.LP.layers[nomadDbg.LP.layers.length - 1].buf.length") == app.evaluate("nomadDbg.LP.Lf")
+    assert "tour" in app.inner_text("#lcdPad")

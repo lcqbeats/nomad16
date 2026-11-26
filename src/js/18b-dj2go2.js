@@ -121,11 +121,11 @@
       if (L) {
         if (d1 === 0) { djScratchTab(); scrInit().then(ok => { if (ok) scrMotor(); }); }
         else if (d1 === 1) { scrToCue(); lcd("lcdPad", "CUE", "le disque revient au repère"); }
-        else if (d1 === 2) $("scrSpeed").click();
+        else if (d1 === 2) scrInit().then(ok => { if (ok) scrRecTap(); });   // SYNC gauche = REC du scratch (appui : départ, appui : fin)
         else if (d1 === 0x1b) $("scrHam").click();
       } else {
         if (d1 === 0) djBeatPlay();
-        else if (d1 === 1) { if (DR.cur >= 0 || DR.rec) drRec(); else scrInit().then(ok => { if (ok) scrRecTap(); }); }
+        else if (d1 === 1) { if (DR.cur >= 0 || DR.rec) drRec(); else scrInit().then(ok => { if (ok) scrRecTap(); }); }   // CUE droit = REC de la batterie (sinon du scratch)
         else if (d1 === 2) { undo(); lcd("lcdPad", "LOOPER", "dernière piste retirée"); }
         else if (d1 === 0x1b) $("trMetro").click();
       }
@@ -187,7 +187,7 @@
     if (!DJ.out || !ctx) return;
     const blink = (performance.now() % 500) < 250;
     const want = {
-      "144,0": SCR.motor, "144,1": SCR.cues && SCR.cues.some(c => c !== null), "144,2": SCR.speed === 45, "144,27": SCR.ham,
+      "144,0": SCR.motor, "144,1": SCR.cues && SCR.cues.some(c => c !== null), "144,2": SCR.rec ? blink : false, "144,27": SCR.ham,
       "145,0": djBeatOn(), "145,1": SCR.rec || (DR.rec && DR.rec.phase) || LP.pending ? blink : false, "145,2": LP.layers.length > 0, "145,27": SQ.metro
     };
     for (let i = 0; i < 4; i++) { want["148," + (i + 1)] = !!(SCR.cues && SCR.cues[i] !== null) && (SCR.cueIdx !== i || blink || !SCR.motor); want["149," + (i + 1)] = DR.cur === i || (DR.next === i && blink); }

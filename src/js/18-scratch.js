@@ -444,28 +444,39 @@
   function scrRecTap() {
     if (!ctx || !SCR.node) return;
     if (LP.t0F === null || !LP.Lf) { recPress(); lcd("lcdPad", "SCRATCH", "REC du looper : la première boucle part au premier son"); return; }
-    if (SCR.rec) { SCR.rec = null; lcd("lcdPad", "SCRATCH", "enregistrement annulé"); return; }
+    // un appui lance, un autre arrête : tous les tours joués entre les deux s'empilent sur une seule piste,
+    // chaque passage à sa place dans la boucle (pour les mélodies scratchées, les réponses, les ponctuations)
+    if (SCR.rec) {
+      if (SCR.rec.endF === null) { SCR.rec.endF = Math.round(ctx.currentTime * sr) + compF(); lcd("lcdPad", "SCRATCH", "fin de la prise…"); }
+      return;
+    }
     if (LP.layers.length >= MAX_LAYERS) { lcd("lcdPad", "SCRATCH", "6 pistes : libérez-en une dans le LOOPER"); return; }
     if (!SCR.cap) {
       SCR.cap = new AudioWorkletNode(ctx, "nomad-cap", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: "explicit" });
       SCR.cap.port.onmessage = e => scrCapIn(e.data);
       const z = ctx.createGain(); z.gain.value = 0; SCR.out.connect(SCR.cap); SCR.cap.connect(z); z.connect(ctx.destination);
     }
-    const nowF = Math.round(ctx.currentTime * sr), n = Math.ceil((nowF + 512 - LP.t0F) / LP.Lf);
-    SCR.rec = { sF: LP.t0F + n * LP.Lf + compF(), len: LP.Lf, chunks: [] };
-    lcd("lcdPad", "SCRATCH", "REC armé · départ au début de la boucle");
+    if (!LP.playing) playAll();
+    const L = LP.Lf;
+    SCR.rec = { sF: Math.round(ctx.currentTime * sr) + compF(), endF: null, L, t0: LP.t0F, acc: [new Float32Array(L), new Float32Array(L)], got: 0 };
+    lcd("lcdPad", "SCRATCH", "REC : scratchez, les tours s'empilent · REC pour finir");
   }
   function scrCapIn(d) {
     const r = SCR.rec; if (!r) return;
-    const n = d.l.length;
-    if (d.f + n <= r.sF) return;
-    r.chunks.push(d);
-    if (d.f + n < r.sF + r.len) return;
-    const b = ctx.createBuffer(2, r.len, sr), L = b.getChannelData(0), R = b.getChannelData(1);
-    r.chunks.forEach(c => { for (let i = 0; i < c.l.length; i++) { const j = c.f + i - r.sF; if (j >= 0 && j < r.len) { L[j] = c.l[i]; R[j] = c.r[i]; } } });
+    const n = d.l.length, cf = compF(), fade = Math.round(sr * 0.004);
+    for (let i = 0; i < n; i++) {
+      const f = d.f + i; if (f < r.sF || (r.endF !== null && f >= r.endF)) continue;
+      // petit fondu à l'entrée et à la sortie de la prise : pas de clic
+      let g = Math.min(1, (f - r.sF) / fade); if (r.endF !== null) g = Math.min(g, (r.endF - f) / fade);
+      const j = (((f - cf - r.t0) % r.L) + r.L) % r.L;
+      r.acc[0][j] += d.l[i] * g; r.acc[1][j] += d.r[i] * g; r.got++;
+    }
+    if (r.endF === null || d.f + n < r.endF) return;
     SCR.rec = null;
+    if (!r.got) return;
+    const b = ctx.createBuffer(2, r.L, sr); b.copyToChannel(r.acc[0], 0); b.copyToChannel(r.acc[1], 1);
     addLayer(b, 1, 0);
-    lcd("lcdPad", "SCRATCH", `scratch posé sur la piste ${LP.layers.length}`);
+    lcd("lcdPad", "SCRATCH", `scratch posé sur la piste ${LP.layers.length} (${Math.max(1, Math.round(r.got / r.L * 10) / 10)} tour(s) joué(s))`);
   }
   slc.addEventListener("pointerdown", async e => { e.preventDefault(); if (await scrInit()) scrRecTap(); });
   // Dessin : plateau alu à points stroboscopiques, vinyle, rond central, bras ; écran vert
@@ -665,7 +676,7 @@
     g.font = `700 ${Math.round(10 * s)}px Arimo, Arial, sans-serif`; g.fillText("%", 134 * s, 48 * s);
     const rec = SCR.rec, pend = LP.pending, nowF = ctx ? ctx.currentTime * sr : 0;
     let ringU = ((ang / (2 * Math.PI)) % 1 + 1) % 1, recTxt = "";
-    if (rec) { if (nowF < rec.sF) { recTxt = "ARM"; } else { recTxt = "REC"; ringU = Math.min(0.999, (nowF - rec.sF) / rec.len); } }
+    if (rec) { if (nowF < rec.sF) { recTxt = "ARM"; } else { recTxt = "REC"; ringU = ((nowF - (rec.t0 || 0)) % rec.L) / rec.L; } }
     else if (pend && (pend.phase === "armed" || pend.phase === "rec" || pend.type === "layer")) recTxt = pend.phase === "armed" ? "ARM" : "REC";
     g.textAlign = "left"; g.font = `700 ${Math.round(9 * s)}px Arimo, Arial, sans-serif`;
     if (recTxt) { if (recTxt === "REC" || Math.floor(performance.now() / 300) % 2) { g.fillText("● " + recTxt, 78 * s, 14 * s); } }
