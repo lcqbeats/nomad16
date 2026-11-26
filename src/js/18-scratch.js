@@ -180,7 +180,8 @@
   }
   // zone coupée : la moitié du fader avec COUPURE à 30 % (réglage d'origine), de 20 % à 80 %
   const scrZoneW = () => Math.max(0.2, Math.min(0.8, 0.2 + knobVals.scratch[7]));
-  const scrFaderOpen = () => SCR.ham ? SCR.fader > scrZoneW() : SCR.fader < 1 - scrZoneW();
+  // crossfader matériel (DJ2GO2) : courbe de scratch, le son ne coupe que tout au bout (SCR.djx = dernière position reçue)
+  const scrFaderOpen = () => SCR.djx !== undefined && SCR.djx === SCR.fader ? (SCR.ham ? SCR.fader > 0.035 : SCR.fader < 0.965) : SCR.ham ? SCR.fader > scrZoneW() : SCR.fader < 1 - scrZoneW();
   function scrGate(force) {
     const g = (SCR.padCut || SCR.btnCut) ? false : (SCR.padOpen || SCR.btnOpen) ? true : scrFaderOpen();
     drawScrFader();
@@ -210,7 +211,7 @@
     $("scrStart").classList.toggle("on", SCR.motor);
     if (SCR.motor) onFirstNote(ctx.currentTime);
   }
-  function scrSetPitch(p) { SCR.pitch = Math.max(-10, Math.min(10, Math.round(p * 10) / 10)); knobVals.scratch[5] = SCR.pitch / 20 + 0.5; if (tab === "scratch" && $("dial5")) $("dial5").style.setProperty("--v", knobVals.scratch[5]); $("scrPitch").value = SCR.pitch; $("scrPitchV").textContent = (SCR.pitch > 0 ? "+" : "") + SCR.pitch.toFixed(1) + " %"; $("scrQuartz").classList.toggle("on", SCR.pitch === 0); knobVals.scratch[1] = (SCR.pitch + 10) / 20; scrApply(); }
+  function scrSetPitch(p) { SCR.pitch = Math.max(-10, Math.min(10, Math.round(p * 10) / 10)); knobVals.scratch[5] = SCR.pitch / 20 + 0.5; if (tab === "scratch" && $("dial5")) $("dial5").style.setProperty("--v", knobVals.scratch[5]); $("scrPitch").value = SCR.pitch; $("scrPitchV").textContent = (SCR.pitch > 0 ? "+" : "") + SCR.pitch.toFixed(1) + " %"; $("scrQuartz").classList.toggle("on", SCR.pitch === 0); scrApply(); }
   function scrKey(note) {
     SCR.semi = note === null ? null : note - 60;
     $("scrKey").textContent = SCR.semi === null ? "NOTE : —" : "NOTE : " + NN[((note % 12) + 12) % 12] + (SCR.semi > 0 ? " +" : " ") + (SCR.semi || "");

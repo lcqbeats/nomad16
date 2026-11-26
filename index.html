@@ -1246,13 +1246,13 @@ html.flipped, html.flipped body { overflow: hidden; }
             <li><i>CASQUE</i> hamster · <i>VOLUME</i> volume de la platine · <i>PITCH</i> ±10 %</li></ul></div>
           <div><b>DECK DROIT · LE BEAT</b><ul>
             <li><i>JOG</i> filtre (gauche : graves, droite : aigus) · une tape : filtre ouvert</li>
-            <li><i>PLAY</i> lecture / arrêt (boucles, sinon batterie) · <i>CUE</i> REC du scratch dans le looper · <i>SYNC</i> UNDO</li>
+            <li><i>PLAY</i> lecture / arrêt (boucles, sinon batterie) · <i>CUE</i> REC : la batterie qui tourne (calée sur le tempo), sinon le scratch · <i>SYNC</i> UNDO</li>
             <li><i>PADS</i> motifs de batterie 1-4 · <i>PAD MODE + pad</i> motifs 5-8</li>
             <li><i>CASQUE</i> métronome · <i>VOLUME</i> volume du beat · <i>PITCH</i> tempo (60-180, sans boucle)</li></ul></div>
           <div><b>MILIEU</b><ul>
-            <li><i>CROSSFADER</i> coupure du son (largeur : potard 8 ou réglage COUPURE)</li>
+            <li><i>CROSSFADER</i> courbe de scratch : ouvert dès qu’il quitte le bout droit (hamster : le bout gauche)</li>
             <li><i>BROWSE</i> tourner : choisir un son · appuyer : changer de catégorie</li>
-            <li><i>LOAD A</i> pose le son choisi sur la platine · <i>LOAD B</i> style de batterie suivant</li>
+            <li><i>LOAD A</i> pose le son choisi sur la platine · <i>LOAD B</i> kit suivant (tenu : style de batterie suivant)</li>
             <li><i>GAIN</i> volume général · le potard casque règle le casque de l'appareil</li></ul></div>
         </div>
       </details>
@@ -5592,7 +5592,8 @@ registerProcessor('nomad-aec',Aec);`;
   }
   // zone coupée : la moitié du fader avec COUPURE à 30 % (réglage d'origine), de 20 % à 80 %
   const scrZoneW = () => Math.max(0.2, Math.min(0.8, 0.2 + knobVals.scratch[7]));
-  const scrFaderOpen = () => SCR.ham ? SCR.fader > scrZoneW() : SCR.fader < 1 - scrZoneW();
+  // crossfader matériel (DJ2GO2) : courbe de scratch, le son ne coupe que tout au bout (SCR.djx = dernière position reçue)
+  const scrFaderOpen = () => SCR.djx !== undefined && SCR.djx === SCR.fader ? (SCR.ham ? SCR.fader > 0.035 : SCR.fader < 0.965) : SCR.ham ? SCR.fader > scrZoneW() : SCR.fader < 1 - scrZoneW();
   function scrGate(force) {
     const g = (SCR.padCut || SCR.btnCut) ? false : (SCR.padOpen || SCR.btnOpen) ? true : scrFaderOpen();
     drawScrFader();
@@ -5622,7 +5623,7 @@ registerProcessor('nomad-aec',Aec);`;
     $("scrStart").classList.toggle("on", SCR.motor);
     if (SCR.motor) onFirstNote(ctx.currentTime);
   }
-  function scrSetPitch(p) { SCR.pitch = Math.max(-10, Math.min(10, Math.round(p * 10) / 10)); knobVals.scratch[5] = SCR.pitch / 20 + 0.5; if (tab === "scratch" && $("dial5")) $("dial5").style.setProperty("--v", knobVals.scratch[5]); $("scrPitch").value = SCR.pitch; $("scrPitchV").textContent = (SCR.pitch > 0 ? "+" : "") + SCR.pitch.toFixed(1) + " %"; $("scrQuartz").classList.toggle("on", SCR.pitch === 0); knobVals.scratch[1] = (SCR.pitch + 10) / 20; scrApply(); }
+  function scrSetPitch(p) { SCR.pitch = Math.max(-10, Math.min(10, Math.round(p * 10) / 10)); knobVals.scratch[5] = SCR.pitch / 20 + 0.5; if (tab === "scratch" && $("dial5")) $("dial5").style.setProperty("--v", knobVals.scratch[5]); $("scrPitch").value = SCR.pitch; $("scrPitchV").textContent = (SCR.pitch > 0 ? "+" : "") + SCR.pitch.toFixed(1) + " %"; $("scrQuartz").classList.toggle("on", SCR.pitch === 0); scrApply(); }
   function scrKey(note) {
     SCR.semi = note === null ? null : note - 60;
     $("scrKey").textContent = SCR.semi === null ? "NOTE : —" : "NOTE : " + NN[((note % 12) + 12) % 12] + (SCR.semi > 0 ? " +" : " ") + (SCR.semi || "");
@@ -6188,8 +6189,8 @@ registerProcessor('nomad-aec',Aec);`;
   }
   function djTempo(v) {
     if (LP.t0F !== null && LP.Lf) { lcd("lcdPad", "TEMPO", `${Math.round(curBpm())} BPM : fixé par la boucle du looper`); return; }
-    // haut du fader = plus lent (comme un pitch de platine) ; milieu = 95 BPM ; 60 à 180
-    const x = (64 - v) / 64, bpm = x < 0 ? 95 + x * 35 : 95 + x * 85;
+    // sens inscrit sur l'appareil ; milieu = 95 BPM ; 60 à 180
+    const x = Math.max(-1, Math.min(1, (v - 64) / 63)), bpm = x < 0 ? 95 + x * 35 : 95 + x * 85;
     drBpmSet(bpm); lcd("lcdPad", "TEMPO", Math.round(manualBpm) + " BPM");
     drawDj();
   }
@@ -6203,7 +6204,7 @@ registerProcessor('nomad-aec',Aec);`;
       if (type === 0xb0) {
         if (d1 === 6) { if (L) djJogTurn(djDelta(d2)); else { DJ.turned = true; djFilter(DJ.filt + djDelta(d2) / 90); drawDj(); } }
         else if (d1 === 0x16) { if (L) { knobVals.scratch[0] = d2 / 127; scrApply(); if (tab === "scratch" && $("dial0")) $("dial0").style.setProperty("--v", d2 / 127); } else { djVol(d2 / 127); drawDj(); } }
-        else if (d1 === 9) { if (L) scrSetPitch((64 - d2) / 64 * 10); else djTempo(d2); }
+        else if (d1 === 9) { if (L) scrSetPitch((d2 - 64) / 63 * 10); else djTempo(d2); }
         return;
       }
       if (!isNote) return;
@@ -6221,7 +6222,7 @@ registerProcessor('nomad-aec',Aec);`;
         else if (d1 === 0x1b) $("scrHam").click();
       } else {
         if (d1 === 0) djBeatPlay();
-        else if (d1 === 1) scrInit().then(ok => { if (ok) scrRecTap(); });
+        else if (d1 === 1) { if (DR.cur >= 0 || DR.rec) drRec(); else scrInit().then(ok => { if (ok) scrRecTap(); }); }
         else if (d1 === 2) { undo(); lcd("lcdPad", "LOOPER", "dernière piste retirée"); }
         else if (d1 === 0x1b) $("trMetro").click();
       }
@@ -6240,15 +6241,19 @@ registerProcessor('nomad-aec',Aec);`;
     }
     if (ch === 15) {   // milieu
       if (type === 0xb0) {
-        if (d1 === 8) { SCR.fader = d2 / 127; scrGate(); }
+        if (d1 === 8) { SCR.fader = SCR.djx = d2 / 127; scrGate(); }
         else if (d1 === 0) djBrowse(djDelta(d2));
         else if (d1 === 10) { const m = MIX.ch.find(c => c.id === "master"); if (m) { m.vol = d2 / 127; applyMix(); lcd("lcdPad", "MASTER", Math.round(d2 / 127 * 100) + " %"); } }
+        return;
+      }
+      if (d1 === 3) {   // LOAD B : appui = kit suivant, tenu une demi-seconde = style de batterie suivant
+        if (down) { clearTimeout(DJ.lbT); DJ.lbLong = false; DJ.lbT = setTimeout(() => { DJ.lbLong = true; djNextGenre(1); }, 550); }
+        else { clearTimeout(DJ.lbT); if (!DJ.lbLong) { stepKit(1); setTimeout(() => lcd("lcdPad", "KIT", $("kitName").textContent), 300); } }
         return;
       }
       if (!down) return;
       if (d1 === 6) djNextSrc();
       else if (d1 === 2) djLoadA();
-      else if (d1 === 3) djNextGenre(1);
     }
   }
   // BROWSE : tourner choisit un son (sans le charger), appuyer change de catégorie, LOAD A le pose sur la platine
@@ -6280,10 +6285,10 @@ registerProcessor('nomad-aec',Aec);`;
     const blink = (performance.now() % 500) < 250;
     const want = {
       "144,0": SCR.motor, "144,1": SCR.cues && SCR.cues.some(c => c !== null), "144,2": SCR.speed === 45, "144,27": SCR.ham,
-      "145,0": djBeatOn(), "145,1": SCR.rec ? blink : LP.pending ? blink : false, "145,2": LP.layers.length > 0, "145,27": SQ.metro
+      "145,0": djBeatOn(), "145,1": SCR.rec || (DR.rec && DR.rec.phase) || LP.pending ? blink : false, "145,2": LP.layers.length > 0, "145,27": SQ.metro
     };
     for (let i = 0; i < 4; i++) { want["148," + (i + 1)] = !!(SCR.cues && SCR.cues[i] !== null) && (SCR.cueIdx !== i || blink || !SCR.motor); want["149," + (i + 1)] = DR.cur === i || (DR.next === i && blink); }
-    Object.entries(want).forEach(([k, v]) => { v = !!v; if (force || DJ.led[k] !== v) { DJ.led[k] = v; const [s, n] = k.split(",").map(Number); djSend(s, n, v); } });
+    Object.entries(want).forEach(([k, v]) => { v = !!v; if (force || DJ.led[k] !== v) { DJ.led[k] = v; const [s, n] = k.split(",").map(Number); djSend(s, n, v); if (s === 148 || s === 149) [0x10, 0x20, 0x30].forEach(o => djSend(s, n + o, v)); } });
   }
   setInterval(() => { if (DJ.on) djLeds(false); }, 120);
   // ----- panneau à l'écran (onglet SCRATCH) -----

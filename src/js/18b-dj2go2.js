@@ -92,8 +92,8 @@
   }
   function djTempo(v) {
     if (LP.t0F !== null && LP.Lf) { lcd("lcdPad", "TEMPO", `${Math.round(curBpm())} BPM : fixé par la boucle du looper`); return; }
-    // haut du fader = plus lent (comme un pitch de platine) ; milieu = 95 BPM ; 60 à 180
-    const x = (64 - v) / 64, bpm = x < 0 ? 95 + x * 35 : 95 + x * 85;
+    // sens inscrit sur l'appareil ; milieu = 95 BPM ; 60 à 180
+    const x = Math.max(-1, Math.min(1, (v - 64) / 63)), bpm = x < 0 ? 95 + x * 35 : 95 + x * 85;
     drBpmSet(bpm); lcd("lcdPad", "TEMPO", Math.round(manualBpm) + " BPM");
     drawDj();
   }
@@ -107,7 +107,7 @@
       if (type === 0xb0) {
         if (d1 === 6) { if (L) djJogTurn(djDelta(d2)); else { DJ.turned = true; djFilter(DJ.filt + djDelta(d2) / 90); drawDj(); } }
         else if (d1 === 0x16) { if (L) { knobVals.scratch[0] = d2 / 127; scrApply(); if (tab === "scratch" && $("dial0")) $("dial0").style.setProperty("--v", d2 / 127); } else { djVol(d2 / 127); drawDj(); } }
-        else if (d1 === 9) { if (L) scrSetPitch((64 - d2) / 64 * 10); else djTempo(d2); }
+        else if (d1 === 9) { if (L) scrSetPitch((d2 - 64) / 63 * 10); else djTempo(d2); }
         return;
       }
       if (!isNote) return;
@@ -125,7 +125,7 @@
         else if (d1 === 0x1b) $("scrHam").click();
       } else {
         if (d1 === 0) djBeatPlay();
-        else if (d1 === 1) scrInit().then(ok => { if (ok) scrRecTap(); });
+        else if (d1 === 1) { if (DR.cur >= 0 || DR.rec) drRec(); else scrInit().then(ok => { if (ok) scrRecTap(); }); }
         else if (d1 === 2) { undo(); lcd("lcdPad", "LOOPER", "dernière piste retirée"); }
         else if (d1 === 0x1b) $("trMetro").click();
       }
@@ -144,15 +144,19 @@
     }
     if (ch === 15) {   // milieu
       if (type === 0xb0) {
-        if (d1 === 8) { SCR.fader = d2 / 127; scrGate(); }
+        if (d1 === 8) { SCR.fader = SCR.djx = d2 / 127; scrGate(); }
         else if (d1 === 0) djBrowse(djDelta(d2));
         else if (d1 === 10) { const m = MIX.ch.find(c => c.id === "master"); if (m) { m.vol = d2 / 127; applyMix(); lcd("lcdPad", "MASTER", Math.round(d2 / 127 * 100) + " %"); } }
+        return;
+      }
+      if (d1 === 3) {   // LOAD B : appui = kit suivant, tenu une demi-seconde = style de batterie suivant
+        if (down) { clearTimeout(DJ.lbT); DJ.lbLong = false; DJ.lbT = setTimeout(() => { DJ.lbLong = true; djNextGenre(1); }, 550); }
+        else { clearTimeout(DJ.lbT); if (!DJ.lbLong) { stepKit(1); setTimeout(() => lcd("lcdPad", "KIT", $("kitName").textContent), 300); } }
         return;
       }
       if (!down) return;
       if (d1 === 6) djNextSrc();
       else if (d1 === 2) djLoadA();
-      else if (d1 === 3) djNextGenre(1);
     }
   }
   // BROWSE : tourner choisit un son (sans le charger), appuyer change de catégorie, LOAD A le pose sur la platine
@@ -184,10 +188,10 @@
     const blink = (performance.now() % 500) < 250;
     const want = {
       "144,0": SCR.motor, "144,1": SCR.cues && SCR.cues.some(c => c !== null), "144,2": SCR.speed === 45, "144,27": SCR.ham,
-      "145,0": djBeatOn(), "145,1": SCR.rec ? blink : LP.pending ? blink : false, "145,2": LP.layers.length > 0, "145,27": SQ.metro
+      "145,0": djBeatOn(), "145,1": SCR.rec || (DR.rec && DR.rec.phase) || LP.pending ? blink : false, "145,2": LP.layers.length > 0, "145,27": SQ.metro
     };
     for (let i = 0; i < 4; i++) { want["148," + (i + 1)] = !!(SCR.cues && SCR.cues[i] !== null) && (SCR.cueIdx !== i || blink || !SCR.motor); want["149," + (i + 1)] = DR.cur === i || (DR.next === i && blink); }
-    Object.entries(want).forEach(([k, v]) => { v = !!v; if (force || DJ.led[k] !== v) { DJ.led[k] = v; const [s, n] = k.split(",").map(Number); djSend(s, n, v); } });
+    Object.entries(want).forEach(([k, v]) => { v = !!v; if (force || DJ.led[k] !== v) { DJ.led[k] = v; const [s, n] = k.split(",").map(Number); djSend(s, n, v); if (s === 148 || s === 149) [0x10, 0x20, 0x30].forEach(o => djSend(s, n + o, v)); } });
   }
   setInterval(() => { if (DJ.on) djLeds(false); }, 120);
   // ----- panneau à l'écran (onglet SCRATCH) -----

@@ -1633,6 +1633,12 @@ def test_dj2go2_platine_et_beat(app):
     # crossfader : à droite = son coupé, à gauche = ouvert
     dj(0xBF, 0x08, 127); assert app.evaluate("nomadDbg.SCR.gate") is False
     dj(0xBF, 0x08, 0);   assert app.evaluate("nomadDbg.SCR.gate") is True
+    dj(0xBF, 0x08, 110); assert app.evaluate("nomadDbg.SCR.gate") is True    # courbe de scratch : ouvert presque jusqu'au bout
+    # pitch : sens de l'appareil, et le filtre de la platine ne bouge pas avec lui
+    dj(0xB0, 0x09, 127)
+    assert app.evaluate("nomadDbg.SCR.pitch") == 10
+    assert app.evaluate("document.getElementById('scrPitchV').textContent").startswith("+10")
+    dj(0xB0, 0x09, 64)
     # deck droit : PLAY lance la batterie (pas de boucle), pad 2 = motif suivant, jog = filtre, tape = filtre ouvert
     dj(0x91, 0x00, 0x7f)
     assert app.evaluate("nomadDbg.DR.cur") >= 0
@@ -1648,6 +1654,14 @@ def test_dj2go2_platine_et_beat(app):
     app.wait_for_timeout(400)
     leds = app.evaluate("window.__led")
     assert "145,0,127" in leds and "148,1,127" in leds
+    # CUE droit pendant que la batterie tourne : prise de la batterie calée sur le tempo
+    dj(0x91, 0x01, 0x7f)
+    assert app.evaluate("!!(nomadDbg.DR.rec && nomadDbg.DR.rec.phase === 'rec')")
+    dj(0x91, 0x01, 0x7f)                                   # fin de prise
+    # LOAD B appuyé brièvement : kit suivant
+    k0 = app.evaluate("nomadDbg.kitIndex.findIndex(k => k.id === nomadState().kit)")
+    dj(0x9F, 0x03, 0x7f); dj(0x8F, 0x03, 0x00)
+    app.wait_for_function(f"nomadDbg.kitIndex.findIndex(k => k.id === nomadState().kit) !== {k0}", timeout=10000)
     dj(0x91, 0x00, 0x7f)                                   # beat arrêté
     assert app.evaluate("nomadDbg.DR.cur") == -1
 
