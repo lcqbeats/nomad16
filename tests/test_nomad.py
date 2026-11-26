@@ -1764,8 +1764,18 @@ def test_dj2go2_dans_digging(app):
     dj(0x90, 0x00, 0x7f)                                   # pause : on garde la position
     assert app.evaluate("nomadDbg.playing()") is False
     assert app.evaluate("nomadDbg.digPos()") > pos + 0.2 * app.evaluate("nomadDbg.sr")
-    dj(0x90, 0x02, 0x7f)                                   # SYNC : annule le dernier point
+    dj(0x90, 0x02, 0x7f); dj(0x80, 0x02, 0x00)            # SYNC : annule le dernier point
     assert app.evaluate("nomadDbg.LC.marks[13] === undefined")
+    # chop en série : disque en lecture, le même pad gauche frappé 3 fois pose les chops 2, 3, 4 (le 1 est déjà posé)
+    dj(0x90, 0x00, 0x7f)
+    for _ in range(3):
+        app.wait_for_timeout(150); dj(0x94, 0x01, 0x7f); dj(0x84, 0x01, 0x00)
+    m = app.evaluate("[0, 1, 2, 3].map(i => nomadDbg.LC.marks[i])")
+    assert all(x is not None for x in m) and m[1] < m[2] < m[3], m
+    dj(0x90, 0x00, 0x7f)
+    # SYNC tenu : tout effacer
+    dj(0x90, 0x02, 0x7f); app.wait_for_timeout(800); dj(0x80, 0x02, 0x00)
+    assert app.evaluate("Object.keys(nomadDbg.LC.marks).length") == 0
     assert not app.is_hidden("#djDig")
 
 

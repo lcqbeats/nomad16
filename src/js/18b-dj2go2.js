@@ -227,8 +227,9 @@
   // ----- DIGGING : le deck gauche manipule le disque de la platine, les pads posent les points de chop -----
   // PLAY = lecture / pause (on repart d'où on s'est arrêté) ; CUE = disque à l'arrêt : pose le repère ; en lecture : y revient et s'arrête ;
   // JOG main posée = l'aiguille suit la main (on entend le sillon) ; bord du jog = avance rapide (à l'arrêt) ou pousse / freine (en lecture) ;
-  // PADS gauche 1-4 (PAD MODE : 5-8) et droite 9-12 (PAD MODE : 13-16) : pad vide = point de chop ici ; pad posé = y aller (et l'écouter) ; tenu = replacer ;
-  // SYNC = annuler le dernier point ; CASQUE = zoom de la forme d'onde ; PITCH = demi-tons ; VOLUME = volume du disque ;
+  // PADS gauche, disque en lecture : chop en série (chaque frappe = chop suivant, 1 à 16) ;
+  // sinon PADS gauche 1-4 (PAD MODE : 5-8) et droite 9-12 (PAD MODE : 13-16) : pad vide = point de chop ici ; pad posé = y aller (et l'écouter) ; tenu = replacer ;
+  // SYNC = annuler le dernier point (tenu : tout effacer) ; CASQUE = zoom de la forme d'onde ; PITCH = demi-tons ; VOLUME = volume du disque ;
   // BROWSE = disque suivant / précédent dans le bac (appui : bac suivant) ; LOAD A = poser le disque sur la platine.
   const DG = { cue: 0, scrub: null, grainT: 0, hold: {} };
   const digOn = () => tab === "sample";
@@ -271,8 +272,15 @@
     rebuildChops();
     lcd("lcdPad", "CHOP", `pad ${i + 1} ← ${fmtT(pos)}`);
   }
-  function digPad(i, down) {
+  // chop en série : disque en lecture, chaque frappe sur un pad du deck gauche pose le chop suivant (1, 2, 3… 16)
+  function digSerial() {
+    let j = 0; while (j < 16 && LC.marks[j] !== undefined) j++;
+    if (j >= 16) { lcd("lcdPad", "CHOP", "16 chops posés · SYNC annule, SYNC tenu efface tout"); return; }
+    digMark(j); flash(j);
+  }
+  function digPad(i, down, left) {
     if (!clip) { if (down) lcd("lcdPad", "PLATINE", "posez d'abord un disque (LOAD A)"); return; }
+    if (left && ttSrc) { if (down) digSerial(); return; }
     if (down) { clearTimeout(DG.hold[i] && DG.hold[i].t); DG.hold[i] = { long: false, t: setTimeout(() => { DG.hold[i].long = true; digMark(i); }, 600) }; return; }
     const h = DG.hold[i]; if (!h) return; clearTimeout(h.t); delete DG.hold[i];
     if (h.long) return;
@@ -291,10 +299,14 @@
       }
       if (!isNote) return true;
       if (d1 === 6) { digJogTouch(down); return true; }
+      if (d1 === 2) {   // SYNC : appui = annuler le dernier chop ; tenu = tout effacer pour recommencer
+        if (down) { clearTimeout(DG.syncT); DG.syncLong = false; DG.syncT = setTimeout(() => { DG.syncLong = true; LC.marks = {}; LC.hist = []; rebuildChops(-2); lcd("lcdPad", "CHOP", "tous les chops effacés · on recommence"); }, 650); }
+        else { clearTimeout(DG.syncT); if (!DG.syncLong) lcUndo(); }
+        return true;
+      }
       if (!down) return true;
       if (d1 === 0) digPlay();
       else if (d1 === 1) digCue();
-      else if (d1 === 2) lcUndo();
       else if (d1 === 0x1b) setZoom(wz >= 16 ? 1 : wz * 4);
       return true;
     }
@@ -302,7 +314,7 @@
       if (!isNote || d1 === 0) return true;
       const hi = d1 & 0xf0, lo = d1 & 0x0f, shift = hi === 0 && lo >= 9 && lo <= 12, j = shift ? lo - 9 : lo - 1;
       if (j < 0 || j > 3) return true;
-      digPad((ch === 5 ? 8 : 0) + (shift ? 4 : 0) + j, down);
+      digPad((ch === 5 ? 8 : 0) + (shift ? 4 : 0) + j, down, ch === 4);
       return true;
     }
     if (ch === 15 && type === 0xb0 && d1 === 0) { flip(djDelta(d2) > 0 ? 1 : -1); return true; }
