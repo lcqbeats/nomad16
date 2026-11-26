@@ -1767,3 +1767,17 @@ def test_dj2go2_dans_digging(app):
     dj(0x90, 0x02, 0x7f)                                   # SYNC : annule le dernier point
     assert app.evaluate("nomadDbg.LC.marks[13] === undefined")
     assert not app.is_hidden("#djDig")
+
+
+def test_crossfader_ecran_courbe_de_scratch(app):
+    # crossfader à l'écran (mobile) : ouvert presque jusqu'au bout, coupé seulement dans les derniers 6 % (côté droit)
+    app.click("#tab-scratch")
+    app.evaluate("nomadDbg.scrInit()")
+    app.wait_for_function("nomadDbg.SCR.N > 0", timeout=10000)
+    app.locator("#scrFader").scroll_into_view_if_needed()
+    box = app.locator("#scrFader").bounding_box()
+    y = box["y"] + box["height"] / 2
+    app.mouse.click(box["x"] + box["width"] * 0.7, y)       # fader à 0,75 : encore ouvert (avant : coupé dès le milieu)
+    assert app.evaluate("nomadDbg.SCR.fader") > 0.7 and app.evaluate("nomadDbg.SCR.gate") is True
+    app.mouse.click(box["x"] + box["width"] - 2, y)          # tout au bout : coupé
+    assert app.evaluate("nomadDbg.SCR.gate") is False

@@ -183,7 +183,9 @@
     else { SCR.filt.type = "highpass"; SCR.filt.frequency.setTargetAtTime(30 * Math.pow(130, (f - 0.5) / 0.5), t, 0.02); SCR.filt.Q.value = 2; }
   }
   // zone coupée : la moitié du fader avec COUPURE à 30 % (réglage d'origine), de 20 % à 80 %
-  const scrZoneW = () => Math.max(0.2, Math.min(0.8, 0.2 + knobVals.scratch[7]));
+  // zone coupée du crossfader à l'écran : courbe de scratch par défaut (coupé seulement tout au bout, 6 %) ;
+  // le potard COUPURE l'élargit jusqu'à 80 %
+  const scrZoneW = () => Math.max(0.06, Math.min(0.8, 0.06 + knobVals.scratch[7] * 0.74));
   // crossfader matériel (DJ2GO2) : courbe de scratch, le son ne coupe que tout au bout (SCR.djx = dernière position reçue)
   const scrFaderOpen = () => SCR.djx !== undefined && SCR.djx === SCR.fader ? (SCR.ham ? SCR.fader > 0.035 : SCR.fader < 0.965) : SCR.ham ? SCR.fader > scrZoneW() : SCR.fader < 1 - scrZoneW();
   function scrGate(force) {
