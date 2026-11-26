@@ -133,7 +133,7 @@
   function drHit(role, vel, when, map) {
     if (role in map) { voice(map[role], vel, 1, when); const i = map[role]; setTimeout(() => flash(i), Math.max(0, (when - ctx.currentTime) * 1000)); return; }
     const b = drSynth()[role]; if (!b) return;
-    const s = ctx.createBufferSource(), g = ctx.createGain(); s.buffer = b; g.gain.value = vel * 0.9; s.connect(g); g.connect(chPads); s.start(when);
+    const s = ctx.createBufferSource(), g = ctx.createGain(); s.buffer = b; g.gain.value = vel * 0.9; s.connect(g); g.connect(drumIn || chPads); s.start(when);
   }
   const drLen = p => Math.max(...["k", "s", "h", "o", "p"].map(r => (p[r] || "").length), 16);
   function drTick() {
@@ -161,9 +161,9 @@
   // kit changé : les rôles suivent (et le panneau se met à jour)
   setInterval(() => { if (DR.mapKit !== kitCur || DR.mapN !== names.join("|")) { DR.mapKit = kitCur; DR.mapN = names.join("|"); DR.map = drMap(); if (tab === "sons" && isDrum(instCur)) drawDrums(); } }, 400);
   // lancer / changer / arrêter : au début de la mesure suivante (calé sur la boucle du LOOPER quand elle tourne)
-  function drPlay(i) {
+  function drPlay(i, gOv) {
     if (!ctx) return;
-    const g = drGenre(); if (!g.p[i]) return;
+    const g = gOv || drGenre(); if (!g.p[i]) return;
     if (DR.cur >= 0 && DR.genre === g) {
       DR.next = (DR.next === i && DR.cur === i) ? -1 : i; DR.last = i;
       if (DR.cur === i && DR.next === i) DR.next = -1;

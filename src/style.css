@@ -915,3 +915,10 @@ html.flipped, html.flipped body { overflow: hidden; }
   .item-row:has(> :nth-child(5)) > .kititem { flex: 1 1 100%; }
   .item-row:has(> :nth-child(5)) > .mini { flex: 1 1 0; min-height: 40px; }
 }
+/* DJ2GO2 dans SCRATCH */
+.djpanel { margin: 8px 0; }
+.djbeat { font: 18px VT323, monospace; color: #7dff9a; background: #0f0e0d; border: 1px solid #3a3733; border-radius: 8px; padding: 6px 10px; margin: 4px 0; }
+.djmap summary { cursor: pointer; font-size: 12px; letter-spacing: .05em; opacity: .85; padding: 4px 0; }
+.djcols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; font-size: 12px; line-height: 1.45; }
+.djcols ul { margin: 4px 0 0; padding-left: 16px; }
+.djcols i { font-style: normal; font-weight: 700; color: #e0a63a; }

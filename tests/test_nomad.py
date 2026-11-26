@@ -1604,3 +1604,49 @@ def test_nuage_choix_apercu_suppression(app):
     app.click("#cloudList .item-row button:has-text('SUPPR.')")
     app.click("#cloudList .item-row button:has-text('SÛR ?')")
     app.wait_for_function("Object.keys(window.__dbx).length === 0", timeout=10000)
+
+
+def test_dj2go2_platine_et_beat(app):
+    # DJ2GO2 simulé : deck gauche = platine (jog, repères, crossfader), deck droit = beat (batterie, filtre), LED
+    app.evaluate("() => { window.__led = []; nomadDbg.DJ.out = { send: b => __led.push(b.join(',')) }; }")
+    assert app.evaluate("nomadDbg.isDj('DJ2GO2 Touch') && !nomadDbg.isDj('MPK mini')")
+    dj = lambda *b: app.evaluate(f"nomadDbg.djMidi([{','.join(str(x) for x in b)}])")
+    dj(0x90, 0x00, 0x7f)                                   # PLAY gauche : SCRATCH s'ouvre, le moteur part
+    app.wait_for_function("nomadDbg.SCR.N > 0 && nomadDbg.SCR.motor", timeout=10000)
+    assert app.get_attribute("#tab-scratch", "aria-selected") == "true"
+    assert not app.is_hidden("#djPanel")
+    dj(0x90, 0x00, 0x7f)                                   # moteur arrêté
+    app.wait_for_timeout(300)
+    p0 = app.evaluate("nomadDbg.scrPos()")
+    dj(0x90, 0x06, 0x7f)                                   # main sur le jog
+    for _ in range(40): dj(0xB0, 0x06, 0x01)               # un sixième de tour en avant
+    p1 = app.evaluate("nomadDbg.scrPos()")
+    for _ in range(80): dj(0xB0, 0x06, 0x7f)               # puis en arrière
+    p2 = app.evaluate("nomadDbg.scrPos()")
+    dj(0x80, 0x06, 0x00)
+    step = app.evaluate("1.8 * nomadDbg.SCR.bsr / 236")
+    assert abs((p1 - p0) - 40 * step) < 2 and abs((p2 - p1) + 80 * step) < 2
+    assert app.evaluate("nomadDbg.SCR.hand") is None
+    # repère 1 posé par le pad 1 du deck gauche
+    dj(0x94, 0x01, 0x7f); dj(0x84, 0x01, 0x00)
+    assert app.evaluate("nomadDbg.SCR.cues[0] !== null")
+    # crossfader : à droite = son coupé, à gauche = ouvert
+    dj(0xBF, 0x08, 127); assert app.evaluate("nomadDbg.SCR.gate") is False
+    dj(0xBF, 0x08, 0);   assert app.evaluate("nomadDbg.SCR.gate") is True
+    # deck droit : PLAY lance la batterie (pas de boucle), pad 2 = motif suivant, jog = filtre, tape = filtre ouvert
+    dj(0x91, 0x00, 0x7f)
+    assert app.evaluate("nomadDbg.DR.cur") >= 0
+    dj(0x95, 0x02, 0x7f)
+    assert app.evaluate("nomadDbg.DR.next") == 1
+    dj(0x91, 0x06, 0x7f)
+    for _ in range(30): dj(0xB1, 0x06, 0x7f)
+    assert app.evaluate("nomadDbg.beatF.type") == "lowpass"
+    dj(0x81, 0x06, 0x00)
+    dj(0x91, 0x06, 0x7f); dj(0x81, 0x06, 0x00)
+    assert app.evaluate("nomadDbg.beatF.type") == "allpass"
+    # LED : PLAY droit allumé, pad 1 gauche allumé (repère posé)
+    app.wait_for_timeout(400)
+    leds = app.evaluate("window.__led")
+    assert "145,0,127" in leds and "148,1,127" in leds
+    dj(0x91, 0x00, 0x7f)                                   # beat arrêté
+    assert app.evaluate("nomadDbg.DR.cur") == -1

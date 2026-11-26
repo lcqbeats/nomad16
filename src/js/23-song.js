@@ -3,7 +3,7 @@
   // Prises imprimées : une ligne peut porter un son figé (take.pid → SONG.prints), joué à la place des boucles.
   // Les pistes passent par une « porte » (SONG.gate) qu'on ferme pendant une ligne imprimée ; le son imprimé, lui,
   // entre dans le bus des boucles, donc les effets FX / SP ciblés sur SONG le recolorent (impression par-dessus).
-  function layGate() { if (!SONG.gate) { SONG.gate = ctx.createGain(); SONG.gate.connect(loopBus); } return SONG.gate; }
+  function layGate() { if (!SONG.gate) { SONG.gate = ctx.createGain(); SONG.gate.connect(loopIn); } return SONG.gate; }
   // même porte pour la piste envoyée seule dans FX ou dans SP (P1 à P6), qui ne passe pas par le bus des boucles
   const GATES = {};
   function gateOf(k) { if (!GATES[k]) { GATES[k] = ctx.createGain(); GATES[k].connect(k === "fx" ? fxSolo : sp.lay); } return GATES[k]; }
@@ -13,7 +13,7 @@
     if (SONG.player) { try { SONG.player.stop(T); } catch (e) {} SONG.player = null; }
     allGates().forEach(g => g.gain.setTargetAtTime(buf ? 0 : 1, T, 0.003));
     if (!buf) return;
-    const s = ctx.createBufferSource(); s.buffer = buf; s.connect(loopBus); s.start(T); SONG.player = s;
+    const s = ctx.createBufferSource(); s.buffer = buf; s.connect(loopIn); s.start(T); SONG.player = s;
   }
   function songAudioOff() { if (SONG.player) { try { SONG.player.stop(); } catch (e) {} SONG.player = null; } if (SONG.gate) allGates().forEach(g => { g.gain.cancelScheduledValues(ctx.currentTime); g.gain.setTargetAtTime(1, ctx.currentTime, 0.003); }); }
   const SEQ_N = "ABCDEFGH";

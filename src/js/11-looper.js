@@ -66,7 +66,7 @@
     if (a === b || !SQ.list[a].length) return;
     const old = SQ.list[b].slice();
     // la copie arrive coupée : les banks jouent ensemble, sinon on entendrait tout en double
-    const make = () => SQ.list[a].map(l => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = 0; gain.connect(loopBus); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: true, src: null, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], name: l.name || "" }; });
+    const make = () => SQ.list[a].map(l => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = 0; gain.connect(loopIn); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: true, src: null, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], name: l.name || "" }; });
     const put = arr => { const T = SQ.list[b]; T.forEach(l => { stopLayer(l); try { l.gain.disconnect(); } catch (e) {} }); T.length = 0; arr.forEach(l => { l.gain.gain.value = l.muted ? 0 : l.vol; T.push(l); }); routeFx(); if (LP.playing) T.forEach(l => startLayer(l, ctx.currentTime + 0.005)); if (b === SQ.cur) syncLoopKnobs(); drawSeqSel(); };
     const fresh = make(); put(fresh);
     pushHist(`copie ${SEQ_N[a]} → ${SEQ_N[b]}`, () => put(old), () => put(fresh));
@@ -157,7 +157,7 @@
     const an = ctx.createAnalyser(); an.fftSize = 256;
     const l = { buf, k, m, gain, an, vol: knobVals.loops[idx] ?? 1, muted: false, src: null, notes: notes || [] };
     gain.gain.value = l.vol;
-    gain.connect(loopBus);
+    gain.connect(loopIn);
     LP.layers.push(l); LP.sel = -1;
     routeFx();
     if (LP.playing) startLayer(l, ctx.currentTime + 0.005);

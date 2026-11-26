@@ -121,9 +121,14 @@
       const access = await navigator.requestMIDIAccess();
       const refresh = () => {
         const ins = [...access.inputs.values()];
-        ins.forEach(inp => inp.onmidimessage = onMidi);
+        // le DJ2GO2 a sa propre entrée : ses notes et ses CC ne se mélangent pas à ceux de l'Akai
+        ins.forEach(inp => inp.onmidimessage = isDj(inp.name) ? djMidi : onMidi);
         setMidiStatus(ins.length ? ins.map(i => i.name).join(", ") : "aucun appareil", ins.length > 0);
-        try { TAPLED.outs = [...access.outputs.values()]; } catch (e) {}
+        let outs = []; try { outs = [...access.outputs.values()]; } catch (e) {}
+        TAPLED.outs = outs.filter(o => !isDj(o.name));
+        const dji = ins.find(i => isDj(i.name));
+        if (dji) djConnected(dji.name, outs.find(o => isDj(o.name)));
+        else if (DJ.on) { DJ.on = false; DJ.out = null; drawDj(); }
       };
       access.onstatechange = refresh;
       refresh();
@@ -161,7 +166,7 @@
   initMidi();
   try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi) { $("btBox").hidden = false; $("btPair").addEventListener("click", () => window.webkit.messageHandlers.nomadMidi.postMessage({ type: "btpair" })); } } catch (e) {}
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
-  window.nomadDbg = { get ctx() { return ctx; }, cloudSet: v => { DBX = v; drawCloud(); }, cloudUpload, cloudList, scrPos: () => scrPosNow(), get SCRN() { return SCR.N; }, get gn() { return gn; }, get G() { return G; }, gtrOn: () => { G.on = true; applyGuitar(); }, aecCalibrate, get AEC() { return AEC; }, drRec, drMap, drSwPct, DR_GENRES: DRUM_GENRES, get sp() { return sp; }, FXS, setFxBank, SP_FX, SPX, setSpBank, spPad, AMB, sonsT: { selectInst, keyOn, releaseKey: k => activeKeys.forEach((v, key) => releaseKey(key)) }, DR, drPlay, drStop, scrLoad, newKit, micStop, MIC, edSrcApply, song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get names() { return names; }, get kitIndex() { return kitIndex; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
+  window.nomadDbg = { get ctx() { return ctx; }, djMidi: b => djMidi({ data: b }), DJ, isDj, get beatF() { return beatF; }, get DR() { return DR; }, cloudSet: v => { DBX = v; drawCloud(); }, cloudUpload, cloudList, scrPos: () => scrPosNow(), get SCRN() { return SCR.N; }, get gn() { return gn; }, get G() { return G; }, gtrOn: () => { G.on = true; applyGuitar(); }, aecCalibrate, get AEC() { return AEC; }, drRec, drMap, drSwPct, DR_GENRES: DRUM_GENRES, get sp() { return sp; }, FXS, setFxBank, SP_FX, SPX, setSpBank, spPad, AMB, sonsT: { selectInst, keyOn, releaseKey: k => activeKeys.forEach((v, key) => releaseKey(key)) }, DR, drPlay, drStop, scrLoad, newKit, micStop, MIC, edSrcApply, song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get names() { return names; }, get kitIndex() { return kitIndex; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
   let probe = null;
   let probeOut = null;
   window.nomadProbeOut = () => { if (!probeOut) { probeOut = ctx.createAnalyser(); probeOut.fftSize = 2048; mixOut.connect(probeOut); } const a = new Float32Array(2048); probeOut.getFloatTimeDomainData(a); let m = 0; for (const v of a) { if (!isFinite(v)) return NaN; m = Math.max(m, Math.abs(v)); } return +m.toFixed(3); };

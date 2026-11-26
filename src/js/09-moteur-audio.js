@@ -56,6 +56,7 @@
     chPads = ctx.createGain(); chSons = ctx.createGain(); chGtr = ctx.createGain(); chMaster = ctx.createGain();
     padOut.connect(chPads); chPads.connect(liveBus); chSons.connect(liveBus); chGtr.connect(liveBus);
     liveBus.connect(master); loopBus.connect(master);
+    buildBeatBus();   // beat (boucles + batterie) : filtre et volume du deck droit du DJ2GO2
     fxOut = comp;
     spIn = ctx.createGain(); comp.connect(dyn); dyn.connect(spIn);
     buildSp(spIn, chMaster);

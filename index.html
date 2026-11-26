@@ -929,6 +929,13 @@ html.flipped, html.flipped body { overflow: hidden; }
   .item-row:has(> :nth-child(5)) > .kititem { flex: 1 1 100%; }
   .item-row:has(> :nth-child(5)) > .mini { flex: 1 1 0; min-height: 40px; }
 }
+/* DJ2GO2 dans SCRATCH */
+.djpanel { margin: 8px 0; }
+.djbeat { font: 18px VT323, monospace; color: #7dff9a; background: #0f0e0d; border: 1px solid #3a3733; border-radius: 8px; padding: 6px 10px; margin: 4px 0; }
+.djmap summary { cursor: pointer; font-size: 12px; letter-spacing: .05em; opacity: .85; padding: 4px 0; }
+.djcols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; font-size: 12px; line-height: 1.45; }
+.djcols ul { margin: 4px 0 0; padding-left: 16px; }
+.djcols i { font-style: normal; font-weight: 700; color: #e0a63a; }
 </style>
 </head>
 <body>
@@ -1226,6 +1233,29 @@ html.flipped, html.flipped body { overflow: hidden; }
       <h4 class="sphead"><span>PHRASES</span></h4>
       <div class="scrph scrplay" id="scrPh"></div>
     </div>
+    </div>
+    <div class="djpanel" id="djPanel" hidden>
+      <h4 class="sphead"><span>NUMARK DJ2GO2 TOUCH</span></h4>
+      <p class="djbeat" id="djBeat">BEAT</p>
+      <details class="djmap"><summary>Ce que fait chaque commande</summary>
+        <div class="djcols">
+          <div><b>DECK GAUCHE · LE SON</b><ul>
+            <li><i>JOG</i> main posée : scratch · bord : pousse / freine</li>
+            <li><i>PLAY</i> moteur · <i>CUE</i> retour au repère · <i>SYNC</i> 33 / 45</li>
+            <li><i>PADS</i> repères 1-4 (frappe : poser / rappeler, tenu : effacer) · <i>PAD MODE + pad</i> effacer</li>
+            <li><i>CASQUE</i> hamster · <i>VOLUME</i> volume de la platine · <i>PITCH</i> ±10 %</li></ul></div>
+          <div><b>DECK DROIT · LE BEAT</b><ul>
+            <li><i>JOG</i> filtre (gauche : graves, droite : aigus) · une tape : filtre ouvert</li>
+            <li><i>PLAY</i> lecture / arrêt (boucles, sinon batterie) · <i>CUE</i> REC du scratch dans le looper · <i>SYNC</i> UNDO</li>
+            <li><i>PADS</i> motifs de batterie 1-4 · <i>PAD MODE + pad</i> motifs 5-8</li>
+            <li><i>CASQUE</i> métronome · <i>VOLUME</i> volume du beat · <i>PITCH</i> tempo (60-180, sans boucle)</li></ul></div>
+          <div><b>MILIEU</b><ul>
+            <li><i>CROSSFADER</i> coupure du son (largeur : potard 8 ou réglage COUPURE)</li>
+            <li><i>BROWSE</i> tourner : choisir un son · appuyer : changer de catégorie</li>
+            <li><i>LOAD A</i> pose le son choisi sur la platine · <i>LOAD B</i> style de batterie suivant</li>
+            <li><i>GAIN</i> volume général · le potard casque règle le casque de l'appareil</li></ul></div>
+        </div>
+      </details>
     </div>
     <div class="scrdisk" id="scrDisk">
       <h4 class="sphead"><span>SUR LE DISQUE</span></h4>
@@ -2000,6 +2030,7 @@ registerProcessor('nomad-aec',Aec);`;
     chPads = ctx.createGain(); chSons = ctx.createGain(); chGtr = ctx.createGain(); chMaster = ctx.createGain();
     padOut.connect(chPads); chPads.connect(liveBus); chSons.connect(liveBus); chGtr.connect(liveBus);
     liveBus.connect(master); loopBus.connect(master);
+    buildBeatBus();   // beat (boucles + batterie) : filtre et volume du deck droit du DJ2GO2
     fxOut = comp;
     spIn = ctx.createGain(); comp.connect(dyn); dyn.connect(spIn);
     buildSp(spIn, chMaster);
@@ -2217,7 +2248,7 @@ registerProcessor('nomad-aec',Aec);`;
     if (a === b || !SQ.list[a].length) return;
     const old = SQ.list[b].slice();
     // la copie arrive coupée : les banks jouent ensemble, sinon on entendrait tout en double
-    const make = () => SQ.list[a].map(l => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = 0; gain.connect(loopBus); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: true, src: null, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], name: l.name || "" }; });
+    const make = () => SQ.list[a].map(l => { const gain = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; gain.gain.value = 0; gain.connect(loopIn); return { buf: l.buf, k: l.k, m: l.m, gain, an, vol: l.vol, muted: true, src: null, pan: l.pan || 0, hp: !!l.hp, notes: l.notes || [], name: l.name || "" }; });
     const put = arr => { const T = SQ.list[b]; T.forEach(l => { stopLayer(l); try { l.gain.disconnect(); } catch (e) {} }); T.length = 0; arr.forEach(l => { l.gain.gain.value = l.muted ? 0 : l.vol; T.push(l); }); routeFx(); if (LP.playing) T.forEach(l => startLayer(l, ctx.currentTime + 0.005)); if (b === SQ.cur) syncLoopKnobs(); drawSeqSel(); };
     const fresh = make(); put(fresh);
     pushHist(`copie ${SEQ_N[a]} → ${SEQ_N[b]}`, () => put(old), () => put(fresh));
@@ -2308,7 +2339,7 @@ registerProcessor('nomad-aec',Aec);`;
     const an = ctx.createAnalyser(); an.fftSize = 256;
     const l = { buf, k, m, gain, an, vol: knobVals.loops[idx] ?? 1, muted: false, src: null, notes: notes || [] };
     gain.gain.value = l.vol;
-    gain.connect(loopBus);
+    gain.connect(loopIn);
     LP.layers.push(l); LP.sel = -1;
     routeFx();
     if (LP.playing) startLayer(l, ctx.currentTime + 0.005);
@@ -5173,7 +5204,7 @@ registerProcessor('nomad-aec',Aec);`;
   function drHit(role, vel, when, map) {
     if (role in map) { voice(map[role], vel, 1, when); const i = map[role]; setTimeout(() => flash(i), Math.max(0, (when - ctx.currentTime) * 1000)); return; }
     const b = drSynth()[role]; if (!b) return;
-    const s = ctx.createBufferSource(), g = ctx.createGain(); s.buffer = b; g.gain.value = vel * 0.9; s.connect(g); g.connect(chPads); s.start(when);
+    const s = ctx.createBufferSource(), g = ctx.createGain(); s.buffer = b; g.gain.value = vel * 0.9; s.connect(g); g.connect(drumIn || chPads); s.start(when);
   }
   const drLen = p => Math.max(...["k", "s", "h", "o", "p"].map(r => (p[r] || "").length), 16);
   function drTick() {
@@ -5201,9 +5232,9 @@ registerProcessor('nomad-aec',Aec);`;
   // kit changé : les rôles suivent (et le panneau se met à jour)
   setInterval(() => { if (DR.mapKit !== kitCur || DR.mapN !== names.join("|")) { DR.mapKit = kitCur; DR.mapN = names.join("|"); DR.map = drMap(); if (tab === "sons" && isDrum(instCur)) drawDrums(); } }, 400);
   // lancer / changer / arrêter : au début de la mesure suivante (calé sur la boucle du LOOPER quand elle tourne)
-  function drPlay(i) {
+  function drPlay(i, gOv) {
     if (!ctx) return;
-    const g = drGenre(); if (!g.p[i]) return;
+    const g = gOv || drGenre(); if (!g.p[i]) return;
     if (DR.cur >= 0 && DR.genre === g) {
       DR.next = (DR.next === i && DR.cur === i) ? -1 : i; DR.last = i;
       if (DR.cur === i && DR.next === i) DR.next = -1;
@@ -6063,6 +6094,212 @@ registerProcessor('nomad-aec',Aec);`;
     if (ctx) scrInit();
   }
 
+  // ---------- NUMARK DJ2GO2 TOUCH : deck gauche = le son scratché, deck droit = le beat ----------
+  // Messages relevés sur l'appareil (et recoupés avec le mapping libre de Mixxx) :
+  //   decks : canal 1 (gauche) / 2 (droit) : PLAY note 0, CUE 1, SYNC 2, jog toucher note 6 + rotation CC 6
+  //           (01 = +1 cran, 7F = -1), casque note 0x1B, volume CC 0x16, pitch CC 9 ;
+  //   pads : canal 5 / 6, notes 1-4 (repères), 9-12 (PAD MODE tenu), 0x11-0x14, 0x21-0x24, 0x31-0x34 (autres modes) ;
+  //   milieu : canal 16 : browse CC 0 (+ appui note 6), LOAD A note 2, LOAD B note 3, crossfader CC 8, gain CC 10.
+  // Le potard casque est analogique (rien en MIDI). Les LED répondent aux mêmes notes.
+  var DJ = { on: false, name: "", out: null, edge: null, edgeT: null, nudgeT: null, filt: 0, vol: 1, tapT: 0, turned: false, gi: -1, led: {}, sel: -1 };
+  const DJ_TPR = 236;   // crans du jog par tour (comme dans Mixxx)
+  const isDj = name => /dj ?2 ?go ?2|dj2go/i.test(name || "");
+  // Bus du beat : boucles du looper et batterie de SONS passent par un filtre (jog droit) et un volume (fader droit)
+  var loopIn = null, beatF = null, beatG = null, drumIn = null, drumF = null, drumG = null;
+  function buildBeatBus() {
+    const chain = (to) => { const i = ctx.createGain(), f = ctx.createBiquadFilter(), g = ctx.createGain(); f.type = "allpass"; i.connect(f); f.connect(g); g.connect(to); return [i, f, g]; };
+    [loopIn, beatF, beatG] = chain(loopBus);
+    [drumIn, drumF, drumG] = chain(chPads);
+  }
+  function djFilter(x) {
+    DJ.filt = Math.max(-1, Math.min(1, x));
+    if (!beatF) return;
+    const t = ctx.currentTime, x2 = Math.abs(DJ.filt) < 0.04 ? 0 : DJ.filt;
+    [beatF, drumF].forEach(f => {
+      if (!x2) { f.type = "allpass"; return; }
+      f.type = x2 < 0 ? "lowpass" : "highpass"; f.Q.value = 1.2;
+      f.frequency.setTargetAtTime(x2 < 0 ? 20000 * Math.pow(120 / 20000, -x2) : 25 * Math.pow(5000 / 25, x2), t, 0.015);
+    });
+  }
+  function djVol(v) {
+    DJ.vol = v;
+    if (beatG) { const g = Math.pow(v, 1.6) * 1.1, t = ctx.currentTime; beatG.gain.setTargetAtTime(g, t, 0.02); drumG.gain.setTargetAtTime(g, t, 0.02); }
+  }
+  const djDelta = v => v > 64 ? v - 128 : v;
+  const djGenre = () => DJ.gi >= 0 ? DRUM_GENRES[DJ.gi] : drGenre();
+  // ----- deck gauche : la platine -----
+  function djJogTouch(down) {
+    if (!SCR.node || !SCR.N) { if (down) scrInit(); return; }
+    if (down) {
+      if (SCR.hand) return;
+      const p0 = scrPosNow();
+      SCR.hand = { jog: true, p0, pos: p0, t: performance.now(), v: 0, moved: performance.now(), acc: 0, ap: 0, last: 0 };
+      SCR.node.port.postMessage({ type: "hand", on: true });
+      onFirstNote(ctx.currentTime);
+    } else if (SCR.hand && SCR.hand.jog) {
+      SCR.node.port.postMessage({ type: "hand", on: false });
+      SCR.rep = { pos: SCR.hand.pos, vel: 0, t: performance.now() };
+      SCR.hand = null;
+    }
+  }
+  function djJogTurn(d) {
+    if (!SCR.node || !SCR.N) return;
+    const step = d / DJ_TPR * SCR_REV * SCR.bsr, now = performance.now();
+    const h = SCR.hand;
+    if (h && h.jog) {   // main posée sur le jog : le disque suit la main
+      const dt = Math.max(3, now - h.t);
+      h.pos += step; h.v = step; h.t = now; h.moved = now;
+      SCR.node.port.postMessage({ type: "tgt", pos: h.pos, dur: Math.round(Math.min(0.025, dt / 1000) * sr) });
+      return;
+    }
+    if (h) return;   // le doigt est sur l'écran
+    if (SCR.motor) {   // bord du jog, disque lancé : on le pousse ou on le freine un instant
+      SCR.node.port.postMessage({ type: "rate", rate: scrRate() * (1 + Math.sign(d) * Math.min(0.25, 0.04 * Math.abs(d))) });
+      clearTimeout(DJ.nudgeT); DJ.nudgeT = setTimeout(scrApply, 90);
+      return;
+    }
+    // bord du jog, disque à l'arrêt : petit déplacement, comme une main qui effleure
+    if (!DJ.edge) { DJ.edge = { pos: scrPosNow(), t: now }; SCR.node.port.postMessage({ type: "hand", on: true }); onFirstNote(ctx.currentTime); }
+    const dt = Math.max(3, now - DJ.edge.t); DJ.edge.pos += step; DJ.edge.t = now;
+    SCR.node.port.postMessage({ type: "tgt", pos: DJ.edge.pos, dur: Math.round(Math.min(0.025, dt / 1000) * sr) });
+    clearTimeout(DJ.edgeT);
+    DJ.edgeT = setTimeout(() => { if (DJ.edge && !SCR.hand) { SCR.node.port.postMessage({ type: "hand", on: false }); SCR.rep = { pos: DJ.edge.pos, vel: 0, t: performance.now() }; } DJ.edge = null; }, 220);
+  }
+  function djScratchTab() { if (tab !== "scratch") setTab("scratch"); }
+  // ----- deck droit : le beat -----
+  const djBeatOn = () => LP.playing || DR.cur >= 0;
+  function djBeatPlay() {
+    if (LP.t0F !== null && LP.Lf) { if (SONG.playing) { songStop(); stopAll(); } else togglePlay(); return; }
+    if (DR.cur >= 0) { drStop(); lcd("lcdPad", "BEAT", "arrêt"); return; }
+    drPlay(Math.max(0, DR.last || 0), djGenre());
+  }
+  function djPattern(i) {
+    const g = djGenre(); if (!g.p[i]) { lcd("lcdPad", "BEAT", g.name + " : pas de motif " + (i + 1)); return; }
+    drPlay(i, g);
+  }
+  function djNextGenre(d) {
+    const cur = DRUM_GENRES.indexOf(djGenre());
+    DJ.gi = (cur + d + DRUM_GENRES.length) % DRUM_GENRES.length;
+    const g = DRUM_GENRES[DJ.gi];
+    if (LP.t0F === null) drBpmSet(g.bpm);
+    if (DR.cur >= 0) drPlay(Math.min(DR.cur, g.p.length - 1), g);
+    lcd("lcdPad", "BEAT", `${g.name} · ${Math.round(curBpm())} BPM`);
+    drawDj();
+  }
+  function djTempo(v) {
+    if (LP.t0F !== null && LP.Lf) { lcd("lcdPad", "TEMPO", `${Math.round(curBpm())} BPM : fixé par la boucle du looper`); return; }
+    // haut du fader = plus lent (comme un pitch de platine) ; milieu = 95 BPM ; 60 à 180
+    const x = (64 - v) / 64, bpm = x < 0 ? 95 + x * 35 : 95 + x * 85;
+    drBpmSet(bpm); lcd("lcdPad", "TEMPO", Math.round(manualBpm) + " BPM");
+    drawDj();
+  }
+  // ----- entrée MIDI du DJ2GO2 -----
+  function djMidi(e) {
+    const [st, d1, d2] = e.data, type = st & 0xf0, ch = st & 0x0f, down = type === 0x90 && d2 > 0, isNote = type === 0x90 || type === 0x80;
+    if (!ctx) return;
+    if (!DJ.on) { DJ.on = true; djLedsAll(); drawDj(); }
+    if (ch === 0 || ch === 1) {   // decks
+      const L = ch === 0;
+      if (type === 0xb0) {
+        if (d1 === 6) { if (L) djJogTurn(djDelta(d2)); else { DJ.turned = true; djFilter(DJ.filt + djDelta(d2) / 90); drawDj(); } }
+        else if (d1 === 0x16) { if (L) { knobVals.scratch[0] = d2 / 127; scrApply(); if (tab === "scratch" && $("dial0")) $("dial0").style.setProperty("--v", d2 / 127); } else { djVol(d2 / 127); drawDj(); } }
+        else if (d1 === 9) { if (L) scrSetPitch((64 - d2) / 64 * 10); else djTempo(d2); }
+        return;
+      }
+      if (!isNote) return;
+      if (d1 === 6) {   // toucher du jog
+        if (L) { if (down) djScratchTab(); djJogTouch(down); }
+        else if (down) { DJ.turned = false; DJ.tapT = performance.now(); }
+        else if (!DJ.turned && performance.now() - DJ.tapT < 300) { djFilter(0); lcd("lcdPad", "BEAT", "filtre ouvert"); drawDj(); }
+        return;
+      }
+      if (!down) return;
+      if (L) {
+        if (d1 === 0) { djScratchTab(); scrInit().then(ok => { if (ok) scrMotor(); }); }
+        else if (d1 === 1) { scrToCue(); lcd("lcdPad", "CUE", "le disque revient au repère"); }
+        else if (d1 === 2) $("scrSpeed").click();
+        else if (d1 === 0x1b) $("scrHam").click();
+      } else {
+        if (d1 === 0) djBeatPlay();
+        else if (d1 === 1) scrInit().then(ok => { if (ok) scrRecTap(); });
+        else if (d1 === 2) { undo(); lcd("lcdPad", "LOOPER", "dernière piste retirée"); }
+        else if (d1 === 0x1b) $("trMetro").click();
+      }
+      return;
+    }
+    if (ch === 4 || ch === 5) {   // pads (quel que soit le mode affiché par l'appareil)
+      if (!isNote || d1 === 0) return;
+      const hi = d1 & 0xf0, lo = d1 & 0x0f, shift = hi === 0 && lo >= 9 && lo <= 12, i = shift ? lo - 9 : lo - 1;
+      if (i < 0 || i > 3) return;
+      if (ch === 4) {
+        if (shift) { if (down && SCR.cues[i] !== null) scrCueClear(i); return; }
+        if (!SCR.node) { if (down) scrInit(); return; }
+        scrPad(4 + i, down);
+      } else if (down) djPattern(shift ? i + 4 : i);
+      return;
+    }
+    if (ch === 15) {   // milieu
+      if (type === 0xb0) {
+        if (d1 === 8) { SCR.fader = d2 / 127; scrGate(); }
+        else if (d1 === 0) djBrowse(djDelta(d2));
+        else if (d1 === 10) { const m = MIX.ch.find(c => c.id === "master"); if (m) { m.vol = d2 / 127; applyMix(); lcd("lcdPad", "MASTER", Math.round(d2 / 127 * 100) + " %"); } }
+        return;
+      }
+      if (!down) return;
+      if (d1 === 6) djNextSrc();
+      else if (d1 === 2) djLoadA();
+      else if (d1 === 3) djNextGenre(1);
+    }
+  }
+  // BROWSE : tourner choisit un son (sans le charger), appuyer change de catégorie, LOAD A le pose sur la platine
+  async function djBrowse(d) {
+    if (!(await scrInit())) return;
+    const sel = $("scrSel"), n = sel.options.length; if (!n) return;
+    DJ.sel = ((DJ.sel < 0 ? +sel.value || 0 : DJ.sel) + d + n) % n;
+    sel.value = DJ.sel;
+    lcd("lcdPad", "BROWSE", sel.options[DJ.sel].textContent + " · LOAD A pour le poser");
+  }
+  async function djNextSrc() {
+    if (!(await scrInit())) return;
+    const k = SCR_SRCS.findIndex(x => x[0] === SCR.src), nx = SCR_SRCS[(k + 1) % SCR_SRCS.length];
+    const b = [...$("scrSrc").children].find(x => x.dataset.s === nx[0]);
+    if (b) b.click();
+    DJ.sel = -1; lcd("lcdPad", "BROWSE", "catégorie : " + nx[1]);
+  }
+  async function djLoadA() {
+    djScratchTab();
+    if (!(await scrInit())) return;
+    const v = DJ.sel >= 0 ? DJ.sel : +$("scrSel").value || 0;
+    DJ.sel = -1; await scrPick(0, v);
+  }
+  // ----- LED -----
+  function djSend(st, n, on) { if (DJ.out) try { DJ.out.send([st, n, on ? 0x7f : 0]); } catch (e) {} }
+  function djLedsAll() { DJ.led = {}; djLeds(true); }
+  function djLeds(force) {
+    if (!DJ.out || !ctx) return;
+    const blink = (performance.now() % 500) < 250;
+    const want = {
+      "144,0": SCR.motor, "144,1": SCR.cues && SCR.cues.some(c => c !== null), "144,2": SCR.speed === 45, "144,27": SCR.ham,
+      "145,0": djBeatOn(), "145,1": SCR.rec ? blink : LP.pending ? blink : false, "145,2": LP.layers.length > 0, "145,27": SQ.metro
+    };
+    for (let i = 0; i < 4; i++) { want["148," + (i + 1)] = !!(SCR.cues && SCR.cues[i] !== null) && (SCR.cueIdx !== i || blink || !SCR.motor); want["149," + (i + 1)] = DR.cur === i || (DR.next === i && blink); }
+    Object.entries(want).forEach(([k, v]) => { v = !!v; if (force || DJ.led[k] !== v) { DJ.led[k] = v; const [s, n] = k.split(",").map(Number); djSend(s, n, v); } });
+  }
+  setInterval(() => { if (DJ.on) djLeds(false); }, 120);
+  // ----- panneau à l'écran (onglet SCRATCH) -----
+  function drawDj() {
+    const p = $("djPanel"); if (!p) return;
+    p.hidden = !DJ.on;
+    if (!DJ.on) return;
+    const g = djGenre(), f = Math.abs(DJ.filt) < 0.04 ? "ouvert" : DJ.filt < 0 ? "graves " + Math.round(-DJ.filt * 100) + " %" : "aigus " + Math.round(DJ.filt * 100) + " %";
+    $("djBeat").textContent = `BEAT ${djBeatOn() ? "▶" : "■"} · ${LP.t0F !== null && LP.Lf ? "boucle du looper" : g.name} · ${Math.round(curBpm())} BPM · filtre ${f} · volume ${Math.round(DJ.vol * 100)} %`;
+  }
+  setInterval(() => { if (DJ.on && tab === "scratch") drawDj(); }, 400);
+  function djConnected(name, out) {
+    DJ.name = name; DJ.out = out || null;
+    if (!DJ.on) { DJ.on = true; if (ctx) djLedsAll(); }
+    drawDj();
+  }
   // ---------- AIDE-MÉMOIRE AKAI (RÉGLAGES) : toutes les assignations, repliées par thème ----------
   function padGrid(labels, off = 0) {
     // disposition du MPK : 5-8 en haut, 1-4 en bas
@@ -6212,7 +6449,7 @@ registerProcessor('nomad-aec',Aec);`;
   // Prises imprimées : une ligne peut porter un son figé (take.pid → SONG.prints), joué à la place des boucles.
   // Les pistes passent par une « porte » (SONG.gate) qu'on ferme pendant une ligne imprimée ; le son imprimé, lui,
   // entre dans le bus des boucles, donc les effets FX / SP ciblés sur SONG le recolorent (impression par-dessus).
-  function layGate() { if (!SONG.gate) { SONG.gate = ctx.createGain(); SONG.gate.connect(loopBus); } return SONG.gate; }
+  function layGate() { if (!SONG.gate) { SONG.gate = ctx.createGain(); SONG.gate.connect(loopIn); } return SONG.gate; }
   // même porte pour la piste envoyée seule dans FX ou dans SP (P1 à P6), qui ne passe pas par le bus des boucles
   const GATES = {};
   function gateOf(k) { if (!GATES[k]) { GATES[k] = ctx.createGain(); GATES[k].connect(k === "fx" ? fxSolo : sp.lay); } return GATES[k]; }
@@ -6222,7 +6459,7 @@ registerProcessor('nomad-aec',Aec);`;
     if (SONG.player) { try { SONG.player.stop(T); } catch (e) {} SONG.player = null; }
     allGates().forEach(g => g.gain.setTargetAtTime(buf ? 0 : 1, T, 0.003));
     if (!buf) return;
-    const s = ctx.createBufferSource(); s.buffer = buf; s.connect(loopBus); s.start(T); SONG.player = s;
+    const s = ctx.createBufferSource(); s.buffer = buf; s.connect(loopIn); s.start(T); SONG.player = s;
   }
   function songAudioOff() { if (SONG.player) { try { SONG.player.stop(); } catch (e) {} SONG.player = null; } if (SONG.gate) allGates().forEach(g => { g.gain.cancelScheduledValues(ctx.currentTime); g.gain.setTargetAtTime(1, ctx.currentTime, 0.003); }); }
   const SEQ_N = "ABCDEFGH";
@@ -8651,9 +8888,14 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
       const access = await navigator.requestMIDIAccess();
       const refresh = () => {
         const ins = [...access.inputs.values()];
-        ins.forEach(inp => inp.onmidimessage = onMidi);
+        // le DJ2GO2 a sa propre entrée : ses notes et ses CC ne se mélangent pas à ceux de l'Akai
+        ins.forEach(inp => inp.onmidimessage = isDj(inp.name) ? djMidi : onMidi);
         setMidiStatus(ins.length ? ins.map(i => i.name).join(", ") : "aucun appareil", ins.length > 0);
-        try { TAPLED.outs = [...access.outputs.values()]; } catch (e) {}
+        let outs = []; try { outs = [...access.outputs.values()]; } catch (e) {}
+        TAPLED.outs = outs.filter(o => !isDj(o.name));
+        const dji = ins.find(i => isDj(i.name));
+        if (dji) djConnected(dji.name, outs.find(o => isDj(o.name)));
+        else if (DJ.on) { DJ.on = false; DJ.out = null; drawDj(); }
       };
       access.onstatechange = refresh;
       refresh();
@@ -8691,7 +8933,7 @@ ${layer(1, o.name || "", o.frames || 0)}${layer(2, "", 0)}${layer(3, "", 0)}${la
   initMidi();
   try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nomadMidi) { $("btBox").hidden = false; $("btPair").addEventListener("click", () => window.webkit.messageHandlers.nomadMidi.postMessage({ type: "btpair" })); } } catch (e) {}
   window.nomadMidi = (bytes) => onMidi({ data: bytes });
-  window.nomadDbg = { get ctx() { return ctx; }, cloudSet: v => { DBX = v; drawCloud(); }, cloudUpload, cloudList, scrPos: () => scrPosNow(), get SCRN() { return SCR.N; }, get gn() { return gn; }, get G() { return G; }, gtrOn: () => { G.on = true; applyGuitar(); }, aecCalibrate, get AEC() { return AEC; }, drRec, drMap, drSwPct, DR_GENRES: DRUM_GENRES, get sp() { return sp; }, FXS, setFxBank, SP_FX, SPX, setSpBank, spPad, AMB, sonsT: { selectInst, keyOn, releaseKey: k => activeKeys.forEach((v, key) => releaseKey(key)) }, DR, drPlay, drStop, scrLoad, newKit, micStop, MIC, edSrcApply, song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get names() { return names; }, get kitIndex() { return kitIndex; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
+  window.nomadDbg = { get ctx() { return ctx; }, djMidi: b => djMidi({ data: b }), DJ, isDj, get beatF() { return beatF; }, get DR() { return DR; }, cloudSet: v => { DBX = v; drawCloud(); }, cloudUpload, cloudList, scrPos: () => scrPosNow(), get SCRN() { return SCR.N; }, get gn() { return gn; }, get G() { return G; }, gtrOn: () => { G.on = true; applyGuitar(); }, aecCalibrate, get AEC() { return AEC; }, drRec, drMap, drSwPct, DR_GENRES: DRUM_GENRES, get sp() { return sp; }, FXS, setFxBank, SP_FX, SPX, setSpBank, spPad, AMB, sonsT: { selectInst, keyOn, releaseKey: k => activeKeys.forEach((v, key) => releaseKey(key)) }, DR, drPlay, drStop, scrLoad, newKit, micStop, MIC, edSrcApply, song: SONG, songPrint, setFxTarget, setSpTarget, SQ, selectSeq, bankKey, songPlay, songStop, perfArm, songMigrate, loadKit: id => loadKit(id), get kitIndex() { return kitIndex; }, get duck() { return duckNode; }, setClip: (b, t) => setClip(b, null, t), get clip() { return clip; }, get chops() { return chops; }, get sp() { return sp; }, SCR, scrPhrase, scrInit, autoSave, exportBackup, masterMix, lufsOf, loopStems: () => loopStems(), get sr() { return sr; }, dbClear: async () => { for (const st of ["projects", "kits", "scratch"]) { for (const x of await DB.all(st)) await DB.del(st, x.id); } }, stretched: (i, f) => stretched(i, f), setBuf: (i, b) => { buffers[i] = b; }, get nHits() { return notesAny.length + ':' + hits.length; }, SQ, SONG, NR, LP, selectSeq, copySeq, songPlay, get padParams() { return padParams; }, get buffers() { return buffers; }, get names() { return names; }, get kitIndex() { return kitIndex; }, get hist() { return HIST; }, addLayer, removeLayer, mergeLayers };
   let probe = null;
   let probeOut = null;
   window.nomadProbeOut = () => { if (!probeOut) { probeOut = ctx.createAnalyser(); probeOut.fftSize = 2048; mixOut.connect(probeOut); } const a = new Float32Array(2048); probeOut.getFloatTimeDomainData(a); let m = 0; for (const v of a) { if (!isFinite(v)) return NaN; m = Math.max(m, Math.abs(v)); } return +m.toFixed(3); };
