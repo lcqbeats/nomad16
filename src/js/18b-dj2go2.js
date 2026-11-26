@@ -7,6 +7,7 @@
   // Le potard casque est analogique (rien en MIDI). Les LED répondent aux mêmes notes.
   var DJ = { on: false, name: "", out: null, edge: null, edgeT: null, nudgeT: null, filt: 0, vol: 1, tapT: 0, turned: false, gi: -1, led: {}, sel: -1 };
   const DJ_TPR = 236;   // crans du jog par tour (comme dans Mixxx)
+  var DJ_WIN = 100, DJ_EMA = 0.2;   // fenêtre (ms) et lissage de la vitesse de la main au jog (mesurés : son le plus propre, inversion en ~20 ms)
   const isDj = name => /dj ?2 ?go ?2|dj2go/i.test(name || "");
   // Bus du beat : boucles du looper et batterie de SONS passent par un filtre (jog droit) et un volume (fader droit)
   var loopIn = null, beatF = null, beatG = null, drumIn = null, drumF = null, drumG = null;
@@ -50,10 +51,9 @@
     if (!SCR.node || !SCR.N) return;
     const step = d / DJ_TPR * SCR_REV * SCR.bsr, now = performance.now();
     const h = SCR.hand;
-    if (h && h.jog) {   // main posée sur le jog : le disque suit la main
-      const dt = Math.max(3, now - h.t);
-      h.pos += step; h.v = step; h.t = now; h.moved = now;
-      SCR.node.port.postMessage({ type: "tgt", pos: h.pos, dur: Math.round(Math.min(0.025, dt / 1000) * sr) });
+    if (h && h.jog) {   // main posée sur le jog : on estime la vitesse de la main, le disque la suit en douceur entre les crans
+      h.pos += step; h.t = now; h.moved = now;
+      djHandSend(h, now);
       return;
     }
     if (h) return;   // le doigt est sur l'écran
@@ -68,6 +68,18 @@
     SCR.node.port.postMessage({ type: "tgt", pos: DJ.edge.pos, dur: Math.round(Math.min(0.025, dt / 1000) * sr) });
     clearTimeout(DJ.edgeT);
     DJ.edgeT = setTimeout(() => { if (DJ.edge && !SCR.hand) { SCR.node.port.postMessage({ type: "hand", on: false }); SCR.rep = { pos: DJ.edge.pos, vel: 0, t: performance.now() }; } DJ.edge = null; }, 220);
+  }
+  // vitesse de la main = déplacement sur les ~45 dernières ms (les crans arrivent par paquets : une mesure cran par cran hache le son)
+  function djHandSend(h, now) {
+    (h.hist || (h.hist = [])).push([now, h.pos]);
+    while (h.hist.length > 2 && now - h.hist[0][0] > DJ_WIN) h.hist.shift();
+    const [t0, p0] = h.hist[0], span = now - t0;
+    const v0 = span > 4 ? (h.pos - p0) / (span / 1000 * sr) : 0;
+    // lissage léger ; un changement de sens est pris tout de suite
+    const v = h.v === undefined || Math.sign(v0) !== Math.sign(h.v) ? v0 : h.v + (v0 - h.v) * DJ_EMA; h.v = v;
+    SCR.node.port.postMessage({ type: "hm", pos: h.pos, v });
+    clearTimeout(h.stopT);   // plus de cran : la main s'est arrêtée
+    h.stopT = setTimeout(() => { if (SCR.hand === h) { h.hist = [[performance.now(), h.pos]]; h.v = 0; SCR.node.port.postMessage({ type: "hm", pos: h.pos, v: 0 }); } }, 35);
   }
   function djScratchTab() { if (tab !== "scratch") setTab("scratch"); }
   // ----- deck droit : le beat -----
