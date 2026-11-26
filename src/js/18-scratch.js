@@ -1,7 +1,7 @@
   // ---------- SCRATCH : platine tactile, fader de coupure, phrases, sillon fermé ----------
   const SCR = { node: null, src: "bank", idx: 0, name: "—", N: 0, bsr: 48000, cue: 0, motor: false, speed: 33, pitch: 0, semi: null, hand: null, rep: { pos: 0, vel: 0, t: 0 }, fader: 0.2, ham: false, padOpen: false, padCut: false, btnOpen: false, btnCut: false, gate: null, bank: null, voix: null, mine: [], ph: -1, raf: 0, loading: 0 };
   const SCR_REV = 1.8; // secondes de son par tour de disque (33 tours)
-  const SCR_SRCS = [["bank", "BANQUE"], ["voix", "VOIX"], ["pad", "PAD"], ["chop", "CHOP"], ["piste", "PISTE"], ["mine", "MES SONS"]];
+  const SCR_SRCS = [["bank", "PACKS"], ["voix", "VOIX"], ["pad", "PAD"], ["chop", "CHOP"], ["piste", "PISTE"], ["mine", "MES SONS"]];
   // Phrases : [pas de 1/16, vitesse crête (× normale, signe = sens), fader (1, 0 ou motif ouvert/fermé)]
   const SCR_PH = [
     ["BABY", 1, [[1, 2.2, 1], [1, -2.2, 1]]],
@@ -84,9 +84,13 @@
   async function scrList() {
     const s = SCR.src;
     if (s === "bank") {
-      if (!SCR.bank) SCR.bank = scrSynth(sr).map(x => ({ name: x.name, get: async () => scrBufOf(x.data, sr) }));
+      // PACKS : les sons de scratch importés depuis les packs (voix, chants, cuivres, stabs…), puis les voix LoC
+      let mine = []; try { mine = (await DB.all("scratch")).filter(m => m.pack).sort((a, b) => (a.cat || "").localeCompare(b.cat || "") || a.created - b.created); } catch (e) {}
       const cr = await scrCrate(), loc = [];
       if (cr) SCR_LOC.forEach(([cid, title, ci, nm]) => { const c = cr.collections.find(x => x.id === cid), it = c && c.items.find(x => x.t === title); if (it && it.c[ci]) loc.push({ name: nm + " (voix LoC)", get: () => scrFetch(cr.base + cid + "/" + it.c[ci][0] + ".wav") }); });
+      if (mine.length) return mine.map(m => ({ name: (m.cat ? m.cat + " · " : "") + m.name, get: async () => unpackBuf(m.buf) })).concat(loc);
+      // pas encore de pack importé : sons de secours (synthétisés), disparaissent dès qu'un pack est importé
+      if (!SCR.bank) SCR.bank = scrSynth(sr).map(x => ({ name: x.name, get: async () => scrBufOf(x.data, sr) }));
       return SCR.bank.concat(loc);
     }
     if (s === "voix") {
@@ -98,7 +102,7 @@
     if (s === "pad") return buffers.map((b, i) => b ? { name: `PAD ${i + 1} · ${(names[i] || "").toUpperCase()}`, get: async () => b } : null).filter(Boolean);
     if (s === "chop") { if (!clip) return []; return chops.map((_, i) => ({ name: `CHOP ${i + 1} · ${clip.title}`, get: async () => { const [a, b] = chopRange(i), n = Math.max(1, b - a), o = ctx.createBuffer(clip.buf.numberOfChannels, n, clip.buf.sampleRate); for (let c = 0; c < o.numberOfChannels; c++) o.copyToChannel(clip.buf.getChannelData(c).subarray(a, b), c); return o; } })); }
     if (s === "piste") return LP.layers.filter(l => l.buf).map((l, i) => ({ name: `PISTE ${i + 1} · bank ${SEQ_N[SQ.cur]}`, get: async () => l.buf }));
-    if (s === "mine") { try { SCR.mine = (await DB.all("scratch")).sort((a, b) => a.created - b.created); } catch (e) { SCR.mine = []; } return SCR.mine.map(m => ({ name: m.name, get: async () => unpackBuf(m.buf) })); }
+    if (s === "mine") { try { SCR.mine = (await DB.all("scratch")).filter(m => !m.pack).sort((a, b) => a.created - b.created); } catch (e) { SCR.mine = []; } return SCR.mine.map(m => ({ name: m.name, get: async () => unpackBuf(m.buf) })); }
     return [];
   }
   async function scrPick(delta, abs) {
@@ -383,10 +387,39 @@
     drawScrCues();
   })();
   $("scrKey").addEventListener("click", () => scrKey(null));
+  // Un zip de sons (ou un pack Serato) → la catégorie PACKS de SCRATCH, gardée dans cet appareil.
+  // Dans un pack Serato, seuls les sons à scratcher sont pris (voix, chants, adlibs, cuivres, stabs, hits).
+  const SCR_PACK_RX = /vox|vocal|voice|shout|adlib|ad.?lib|chant|choir|\bhey\b|yeah|\buh\b|horn|brass|stab|scratch|\bhit\b|fx/i;
+  async function scrImportZip(f) {
+    try {
+      const serato = /\.serato-pack$/i.test(f.name);
+      const ents = (await zipEntries(f)).filter(e => PACK_AUDIO.test(e.name) && !/(^|\/)(__MACOSX|\.)/.test(e.name) && (!serato || (SCR_PACK_RX.test(e.name.split("/").pop()) && !/kick|snare|hat|clap|_perc|stomp/i.test(e.name.split("/").pop()))));
+      if (!ents.length) { lcd("lcdPad", "SCRATCH", "aucun son à scratcher dans ce fichier"); return; }
+      const have = new Set((await DB.all("scratch")).filter(m => m.pack).map(m => m.src));
+      let n = 0, k = 0;
+      for (const e of ents) {
+        k++; if (have.has(e.name)) continue;
+        try {
+          const ab = await zipRead(f, e), buf = await new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej));
+          const len = Math.min(buf.length, Math.floor(buf.sampleRate * 12)), cut = ctx.createBuffer(Math.min(2, buf.numberOfChannels), len, buf.sampleRate);
+          for (let c = 0; c < cut.numberOfChannels; c++) cut.copyToChannel(buf.getChannelData(c).subarray(0, len), c);
+          const parts = e.name.split("/"), base = parts.pop().replace(PACK_AUDIO, ""), cat = (parts.length ? parts[0] : "").toUpperCase().slice(0, 18);
+          const [pk, rest] = base.includes(" - ") ? [base.split(" - ")[0], base.split(" - ").slice(1).join(" - ")] : ["", base];
+          const name = (rest.replace(/\s*\([^)]*\)/g, "").replace(/^\d{1,2}\s+/, "").replace(/[_]+/g, " ").trim() + (pk ? " · " + pk : "")).toUpperCase().slice(0, 34);
+          await DB.put("scratch", { id: "p" + Date.now().toString(36) + n, name, cat: serato ? "" : cat, buf: packBuf16(cut), created: Date.now() + n, pack: true, src: e.name });
+          n++;
+        } catch (err) {}
+        if (k % 5 === 0) lcd("lcdPad", "SCRATCH", `import · ${k}/${ents.length} sons`);
+      }
+      SCR.src = "bank"; drawScrSrc(); $("scrSel").dataset.key = ""; await scrPick(0, 0);
+      lcd("lcdPad", "SCRATCH", `${n} sons ajoutés dans PACKS`);
+    } catch (err) { lcd("lcdPad", "SCRATCH", "zip illisible (" + err.message + ")"); }
+  }
   $("scrImp").addEventListener("click", () => $("scrFile").click());
   $("scrFile").addEventListener("change", async e => {
     const f = e.target.files[0]; e.target.value = "";
     if (!f || !(await scrInit())) return;
+    if (/\.(zip|serato-pack)$/i.test(f.name)) { await scrImportZip(f); return; }
     try {
       const ab = await f.arrayBuffer(), buf = await new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej));
       const n = Math.min(buf.length, Math.floor(buf.sampleRate * 12)), cut = ctx.createBuffer(buf.numberOfChannels, n, buf.sampleRate);

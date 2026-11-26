@@ -1726,3 +1726,17 @@ def test_pack_serato_kits_de_batterie_en_variantes(app):
     app.click("#varNext")
     assert app.evaluate("nomadDbg.names[5]") == "CLAP" and app.evaluate("nomadDbg.names[1]") == "SNARE"
     assert "ALPHA" in app.inner_text("#varPad") and "PAD 06" in app.inner_text("#varPad")
+
+
+def test_scratch_sons_de_packs(app):
+    # IMPORTER accepte un zip de sons : ils remplacent les sons de secours dans PACKS
+    import os
+    app.click("#tab-scratch")
+    app.evaluate("nomadDbg.scrInit()")
+    app.wait_for_function("nomadDbg.SCR.N > 0", timeout=10000)
+    app.set_input_files("#scrFile", os.path.join(os.path.dirname(__file__), "scratch-essai.zip"))
+    app.wait_for_function("/3 sons ajoutés dans PACKS/.test(document.getElementById('lcdPad').textContent)", timeout=15000)
+    opts = app.evaluate("[...document.getElementById('scrSel').options].map(o => o.textContent)")
+    assert opts[0].startswith("1. CUIVRES ET STABS · HORN HIT · TRAKGIRL"), opts
+    assert any("VOIX · UZ VOX YEAH · UZ" in o for o in opts), opts
+    assert not any("AHH" == o.split(". ", 1)[1] for o in opts), opts   # plus de sons synthétisés
