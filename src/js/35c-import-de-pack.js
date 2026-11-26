@@ -38,15 +38,20 @@
     if (en.method !== 8 || typeof DecompressionStream === "undefined") throw new Error("compression non gérée");
     return new Response(raw.stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer();
   }
-  const packName = s => s.replace(/\.(zip)$/i, "").replace(/^musicradar[-_ ]*/i, "").replace(/[-_]+/g, " ").replace(/\s+samples?$/i, "").trim().toUpperCase();
+  const packName = s => s.replace(/\.(zip|serato-pack)$/i, "").replace(/^musicradar[-_ ]*/i, "").replace(/[-_]+/g, " ").replace(/\s+samples?$/i, "").trim().toUpperCase();
   async function importPack(files) {
     if (!ctx || !files || !files.length) return;
     // liste des sons : { path, read() } depuis un zip ou un dossier
     let items = [], title = "PACK";
-    if (files.length === 1 && /\.zip$/i.test(files[0].name)) {
+    if (files.length === 1 && /\.(zip|serato-pack)$/i.test(files[0].name)) {
       const z = files[0]; title = packName(z.name);
       lcd("lcdPad", "PACK", "lecture du zip…");
-      items = (await zipEntries(z)).filter(e => PACK_AUDIO.test(e.name) && !/(^|\/)(__MACOSX|\.)/.test(e.name)).map(e => ({ path: e.name, read: () => zipRead(z, e) }));
+      const ents = await zipEntries(z);
+      // pack Serato (.serato-pack) : un zip avec un « manifest » ; les kits de batterie sont dans Drums/<kit>,
+      // les boucles et sons dans Audio Samples, et chaque instrument (une basse…) dans Instruments/<nom>
+      const man = ents.find(e => e.name === "manifest");
+      if (man) { try { const j = JSON.parse(new TextDecoder().decode(await zipRead(z, man))); if (j.pack && j.pack.name) title = j.pack.name.toUpperCase(); } catch (e) {} }
+      items = ents.filter(e => PACK_AUDIO.test(e.name) && !/(^|\/)(__MACOSX|\.)/.test(e.name)).map(e => ({ path: e.name, read: () => zipRead(z, e) }));
     } else {
       const list = [...files].filter(f => PACK_AUDIO.test(f.name));
       const rel = f => f.webkitRelativePath || f.name; title = packName((rel(list[0] || files[0]).split("/")[0]) || "PACK");
@@ -55,8 +60,10 @@
     if (!items.length) { lcd("lcdPad", "PACK", "aucun son trouvé (WAV, AIFF, MP3, M4A…)"); return; }
     // regroupés par dossier, dans l'ordre alphabétique ; 16 par kit
     const groups = new Map();
-    items.sort((a, b) => a.path.localeCompare(b.path, "fr", { numeric: true })).forEach(it => { const parts = it.path.split("/"); parts.pop(); const g = parts.filter(Boolean).slice(-2).join(" · ") || "SONS"; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(it); });
+    items.sort((a, b) => a.path.localeCompare(b.path, "fr", { numeric: true })).forEach(it => { const parts = it.path.split("/"); parts.pop(); const g = /^Instruments\//i.test(it.path) ? "Instruments" : /^Audio Samples\//i.test(it.path) ? "Samples" : parts.filter(Boolean).slice(-2).join(" · ").replace(/^Drums · /i, "") || "SONS"; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(it); });
     const plan = []; groups.forEach((arr, g) => { for (let i = 0; i < arr.length; i += 16) plan.push({ g, part: Math.floor(i / 16) + 1, of: Math.ceil(arr.length / 16), items: arr.slice(i, i + 16) }); });
+    // kits de batterie d'abord, puis les samples et les instruments (packs Serato)
+    const rank = g => g === "Samples" ? 1 : g === "Instruments" ? 2 : 0; plan.sort((a, b) => rank(a.g) - rank(b.g));
     const ok = await askName(`${items.length} sons → ${plan.length} kits · nom du pack`, title.slice(0, 24), 24); if (!ok) return;
     title = ok.toUpperCase();
     let done = 0, made = 0, firstId = null;
@@ -69,7 +76,7 @@
           // 20 s au plus par pad (boucles et lignes de basse comprises)
           const n = Math.min(b.length, Math.round(b.sampleRate * 20)), c = ctx.createBuffer(Math.min(2, b.numberOfChannels), n, b.sampleRate);
           for (let ch = 0; ch < c.numberOfChannels; ch++) c.copyToChannel(b.getChannelData(ch).subarray(0, n), ch);
-          bufs[i] = c; names[i] = it.path.split("/").pop().replace(PACK_AUDIO, "").replace(/^musicradar[-_ ]*/i, "").replace(/[-_]+/g, " ").slice(0, 24).toUpperCase();
+          bufs[i] = c; names[i] = it.path.split("/").pop().replace(PACK_AUDIO, "").replace(/^musicradar[-_ ]*/i, "").replace(/\s*\([^)]*kit\)\s*$/i, "").replace(/^\d{1,2}\s+/, "").replace(/[-_]+/g, " ").slice(0, 24).toUpperCase();
         } catch (e) {}
         done++; if (done % 4 === 0) lcd("lcdPad", "PACK", `import · ${done}/${items.length} sons · kit ${made + 1}/${plan.length}`);
       }

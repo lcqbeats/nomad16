@@ -1650,3 +1650,20 @@ def test_dj2go2_platine_et_beat(app):
     assert "145,0,127" in leds and "148,1,127" in leds
     dj(0x91, 0x00, 0x7f)                                   # beat arrêté
     assert app.evaluate("nomadDbg.DR.cur") == -1
+
+
+def test_importer_un_pack_serato(app):
+    # .serato-pack : zip avec manifest ; un kit par kit de batterie, les samples ensemble, les instruments ensemble
+    import os
+    app.evaluate("document.getElementById('kitSheet').hidden = false")
+    app.set_input_files("#packFile", os.path.join(os.path.dirname(__file__), "pack-essai.serato-pack"))
+    app.wait_for_selector(".namedlg input")
+    assert "6 sons → 3 kits" in app.inner_text(".namedlg")
+    assert app.input_value(".namedlg input") == "ESSAI SOUL PACK"
+    app.click(".namedlg button[type=submit]")
+    app.wait_for_function("/kits créés/.test(document.getElementById('lcdPad').textContent)", timeout=20000)
+    names = app.evaluate("nomadDbg.kitIndex.filter(k => k.user).map(k => k.name)")
+    assert any(n.endswith("BALTAN DRUM KIT") for n in names), names
+    assert any(n.endswith("SAMPLES") for n in names) and any(n.endswith("INSTRUMENTS") for n in names), names
+    pads = app.evaluate("nomadDbg.names.slice(0, 3)")
+    assert [p.upper() for p in pads] == ["KICK", "SNARE", "CLOSED HI HAT"], pads

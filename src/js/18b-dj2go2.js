@@ -71,7 +71,7 @@
   }
   function djScratchTab() { if (tab !== "scratch") setTab("scratch"); }
   // ----- deck droit : le beat -----
-  const djBeatOn = () => LP.playing || DR.cur >= 0;
+  const djBeatOn = () => (LP.playing && LP.t0F !== null && !!LP.Lf) || DR.cur >= 0;
   function djBeatPlay() {
     if (LP.t0F !== null && LP.Lf) { if (SONG.playing) { songStop(); stopAll(); } else togglePlay(); return; }
     if (DR.cur >= 0) { drStop(); lcd("lcdPad", "BEAT", "arrêt"); return; }
